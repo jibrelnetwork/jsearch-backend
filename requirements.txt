@@ -1,0 +1,13 @@
+aiohttp==3.0.1
+aiohttp-swagger==1.0.5
+asyncpg==0.15.0
+asyncpgsa==0.20.0
+ConfigArgParse==0.13.0
+psycopg2==2.7.4
+python_dotenv
+pytest==3.4.2
+pytest-aiohttp==0.3.0
+pytest-asyncio==0.8.0
+PyYAML==3.12
+SQLAlchemy==1.2.5
+yoyo-migrations==5.0.5

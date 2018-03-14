@@ -1,0 +1,545 @@
+swagger: '2.0'
+info:
+  description: jSearch - Ethereum blockexplorer API
+  version: 1.0.0
+  title: jSearch API
+  # put the contact info for your development or API team
+  contact:
+    email: dev@jibrel.network
+
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+
+# # tags are used for organizing operations
+# tags:
+# - name: admins
+#   description: Secured Admin-only calls
+# - name: developers
+#   description: Operations available to regular developers
+  
+parameters:
+  address:
+    name: address
+    in: path
+    required: true
+    description: Account address
+    type: string
+    format: address
+  blockNumber:
+    name: blockNumber
+    in: path
+    required: true
+    description: block number
+    type: integer
+  blockHash:
+    name: blockHash
+    in: path
+    required: true
+    description: block hash
+    type: string
+    format: hash
+  hashOrNumber:
+    name: hashOrNumber
+    in: path
+    required: true
+    description: block hash or number
+    type: string
+  txhash:
+    name: txhash
+    in: path
+    required: true
+    description: transaction hash
+    type: string
+  pageSize:
+    name: pageSize
+    in: query
+    description: Number of items returned per page
+    type: integer
+    default: 100
+  pageNumber:
+    name: pageNumber
+    in: query
+    description: Page number
+    type: integer
+    default: 1
+    
+paths:
+    
+  /accounts/{address}/:
+    get:
+      operationId: getAccount
+      description: |
+        Get account state by address
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      - in: query
+        name: blockNumber
+        description: |
+         block number, if omitted - lastest 
+        type: integer
+        minimum: 0
+      responses:
+        200:
+          description: Account object
+          schema:
+            type: object
+            items:
+              $ref: '#/definitions/Account'
+        400:
+          description: bad input parameter
+  
+  /accounts/{address}/txs/:
+    get:
+      operationId: getAccountTransactions
+      description: |
+        Get account transactions
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/pageNumber'
+      - $ref: '#/parameters/pageSize'
+      responses:
+        200:
+          description: transactions for specific address
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Transaction'
+        400:
+          description: bad input parameter
+          
+  /blocks/{hashOrNumber}/:
+    get:
+      operationId: getBlock
+      description: |
+        Get block by hash or number
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/hashOrNumber'
+      responses:
+        200:
+          description: block
+          schema:
+            $ref: '#/definitions/Block'
+        400:
+          description: bad input parameter
+          
+  /blocks/{hashOrNumber}/txs/:
+    get:
+      operationId: getBlockTransactions
+      description: |
+        Get all transactions in block
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/hashOrNumber'
+      responses:
+        200:
+          description: transactions from specific block
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Transaction'
+        400:
+          description: bad input parameter
+          
+  /blocks/{hashOrNumber}/uncles/:
+    get:
+      operationId: getBlockUncles
+      description: |
+        Get all uncle blocks for specific block
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/hashOrNumber'
+      responses:
+        200:
+          description: uncles for specific block
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Uncle'
+        400:
+          description: bad input parameter
+          
+  /transactions/{txhash}/:
+    get:
+      operationId: getTransaction
+      description: |
+        Get Transaction by hash
+      produces:
+      - application/json
+      parameters:
+        - $ref: '#/parameters/txhash'
+      responses:
+        200:
+          description: transaction
+          schema:
+            $ref: '#/definitions/Transaction'
+        400:
+          description: bad input parameter
+          
+  /receipts/{txhash}/:
+    get:
+      operationId: getReceipt
+      description: |
+        Get Receipt by transaction hash
+      produces:
+      - application/json
+      parameters:
+        - $ref: '#/parameters/txhash'
+      responses:
+        200:
+          description: transaction receipt
+          schema:
+            $ref: '#/definitions/Receipt'
+        400:
+          description: bad input parameter
+          
+  /web3/:
+    post:
+      operationId: web3ApiMethodCall
+      description: |
+        call Web3 API method
+      produces:
+      - application/json
+      parameters:
+        - in: body
+          name: call
+          schema:
+            $ref: '#/definitions/Web3Call'
+      responses:
+        200:
+          description: method call response
+          schema:
+            $ref: '#/definitions/Web3CallResponse'
+        400:
+          description: bad input parameter
+      
+definitions:
+
+  Account:
+    properties:
+      blockNumber:
+        type: integer
+      blockHash:
+        type: string
+        format: hash
+      address:
+        type: string
+        format: address
+      nonce:
+        type: integer
+      code:
+        type: string
+      codeHash:
+        type: string
+        format: hash
+      balance:
+        type: integer
+  
+  Transaction:
+    properties:
+      blockHash:
+        type: string
+        format: hash
+      blockNumber:
+        type: integer
+      from:
+       type: string
+       format: address
+      gas:
+       type: string
+       format: hex
+      gasPrice:
+       type: string
+       format: hex
+      hash:
+       type: string
+       format: hash
+      input:
+       type: string
+       format: hex
+      nonce:
+       type: string
+       format: hex
+      r:
+       type: string
+       format: hex
+      s:
+       type: string
+       format: hash
+      to:
+       type: string
+       format: address
+      transactionIndex:
+        type: integer
+      v:
+       type: string
+       format: hex
+      value:
+       type: string
+       format: hex
+ 
+  Block:
+    properties:
+      difficulty:
+       type: integer
+       example: 10694243015446
+      extraData:
+       type: string
+       format: hex
+       example: "0xd983010302844765746887676f312e342e328777696e646f7773"
+      gasLimit:
+       type: integer
+       example: 3141592
+      gasUsed:
+       type: integer
+       example: 0,
+      hash:
+       type: string
+       format: hex
+       example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
+      logsBloom:
+       type: string
+       format: hex
+       example: "0x00000000000000000000000000000000000000000000000000000000001"
+      miner:
+       type: string
+       format: hex
+       example: "0xf8b483dba2c3b7176a3da549ad41a48bb3121069"
+      mixHash:
+       type: string
+       format: hex
+       example: "0x02a775f306082912b617e858fef268597a277de056dbe924ee6aabfa35a33c44"
+      nonce:
+       type: string
+       format: hex
+       example: "0x06e36bda48d70f67"
+      number:
+       type: integer
+       example: 900056
+      parentHash:
+       type: string
+       format: hex
+       example: "0x9e4f201db6e56a43980881cd09855b99b2f2aeefc84ffb2ad0ccf3f42de6fba2"
+      receiptsRoot:
+       type: string
+       format: hex
+       example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+      sha3Uncles:
+       type: string
+       format: hex
+       example: "0x2843dd2134eb02067b585e76ce6a7fc89d22d3eae1d38827b1eb15a3b5153347"
+      size:
+       type: integer
+       example: 1081
+      stateRoot:
+       type: string
+       format: hex
+       example: "0xc27aca6363fdceaed835753083b4db0bc37fab441e1414b9f051047d37dd025f"
+      timestamp:
+       type: integer
+       example: 1453686776
+      totalDifficulty:
+       type: integer
+       example: 6028818335021882784
+      transactions:
+       type: array
+       items:
+        type: string
+       example: ["0xc9b1ad2422ac745f91f815f14572cae74c8dd31183430c297ec2c7a902eb52db"]
+      transactionsRoot:
+       type: string
+       format: hex
+       example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+      uncles:
+       type: array
+       items:
+        type: string
+       example: ["0xe0591f521db8d59f0362ad7bb946ecf98fd2d5eaf0a24b6fce378a00db6389d7"]
+
+  Uncle:
+    properties:
+      difficulty:
+       type: integer
+       example: 10694243015446
+      extraData:
+       type: string
+       format: hex
+       example: "0xd983010302844765746887676f312e342e328777696e646f7773"
+      gasLimit:
+       type: integer
+       example: 3141592
+      gasUsed:
+       type: integer
+       example: 0,
+      hash:
+       type: string
+       format: hex
+       example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
+      logsBloom:
+       type: string
+       format: hex
+       example: "0x00000000000000000000000000000000000000000000000000000000001"
+      miner:
+       type: string
+       format: hex
+       example: "0xf8b483dba2c3b7176a3da549ad41a48bb3121069"
+      mixHash:
+       type: string
+       format: hex
+       example: "0x02a775f306082912b617e858fef268597a277de056dbe924ee6aabfa35a33c44"
+      nonce:
+       type: string
+       format: hex
+       example: "0x06e36bda48d70f67"
+      number:
+       type: integer
+       example: 900056
+      parentHash:
+       type: string
+       format: hex
+       example: "0x9e4f201db6e56a43980881cd09855b99b2f2aeefc84ffb2ad0ccf3f42de6fba2"
+      receiptsRoot:
+       type: string
+       format: hex
+       example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+      sha3Uncles:
+       type: string
+       format: hex
+       example: "0x2843dd2134eb02067b585e76ce6a7fc89d22d3eae1d38827b1eb15a3b5153347"
+      size:
+       type: integer
+       example: 1081
+      stateRoot:
+       type: string
+       format: hex
+       example: "0xc27aca6363fdceaed835753083b4db0bc37fab441e1414b9f051047d37dd025f"
+      timestamp:
+       type: integer
+       example: 1453686776
+      totalDifficulty:
+       type: integer
+       example: 6028818335021882784
+      transactionsRoot:
+       type: string
+       format: hex
+       example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+      uncles:
+       type: array
+       items:
+        type: string
+       example: ["0xe0591f521db8d59f0362ad7bb946ecf98fd2d5eaf0a24b6fce378a00db6389d7"]
+  
+  Receipt:
+    properties:
+      blockHash:
+        type: string
+        format: hex
+        example: "0xf65ef0910daed64f5bf0effa14c40908395b3df16b64b48a703bb9c7aa61e80f"
+      blockNumber:
+        type: integer
+        example: 900005
+      contractAddress:
+        type: string
+        format: hex
+        example: null
+      cumulativeGasUsed:
+        type: integer
+        example: 21000
+      from:
+        type: string
+        format: hex
+        example: "0x2a65aca4d5fc5b5c859090a6c34d164135398226"
+      gasUsed:
+        type: integer
+        example: 21000
+      logs:
+        type: array
+        items:
+          $ref: '#/definitions/Log'
+      logsBloom:
+        type: string
+        format: hex
+        example: "0x000000000000000110000000000"
+      root:
+        type: string
+        format: hex
+        example: "0x5b96718cdfdda40c371eee661a8467d2edcbee0fa03aa5b5cb6a84479db3c177"
+      to:
+        type: string
+        format: hex
+        example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
+      transactionHash:
+        type: string
+        format: hex
+        example: "0x6825feb84a806d5eb4321250b050d9aa7848d32ea052bb8c7b21d41d33f94ea9"
+      transactionIndex:
+        type: integer
+        example: 0
+
+  Log:
+    properties:
+      address:
+        type: string
+        format: address
+        example: "0x47071214d1ef76eeb26e9ac3ec6cc965ab8eb75b"
+      blockHash:
+        type: string
+        format: hex
+        example: "0x4c285ba67d33a3cd670f5c4decfb10a41b929e7c4139766abfd60a24ee1fa148"
+      blockNumber:
+        type: integer
+        example: 112887
+      data:
+        type: string
+        format: hex
+        example: "0x00000000000000000000000013f26856cbacaaba9c4488a31c72e605fae029fc"
+      logIndex:
+        type: integer
+        example: 0
+      removed:
+        type: string
+        format: hex
+        example: false
+      topics:
+        type: array
+        items:
+          type: string
+        example: ["0x16cdf1707799c6655baac6e210f52b94b7cec08adcaf9ede7dfe8649da926146"]
+      transactionHash:
+        type: string
+        format: hex
+        example: "0xcb63b762d9522bbd712b0d8df2208c8a8dbdaeef5d7fdca3cc2dad0f34646790"
+      transactionIndex:
+        type: integer
+        example: 2
+      
+  Web3Call:
+    properties:
+      method:
+        type: string
+      arguments:
+        type: array
+        
+  Web3CallResponse:
+    properties:
+      status:
+        type: string
+      result:
+        type: object
+
+# Added by API Auto Mocking Plugin
+# host: api.jsearch.jibrel.network
+# basePath: /v1/
+schemes:
+ - https
+# Added by API Auto Mocking Plugin
+host: virtserver.swaggerhub.com
+basePath: /brjiza/js1/1.0.0
