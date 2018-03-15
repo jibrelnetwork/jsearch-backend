@@ -39,8 +39,8 @@ parameters:
     description: block hash
     type: string
     format: hash
-  hashOrNumber:
-    name: hashOrNumber
+  tag:
+    name: tag
     in: path
     required: true
     description: block hash or number
@@ -112,7 +112,7 @@ paths:
         400:
           description: bad input parameter
           
-  /blocks/{hashOrNumber}/:
+  /blocks/{tag}/:
     get:
       operationId: getBlock
       description: |
@@ -120,7 +120,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/hashOrNumber'
+      - $ref: '#/parameters/tag'
       responses:
         200:
           description: block
@@ -129,7 +129,7 @@ paths:
         400:
           description: bad input parameter
           
-  /blocks/{hashOrNumber}/txs/:
+  /blocks/{tag}/txs/:
     get:
       operationId: getBlockTransactions
       description: |
@@ -137,7 +137,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/hashOrNumber'
+      - $ref: '#/parameters/tag'
       responses:
         200:
           description: transactions from specific block
@@ -148,7 +148,7 @@ paths:
         400:
           description: bad input parameter
           
-  /blocks/{hashOrNumber}/uncles/:
+  /blocks/{tag}/uncles/:
     get:
       operationId: getBlockUncles
       description: |
@@ -156,7 +156,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/hashOrNumber'
+      - $ref: '#/parameters/tag'
       responses:
         200:
           description: uncles for specific block
