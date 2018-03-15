@@ -106,7 +106,7 @@ class MainDB(DBWrapper):
         """
         Get latest block writed in main DB during sequence sync
         """
-        q = """SELECT max(number) FROM BLOCKS WHERE is_sequence_sync=true"""
+        q = """SELECT max(number) as number FROM BLOCKS WHERE is_sequence_sync=true"""
         row = await pg.fetchrow(q)
         return row['number'] if row else None
 
