@@ -125,53 +125,54 @@ class MainDB(DBWrapper):
         block_hash = header['block_hash']
 
         async with pg.transaction() as conn:
-            await self.insert_header(header)
-            await self.insert_uncles(block_number, block_hash, uncles)
-            await self.insert_transactions(block_number, block_hash, transactions)
-            await self.insert_receipts(block_number, block_hash, receipts)
-            await self.insert_accounts(block_number, block_hash, accounts)
+            await self.insert_header(conn, header)
+            await self.insert_uncles(conn, block_number, block_hash, uncles)
+            await self.insert_transactions(conn, block_number, block_hash, transactions)
+            await self.insert_receipts(conn, block_number, block_hash, receipts)
+            await self.insert_accounts(conn, block_number, block_hash, accounts)
 
-    async def insert_header(self, header):
+    async def insert_header(self, conn, header):
         data = dict_keys_case_convert(json.loads(header['fields']))
         query = blocks_t.insert().values(is_sequence_sync=True, **data)
-        await pg.execute(query)
+        await conn.execute(query)
 
-    async def insert_uncles(self, block_number, block_hash, uncles):
+    async def insert_uncles(self, conn, block_number, block_hash, uncles):
         for uncle in uncles:
             data = dict_keys_case_convert(uncle)
             query = uncles_t.insert().values(block_number=block_number,
                                              block_hash=block_hash, **data)
-            await pg.execute(query)
+            await conn.execute(query)
 
-    async def insert_transactions(self, block_number, block_hash, transactions):
+    async def insert_transactions(self, conn, block_number, block_hash, transactions):
         for transaction in transactions:
             data = dict_keys_case_convert(transaction)
             query = transactions_t.insert().values(block_number=block_number,
                                                    block_hash=block_hash, **data)
-            await pg.execute(query)
+            await conn.execute(query)
 
-    async def insert_receipts(self, block_number, block_hash, receipts):
+    async def insert_receipts(self, conn, block_number, block_hash, receipts):
         rdata = json.loads(receipts['fields'])['Receipts'] or []
         for receipt in rdata:
             data = dict_keys_case_convert(receipt)
             logs = data.pop('logs') or []
             query = receipts_t.insert().values(block_number=block_number,
                                                block_hash=block_hash, **data)
-            await pg.execute(query)
+            await conn.execute(query)
             await self.insert_logs(block_number, block_hash, logs)
 
-    async def insert_logs(self, block_number, block_hash, logs):
+    async def insert_logs(self, conn, block_number, block_hash, logs):
         for log_record in logs:
             data = dict_keys_case_convert(log_record)
             query = logs_t.insert().values(**data)
-            await pg.execute(query)
+            await conn.execute(query)
 
-    async def insert_accounts(self, block_number, block_hash, accounts):
+    async def insert_accounts(self, conn, block_number, block_hash, accounts):
         for account in accounts:
             data = dict_keys_case_convert(json.loads(account['fields']))
+            data['storage'] = None  # FIXME!!! 
             query = accounts_t.insert().values(block_number=block_number,
                                                block_hash=block_hash, **data)
-            await pg.execute(query)
+            await conn.execute(query)
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')

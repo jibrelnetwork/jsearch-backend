@@ -17,15 +17,15 @@ class Storage:
                 row = await conn.fetchrow(query, address)
                 if row is None:
                     return None
-                return models.Account.from_row(row)
+                return models.Account(**row)
 
     async def get_account_transactions(self, address):
-        query = """SELECT * FROM transactions WHERE fields->'to'=$1 LIMIT 100"""
+        query = """SELECT * FROM transactions WHERE to=$1 OR from=$1 LIMIT 100"""
 
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 rows = await conn.fetch(query, '"{}"'.format(address.lower()))
-                return [models.Transaction.from_row(r) for r in rows]
+                return [models.Transaction(**r) for r in rows]
 
     async def get_block(self, hash=None, number=None):
         assert hash is not None or number is not None, 'Hash or number required'
