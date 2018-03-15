@@ -158,7 +158,7 @@ class MainDB(DBWrapper):
             query = receipts_t.insert().values(block_number=block_number,
                                                block_hash=block_hash, **data)
             await conn.execute(query)
-            await self.insert_logs(block_number, block_hash, logs)
+            await self.insert_logs(conn, block_number, block_hash, logs)
 
     async def insert_logs(self, conn, block_number, block_hash, logs):
         for log_record in logs:
