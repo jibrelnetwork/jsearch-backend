@@ -106,9 +106,7 @@ class MainDB(DBWrapper):
         """
         Get latest block writed in main DB during sequence sync
         """
-        q = """SELECT number FROM blocks
-                WHERE number=(SELECT max(number) FROM BLOCKS WHERE is_sequence_sync=true)
-                AND is_sequence_sync=true"""
+        q = """SELECT max(number) FROM BLOCKS WHERE is_sequence_sync=true"""
         row = await pg.fetchrow(q)
         return row['number'] if row else None
 
@@ -171,6 +169,7 @@ class MainDB(DBWrapper):
             data = dict_keys_case_convert(json.loads(account['fields']))
             data['storage'] = None  # FIXME!!! 
             query = accounts_t.insert().values(block_number=block_number,
+                                               address=account['address'],
                                                block_hash=block_hash, **data)
             await conn.execute(query)
 

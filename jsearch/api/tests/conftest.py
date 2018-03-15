@@ -90,55 +90,55 @@ async def blocks(db):
 @pytest.mark.asyncio
 async def transactions(db, blocks):
     txs = [
-  {
-    "block_hash": blocks[0]['hash'],
-    "block_number": blocks[0]['number'],
-    "from": None,
-    "gas": "0x61a8",
-    "gas_price": "0xba43b7400",
-    "hash": "0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
-    "input": "0x",
-    "nonce": "0x51b",
-    "r": "0x5c3723a80187c010b631a9b288128dac10dc10eaa289902e65e2a857b7e32466",
-    "s": "0x6e8cfc6a77b6e6d36f941baac77083f0a936a75b3df11cf48fbd49cb1323af6e",
-    "to": "0x0182673de3787e3a77cb1f25fc8b1adedd686465",
-    "transaction_index": 1,
-    "v": "0x1b",
-    "value": "0x1068e7e28b45fc80"
-  },
-  {
-    "block_hash": blocks[0]['hash'],
-    "block_number": blocks[0]['number'],
-    "from": None,
-    "gas": "0x61a8",
-    "gas_price": "0xba43b7400",
-    "hash": "0x67762945eeabcd08851c83fc0d0042474f3c32b774abc0f5b435b671d3122cc2",
-    "input": "0x",
-    "nonce": "0x51c",
-    "r": "0x86975c372e809025d84a16b00f9abaf2433f4ed90f03013261083bec87e2035f",
-    "s": "0x21b1ef431012daea27e3d04164e922d47a29a621350c50e825d245139d08f970",
-    "to": "0x22bbea521a19c065b6c83a6398e6e21c6f981406",
-    "transaction_index": 2,
-    "v": "0x1b",
-    "value": "0xec23d4719579180"
-  },
-  {
-    "block_hash": blocks[1]['hash'],
-    "block_number": blocks[1]['number'],
-    "from": None,
-    "gas": "0x61a8",
-    "gas_price": "0xba43b7400",
-    "hash": "0x8accbe5a1836237291a21cd23f5e0dcb86fcd35dde5aa6b5f0e11a9587743093",
-    "input": "0x",
-    "nonce": "0x51d",
-    "r": "0x60cb761b2c786feeda43c22db251148c54ccc587a0aa47166f99d411c29290b8",
-    "s": "0x5f10a7d9473e1f19d5ebbec86007f825db60896de80b536f340a7d51f6ec8aa4",
-    "to": "0x51033f1a1a59cb6a1bf6ca2087a53bd202ac1c83",
-    "transaction_index": 1,
-    "v": "0x1c",
-    "value": "0x1425e9ad089d6600"
-  }
-]
+        {
+            "block_hash": blocks[0]['hash'],
+            "block_number": blocks[0]['number'],
+            "from": None,
+            "gas": "0x61a8",
+            "gas_price": "0xba43b7400",
+            "hash": "0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
+            "input": "0x",
+            "nonce": "0x51b",
+            "r": "0x5c3723a80187c010b631a9b288128dac10dc10eaa289902e65e2a857b7e32466",
+            "s": "0x6e8cfc6a77b6e6d36f941baac77083f0a936a75b3df11cf48fbd49cb1323af6e",
+            "to": "0x0182673de3787e3a77cb1f25fc8b1adedd686465",
+            "transaction_index": 1,
+            "v": "0x1b",
+            "value": "0x1068e7e28b45fc80"
+        },
+        {
+            "block_hash": blocks[0]['hash'],
+            "block_number": blocks[0]['number'],
+            "from": None,
+            "gas": "0x61a8",
+            "gas_price": "0xba43b7400",
+            "hash": "0x67762945eeabcd08851c83fc0d0042474f3c32b774abc0f5b435b671d3122cc2",
+            "input": "0x",
+            "nonce": "0x51c",
+            "r": "0x86975c372e809025d84a16b00f9abaf2433f4ed90f03013261083bec87e2035f",
+            "s": "0x21b1ef431012daea27e3d04164e922d47a29a621350c50e825d245139d08f970",
+            "to": "0x22bbea521a19c065b6c83a6398e6e21c6f981406",
+            "transaction_index": 2,
+            "v": "0x1b",
+            "value": "0xec23d4719579180"
+        },
+        {
+            "block_hash": blocks[1]['hash'],
+            "block_number": blocks[1]['number'],
+            "from": None,
+            "gas": "0x61a8",
+            "gas_price": "0xba43b7400",
+            "hash": "0x8accbe5a1836237291a21cd23f5e0dcb86fcd35dde5aa6b5f0e11a9587743093",
+            "input": "0x",
+            "nonce": "0x51d",
+            "r": "0x60cb761b2c786feeda43c22db251148c54ccc587a0aa47166f99d411c29290b8",
+            "s": "0x5f10a7d9473e1f19d5ebbec86007f825db60896de80b536f340a7d51f6ec8aa4",
+            "to": "0x51033f1a1a59cb6a1bf6ca2087a53bd202ac1c83",
+            "transaction_index": 1,
+            "v": "0x1c",
+            "value": "0x1425e9ad089d6600"
+        }
+    ]
     for tx in txs:
         query = t.transactions_t.insert().values(**tx)
         await pg.execute(query)
@@ -146,4 +146,22 @@ async def transactions(db, blocks):
     await pg.execute("DELETE FROM transactions")
 
 
-
+@pytest.fixture
+@pytest.mark.asyncio
+async def accounts(db, blocks):
+    accounts = [
+        {"block_number": blocks[0]['number'],
+         "block_hash": blocks[0]['hash'],
+         "address":"0xbb7b8287f3f0a933474a79eae42cbca977791171",
+         "nonce":0,
+         "code":"",
+                "code_hash":"c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+                "root":"56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+                "storage":{},
+                "balance": 420937500000000000000},
+    ]
+    for acc in accounts:
+        query = t.accounts_t.insert().values(**acc)
+        await pg.execute(query)
+    yield accounts
+    await pg.execute("DELETE FROM accounts")

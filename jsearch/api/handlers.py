@@ -64,6 +64,17 @@ async def get_account_transactions(request):
     return web.json_response([t.to_dict() for t in txs])
 
 
+async def get_account_mined_blocks(request):
+    """
+    Get account mined blocks
+    """
+    storage = request.app['storage']
+    address = request.match_info.get('address')
+
+    blocks = await storage.get_account_mined_blocks(address)
+    return web.json_response([b.to_dict() for b in blocks])
+
+
 async def get_block(request):
     """
     Get block by hash or number

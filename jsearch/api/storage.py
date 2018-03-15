@@ -13,11 +13,14 @@ class Storage:
         query = """SELECT * FROM accounts WHERE address=$1 LIMIT 1"""
 
         async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                row = await conn.fetchrow(query, address)
-                if row is None:
-                    return None
-                return models.Account(**row)
+            row = await conn.fetchrow(query, address)
+            if row is None:
+                return None
+            row = dict(row)
+            del row['root']
+            del row['storage']
+            row['balance'] = int(row['balance'])
+            return models.Account(**row)
 
     async def get_account_transactions(self, address):
         query = """SELECT * FROM transactions WHERE to=$1 OR from=$1 LIMIT 100"""

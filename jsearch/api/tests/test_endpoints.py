@@ -58,3 +58,20 @@ async def test_get_block_by_hash(cli, blocks, transactions):
                          "0x67762945eeabcd08851c83fc0d0042474f3c32b774abc0f5b435b671d3122cc2"],
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
         'uncles': None}
+
+
+async def test_get_account_404(cli, accounts):
+    resp = await cli.get('/accounts/x')
+    assert resp.status == 404
+
+
+async def test_get_account(cli, accounts):
+    resp = await cli.get('/accounts/0xbb7b8287f3f0a933474a79eae42cbca977791171/')
+    assert resp.status == 200
+    assert await resp.json() == {'address': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
+                                 'balance': 420937500000000000000,
+                                 'blockHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
+                                 'blockNumber': 125,
+                                 'code': '',
+                                 'codeHash': 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470',
+                                 'nonce': 0}

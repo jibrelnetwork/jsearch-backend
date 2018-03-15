@@ -39,7 +39,7 @@ async def test_maindb_insert_header():
         'nonce': '0x0',
         'value': '0x208686e75e903bc000',
         'gasPrice': '0x746a528800'}]
-    accounts = [{'adress': '0x63Ac545C991243fa18aec41D4F6f598e555015dc',
+    accounts = [{'address': '0x63Ac545C991243fa18aec41D4F6f598e555015dc',
                  'fields': '{"code": "", "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421", "nonce": 1, "balance": "0", "storage": {}, "codeHash": "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"}'},
                 {'address': '0xC93f2250589a6563f5359051c1eA25746549f0D8',
                  'fields': '{"code": "", "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421", "nonce": 0, "balance": "599989500000000000000", "storage": {}, "codeHash": "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"}'},

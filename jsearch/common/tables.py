@@ -135,7 +135,7 @@ accounts_t = sa.Table(
     sa.Column('nonce', HexInteger),
     sa.Column('code', sa.String),
     sa.Column('code_hash', sa.String),
-    sa.Column('balance', postgresql.NUMERIC()),
+    sa.Column('balance', postgresql.NUMERIC(32, 0)),
     sa.Column('root', sa.String),
     sa.Column('storage', postgresql.JSONB),
 )
