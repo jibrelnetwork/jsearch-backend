@@ -46,16 +46,24 @@ async def test_maindb_insert_header():
                 {'address': '0xf927a40C8B7F6E07c5af7FA2155B4864a4112B13',
                  'fields': '{"code": "", "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421", "nonce": 0, "balance": "27103448000000000000000", "storage": {}, "codeHash": "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"}'}]
 
-    receipts = {'fields': '{"Receipts": [{"logs":[{"data": "0x0f400", "topics": ["0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c"], "address": "0x2761c0ad62d0f7f96f38332cabb9229378c9bfc9", "removed": false, "logIndex": "0x0", "blockHash": "0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2", "blockNumber": "0x650fd", "transactionHash": "0xf254afac1fd2a84275316e2d43bbb91a12583f75f2c556a8e69b24fe316d6920", "transactionIndex": "0x0"}], "root":\
-                            "0x59383cc2bde1aeab23d8fc741c82e213b90c0dcbba537d9cd4eae227758efd70",\
-                            "status": "0x1", "gasUsed": "0x5208", "logsBloom":\
-                            "0x000",\
+    receipts = {'fields': '{"Receipts": [{"logs":[{"data": "0x0f400",\
+                                                  "topics": ["0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c"],\
+                                                  "address": "0x2761c0ad62d0f7f96f38332cabb9229378c9bfc9",\
+                                                  "removed": false,\
+                                                  "logIndex": "0x0",\
+                                                  "blockHash": "0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2",\
+                                                  "blockNumber": "0x650fd",\
+                                                  "transactionHash": "0xf254afac1fd2a84275316e2d43bbb91a12583f75f2c556a8e69b24fe316d6920",\
+                                                  "transactionIndex": "0x0"}],\
+                            "root": "0x59383cc2bde1aeab23d8fc741c82e213b90c0dcbba537d9cd4eae227758efd70",\
+                            "status": "0x1",\
+                            "gasUsed": "0x5208",\
+                            "logsBloom": "0x000",\
                             "contractAddress": "0x0000000000000000000000000000000000000000",\
-                            "transactionHash":\
-                            "0x9e6e19637bb625a8ff3d052b7c2fe57dc78c55a15d258d77c43d5a9c160b0384",\
+                            "transactionHash": "0x9e6e19637bb625a8ff3d052b7c2fe57dc78c55a15d258d77c43d5a9c160b0384",\
                             "cumulativeGasUsed": "0x5208"}]}'}
     await db.write_block(header, uncles, transactions, receipts, accounts)
- 
+
     pg = database.pg
     blocks = await pg.fetch('SELECT * FROM blocks')
     assert len(blocks) == 1
@@ -78,7 +86,7 @@ async def test_maindb_insert_header():
         'state_root': '0x4150d34e4d7cef3cb2eb6baf1fc84a6470d1d69c7ebba950c64e0b36e27bf42b',
         'timestamp': 1438918630,
         'total_difficulty': None,
-        'transactions_root': '0x59a195bec25ed6f19d81c71ea96629abbba0cf991de9649dc6d8738c4cd7a3a4'} 
+        'transactions_root': '0x59a195bec25ed6f19d81c71ea96629abbba0cf991de9649dc6d8738c4cd7a3a4'}
 
     receipts = await pg.fetch('SELECT * FROM receipts')
     assert len(receipts) == 1
@@ -92,9 +100,9 @@ async def test_maindb_insert_header():
         'logs_bloom': '0x000',
         'root': '0x59383cc2bde1aeab23d8fc741c82e213b90c0dcbba537d9cd4eae227758efd70',
         'status': 1,
-        'to': None,
+        'to': '0xc93f2250589a6563f5359051c1ea25746549f0d8',
         'transaction_hash': '0x9e6e19637bb625a8ff3d052b7c2fe57dc78c55a15d258d77c43d5a9c160b0384',
-        'transaction_index': None}
+        'transaction_index': 0}
 
     logs = await pg.fetch('SELECT * FROM logs')
     assert len(logs) == 1

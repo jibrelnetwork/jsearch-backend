@@ -126,7 +126,7 @@ class MainDB(DBWrapper):
             await self.insert_header(conn, header)
             await self.insert_uncles(conn, block_number, block_hash, uncles)
             await self.insert_transactions(conn, block_number, block_hash, transactions)
-            await self.insert_receipts(conn, block_number, block_hash, receipts)
+            await self.insert_receipts(conn, block_number, block_hash, receipts, transactions)
             await self.insert_accounts(conn, block_number, block_hash, accounts)
 
     async def insert_header(self, conn, header):
@@ -148,10 +148,15 @@ class MainDB(DBWrapper):
                                                    block_hash=block_hash, **data)
             await conn.execute(query)
 
-    async def insert_receipts(self, conn, block_number, block_hash, receipts):
+    async def insert_receipts(self, conn, block_number, block_hash, receipts, transactions):
         rdata = json.loads(receipts['fields'])['Receipts'] or []
-        for receipt in rdata:
+        for i, receipt in enumerate(rdata):
             data = dict_keys_case_convert(receipt)
+            tx = transactions[i]
+            data['transaction_hash'] = tx['hash']
+            data['transaction_index'] = i
+            data['to'] = tx['to']
+            # data['from'] = tx['from']
             logs = data.pop('logs') or []
             query = receipts_t.insert().values(block_number=block_number,
                                                block_hash=block_hash, **data)
