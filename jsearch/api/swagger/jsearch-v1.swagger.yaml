@@ -91,7 +91,7 @@ paths:
         400:
           description: bad input parameter
   
-  /accounts/{address}/txs/:
+  /accounts/{address}/transactions/:
     get:
       operationId: getAccountTransactions
       description: |
@@ -129,7 +129,7 @@ paths:
         400:
           description: bad input parameter
           
-  /blocks/{tag}/txs/:
+  /blocks/{tag}/transactions/:
     get:
       operationId: getBlockTransactions
       description: |

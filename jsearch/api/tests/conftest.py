@@ -148,6 +148,46 @@ async def transactions(db, blocks):
 
 @pytest.fixture
 @pytest.mark.asyncio
+async def receipts(db, blocks):
+    receipts = [
+        {
+          "block_hash": "0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7",
+          "block_number": 125,
+          "contract_address": "0x0000000000000000000000000000000000000000",
+          "cumulative_gas_used": 231000,
+          "from": '0xbb7b8287f3f0a933474a79eae42cbca977791171',
+          "gas_used": 21000,
+          "logs_bloom": "0x",
+          "root": "0x2acfe9e09e5278ca573b2cba963f624d003b1dbfd318343994aa91de1bd84936",
+          "to": '0xbb7b8287f3f0a933474a79eae42cbca977791172',
+          "transaction_hash": "0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
+          "transaction_index": 1,
+          "status": 1
+        },
+        {
+          "block_hash": "0x6a27d325aa1f3a1639cb72b704cf80f25470139efaaf5d48ea6e318269a28f8a",
+          "block_number": 126,
+          "contract_address": "0x0000000000000000000000000000000000000000",
+          "cumulative_gas_used": 273000,
+          "from": '0xbb7b8287f3f0a933474a79eae42cbca977791171',
+          "gas_used": 21000,
+          "logs_bloom": "0x0",
+          "root": "0xd0ce3248c7752b7f77b8aece6fe954ff47a5f1a0ae09c9036d1e614afd66ba6f",
+          "to": '0xbb7b8287f3f0a933474a79eae42cbca977791172',
+          "transaction_hash": "0x8accbe5a1836237291a21cd23f5e0dcb86fcd35dde5aa6b5f0e11a9587743093",
+          "transaction_index": 1,
+          "status": 1
+        }
+    ]
+    for r in receipts:
+        query = t.receipts_t.insert().values(**r)
+        await pg.execute(query)
+    yield receipts
+    await pg.execute("DELETE FROM receipts")
+
+
+@pytest.fixture
+@pytest.mark.asyncio
 async def accounts(db, blocks):
     accounts = [
         {"block_number": blocks[0]['number'],
@@ -165,3 +205,34 @@ async def accounts(db, blocks):
         await pg.execute(query)
     yield accounts
     await pg.execute("DELETE FROM accounts")
+
+
+@pytest.fixture
+@pytest.mark.asyncio
+async def uncles(db, blocks):
+    uncles = [{"difficulty": 17578564779,
+               "extra_data": "0x476574682f76312e302e302f6c696e75782f676f312e342e32",
+               "gas_limit": 5000,
+               "gas_used": 0,
+               "hash": "0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc",
+               "logs_bloom": "0x0",
+               "miner": "0x0193d941b50d91be6567c7ee1c0fe7af498b4137",
+               "mix_hash": "0x94a09bb3ef9208bf434855efdb1089f80d07334d91930387a1f3150494e806cb",
+               "nonce": "0x32de6ee381be0179",
+               "number": 61,
+               "parent_hash": "0x3cd0324c7ba14ba7cf6e4b664dea0360681458d76bd25dfc0d2207ce4e9abed4",
+               "receipts_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+               "sha3_uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+               # "size": None,
+               "state_root": "0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8",
+               "timestamp": 1438270332,
+               # "total_difficulty": None,
+               "transactions_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+               "block_hash": "0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7",
+               "block_number": 125}
+              ]
+    for u in uncles:
+        query = t.uncles_t.insert().values(**u)
+        await pg.execute(query)
+    yield accounts
+    await pg.execute("DELETE FROM uncles")

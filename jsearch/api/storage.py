@@ -23,12 +23,25 @@ class Storage:
             return models.Account(**row)
 
     async def get_account_transactions(self, address):
-        query = """SELECT * FROM transactions WHERE to=$1 OR from=$1 LIMIT 100"""
+        query = """SELECT * FROM transactions WHERE "to"=$1 OR "from"=$1 LIMIT 100"""
 
         async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                rows = await conn.fetch(query, '"{}"'.format(address.lower()))
-                return [models.Transaction(**r) for r in rows]
+            rows = await conn.fetch(query, address.lower())
+            rows = [dict(r) for r in rows]
+            return [models.Transaction(_from=r.pop('from'), **r) for r in rows]
+
+    async def get_block_transactions(self, tag):
+        if tag.is_hash():
+            query = """SELECT * FROM transactions WHERE block_hash=$1"""
+        elif tag.is_number():
+            query = """SELECT * FROM transactions WHERE block_number=$1"""
+        else:
+            query = """SELECT * FROM transactions WHERE block_number=(SELECT max(block_number) FROM blocks)"""
+
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, tag.value)
+            rows = [dict(r) for r in rows]
+            return [models.Transaction(_from=r.pop('from'), **r) for r in rows]
 
     async def get_block(self, tag):
 
@@ -51,3 +64,37 @@ class Storage:
             txs = await conn.fetch(tx_query, tag.value)
             data['transactions'] = [tx['hash'] for tx in txs]
             return models.Block(**data)
+
+    async def get_block_uncles(self, tag):
+        if tag.is_hash():
+            query = """SELECT * FROM uncles WHERE block_hash=$1"""
+        elif tag.is_number():
+            query = """SELECT * FROM uncles WHERE block_number=$1"""
+        else:
+            query = """SELECT * FROM uncles WHERE block_number=(SELECT max(block_number) FROM blocks)"""
+
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, tag.value)
+            rows = [dict(r) for r in rows]
+            for r in rows:
+                del r['block_hash']
+                del r['block_number']
+            return [models.Uncle(**r) for r in rows]
+
+    async def get_transaction(self, tx_hash):
+        query = """SELECT * FROM transactions WHERE hash=$1"""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(query, tx_hash)
+            if row is None:
+                return None
+            row = dict(row)
+            return models.Transaction(_from=row.pop('from'), **row)
+
+    async def get_receipt(self, tx_hash):
+        query = """SELECT * FROM receipts WHERE transaction_hash=$1"""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(query, tx_hash)
+            if row is None:
+                return None
+            row = dict(row)
+            return models.Receipt(_from=row.pop('from'), **row)
