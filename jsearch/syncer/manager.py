@@ -35,7 +35,7 @@ class Manager:
             try:
                 blocks_to_sync = await self.get_blocks_to_sync()
                 for block in blocks_to_sync:
-                    await self.sync_block(block["block_hash"])
+                    await self.sync_block(block["block_number"])
             except DatabaseError:
                 logger.exception("Database Error accured:")
                 await asyncio.sleep(self.sleep_on_db_error)

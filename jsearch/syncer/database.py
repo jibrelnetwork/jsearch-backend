@@ -71,24 +71,24 @@ class RawDB(DBWrapper):
         rows = await self.conn.fetch(q, start_block_num, end_num)
         return rows
 
-    async def get_header_by_hash(self, block_hash):
-        q = """SELECT * FROM headers WHERE block_hash=$1"""
-        row = await self.conn.fetchrow(q, block_hash)
+    async def get_header_by_hash(self, block_number):
+        q = """SELECT * FROM headers WHERE block_number=$1"""
+        row = await self.conn.fetchrow(q, block_number)
         return row
 
-    async def get_block_accounts(self, block_hash):
-        q = """SELECT * FROM accounts WHERE block_hash=$1"""
-        rows = await self.conn.fetch(q, block_hash)
+    async def get_block_accounts(self, block_number):
+        q = """SELECT * FROM accounts WHERE block_number=$1"""
+        rows = await self.conn.fetch(q, block_number)
         return rows
 
-    async def get_block_body(self, block_hash):
-        q = """SELECT * FROM bodies WHERE block_hash=$1"""
-        rows = await self.conn.fetchrow(q, block_hash)
+    async def get_block_body(self, block_number):
+        q = """SELECT * FROM bodies WHERE block_number=$1"""
+        rows = await self.conn.fetchrow(q, block_number)
         return rows
 
-    async def get_block_receipts(self, block_hash):
-        q = """SELECT * FROM receipts WHERE block_hash=$1"""
-        rows = await self.conn.fetchrow(q, block_hash)
+    async def get_block_receipts(self, block_number):
+        q = """SELECT * FROM receipts WHERE block_number=$1"""
+        rows = await self.conn.fetchrow(q, block_number)
         return rows
 
 
@@ -114,11 +114,12 @@ class MainDB(DBWrapper):
         """
         Write block and all related items in main database
         """
-        print('H:', header)
-        print('U:', uncles)
-        print('A:', accounts)
-        print('T:', transactions)
-        print('R:', receipts)
+        logger.debug('H: %s', header)
+        logger.debug('U: %s', uncles)
+        logger.debug('A: %s', accounts)
+        logger.debug('T: %s', transactions)
+        logger.debug('R: %s', receipts)
+
         block_number = header['block_number']
         block_hash = header['block_hash']
 
