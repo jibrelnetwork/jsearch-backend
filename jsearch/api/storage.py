@@ -23,7 +23,7 @@ class Storage:
             return models.Account(**row)
 
     async def get_account_transactions(self, address):
-        query = """SELECT * FROM transactions WHERE "to"=$1 OR "from"=$1 LIMIT 100"""
+        query = """SELECT * FROM transactions WHERE "to"=$1 OR "from"=$1"""
 
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address.lower())
@@ -39,7 +39,10 @@ class Storage:
             query = """SELECT * FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"""
 
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, tag.value)
+            if tag.is_latest():
+                rows = await conn.fetch(query)
+            else:
+                rows = await conn.fetch(query, tag.value)
             rows = [dict(r) for r in rows]
             return [models.Transaction(_from=r.pop('from'), **r) for r in rows]
 
@@ -56,12 +59,18 @@ class Storage:
             tx_query = """SELECT hash FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"""
 
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(query, tag.value)
+            if tag.is_latest():
+                row = await conn.fetchrow(query)
+            else:
+                row = await conn.fetchrow(query, tag.value)
             if row is None:
                 return None
             data = dict(row)
             del data['is_sequence_sync']
-            txs = await conn.fetch(tx_query, tag.value)
+            if tag.is_latest():
+                txs = await conn.fetch(tx_query)
+            else:
+                txs = await conn.fetch(tx_query, tag.value)
             data['transactions'] = [tx['hash'] for tx in txs]
             return models.Block(**data)
 
@@ -74,7 +83,10 @@ class Storage:
             query = """SELECT * FROM uncles WHERE block_number=(SELECT max(number) FROM blocks)"""
 
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, tag.value)
+            if tag.is_latest():
+                rows = await conn.fetch(query)
+            else:
+                rows = await conn.fetch(query, tag.value)
             rows = [dict(r) for r in rows]
             for r in rows:
                 del r['block_hash']

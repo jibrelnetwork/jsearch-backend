@@ -60,6 +60,31 @@ async def test_get_block_by_hash(cli, blocks, transactions):
         'uncles': None}
 
 
+async def test_get_block_latest(cli, blocks, transactions):
+    resp = await cli.get('/blocks/latest')
+    assert resp.status == 200
+    assert await resp.json() == {'difficulty': 18145285642,
+                                 'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
+                                 'gasLimit': 5000,
+                                 'gasUsed': 0,
+                                 'hash': '0x6a27d325aa1f3a1639cb72b704cf80f25470139efaaf5d48ea6e318269a28f8a',
+                                 'logsBloom': '0x01',
+                                 'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
+                                 'mixHash': '0xb6f0e4ea1b694de4755f0405c53e136cace8a2b8763235dba7e1d6f736966a64',
+                                 'nonce': '0xa4dabf1919c3b4ee',
+                                 'number': 126,
+                                 'parentHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
+                                 'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                 'sha3Uncles': '0xce79e1ed35eb08ba6262ebba998721bed2c6bf960282c5a5ba796891a19f69b6',
+                                 'size': None,
+                                 'stateRoot': '0x18e42e4f80a76649687e71bf099f9bab0de463155fd085fd4ec7117608b8f55c',
+                                 'timestamp': 1438270500,
+                                 'totalDifficulty': 18136429964,
+                                 'transactions': ['0x8accbe5a1836237291a21cd23f5e0dcb86fcd35dde5aa6b5f0e11a9587743093'],
+                                 'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                 'uncles': None}
+
+
 async def test_get_account_404(cli, accounts):
     resp = await cli.get('/accounts/x')
     assert resp.status == 404
