@@ -153,6 +153,7 @@ class MainDB(DBWrapper):
         for i, receipt in enumerate(rdata):
             data = dict_keys_case_convert(receipt)
             tx = transactions[i]
+            assert tx['hash'] == data['transaction_hash']
             data['transaction_hash'] = tx['hash']
             data['transaction_index'] = i
             data['to'] = tx['to']

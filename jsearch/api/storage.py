@@ -36,7 +36,7 @@ class Storage:
         elif tag.is_number():
             query = """SELECT * FROM transactions WHERE block_number=$1"""
         else:
-            query = """SELECT * FROM transactions WHERE block_number=(SELECT max(block_number) FROM blocks)"""
+            query = """SELECT * FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"""
 
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, tag.value)
@@ -52,8 +52,8 @@ class Storage:
             query = """SELECT * FROM blocks WHERE number=$1"""
             tx_query = """SELECT hash FROM transactions WHERE block_number=$1"""
         else:
-            query = """SELECT * FROM blocks WHERE number=(SELECT max(block_number) FROM blocks)"""
-            tx_query = """SELECT hash FROM transactions WHERE block_number=(SELECT max(block_number) FROM blocks)"""
+            query = """SELECT * FROM blocks WHERE number=(SELECT max(number) FROM blocks)"""
+            tx_query = """SELECT hash FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"""
 
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, tag.value)
@@ -71,7 +71,7 @@ class Storage:
         elif tag.is_number():
             query = """SELECT * FROM uncles WHERE block_number=$1"""
         else:
-            query = """SELECT * FROM uncles WHERE block_number=(SELECT max(block_number) FROM blocks)"""
+            query = """SELECT * FROM uncles WHERE block_number=(SELECT max(number) FROM blocks)"""
 
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, tag.value)
