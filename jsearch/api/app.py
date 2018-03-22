@@ -37,7 +37,7 @@ async def make_app():
 
     app.router.add_route('POST', '/web3', handlers.call_web3_method)
 
-    app.router.add_static('/apidoc', swagger_ui_path, )
+    app.router.add_static('/apidoc', swagger_ui_path)
 
     setup_swagger(app, swagger_from_file=swagger_file)
     return app
