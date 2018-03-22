@@ -37,7 +37,7 @@ class Storage:
             query = """SELECT * FROM transactions WHERE block_number=$1"""
         else:
             query = """SELECT * FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"""
-
+        print('Q', query, tag.value)
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 rows = await conn.fetch(query)

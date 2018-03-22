@@ -4,10 +4,15 @@ import json
 import asyncio
 import asyncpg
 from aiohttp import web
+from aiohttp_swagger import setup_swagger
+
 
 from jsearch.api.storage import Storage
 from jsearch.api import handlers
 
+
+swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
+swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
 
 
 async def make_app():
@@ -29,9 +34,12 @@ async def make_app():
 
     app.router.add_route('GET', '/transactions/{txhash}', handlers.get_transaction)
     app.router.add_route('GET', '/receipts/{txhash}', handlers.get_receipt)
-    
+
     app.router.add_route('POST', '/web3', handlers.call_web3_method)
 
+    app.router.add_static('/apidoc', swagger_ui_path, )
+
+    setup_swagger(app, swagger_from_file=swagger_file)
     return app
 
 

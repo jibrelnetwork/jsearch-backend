@@ -65,8 +65,29 @@ parameters:
     default: 1
     
 paths:
+
+  /accounts/ballances:
+    get:
+      operationId: getBallancesForMultiAddresses
+      description: |
+        Get ballances for multiple addresses in single call
+      produces:
+      - application/json
+      parameters:
+      - in: query
+        name: addresses
+        type: string
+      responses:
+        200:
+          description: List of ballances
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Ballance'
+        400:
+          description: bad input parameter
     
-  /accounts/{address}/:
+  /accounts/{address}:
     get:
       operationId: getAccount
       description: |
@@ -91,7 +112,7 @@ paths:
         400:
           description: bad input parameter
   
-  /accounts/{address}/transactions/:
+  /accounts/{address}/transactions:
     get:
       operationId: getAccountTransactions
       description: |
@@ -112,7 +133,28 @@ paths:
         400:
           description: bad input parameter
           
-  /blocks/{tag}/:
+  /accounts/{address}/mined_blocks:
+    get:
+      operationId: getAccountMinedBlocks
+      description: |
+        Get blocks mined by address
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/pageNumber'
+      - $ref: '#/parameters/pageSize'
+      responses:
+        200:
+          description: blocks mined by specific address
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Block'
+        400:
+          description: bad input parameter
+          
+  /blocks/{tag}:
     get:
       operationId: getBlock
       description: |
@@ -129,7 +171,7 @@ paths:
         400:
           description: bad input parameter
           
-  /blocks/{tag}/transactions/:
+  /blocks/{tag}/transactions:
     get:
       operationId: getBlockTransactions
       description: |
@@ -148,7 +190,7 @@ paths:
         400:
           description: bad input parameter
           
-  /blocks/{tag}/uncles/:
+  /blocks/{tag}/uncles:
     get:
       operationId: getBlockUncles
       description: |
@@ -167,7 +209,27 @@ paths:
         400:
           description: bad input parameter
           
-  /transactions/{txhash}/:
+            
+  /blocks/{tag}/rewards:
+    get:
+      operationId: getBlockAndUnclesRewards
+      description: |
+        Get block and uncle inclusion rewards for specific block
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/tag'
+      responses:
+        200:
+          description: rewards for specific block
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Reward'
+        400:
+          description: bad input parameter
+          
+  /transactions/{txhash}:
     get:
       operationId: getTransaction
       description: |
@@ -184,7 +246,7 @@ paths:
         400:
           description: bad input parameter
           
-  /receipts/{txhash}/:
+  /receipts/{txhash}:
     get:
       operationId: getReceipt
       description: |
@@ -201,7 +263,7 @@ paths:
         400:
           description: bad input parameter
           
-  /web3/:
+  /web3:
     post:
       operationId: web3ApiMethodCall
       description: |
@@ -431,11 +493,6 @@ definitions:
        type: string
        format: hex
        example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
-      uncles:
-       type: array
-       items:
-        type: string
-       example: ["0xe0591f521db8d59f0362ad7bb946ecf98fd2d5eaf0a24b6fce378a00db6389d7"]
   
   Receipt:
     properties:
@@ -520,7 +577,16 @@ definitions:
       transactionIndex:
         type: integer
         example: 2
-      
+        
+  Reward:
+    properties:
+      address:
+        type: string
+        format: address
+        example: "0x47071214d1ef76eeb26e9ac3ec6cc965ab8eb75b"
+      amount:
+        type: integer
+        example: 500000000000000
   Web3Call:
     properties:
       method:
@@ -534,12 +600,21 @@ definitions:
         type: string
       result:
         type: object
-
+        
+  Ballance:
+    properties:
+      ballance:
+        type: integer
+      address:
+        type: string
+        format: address
+      
 # Added by API Auto Mocking Plugin
 # host: api.jsearch.jibrel.network
 # basePath: /v1/
 schemes:
  - https
+ - http
 # Added by API Auto Mocking Plugin
-host: virtserver.swaggerhub.com
-basePath: /brjiza/js1/1.0.0
+host: 
+basePath: /
