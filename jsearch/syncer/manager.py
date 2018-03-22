@@ -9,6 +9,10 @@ from .database import DatabaseError
 logger = logging.getLogger(__name__)
 
 
+SLEEP_ON_ERROR_DEFAULT = 0.1
+SLEEP_ON_DB_ERROR_DEFAULT = 5
+
+
 class Manager:
     """
     Sync manager
@@ -19,7 +23,8 @@ class Manager:
         self.raw_db = raw_db
         self._running = False
         self.chunk_size = 10
-        self.sleep_on_db_error = 5
+        self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
+        self.sleep_on_db_error = SLEEP_ON_ERROR_DEFAULT
 
     async def run(self):
         logger.info("Starting Sync Manager")
@@ -39,6 +44,11 @@ class Manager:
             except DatabaseError:
                 logger.exception("Database Error accured:")
                 await asyncio.sleep(self.sleep_on_db_error)
+            except Exception:
+                await asyncio.sleep(self.sleep_on_error)
+                self.sleep_on_error = self.sleep_on_error * 2
+            else:
+                self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
 
     async def get_blocks_to_sync(self):
         latest_block_num = await self.main_db.get_latest_sequence_synced_block_number()
