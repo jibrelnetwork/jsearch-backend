@@ -197,19 +197,18 @@ async def test_get_transaction(cli, blocks, transactions):
 
 
 async def test_get_receipt(cli, blocks, transactions, receipts):
-    resp = await cli.get('/transactions/0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a')
+    resp = await cli.get('/receipts/0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a')
     assert resp.status == 200
     assert await resp.json() == {'blockHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
                                  'blockNumber': 125,
-                                 'from': None,
-                                 'gas': '0x61a8',
-                                 'gasPrice': '0xba43b7400',
-                                 'hash': '0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a',
-                                 'input': '0x',
-                                 'nonce': '0x51b',
-                                 'r': '0x5c3723a80187c010b631a9b288128dac10dc10eaa289902e65e2a857b7e32466',
-                                 's': '0x6e8cfc6a77b6e6d36f941baac77083f0a936a75b3df11cf48fbd49cb1323af6e',
-                                 'to': '0x0182673de3787e3a77cb1f25fc8b1adedd686465',
-                                 'transactionIndex': 1,
-                                 'v': '0x1b',
-                                 'value': '0x1068e7e28b45fc80'}
+                                 'contractAddress': '0x0000000000000000000000000000000000000000',
+                                 'cumulativeGasUsed': 231000,
+                                 'from': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
+                                 'gasUsed': 21000,
+                                 'logs': None,
+                                 'logsBloom': '0x',
+                                 'root': '0x2acfe9e09e5278ca573b2cba963f624d003b1dbfd318343994aa91de1bd84936',
+                                 'status': 1,
+                                 'to': '0xbb7b8287f3f0a933474a79eae42cbca977791172',
+                                 'transactionHash': '0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a',
+                                 'transactionIndex': 1}

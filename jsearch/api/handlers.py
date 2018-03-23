@@ -118,6 +118,7 @@ async def get_receipt(request):
     receipt = await storage.get_receipt(txhash)
     if receipt is None:
         return web.json_response(status=404)
+    return web.json_response(receipt.to_dict())
 
 
 async def call_web3_method(request):
