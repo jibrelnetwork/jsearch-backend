@@ -24,7 +24,7 @@ class Manager:
         self._running = False
         self.chunk_size = 10
         self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
-        self.sleep_on_db_error = SLEEP_ON_ERROR_DEFAULT
+        self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
 
     async def run(self):
         logger.info("Starting Sync Manager")
@@ -45,6 +45,7 @@ class Manager:
                 logger.exception("Database Error accured:")
                 await asyncio.sleep(self.sleep_on_db_error)
             except Exception:
+                logger.exception("Error accured:")
                 await asyncio.sleep(self.sleep_on_error)
                 self.sleep_on_error = self.sleep_on_error * 2
             else:
