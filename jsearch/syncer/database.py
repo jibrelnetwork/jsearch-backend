@@ -176,7 +176,7 @@ class MainDB(DBWrapper):
             data = dict_keys_case_convert(json.loads(account['fields']))
             data['storage'] = None  # FIXME!!! 
             query = accounts_t.insert().values(block_number=block_number,
-                                               address=account['address'],
+                                               address=account['address'].lower(),
                                                block_hash=block_hash, **data)
             await conn.execute(query)
 
