@@ -50,14 +50,12 @@ class Storage:
 
         if tag.is_hash():
             query = """SELECT * FROM blocks WHERE hash=$1"""
-            tx_query = """SELECT hash FROM transactions WHERE block_hash=$1"""
         elif tag.is_number():
             query = """SELECT * FROM blocks WHERE number=$1"""
-            tx_query = """SELECT hash FROM transactions WHERE block_number=$1"""
         else:
             query = """SELECT * FROM blocks WHERE number=(SELECT max(number) FROM blocks)"""
-            tx_query = """SELECT hash FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"""
 
+        tx_query = """SELECT hash FROM transactions WHERE block_number=$1"""
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 row = await conn.fetchrow(query)
@@ -67,10 +65,7 @@ class Storage:
                 return None
             data = dict(row)
             del data['is_sequence_sync']
-            if tag.is_latest():
-                txs = await conn.fetch(tx_query)
-            else:
-                txs = await conn.fetch(tx_query, tag.value)
+            txs = await conn.fetch(tx_query, data['number'])
             data['transactions'] = [tx['hash'] for tx in txs]
             return models.Block(**data)
 
