@@ -16,7 +16,7 @@ class Receipt(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, block_hash: str=None, block_number: int=None, contract_address: str=None, cumulative_gas_used: int=None, _from: str=None, gas_used: int=None, logs: List[Log]=None, logs_bloom: str=None, root: str=None, to: str=None, transaction_hash: str=None, transaction_index: int=None):  # noqa: E501
+    def __init__(self, block_hash: str=None, block_number: int=None, contract_address: str=None, cumulative_gas_used: int=None, _from: str=None, gas_used: int=None, logs: List[Log]=None, logs_bloom: str=None, root: str=None, to: str=None, transaction_hash: str=None, transaction_index: int=None, status: int=None):  # noqa: E501
         """Receipt - a model defined in Swagger
 
         :param block_hash: The block_hash of this Receipt.  # noqa: E501
@@ -56,7 +56,8 @@ class Receipt(Model):
             'root': str,
             'to': str,
             'transaction_hash': str,
-            'transaction_index': int
+            'transaction_index': int,
+            'status': int
         }
 
         self.attribute_map = {
@@ -71,7 +72,8 @@ class Receipt(Model):
             'root': 'root',
             'to': 'to',
             'transaction_hash': 'transactionHash',
-            'transaction_index': 'transactionIndex'
+            'transaction_index': 'transactionIndex',
+            'status': 'status'
         }
 
         self._block_hash = block_hash
@@ -86,6 +88,7 @@ class Receipt(Model):
         self._to = to
         self._transaction_hash = transaction_hash
         self._transaction_index = transaction_index
+        self._status = status
 
     @classmethod
     def from_dict(cls, dikt) -> 'Receipt':
@@ -349,3 +352,24 @@ class Receipt(Model):
         """
 
         self._transaction_index = transaction_index
+
+    @property
+    def status(self) -> int:
+        """Gets the status of this Receipt.
+
+
+        :return: The status of this Receipt.
+        :rtype: int
+        """
+        return self._status
+
+    @status.setter
+    def status(self, status: int):
+        """Sets the status of this Receipt.
+
+
+        :param status: The status of this Receipt.
+        :type status: int
+        """
+
+        self._status = status

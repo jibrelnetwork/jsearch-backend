@@ -99,7 +99,7 @@ paths:
       - in: query
         name: blockNumber
         description: |
-         block number, if omitted - lastest 
+         block number, if omitted - latest 
         type: integer
         minimum: 0
       responses:
@@ -540,6 +540,9 @@ definitions:
       transactionIndex:
         type: integer
         example: 0
+      status:
+        type: integer
+        example: 1
 
   Log:
     properties:
@@ -609,12 +612,8 @@ definitions:
         type: string
         format: address
       
-# Added by API Auto Mocking Plugin
-# host: api.jsearch.jibrel.network
-# basePath: /v1/
 schemes:
  - https
- - http
-# Added by API Auto Mocking Plugin
-host: 
-basePath: /
+
+
+basePath: /brjiza/js1/1.0.0
