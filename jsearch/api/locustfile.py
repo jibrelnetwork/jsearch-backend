@@ -46,5 +46,5 @@ class UserBehavior(TaskSet):
 
 class ApiUser(HttpLocust):
     task_set = UserBehavior
-    min_wait = 5000
-    max_wait = 9000
+    min_wait = 100
+    max_wait = 500
