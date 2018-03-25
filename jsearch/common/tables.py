@@ -1,6 +1,11 @@
 import sqlalchemy as sa
 import sqlalchemy.types as types
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
+
+
+Base = declarative_base()
 
 
 class HexInteger(types.TypeDecorator):
@@ -29,113 +34,156 @@ class HexBigInteger(types.TypeDecorator):
         return int(value)
 
 
-blocks_t = sa.Table(
-    'blocks', sa.MetaData(),
-    sa.Column('difficulty', HexInteger),
-    sa.Column('extra_data', sa.String),
-    sa.Column('gas_limit', HexInteger),
-    sa.Column('gas_used', HexInteger),
-    sa.Column('hash', sa.String, primary_key=True),
-    sa.Column('logs_bloom', sa.String),
-    sa.Column('miner', sa.String),
-    sa.Column('mix_hash', sa.String),
-    sa.Column('nonce', sa.String),
-    sa.Column('number', HexInteger),
-    sa.Column('parent_hash', sa.String),
-    sa.Column('receipts_root', sa.String),
-    sa.Column('sha3_uncles', sa.String),
-    sa.Column('size', HexInteger),
-    sa.Column('state_root', sa.String),
-    sa.Column('timestamp', HexInteger),
-    sa.Column('total_difficulty', HexBigInteger),
-    sa.Column('transactions_root', sa.String),
-    sa.Column('is_sequence_sync', sa.Boolean)
-)
+class Uncle(Base):
+    __tablename__ = 'uncles'
 
-uncles_t = sa.Table(
-    'uncles', sa.MetaData(),
-    sa.Column('difficulty', HexInteger),
-    sa.Column('extra_data', sa.String),
-    sa.Column('gas_limit', HexInteger),
-    sa.Column('gas_used', HexInteger),
-    sa.Column('hash', sa.String, primary_key=True),
-    sa.Column('logs_bloom', sa.String),
-    sa.Column('miner', sa.String),
-    sa.Column('mix_hash', sa.String),
-    sa.Column('nonce', sa.String),
-    sa.Column('number', HexInteger),
-    sa.Column('parent_hash', sa.String),
-    sa.Column('receipts_root', sa.String),
-    sa.Column('sha3_uncles', sa.String),
-    sa.Column('size', HexInteger),
-    sa.Column('state_root', sa.String),
-    sa.Column('timestamp', HexInteger),
-    sa.Column('total_difficulty', HexBigInteger),
-    sa.Column('transactions_root', sa.String),
-    sa.Column('block_hash', sa.String),
-    sa.Column('block_number', HexInteger)
-)
+    hash = sa.Column('hash', sa.String, primary_key=True)
+    number = sa.Column('number', HexInteger, primary_key=True)
+
+    block_number = sa.Column('block_number', HexInteger)
+    block_hash = sa.Column('block_hash', sa.String)
+    parent_hash = sa.Column('parent_hash', sa.String)
+    difficulty = sa.Column('difficulty', HexBigInteger)
+    extra_data = sa.Column('extra_data', sa.String)
+    gas_limit = sa.Column('gas_limit', HexInteger)
+    gas_used = sa.Column('gas_used', HexInteger)
+    logs_bloom = sa.Column('logs_bloom', sa.String)
+    miner = sa.Column('miner', sa.String)
+    mix_hash = sa.Column('mix_hash', sa.String)
+    nonce = sa.Column('nonce', sa.String)
+    receipts_root = sa.Column('receipts_root', sa.String)
+    sha3_uncles = sa.Column('sha3_uncles', sa.String)
+    size = sa.Column('size', HexInteger)
+    state_root = sa.Column('state_root', sa.String)
+    timestamp = sa.Column('timestamp', HexInteger)
+    total_difficulty = sa.Column('total_difficulty', HexBigInteger)
+    transactions_root = sa.Column('transactions_root', sa.String)
 
 
-transactions_t = sa.Table(
-    'transactions', sa.MetaData(),
-    sa.Column('block_hash', sa.String),
-    sa.Column('block_number', HexInteger),
-    sa.Column('from', sa.String),
-    sa.Column('gas', sa.String),
-    sa.Column('gas_price', sa.String),
-    sa.Column('hash', sa.String),
-    sa.Column('input', sa.String),
-    sa.Column('nonce', sa.String),
-    sa.Column('r', sa.String),
-    sa.Column('s', sa.String),
-    sa.Column('to', sa.String),
-    sa.Column('transaction_index', HexInteger),
-    sa.Column('v', sa.String),
-    sa.Column('value', sa.String),
-)
+class InternalTransaction(Base):
+    __tablename__ = 'internal_transactions'
+
+    block_number = sa.Column('block_number', HexInteger, primary_key=True)
+    parent_tx_hash = sa.Column('parent_tx_hash', HexInteger, primary_key=True)
+    op = sa.Column('op', sa.String)
+    depth = sa.Column('depth', HexInteger)
+    timestamp = sa.Column('timestamp', HexInteger)
+    from_addr = sa.Column('from', sa.String)
+    to_addr = sa.Column('to', sa.String, primary_key=True)
+    value = sa.Column('value', sa.String)
+    gas_limit = sa.Column('gas_limit', HexInteger)
 
 
-receipts_t = sa.Table(
-    'receipts', sa.MetaData(),
-    sa.Column('block_hash', sa.String),
-    sa.Column('block_number', HexInteger),
-    sa.Column('contract_address', sa.String),
-    sa.Column('cumulative_gas_used', HexInteger),
-    sa.Column('from', sa.String),
-    sa.Column('gas_used', HexInteger),
-    sa.Column('logs_bloom', sa.String),
-    sa.Column('root', sa.String),
-    sa.Column('to', sa.String),
-    sa.Column('transaction_hash', sa.String),
-    sa.Column('transaction_index', HexInteger),
-    sa.Column('status', HexInteger),
-)
+class Transaction(Base):
+    __tablename__ = 'transactions'
+
+    hash = sa.Column('hash', sa.String, primary_key=True)
+
+    block_number = sa.Column('block_number', HexInteger)
+    block_hash = sa.Column('block_hash', sa.String)
+    transaction_index = sa.Column('transaction_index', HexInteger)
+    from_addr = sa.Column('from', sa.String)
+    to_addr = sa.Column('to', sa.String)
+    gas = sa.Column('gas', sa.String)
+    gas_price = sa.Column('gas_price', sa.String)
+    input = sa.Column('input', sa.String)
+    nonce = sa.Column('nonce', sa.String)
+    r = sa.Column('r', sa.String)
+    s = sa.Column('s', sa.String)
+    v = sa.Column('v', sa.String)
+    value = sa.Column('value', sa.String)
 
 
-logs_t = sa.Table(
-    'logs', sa.MetaData(),
-    sa.Column('address', sa.String),
-    sa.Column('block_hash', sa.String),
-    sa.Column('block_number', HexInteger),
-    sa.Column('data', sa.String),
-    sa.Column('log_index', HexInteger),
-    sa.Column('removed', sa.String),
-    sa.Column('topics', postgresql.ARRAY(sa.String)),
-    sa.Column('transaction_hash', sa.String),
-    sa.Column('transaction_index', HexInteger),
-)
+class Receipt(Base):
+    __tablename__ = 'receipts'
+
+    transaction_hash = sa.Column('transaction_hash', sa.String, primary_key=True)
+    block_number = sa.Column('block_number', HexInteger)
+    block_hash = sa.Column('block_hash', sa.String)
+    contract_address = sa.Column('contract_address', sa.String)
+    cumulative_gas_used = sa.Column('cumulative_gas_used', HexInteger)
+    from_addr = sa.Column('from', sa.String)
+    to_addr = sa.Column('to', sa.String)
+    gas_used = sa.Column('gas_used', HexInteger)
+    logs_bloom = sa.Column('logs_bloom', sa.String)
+    root = sa.Column('root', sa.String)
+    transaction_index = sa.Column('transaction_index', HexInteger)
+    status = sa.Column('status', HexInteger)
 
 
-accounts_t = sa.Table(
-    'accounts', sa.MetaData(),
-    sa.Column('block_number', HexInteger),
-    sa.Column('block_hash', sa.String),
-    sa.Column('address', sa.String),
-    sa.Column('nonce', HexInteger),
-    sa.Column('code', sa.String),
-    sa.Column('code_hash', sa.String),
-    sa.Column('balance', postgresql.NUMERIC(32, 0)),
-    sa.Column('root', sa.String),
-    sa.Column('storage', postgresql.JSONB),
-)
+class Log(Base):
+    __tablename__ = 'logs'
+
+    transaction_hash = sa.Column('transaction_hash', sa.String, primary_key=True)
+    block_number = sa.Column('block_number', HexInteger)
+    block_hash = sa.Column('block_hash', sa.String)
+    log_index = sa.Column('log_index', HexInteger)
+    address = sa.Column('address', sa.String)
+    data = sa.Column('data', sa.String)
+    removed = sa.Column('removed', sa.String)
+    topics = sa.Column('topics', postgresql.ARRAY(sa.String))
+    transaction_index = sa.Column('transaction_index', HexInteger)
+
+
+class Account(Base):
+    __tablename__ = 'accounts'
+
+    block_number = sa.Column('block_number', HexInteger, primary_key=True)
+    block_hash = sa.Column('block_hash', sa.String)
+    address = sa.Column('address', sa.String, primary_key=True)
+    nonce = sa.Column('nonce', HexInteger)
+    code = sa.Column('code', sa.String)
+    code_hash = sa.Column('code_hash', sa.String)
+    balance = sa.Column('balance', postgresql.NUMERIC(32, 0))
+    root = sa.Column('root', sa.String)
+    storage = sa.Column('storage', postgresql.JSONB)
+
+
+class MinedBlock(Base):
+    __tablename__ = 'mined_blocks'
+
+    block_number = sa.Column('block_number', HexInteger, primary_key=True)
+    miner = sa.Column('miner', sa.String, primary_key=True)
+    reward = sa.Column('value', sa.String)
+    timestamp = sa.Column('timestamp', HexInteger)
+
+
+class MinedUncle(Base):
+    __tablename__ = 'mined_uncles'
+
+    block_number = sa.Column('block_number', HexInteger, primary_key=True)
+    miner = sa.Column('miner', sa.String, primary_key=True)
+    reward = sa.Column('value', sa.String)
+    timestamp = sa.Column('timestamp', HexInteger)
+
+
+class Block(Base):
+    __tablename__ = 'blocks'
+
+    number = sa.Column('number', HexInteger, primary_key=True)
+    hash = sa.Column('hash', sa.String)
+    parent_hash = sa.Column('parent_hash', sa.String)
+    difficulty = sa.Column('difficulty', HexBigInteger)
+    extra_data = sa.Column('extra_data', sa.String)
+    gas_limit = sa.Column('gas_limit', HexInteger)
+    gas_used = sa.Column('gas_used', HexInteger)
+    logs_bloom = sa.Column('logs_bloom', sa.String)
+    miner = sa.Column('miner', sa.String)
+    mix_hash = sa.Column('mix_hash', sa.String)
+    nonce = sa.Column('nonce', sa.String)
+    receipts_root = sa.Column('receipts_root', sa.String)
+    sha3_uncles = sa.Column('sha3_uncles', sa.String)
+    size = sa.Column('size', HexInteger)
+    state_root = sa.Column('state_root', sa.String)
+    timestamp = sa.Column('timestamp', HexInteger)
+    total_difficulty = sa.Column('total_difficulty', HexBigInteger)
+    transactions_root = sa.Column('transactions_root', sa.String)
+    is_sequence_sync = sa.Column('is_sequence_sync', sa.Boolean)
+
+
+blocks_t = Block.__table__
+uncles_t = Uncle.__table__
+transactions_t = Transaction.__table__
+receipts_t = Receipt.__table__
+logs_t = Log.__table__
+accounts_t = Account.__table__
