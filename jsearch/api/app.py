@@ -23,6 +23,7 @@ async def make_app():
     # Create a database connection pool
     app['db_pool'] = await asyncpg.create_pool(dsn=os.environ.get('DATABASE_URL'))
     app['storage'] = Storage(app['db_pool'])
+    app['node_proxy_url'] = os.environ.get('NODE_PROXY_URL')
     # Configure service routes
     app.router.add_route('GET', '/accounts/{address}', handlers.get_account)
     app.router.add_route('GET', '/accounts/{address}/transactions', handlers.get_account_transactions)

@@ -1,3 +1,4 @@
+import aiohttp
 from aiohttp import web
 
 
@@ -122,4 +123,10 @@ async def get_receipt(request):
 
 
 async def call_web3_method(request):
-    return web.json_response(status=501)
+    payload = await request.text()
+    proxy_url = request.app['node_proxy_url']
+    async with aiohttp.ClientSession() as session:
+        async with session.post(proxy_url, data=payload) as resp:
+            resp.status
+            data = await resp.json()
+            return web.json_response(data, status=resp.status)
