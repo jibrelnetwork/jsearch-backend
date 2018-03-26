@@ -100,6 +100,10 @@ Class | Method | HTTP request | Description
 
  All endpoints do not require authorization.
 
+## DB migration
+python manage.py revision -db=postgresql://dbuser@localhost:5433/jsearch_main -m "Initial"
+python manage.py upgrade head -db=postgresql://dbuser@localhost:5433/jsearch_main
+
 
 ## Author
 
