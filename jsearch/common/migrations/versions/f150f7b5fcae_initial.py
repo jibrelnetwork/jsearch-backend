@@ -72,7 +72,7 @@ def upgrade():
     sa.Column('log_index', tables.HexInteger(), nullable=True),
     sa.Column('address', sa.String(), nullable=True),
     sa.Column('data', sa.String(), nullable=True),
-    sa.Column('removed', sa.String(), nullable=True),
+    sa.Column('removed', sa.Boolean(), nullable=True),
     sa.Column('topics', postgresql.ARRAY(sa.String()), nullable=True),
     sa.Column('transaction_index', tables.HexInteger(), nullable=True),
     sa.PrimaryKeyConstraint('transaction_hash')

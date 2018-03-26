@@ -120,7 +120,7 @@ class Log(Base):
     log_index = sa.Column('log_index', HexInteger)
     address = sa.Column('address', sa.String)
     data = sa.Column('data', sa.String)
-    removed = sa.Column('removed', sa.String)
+    removed = sa.Column('removed', sa.Boolean)
     topics = sa.Column('topics', postgresql.ARRAY(sa.String))
     transaction_index = sa.Column('transaction_index', HexInteger)
 
