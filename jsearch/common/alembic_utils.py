@@ -23,4 +23,5 @@ def downgrade(connection_string, revision):
     command.downgrade(get_config(connection_string), revision)
 
 
-
+def init(path):
+    command.init(get_config(""), path)
