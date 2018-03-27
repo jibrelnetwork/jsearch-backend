@@ -81,7 +81,7 @@ async def blocks(db):
                "is_sequence_sync": True}]
     for b in blocks:
         query = t.blocks_t.insert().values(**b)
-        await pg.execute(query)
+        res = await pg.execute(query)
     yield blocks
     await pg.execute("DELETE FROM blocks")
 

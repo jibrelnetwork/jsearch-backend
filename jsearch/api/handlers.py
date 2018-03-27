@@ -28,7 +28,7 @@ class Tag:
 
 
 def get_tag(request):
-    tag_value = request.match_info.get('tag')
+    tag_value = request.match_info.get('tag') or request.query.get('tag', Tag.LATEST)
     if tag_value.isdigit():
         value = int(tag_value)
         type_ = Tag.NUMBER
@@ -47,8 +47,9 @@ async def get_account(request):
     """
     storage = request.app['storage']
     address = request.match_info.get('address')
+    tag = get_tag(request)
 
-    account = await storage.get_account(address)
+    account = await storage.get_account(address, tag)
     if account is None:
         return web.json_response(status=404)
     return web.json_response(account.to_dict())

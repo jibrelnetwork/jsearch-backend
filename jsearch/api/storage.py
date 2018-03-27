@@ -6,14 +6,21 @@ class Storage:
     def __init__(self, pool):
         self.pool = pool
 
-    async def get_account(self, address):
+    async def get_account(self, address, tag):
         """
         Get account info by address
         """
-        query = """SELECT * FROM accounts WHERE address=$1 LIMIT 1"""
-
+        if tag.is_hash():
+            query = """SELECT * FROM accounts WHERE address=$1 AND block_number<=(SELECT number FROM blocks WHERE hash=$2) ORDER BY block_number LIMIT 1"""
+        elif tag.is_number():
+            query = """SELECT * FROM accounts WHERE address=$1 AND block_number<=$2 ORDER BY block_number LIMIT 1"""
+        else:
+            query = """SELECT * FROM accounts WHERE address=$1 ORDER BY block_number LIMIT 1"""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(query, address)
+            if tag.is_latest():
+                row = await conn.fetchrow(query, address)
+            else:
+                row = await conn.fetchrow(query, address, tag.value)
             if row is None:
                 return None
             row = dict(row)
@@ -37,7 +44,6 @@ class Storage:
             query = """SELECT * FROM transactions WHERE block_number=$1"""
         else:
             query = """SELECT * FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"""
-        print('Q', query, tag.value)
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 rows = await conn.fetch(query)
