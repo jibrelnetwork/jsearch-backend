@@ -2,6 +2,12 @@ import aiohttp
 from aiohttp import web
 
 
+DEFAULT_LIMIT = 20
+MAX_LIMIT = 20
+DEFAULT_OFFSET = 0
+DEFAULT_ORDER = 'desc'
+
+
 class Tag:
     """
     Block tag, can be block number, block hash or 'latest' lable
@@ -41,6 +47,39 @@ def get_tag(request):
     return Tag(type_, value)
 
 
+def validate_params(request):
+    params = {}
+    errors = {}
+
+    limit = request.query.get('limit')
+    if limit and limit.isdigit():
+        params['limit'] = int(limit)
+    elif limit and not limit.isdigit():
+        errors['limit'] = 'Limit value should be valid integer, got "{}"'.format(limit)
+    else:
+        params['limit'] = DEFAULT_LIMIT
+
+    offset = request.query.get('offset')
+    if offset and offset.isdigit():
+        params['offset'] = int(offset)
+    elif offset and not offset.isdigit():
+        errors['offset'] = 'Limit value should be valid integer, got "{}"'.format(offset)
+    else:
+        params['offset'] = DEFAULT_OFFSET
+
+    order = request.query.get('order', '').lower()
+    if order and order in ['asc', 'desc']:
+        params['order'] = order
+    elif order:
+        errors['order'] = 'Order value should be one of "asc", "desc", got "{}"'.format(order)
+    else:
+        params['order'] = DEFAULT_ORDER
+
+    if errors:
+        raise web.HTTPBadRequest(errors)
+    return params
+
+
 async def get_account(request):
     """
     Get account by adress
@@ -61,8 +100,9 @@ async def get_account_transactions(request):
     """
     storage = request.app['storage']
     address = request.match_info.get('address')
+    params = validate_params(request)
 
-    txs = await storage.get_account_transactions(address)
+    txs = await storage.get_account_transactions(address, params['limit'], params['offset'])
     return web.json_response([t.to_dict() for t in txs])
 
 
@@ -75,6 +115,17 @@ async def get_account_mined_blocks(request):
 
     blocks = await storage.get_account_mined_blocks(address)
     return web.json_response([b.to_dict() for b in blocks])
+
+
+async def get_blocks(request):
+    """
+    Get blocks list
+    """
+    params = validate_params(request)
+
+    storage = request.app['storage']
+    blocks = await storage.get_blocks(params['limit'], params['offset'], params['order'])
+    return web.json_response([block.to_dict() for block in blocks])
 
 
 async def get_block(request):

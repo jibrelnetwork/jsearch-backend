@@ -29,6 +29,7 @@ async def make_app():
     app.router.add_route('GET', '/accounts/{address}/transactions', handlers.get_account_transactions)
     app.router.add_route('GET', '/accounts/{address}/mined_blocks', handlers.get_account_mined_blocks)
 
+    app.router.add_route('GET', '/blocks', handlers.get_blocks)
     app.router.add_route('GET', '/blocks/{tag}', handlers.get_block)
     app.router.add_route('GET', '/blocks/{tag}/transactions', handlers.get_block_transactions)
     app.router.add_route('GET', '/blocks/{tag}/uncles', handlers.get_block_uncles)

@@ -212,3 +212,107 @@ async def test_get_receipt(cli, blocks, transactions, receipts):
                                  'to': '0xbb7b8287f3f0a933474a79eae42cbca977791172',
                                  'transactionHash': '0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a',
                                  'transactionIndex': 1}
+
+
+async def test_get_blocks_def(cli, blocks):
+    resp = await cli.get('/blocks')
+    assert resp.status == 200
+    assert await resp.json() == [{'difficulty': 18145285642,
+                                  'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
+                                  'gasLimit': 5000,
+                                  'gasUsed': 0,
+                                  'hash': '0x6a27d325aa1f3a1639cb72b704cf80f25470139efaaf5d48ea6e318269a28f8a',
+                                  'logsBloom': '0x01',
+                                  'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
+                                  'mixHash': '0xb6f0e4ea1b694de4755f0405c53e136cace8a2b8763235dba7e1d6f736966a64',
+                                  'nonce': '0xa4dabf1919c3b4ee',
+                                  'number': 126,
+                                  'parentHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
+                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'sha3Uncles': '0xce79e1ed35eb08ba6262ebba998721bed2c6bf960282c5a5ba796891a19f69b6',
+                                  'size': None,
+                                  'stateRoot': '0x18e42e4f80a76649687e71bf099f9bab0de463155fd085fd4ec7117608b8f55c',
+                                  'timestamp': 1438270500,
+                                  'totalDifficulty': 18136429964,
+                                  'transactions': None,
+                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'uncles': None},
+                                 {'difficulty': 18136429964,
+                                  'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
+                                  'gasLimit': 5000,
+                                  'gasUsed': 0,
+                                  'hash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
+                                  'logsBloom': '0x01',
+                                  'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
+                                  'mixHash': '0x665913f982272782b5190dd6ce57d3e1800c80388b8c725c8414f6556cff65f8',
+                                  'nonce': '0x697c2379797b4af9',
+                                  'number': 125,
+                                  'parentHash': '0x57b6c499b06c497350c9f96e8a46ee0503a3888a8ee297f612d1d9dfb0eb376f',
+                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
+                                  'size': None,
+                                  'stateRoot': '0xfa528c95ea0455a48e9cd513453c907635315a556679f8b73c2fbad9c8a90423',
+                                  'timestamp': 1438270497,
+                                  'totalDifficulty': 18136429964,
+                                  'transactions': None,
+                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'uncles': None}]
+
+
+async def test_get_blocks_ask(cli, blocks):
+    resp = await cli.get('/blocks?order=asc')
+    assert resp.status == 200
+    assert await resp.json() == [{'difficulty': 18136429964,
+                                  'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
+                                  'gasLimit': 5000,
+                                  'gasUsed': 0,
+                                  'hash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
+                                  'logsBloom': '0x01',
+                                  'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
+                                  'mixHash': '0x665913f982272782b5190dd6ce57d3e1800c80388b8c725c8414f6556cff65f8',
+                                  'nonce': '0x697c2379797b4af9',
+                                  'number': 125,
+                                  'parentHash': '0x57b6c499b06c497350c9f96e8a46ee0503a3888a8ee297f612d1d9dfb0eb376f',
+                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
+                                  'size': None,
+                                  'stateRoot': '0xfa528c95ea0455a48e9cd513453c907635315a556679f8b73c2fbad9c8a90423',
+                                  'timestamp': 1438270497,
+                                  'totalDifficulty': 18136429964,
+                                  'transactions': None,
+                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'uncles': None},
+                                 {'difficulty': 18145285642,
+                                  'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
+                                  'gasLimit': 5000,
+                                  'gasUsed': 0,
+                                  'hash': '0x6a27d325aa1f3a1639cb72b704cf80f25470139efaaf5d48ea6e318269a28f8a',
+                                  'logsBloom': '0x01',
+                                  'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
+                                  'mixHash': '0xb6f0e4ea1b694de4755f0405c53e136cace8a2b8763235dba7e1d6f736966a64',
+                                  'nonce': '0xa4dabf1919c3b4ee',
+                                  'number': 126,
+                                  'parentHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
+                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'sha3Uncles': '0xce79e1ed35eb08ba6262ebba998721bed2c6bf960282c5a5ba796891a19f69b6',
+                                  'size': None,
+                                  'stateRoot': '0x18e42e4f80a76649687e71bf099f9bab0de463155fd085fd4ec7117608b8f55c',
+                                  'timestamp': 1438270500,
+                                  'totalDifficulty': 18136429964,
+                                  'transactions': None,
+                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'uncles': None},
+                                ]
+
+async def test_get_blocks_limit_offset(cli, blocks):
+    resp = await cli.get('/blocks?limit=1')
+    assert resp.status == 200
+    result = await resp.json() 
+    assert len(result) == 1
+    assert result[0]['number'] == 126
+
+    resp = await cli.get('/blocks?limit=1&offset=1')
+    assert resp.status == 200
+    result = await resp.json() 
+    assert len(result) == 1
+    assert result[0]['number'] == 125

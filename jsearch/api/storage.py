@@ -1,6 +1,10 @@
 from jsearch.api import models
 
 
+DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
+MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
+
+
 class Storage:
 
     def __init__(self, pool):
@@ -29,11 +33,13 @@ class Storage:
             row['balance'] = int(row['balance'])
             return models.Account(**row)
 
-    async def get_account_transactions(self, address):
-        query = """SELECT * FROM transactions WHERE "to"=$1 OR "from"=$1"""
+    async def get_account_transactions(self, address, limit, offset):
+        query = """SELECT * FROM transactions WHERE "to"=$1 OR "from"=$1 ORDER BY block_number, transaction_index LIMIT $2 OFFSET $3"""
+
+        limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
 
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, address.lower())
+            rows = await conn.fetch(query, address.lower(), limit, offset)
             rows = [dict(r) for r in rows]
             return [models.Transaction(_from=r.pop('from'), **r) for r in rows]
 
@@ -74,6 +80,16 @@ class Storage:
             txs = await conn.fetch(tx_query, data['number'])
             data['transactions'] = [tx['hash'] for tx in txs]
             return models.Block(**data)
+
+    async def get_blocks(self, limit, offset, order):
+        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+        query = """SELECT * FROM blocks ORDER BY number {} LIMIT $1 OFFSET $2""".format(order)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, limit, offset)
+            rows = [dict(r) for r in rows]
+            for r in rows:
+                del r['is_sequence_sync']
+            return [models.Block(**row) for row in rows]
 
     async def get_block_uncles(self, tag):
         if tag.is_hash():
