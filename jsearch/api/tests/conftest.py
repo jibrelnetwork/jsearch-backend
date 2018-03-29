@@ -25,16 +25,6 @@ def cli(loop, aiohttp_client):
 @pytest.mark.asyncio
 async def db():
     await pg.init(os.environ['JSEARCH_MAIN_DB_TEST'])
-    # conn = await pg.pool.acquire()
-    # print("BEFORE")
-    # tx = conn.transaction()
-    # await tx.start()
-    # # await conn.execute('BEGIN')
-    # yield conn
-    # print("AFTER")
-    # await tx.rollback()
-    # # await conn.execute('ROLLBACK')
-    # await pg.pool.release(conn)
     return pg
 
 
@@ -229,7 +219,28 @@ async def uncles(db, blocks):
                # "total_difficulty": None,
                "transactions_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
                "block_hash": "0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7",
-               "block_number": 125}
+               "block_number": 125},
+
+               {"hash":"0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff",
+                "number": 62,
+                "block_number":126,
+                "block_hash":"0x1567c9c59d144c48d9a981fc70f72ba84ebf557622c1f82551849c77bd637bb7",
+                "parent_hash":"0x5656b852baa80ce4db00c60998f5cf6e7a8d76f0339d3cf97955d933f731fecf",
+                "difficulty":18180751616,
+                "extra_data":"0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34",
+                "gas_limit":5000,
+                "gas_used":0,
+                "logs_bloom":"0x0",
+                "miner":"0x70137010922f2fc2964b3792907f79fbb75febe8",
+                "mix_hash":"0x48b762afc38197f6962c31851fd54ebbdff137bae3c64fff414eaa14ec243dbf",
+                "nonce":"0x5283f7dfcd4a29ec",
+                "receipts_root":"0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+                "sha3_uncles":"0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+                # "size":null,
+                "state_root":"0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b",
+                "timestamp":1438270505,
+                # "total_difficulty":null,
+                "transactions_root":"0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"}
               ]
     for u in uncles:
         query = t.uncles_t.insert().values(**u)

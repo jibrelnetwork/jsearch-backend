@@ -1,3 +1,4 @@
+from aiohttp import web
 import pytest
 
 
@@ -158,6 +159,7 @@ async def test_get_block_uncles(cli, blocks, uncles):
     resp = await cli.get('/blocks/0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7/uncles')
     assert resp.status == 200
     assert await resp.json() == [{'difficulty': 17578564779,
+                                  'blockNumber': 125,
                                   'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',
                                   'gasLimit': 5000,
                                   'gasUsed': 0,
@@ -302,17 +304,132 @@ async def test_get_blocks_ask(cli, blocks):
                                   'transactions': None,
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
                                   'uncles': None},
-                                ]
+                                 ]
+
 
 async def test_get_blocks_limit_offset(cli, blocks):
     resp = await cli.get('/blocks?limit=1')
     assert resp.status == 200
-    result = await resp.json() 
+    result = await resp.json()
     assert len(result) == 1
     assert result[0]['number'] == 126
 
     resp = await cli.get('/blocks?limit=1&offset=1')
     assert resp.status == 200
-    result = await resp.json() 
+    result = await resp.json()
     assert len(result) == 1
     assert result[0]['number'] == 125
+
+
+async def test_get_uncles(cli, blocks, uncles):
+    resp = await cli.get('/uncles')
+    assert resp.status == 200
+    assert await resp.json() == [{'blockNumber': 126,
+                                  'difficulty': 18180751616,
+                                  'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
+                                  'gasLimit': 5000,
+                                  'gasUsed': 0,
+                                  'hash': '0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff',
+                                  'logsBloom': '0x0',
+                                  'miner': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                                  'mixHash': '0x48b762afc38197f6962c31851fd54ebbdff137bae3c64fff414eaa14ec243dbf',
+                                  'nonce': '0x5283f7dfcd4a29ec',
+                                  'number': 62,
+                                  'parentHash': '0x5656b852baa80ce4db00c60998f5cf6e7a8d76f0339d3cf97955d933f731fecf',
+                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
+                                  'size': None,
+                                  'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
+                                  'timestamp': 1438270505,
+                                  'totalDifficulty': None,
+                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'},
+                                 {'blockNumber': 125,
+                                  'difficulty': 17578564779,
+                                  'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',
+                                  'gasLimit': 5000,
+                                  'gasUsed': 0,
+                                  'hash': '0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc',
+                                  'logsBloom': '0x0',
+                                  'miner': '0x0193d941b50d91be6567c7ee1c0fe7af498b4137',
+                                  'mixHash': '0x94a09bb3ef9208bf434855efdb1089f80d07334d91930387a1f3150494e806cb',
+                                  'nonce': '0x32de6ee381be0179',
+                                  'number': 61,
+                                  'parentHash': '0x3cd0324c7ba14ba7cf6e4b664dea0360681458d76bd25dfc0d2207ce4e9abed4',
+                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
+                                  'size': None,
+                                  'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
+                                  'timestamp': 1438270332,
+                                  'totalDifficulty': None,
+                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}]
+
+
+async def test_get_uncles_asc(cli, blocks, uncles):
+    resp = await cli.get('/uncles?order=asc')
+    assert resp.status == 200
+    uncles = await resp.json()
+    assert uncles[0]['number'] == 61
+    assert uncles[1]['number'] == 62
+
+
+async def test_get_uncles_offset_limit(cli, blocks, uncles):
+    resp = await cli.get('/uncles?offset=1&limit=1')
+    assert resp.status == 200
+    uncles = await resp.json()
+    assert len(uncles) == 1
+    assert uncles[0]['number'] == 61
+
+
+async def test_get_uncle_404(cli, uncles):
+    resp = await cli.get('/uncles/111')
+    assert resp.status == 404
+    resp = await cli.get('/uncles/0x6a')
+    assert resp.status == 404
+
+
+async def test_get_uncle_by_hash(cli, blocks, uncles):
+    resp = await cli.get('/uncles/0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff')
+    assert resp.status == 200
+    assert await resp.json() == {'blockNumber': 126,
+                                  'difficulty': 18180751616,
+                                  'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
+                                  'gasLimit': 5000,
+                                  'gasUsed': 0,
+                                  'hash': '0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff',
+                                  'logsBloom': '0x0',
+                                  'miner': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                                  'mixHash': '0x48b762afc38197f6962c31851fd54ebbdff137bae3c64fff414eaa14ec243dbf',
+                                  'nonce': '0x5283f7dfcd4a29ec',
+                                  'number': 62,
+                                  'parentHash': '0x5656b852baa80ce4db00c60998f5cf6e7a8d76f0339d3cf97955d933f731fecf',
+                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
+                                  'size': None,
+                                  'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
+                                  'timestamp': 1438270505,
+                                  'totalDifficulty': None,
+                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}
+
+
+async def test_get_uncle_by_number(cli, blocks, uncles):
+    resp = await cli.get('/uncles/62')
+    assert resp.status == 200
+    assert await resp.json() == {'blockNumber': 126,
+                                  'difficulty': 18180751616,
+                                  'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
+                                  'gasLimit': 5000,
+                                  'gasUsed': 0,
+                                  'hash': '0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff',
+                                  'logsBloom': '0x0',
+                                  'miner': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                                  'mixHash': '0x48b762afc38197f6962c31851fd54ebbdff137bae3c64fff414eaa14ec243dbf',
+                                  'nonce': '0x5283f7dfcd4a29ec',
+                                  'number': 62,
+                                  'parentHash': '0x5656b852baa80ce4db00c60998f5cf6e7a8d76f0339d3cf97955d933f731fecf',
+                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                  'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
+                                  'size': None,
+                                  'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
+                                  'timestamp': 1438270505,
+                                  'totalDifficulty': None,
+                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}

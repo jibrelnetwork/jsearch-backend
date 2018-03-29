@@ -174,6 +174,28 @@ async def get_receipt(request):
     return web.json_response(receipt.to_dict())
 
 
+async def get_uncles(request):
+    """
+    Get uncles list
+    """
+    params = validate_params(request)
+    storage = request.app['storage']
+    uncles = await storage.get_uncles(params['limit'], params['offset'], params['order'])
+    return web.json_response([uncle.to_dict() for uncle in uncles])
+
+
+async def get_uncle(request):
+    """
+    Get uncle by hash or number
+    """
+    storage = request.app['storage']
+    tag = get_tag(request)
+    uncle = await storage.get_uncle(tag)
+    if uncle is None:
+        return web.json_response(status=404)
+    return web.json_response(uncle.to_dict())
+
+
 async def call_web3_method(request):
     payload = await request.text()
     proxy_url = request.app['node_proxy_url']

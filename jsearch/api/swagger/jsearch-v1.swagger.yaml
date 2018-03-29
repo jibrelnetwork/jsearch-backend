@@ -51,18 +51,24 @@ parameters:
     required: true
     description: transaction hash
     type: string
-  pageSize:
-    name: pageSize
+  limit:
+    name: limit
     in: query
-    description: Number of items returned per page
+    description: Number of items returned in response
     type: integer
-    default: 100
-  pageNumber:
-    name: pageNumber
+    default: 20
+  offset:
+    name: offset
     in: query
-    description: Page number
+    description: Query offset
     type: integer
-    default: 1
+    default: 0
+  order:
+    name: order
+    in: query
+    description: Query offset
+    type: integer
+    default: 0
     
 paths:
 
@@ -96,12 +102,7 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - in: query
-        name: blockNumber
-        description: |
-         block number, if omitted - latest 
-        type: integer
-        minimum: 0
+      - $ref: '#/parameters/tag'
       responses:
         200:
           description: Account object
@@ -121,8 +122,9 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/pageNumber'
-      - $ref: '#/parameters/pageSize'
+      - $ref: '#/parameters/tag'
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
       responses:
         200:
           description: transactions for specific address
@@ -142,11 +144,31 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/pageNumber'
-      - $ref: '#/parameters/pageSize'
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
       responses:
         200:
           description: blocks mined by specific address
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Block'
+        400:
+          description: bad input parameter
+          
+  /blocks:
+    get:
+      operationId: getBlockList
+      description: |
+        Get blocks list
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
+      responses:
+        200:
+          description: blocks list
           schema:
             type: array
             items:
@@ -263,6 +285,44 @@ paths:
         400:
           description: bad input parameter
           
+  /uncles:
+    get:
+      operationId: getUnclesList
+      description: |
+        Get uncles list
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
+      responses:
+        200:
+          description: uncles list
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Uncle'
+        400:
+          description: bad input parameter
+
+  /uncles/{tag}:
+    get:
+      operationId: getUncle
+      description: |
+        Get uncle by hash or number
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/tag'
+      responses:
+        200:
+          description: uncle
+          schema:
+            $ref: '#/definitions/Uncle'
+        400:
+          description: bad input parameter
+    
   /web3:
     post:
       operationId: web3ApiMethodCall
@@ -493,6 +553,10 @@ definitions:
        type: string
        format: hex
        example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+      blockNumber:
+       type: integer
+       example: 19190
+      
   
   Receipt:
     properties:

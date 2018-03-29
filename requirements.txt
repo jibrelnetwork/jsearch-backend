@@ -1,6 +1,14 @@
-certifi >= 14.05.14
-six == 1.8.0
-python_dateutil >= 2.5.3
-setuptools >= 21.0.0
-urllib3 >= 1.15.1
-alembic >= 0.9.9
+aiohttp
+aiohttp-swagger
+asyncpg
+asyncpgsa
+ConfigArgParse
+psycopg2
+python_dotenv
+pytest
+pytest-aiohttp
+pytest-asyncio
+PyYAML
+SQLAlchemy
+alembic
+gunicorn

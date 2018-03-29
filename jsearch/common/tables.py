@@ -117,7 +117,7 @@ class Log(Base):
     transaction_hash = sa.Column('transaction_hash', sa.String, primary_key=True)
     block_number = sa.Column('block_number', HexInteger)
     block_hash = sa.Column('block_hash', sa.String)
-    log_index = sa.Column('log_index', HexInteger)
+    log_index = sa.Column('log_index', HexInteger, primary_key=True)
     address = sa.Column('address', sa.String)
     data = sa.Column('data', sa.String)
     removed = sa.Column('removed', sa.Boolean)

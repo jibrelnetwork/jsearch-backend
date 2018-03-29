@@ -91,6 +91,37 @@ class Storage:
                 del r['is_sequence_sync']
             return [models.Block(**row) for row in rows]
 
+
+    async def get_uncle(self, tag):
+        if tag.is_hash():
+            query = """SELECT * FROM uncles WHERE hash=$1"""
+        elif tag.is_number():
+            query = """SELECT * FROM uncles WHERE number=$1"""
+        else:
+            query = """SELECT * FROM uncles WHERE number=(SELECT max(number) FROM uncles)"""
+
+        async with self.pool.acquire() as conn:
+            if tag.is_latest():
+                row = await conn.fetchrow(query)
+            else:
+                row = await conn.fetchrow(query, tag.value)
+            if row is None:
+                return None
+            data = dict(row)
+            del data['block_hash']
+            return models.Uncle(**data)
+
+    async def get_uncles(self, limit, offset, order):
+        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+        query = """SELECT * FROM uncles ORDER BY number {} LIMIT $1 OFFSET $2""".format(order)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, limit, offset)
+            rows = [dict(r) for r in rows]
+            for r in rows:
+                del r['block_hash']
+            return [models.Uncle(**row) for row in rows]
+
+
     async def get_block_uncles(self, tag):
         if tag.is_hash():
             query = """SELECT * FROM uncles WHERE block_hash=$1"""
@@ -107,7 +138,6 @@ class Storage:
             rows = [dict(r) for r in rows]
             for r in rows:
                 del r['block_hash']
-                del r['block_number']
             return [models.Uncle(**r) for r in rows]
 
     async def get_transaction(self, tx_hash):

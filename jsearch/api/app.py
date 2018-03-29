@@ -37,6 +37,9 @@ async def make_app():
     app.router.add_route('GET', '/transactions/{txhash}', handlers.get_transaction)
     app.router.add_route('GET', '/receipts/{txhash}', handlers.get_receipt)
 
+    app.router.add_route('GET', '/uncles', handlers.get_uncles)
+    app.router.add_route('GET', '/uncles/{tag}', handlers.get_uncle)
+
     app.router.add_route('POST', '/web3', handlers.call_web3_method)
 
     app.router.add_static('/apidoc', swagger_ui_path)
