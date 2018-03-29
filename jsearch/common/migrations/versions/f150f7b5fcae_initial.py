@@ -75,7 +75,7 @@ def upgrade():
     sa.Column('removed', sa.Boolean(), nullable=True),
     sa.Column('topics', postgresql.ARRAY(sa.String()), nullable=True),
     sa.Column('transaction_index', tables.HexInteger(), nullable=True),
-    sa.PrimaryKeyConstraint('transaction_hash')
+    sa.PrimaryKeyConstraint('transaction_hash', 'log_index')
     )
     op.create_table('mined_blocks',
     sa.Column('block_number', tables.HexInteger(), nullable=False),
