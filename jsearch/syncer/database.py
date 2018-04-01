@@ -91,6 +91,18 @@ class RawDB(DBWrapper):
         rows = await self.conn.fetchrow(q, block_number)
         return rows
 
+    async def get_reward(self, block_number):
+        q = """SELECT * FROM rewards WHERE block_number=$1"""
+        rows = await self.conn.fetch(q, block_number)
+        if len(rows) > 1:
+            for r in rows:
+                if r['address'] != '0x0000000000000000000000000000000000000000':
+                    return r
+        elif len(rows) == 1:
+            return rows[0]
+        else:
+            return None
+
 
 class MainDB(DBWrapper):
     """
@@ -110,7 +122,7 @@ class MainDB(DBWrapper):
         row = await pg.fetchrow(q)
         return row['number'] if row else None
 
-    async def write_block(self, header, uncles, transactions, receipts, accounts):
+    async def write_block(self, header, uncles, transactions, receipts, accounts, reward):
         """
         Write block and all related items in main database
         """
@@ -119,25 +131,42 @@ class MainDB(DBWrapper):
         logger.debug('A: %s', accounts)
         logger.debug('T: %s', transactions)
         logger.debug('R: %s', receipts)
+        logger.debug('RW: %s', reward)
 
         block_number = header['block_number']
         block_hash = header['block_hash']
 
+        if block_number == 0:
+            block_reward = {'static_reward': 0, 'uncle_inclusion_reward': 0, 'tx_fees': 0}
+            uncles_rewards = []
+        else:
+            reward_data = json.loads(reward['fields'])
+            block_reward = {
+                'static_reward': reward_data['BlockReward'],
+                'uncle_inclusion_reward': reward_data['UncleInclusionReward'],
+                'tx_fees': reward_data['TxsReward']
+            }
+            uncles_rewards = reward_data['Uncles']
+
         async with pg.transaction() as conn:
-            await self.insert_header(conn, header)
-            await self.insert_uncles(conn, block_number, block_hash, uncles)
+            await self.insert_header(conn, header, block_reward)
+            await self.insert_uncles(conn, block_number, block_hash, uncles, uncles_rewards)
             await self.insert_transactions(conn, block_number, block_hash, transactions)
             await self.insert_receipts(conn, block_number, block_hash, receipts, transactions)
             await self.insert_accounts(conn, block_number, block_hash, accounts)
 
-    async def insert_header(self, conn, header):
+    async def insert_header(self, conn, header, reward):
         data = dict_keys_case_convert(json.loads(header['fields']))
+        data.update(reward)
         query = blocks_t.insert().values(is_sequence_sync=True, **data)
         await conn.execute(query)
 
-    async def insert_uncles(self, conn, block_number, block_hash, uncles):
-        for uncle in uncles:
+    async def insert_uncles(self, conn, block_number, block_hash, uncles, reward):
+        for i, uncle in enumerate(uncles):
+            rwd = reward[i]
             data = dict_keys_case_convert(uncle)
+            assert rwd['UnclePosition'] == i
+            data['reward'] = rwd['UncleReward']
             query = uncles_t.insert().values(block_number=block_number,
                                              block_hash=block_hash, **data)
             await conn.execute(query)

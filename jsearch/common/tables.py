@@ -40,7 +40,7 @@ class Uncle(Base):
     hash = sa.Column('hash', sa.String, primary_key=True)
     number = sa.Column('number', HexInteger, primary_key=True)
 
-    block_number = sa.Column('block_number', HexInteger)
+    block_number = sa.Column('block_number', HexInteger, index=True)
     block_hash = sa.Column('block_hash', sa.String)
     parent_hash = sa.Column('parent_hash', sa.String)
     difficulty = sa.Column('difficulty', HexBigInteger)
@@ -58,6 +58,7 @@ class Uncle(Base):
     timestamp = sa.Column('timestamp', HexInteger)
     total_difficulty = sa.Column('total_difficulty', HexBigInteger)
     transactions_root = sa.Column('transactions_root', sa.String)
+    reward = sa.Column('reward', postgresql.NUMERIC(32, 0))
 
 
 class InternalTransaction(Base):
@@ -79,11 +80,11 @@ class Transaction(Base):
 
     hash = sa.Column('hash', sa.String, primary_key=True)
 
-    block_number = sa.Column('block_number', HexInteger)
+    block_number = sa.Column('block_number', HexInteger, index=True)
     block_hash = sa.Column('block_hash', sa.String)
     transaction_index = sa.Column('transaction_index', HexInteger)
-    from_addr = sa.Column('from', sa.String)
-    to_addr = sa.Column('to', sa.String)
+    from_addr = sa.Column('from', sa.String, index=True)
+    to_addr = sa.Column('to', sa.String, index=True)
     gas = sa.Column('gas', sa.String)
     gas_price = sa.Column('gas_price', sa.String)
     input = sa.Column('input', sa.String)
@@ -98,7 +99,7 @@ class Receipt(Base):
     __tablename__ = 'receipts'
 
     transaction_hash = sa.Column('transaction_hash', sa.String, primary_key=True)
-    block_number = sa.Column('block_number', HexInteger)
+    block_number = sa.Column('block_number', HexInteger, index=True)
     block_hash = sa.Column('block_hash', sa.String)
     contract_address = sa.Column('contract_address', sa.String)
     cumulative_gas_used = sa.Column('cumulative_gas_used', HexInteger)
@@ -161,14 +162,14 @@ class Block(Base):
     __tablename__ = 'blocks'
 
     number = sa.Column('number', HexInteger, primary_key=True)
-    hash = sa.Column('hash', sa.String)
+    hash = sa.Column('hash', sa.String, index=True)
     parent_hash = sa.Column('parent_hash', sa.String)
     difficulty = sa.Column('difficulty', HexBigInteger)
     extra_data = sa.Column('extra_data', sa.String)
     gas_limit = sa.Column('gas_limit', HexInteger)
     gas_used = sa.Column('gas_used', HexInteger)
     logs_bloom = sa.Column('logs_bloom', sa.String)
-    miner = sa.Column('miner', sa.String)
+    miner = sa.Column('miner', sa.String, index=True)
     mix_hash = sa.Column('mix_hash', sa.String)
     nonce = sa.Column('nonce', sa.String)
     receipts_root = sa.Column('receipts_root', sa.String)
@@ -179,6 +180,10 @@ class Block(Base):
     total_difficulty = sa.Column('total_difficulty', HexBigInteger)
     transactions_root = sa.Column('transactions_root', sa.String)
     is_sequence_sync = sa.Column('is_sequence_sync', sa.Boolean)
+    static_reward = sa.Column('static_reward', postgresql.NUMERIC(32, 0))
+    uncle_inclusion_reward = sa.Column('uncle_inclusion_reward', postgresql.NUMERIC(32, 0))
+    tx_fees = sa.Column('tx_fees', postgresql.NUMERIC(32, 0))
+
 
 
 blocks_t = Block.__table__

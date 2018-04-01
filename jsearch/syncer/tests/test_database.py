@@ -62,7 +62,9 @@ async def test_maindb_insert_header():
                             "contractAddress": "0x0000000000000000000000000000000000000000",\
                             "transactionHash": "0x9e6e19637bb625a8ff3d052b7c2fe57dc78c55a15d258d77c43d5a9c160b0384",\
                             "cumulativeGasUsed": "0x5208"}]}'}
-    await db.write_block(header, uncles, transactions, receipts, accounts)
+
+    reward = {'fields': '{"Uncles": [{"UncleReward": 3750000000000000000, "UnclePosition": 0}], "TxsReward": 52569880000000000,  "BlockReward": 5000000000000000000, "UncleInclusionReward": 156250000000000000}'}
+    await db.write_block(header, uncles, transactions, receipts, accounts, reward)
 
     pg = database.pg
     blocks = await pg.fetch('SELECT * FROM blocks')
@@ -86,7 +88,10 @@ async def test_maindb_insert_header():
         'state_root': '0x4150d34e4d7cef3cb2eb6baf1fc84a6470d1d69c7ebba950c64e0b36e27bf42b',
         'timestamp': 1438918630,
         'total_difficulty': None,
-        'transactions_root': '0x59a195bec25ed6f19d81c71ea96629abbba0cf991de9649dc6d8738c4cd7a3a4'}
+        'transactions_root': '0x59a195bec25ed6f19d81c71ea96629abbba0cf991de9649dc6d8738c4cd7a3a4',
+        'static_reward': 5000000000000000000,
+        'uncle_inclusion_reward': 156250000000000000,
+        'tx_fees': 52569880000000000}
 
     receipts = await pg.fetch('SELECT * FROM receipts')
     assert len(receipts) == 1

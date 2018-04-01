@@ -67,7 +67,7 @@ class Storage:
         else:
             query = """SELECT * FROM blocks WHERE number=(SELECT max(number) FROM blocks)"""
 
-        tx_query = """SELECT hash FROM transactions WHERE block_number=$1"""
+        tx_query = """SELECT hash FROM transactions WHERE block_number=$1 ORDER BY transaction_index"""
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 row = await conn.fetchrow(query)
@@ -77,6 +77,11 @@ class Storage:
                 return None
             data = dict(row)
             del data['is_sequence_sync']
+            
+            data['static_reward'] = int(data['static_reward'])
+            data['uncle_inclusion_reward'] = int(data['uncle_inclusion_reward'])
+            data['tx_fees'] = int(data['tx_fees'])
+
             txs = await conn.fetch(tx_query, data['number'])
             data['transactions'] = [tx['hash'] for tx in txs]
             return models.Block(**data)
@@ -89,6 +94,11 @@ class Storage:
             rows = [dict(r) for r in rows]
             for r in rows:
                 del r['is_sequence_sync']
+
+                r['static_reward'] = int(r['static_reward'])
+                r['uncle_inclusion_reward'] = int(r['uncle_inclusion_reward'])
+                r['tx_fees'] = int(r['tx_fees'])
+
             return [models.Block(**row) for row in rows]
 
 
@@ -109,6 +119,7 @@ class Storage:
                 return None
             data = dict(row)
             del data['block_hash']
+            data['reward'] = int(data['reward'])
             return models.Uncle(**data)
 
     async def get_uncles(self, limit, offset, order):
@@ -119,6 +130,7 @@ class Storage:
             rows = [dict(r) for r in rows]
             for r in rows:
                 del r['block_hash']
+                r['reward'] = int(r['reward'])
             return [models.Uncle(**row) for row in rows]
 
 
@@ -138,6 +150,7 @@ class Storage:
             rows = [dict(r) for r in rows]
             for r in rows:
                 del r['block_hash']
+                r['reward'] = int(r['reward'])
             return [models.Uncle(**r) for r in rows]
 
     async def get_transaction(self, tx_hash):

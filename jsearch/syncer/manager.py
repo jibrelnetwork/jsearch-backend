@@ -61,17 +61,18 @@ class Manager:
         blocks = await self.raw_db.get_blocks_to_sync(start_block_num, self.chunk_size)
         return blocks
 
-    async def sync_block(self, block_hash):
+    async def sync_block(self, block_number):
         start_time = time.monotonic()
-        header = await self.raw_db.get_header_by_hash(block_hash)
-        accounts = await self.raw_db.get_block_accounts(block_hash)
-        body = await self.raw_db.get_block_body(block_hash)
+        header = await self.raw_db.get_header_by_hash(block_number)
+        accounts = await self.raw_db.get_block_accounts(block_number)
+        body = await self.raw_db.get_block_body(block_number)
         body_fields = json.loads(body['fields'])
         uncles = body_fields['Uncles'] or []
         transactions = body_fields['Transactions'] or []
-        receipts = await self.raw_db.get_block_receipts(block_hash)
+        receipts = await self.raw_db.get_block_receipts(block_number)
+        reward = await self.raw_db.get_reward(block_number)
 
         await self.main_db.write_block(header=header, uncles=uncles, accounts=accounts,
-                                       transactions=transactions, receipts=receipts)
+                                       transactions=transactions, receipts=receipts, reward=reward)
         sync_time = time.monotonic() - start_time
         logger.info("Block #%s synced on %ss", header['block_number'], sync_time)

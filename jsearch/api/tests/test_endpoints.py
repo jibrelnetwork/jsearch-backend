@@ -31,6 +31,9 @@ async def test_get_block_by_number(cli, blocks, transactions):
         'transactions': ["0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
                          "0x67762945eeabcd08851c83fc0d0042474f3c32b774abc0f5b435b671d3122cc2"],
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                 'staticReward': 5000000000000000000,
+                                 'txFees': 52569880000000000,
+                                 'uncleInclusionReward': 156250000000000000,
         'uncles': None}
 
 
@@ -58,6 +61,9 @@ async def test_get_block_by_hash(cli, blocks, transactions):
         'transactions': ["0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
                          "0x67762945eeabcd08851c83fc0d0042474f3c32b774abc0f5b435b671d3122cc2"],
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                 'staticReward': 5000000000000000000,
+                                 'txFees': 52569880000000000,
+                                 'uncleInclusionReward': 156250000000000000,
         'uncles': None}
 
 
@@ -83,6 +89,9 @@ async def test_get_block_latest(cli, blocks, transactions):
                                  'totalDifficulty': 18136429964,
                                  'transactions': ['0x8accbe5a1836237291a21cd23f5e0dcb86fcd35dde5aa6b5f0e11a9587743093'],
                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                 'staticReward': 5000000000000000000,
+                                 'txFees': 52569880000000000,
+                                 'uncleInclusionReward': 156250000000000000,
                                  'uncles': None}
 
 
@@ -176,6 +185,7 @@ async def test_get_block_uncles(cli, blocks, uncles):
                                   'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
                                   'timestamp': 1438270332,
                                   'totalDifficulty': None,
+                                  'reward': 3750000000000000000,
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}]
 
 
@@ -238,6 +248,9 @@ async def test_get_blocks_def(cli, blocks):
                                   'totalDifficulty': 18136429964,
                                   'transactions': None,
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                                 'staticReward': 5000000000000000000,
+                                 'txFees': 52569880000000000,
+                                 'uncleInclusionReward': 156250000000000000,
                                   'uncles': None},
                                  {'difficulty': 18136429964,
                                   'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
@@ -258,6 +271,9 @@ async def test_get_blocks_def(cli, blocks):
                                   'totalDifficulty': 18136429964,
                                   'transactions': None,
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                                                   'staticReward': 5000000000000000000,
+                                 'txFees': 52569880000000000,
+                                 'uncleInclusionReward': 156250000000000000,
                                   'uncles': None}]
 
 
@@ -283,6 +299,9 @@ async def test_get_blocks_ask(cli, blocks):
                                   'totalDifficulty': 18136429964,
                                   'transactions': None,
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                                                   'staticReward': 5000000000000000000,
+                                 'txFees': 52569880000000000,
+                                 'uncleInclusionReward': 156250000000000000,
                                   'uncles': None},
                                  {'difficulty': 18145285642,
                                   'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
@@ -303,6 +322,9 @@ async def test_get_blocks_ask(cli, blocks):
                                   'totalDifficulty': 18136429964,
                                   'transactions': None,
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+                                                                   'staticReward': 5000000000000000000,
+                                 'txFees': 52569880000000000,
+                                 'uncleInclusionReward': 156250000000000000,
                                   'uncles': None},
                                  ]
 
@@ -342,6 +364,7 @@ async def test_get_uncles(cli, blocks, uncles):
                                   'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
                                   'timestamp': 1438270505,
                                   'totalDifficulty': None,
+                                  'reward': 3750000000000000000,
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'},
                                  {'blockNumber': 125,
                                   'difficulty': 17578564779,
@@ -361,6 +384,7 @@ async def test_get_uncles(cli, blocks, uncles):
                                   'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
                                   'timestamp': 1438270332,
                                   'totalDifficulty': None,
+                                  'reward': 3750000000000000000,
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}]
 
 
@@ -408,6 +432,7 @@ async def test_get_uncle_by_hash(cli, blocks, uncles):
                                   'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
                                   'timestamp': 1438270505,
                                   'totalDifficulty': None,
+                                  'reward': 3750000000000000000,
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}
 
 
@@ -432,4 +457,5 @@ async def test_get_uncle_by_number(cli, blocks, uncles):
                                   'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
                                   'timestamp': 1438270505,
                                   'totalDifficulty': None,
+                                  'reward': 3750000000000000000,
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}

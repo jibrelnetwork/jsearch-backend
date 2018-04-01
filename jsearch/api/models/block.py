@@ -15,7 +15,7 @@ class Block(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, difficulty: int=None, extra_data: str=None, gas_limit: int=None, gas_used: int=None, hash: str=None, logs_bloom: str=None, miner: str=None, mix_hash: str=None, nonce: str=None, number: int=None, parent_hash: str=None, receipts_root: str=None, sha3_uncles: str=None, size: int=None, state_root: str=None, timestamp: int=None, total_difficulty: int=None, transactions: List[str]=None, transactions_root: str=None, uncles: List[str]=None):  # noqa: E501
+    def __init__(self, difficulty: int=None, extra_data: str=None, gas_limit: int=None, gas_used: int=None, hash: str=None, logs_bloom: str=None, miner: str=None, mix_hash: str=None, nonce: str=None, number: int=None, parent_hash: str=None, receipts_root: str=None, sha3_uncles: str=None, size: int=None, state_root: str=None, timestamp: int=None, total_difficulty: int=None, transactions: List[str]=None, transactions_root: str=None, uncles: List[str]=None, static_reward: int=None, uncle_inclusion_reward: int=None, tx_fees: int=None):  # noqa: E501
         """Block - a model defined in Swagger
 
         :param difficulty: The difficulty of this Block.  # noqa: E501
@@ -58,6 +58,12 @@ class Block(Model):
         :type transactions_root: str
         :param uncles: The uncles of this Block.  # noqa: E501
         :type uncles: List[str]
+        :param static_reward: The static_reward of this Block.  # noqa: E501
+        :type static_reward: int
+        :param uncle_inclusion_reward: The uncle_inclusion_reward of this Block.  # noqa: E501
+        :type uncle_inclusion_reward: int
+        :param tx_fees: The tx_fees of this Block.  # noqa: E501
+        :type tx_fees: int
         """
         self.swagger_types = {
             'difficulty': int,
@@ -79,7 +85,10 @@ class Block(Model):
             'total_difficulty': int,
             'transactions': List[str],
             'transactions_root': str,
-            'uncles': List[str]
+            'uncles': List[str],
+            'static_reward': int,
+            'uncle_inclusion_reward': int,
+            'tx_fees': int
         }
 
         self.attribute_map = {
@@ -102,7 +111,10 @@ class Block(Model):
             'total_difficulty': 'totalDifficulty',
             'transactions': 'transactions',
             'transactions_root': 'transactionsRoot',
-            'uncles': 'uncles'
+            'uncles': 'uncles',
+            'static_reward': 'staticReward',
+            'uncle_inclusion_reward': 'uncleInclusionReward',
+            'tx_fees': 'txFees'
         }
 
         self._difficulty = difficulty
@@ -125,6 +137,9 @@ class Block(Model):
         self._transactions = transactions
         self._transactions_root = transactions_root
         self._uncles = uncles
+        self._static_reward = static_reward
+        self._uncle_inclusion_reward = uncle_inclusion_reward
+        self._tx_fees = tx_fees
 
     @classmethod
     def from_dict(cls, dikt) -> 'Block':
@@ -556,3 +571,66 @@ class Block(Model):
         """
 
         self._uncles = uncles
+
+    @property
+    def static_reward(self) -> int:
+        """Gets the static_reward of this Block.
+
+
+        :return: The static_reward of this Block.
+        :rtype: int
+        """
+        return self._static_reward
+
+    @static_reward.setter
+    def static_reward(self, static_reward: int):
+        """Sets the static_reward of this Block.
+
+
+        :param static_reward: The static_reward of this Block.
+        :type static_reward: int
+        """
+
+        self._static_reward = static_reward
+
+    @property
+    def uncle_inclusion_reward(self) -> int:
+        """Gets the uncle_inclusion_reward of this Block.
+
+
+        :return: The uncle_inclusion_reward of this Block.
+        :rtype: int
+        """
+        return self._uncle_inclusion_reward
+
+    @uncle_inclusion_reward.setter
+    def uncle_inclusion_reward(self, uncle_inclusion_reward: int):
+        """Sets the uncle_inclusion_reward of this Block.
+
+
+        :param uncle_inclusion_reward: The uncle_inclusion_reward of this Block.
+        :type uncle_inclusion_reward: int
+        """
+
+        self._uncle_inclusion_reward = uncle_inclusion_reward
+
+    @property
+    def tx_fees(self) -> int:
+        """Gets the tx_fees of this Block.
+
+
+        :return: The tx_fees of this Block.
+        :rtype: int
+        """
+        return self._tx_fees
+
+    @tx_fees.setter
+    def tx_fees(self, tx_fees: int):
+        """Sets the tx_fees of this Block.
+
+
+        :param tx_fees: The tx_fees of this Block.
+        :type tx_fees: int
+        """
+
+        self._tx_fees = tx_fees

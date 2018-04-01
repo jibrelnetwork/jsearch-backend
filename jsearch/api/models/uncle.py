@@ -15,7 +15,7 @@ class Uncle(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, difficulty: int=None, extra_data: str=None, gas_limit: int=None, gas_used: int=None, hash: str=None, logs_bloom: str=None, miner: str=None, mix_hash: str=None, nonce: str=None, number: int=None, parent_hash: str=None, receipts_root: str=None, sha3_uncles: str=None, size: int=None, state_root: str=None, timestamp: int=None, total_difficulty: int=None, transactions_root: str=None, block_number=None):  # noqa: E501
+    def __init__(self, difficulty: int=None, extra_data: str=None, gas_limit: int=None, gas_used: int=None, hash: str=None, logs_bloom: str=None, miner: str=None, mix_hash: str=None, nonce: str=None, number: int=None, parent_hash: str=None, receipts_root: str=None, sha3_uncles: str=None, size: int=None, state_root: str=None, timestamp: int=None, total_difficulty: int=None, transactions_root: str=None, block_number: int=None, reward: int=None):  # noqa: E501
         """Uncle - a model defined in Swagger
 
         :param difficulty: The difficulty of this Uncle.  # noqa: E501
@@ -54,6 +54,10 @@ class Uncle(Model):
         :type total_difficulty: int
         :param transactions_root: The transactions_root of this Uncle.  # noqa: E501
         :type transactions_root: str
+        :param block_number: The block_number of this Uncle.  # noqa: E501
+        :type block_number: int
+        :param reward: The reward of this Uncle.  # noqa: E501
+        :type reward: int
         """
         self.swagger_types = {
             'difficulty': int,
@@ -74,7 +78,8 @@ class Uncle(Model):
             'timestamp': int,
             'total_difficulty': int,
             'transactions_root': str,
-            'block_number': int
+            'block_number': int,
+            'reward': int
         }
 
         self.attribute_map = {
@@ -97,6 +102,7 @@ class Uncle(Model):
             'total_difficulty': 'totalDifficulty',
             'transactions_root': 'transactionsRoot',
             'block_number': 'blockNumber',
+            'reward': 'reward'
         }
 
         self._difficulty = difficulty
@@ -118,6 +124,7 @@ class Uncle(Model):
         self._total_difficulty = total_difficulty
         self._transactions_root = transactions_root
         self._block_number = block_number
+        self._reward = reward
 
     @classmethod
     def from_dict(cls, dikt) -> 'Uncle':
@@ -508,24 +515,44 @@ class Uncle(Model):
 
         self._transactions_root = transactions_root
 
-
     @property
-    def block_number(self) -> str:
+    def block_number(self) -> int:
         """Gets the block_number of this Uncle.
 
 
         :return: The block_number of this Uncle.
-        :rtype: str
+        :rtype: int
         """
         return self._block_number
 
     @block_number.setter
-    def block_number(self, block_number: str):
+    def block_number(self, block_number: int):
         """Sets the block_number of this Uncle.
 
 
         :param block_number: The block_number of this Uncle.
-        :type block_number: str
+        :type block_number: int
         """
 
         self._block_number = block_number
+
+    @property
+    def reward(self) -> int:
+        """Gets the reward of this Uncle.
+
+
+        :return: The reward of this Uncle.
+        :rtype: int
+        """
+        return self._reward
+
+    @reward.setter
+    def reward(self, reward: int):
+        """Sets the reward of this Uncle.
+
+
+        :param reward: The reward of this Uncle.
+        :type reward: int
+        """
+
+        self._reward = reward

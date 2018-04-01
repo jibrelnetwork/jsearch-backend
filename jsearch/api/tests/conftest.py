@@ -49,7 +49,10 @@ async def blocks(db):
                "timestamp": 1438270497,
                "total_difficulty": 18136429964,
                "transactions_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
-               "is_sequence_sync": True},
+               "is_sequence_sync": True,
+               'static_reward': 5000000000000000000,
+               'uncle_inclusion_reward': 156250000000000000,
+               'tx_fees': 52569880000000000},
               {"difficulty": 18145285642,
                "extra_data": "0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32",
                "gas_limit": 5000,
@@ -68,7 +71,10 @@ async def blocks(db):
                "timestamp": 1438270500,
                "total_difficulty": 18136429964,
                "transactions_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
-               "is_sequence_sync": True}]
+               "is_sequence_sync": True,
+               'static_reward': 5000000000000000000,
+               'uncle_inclusion_reward': 156250000000000000,
+               'tx_fees': 52569880000000000}]
     for b in blocks:
         query = t.blocks_t.insert().values(**b)
         res = await pg.execute(query)
@@ -219,7 +225,8 @@ async def uncles(db, blocks):
                # "total_difficulty": None,
                "transactions_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
                "block_hash": "0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7",
-               "block_number": 125},
+               "block_number": 125,
+               'reward': 3750000000000000000},
 
                {"hash":"0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff",
                 "number": 62,
@@ -240,7 +247,8 @@ async def uncles(db, blocks):
                 "state_root":"0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b",
                 "timestamp":1438270505,
                 # "total_difficulty":null,
-                "transactions_root":"0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"}
+                "transactions_root":"0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+                'reward': 3750000000000000000}
               ]
     for u in uncles:
         query = t.uncles_t.insert().values(**u)
