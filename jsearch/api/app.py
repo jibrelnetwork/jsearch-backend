@@ -25,9 +25,11 @@ async def make_app():
     app['storage'] = Storage(app['db_pool'])
     app['node_proxy_url'] = os.environ.get('NODE_PROXY_URL')
     # Configure service routes
+    app.router.add_route('GET', '/accounts/balances', handlers.get_accounts_balances)
     app.router.add_route('GET', '/accounts/{address}', handlers.get_account)
     app.router.add_route('GET', '/accounts/{address}/transactions', handlers.get_account_transactions)
     app.router.add_route('GET', '/accounts/{address}/mined_blocks', handlers.get_account_mined_blocks)
+    app.router.add_route('GET', '/accounts/{address}/mined_uncles', handlers.get_account_mined_uncles)
 
     app.router.add_route('GET', '/blocks', handlers.get_blocks)
     app.router.add_route('GET', '/blocks/{tag}', handlers.get_block)

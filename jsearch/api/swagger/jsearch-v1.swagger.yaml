@@ -72,11 +72,11 @@ parameters:
     
 paths:
 
-  /accounts/ballances:
+  /accounts/balances:
     get:
-      operationId: getBallancesForMultiAddresses
+      operationId: getBalancesForMultiAddresses
       description: |
-        Get ballances for multiple addresses in single call
+        Get balances for multiple addresses in single call
       produces:
       - application/json
       parameters:
@@ -85,11 +85,11 @@ paths:
         type: string
       responses:
         200:
-          description: List of ballances
+          description: List of balances
           schema:
             type: array
             items:
-              $ref: '#/definitions/Ballance'
+              $ref: '#/definitions/Balance'
         400:
           description: bad input parameter
     
@@ -146,6 +146,7 @@ paths:
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
       responses:
         200:
           description: blocks mined by specific address
@@ -153,6 +154,28 @@ paths:
             type: array
             items:
               $ref: '#/definitions/Block'
+        400:
+          description: bad input parameter
+          
+  /accounts/{address}/mined_uncles:
+    get:
+      operationId: getAccountMinedUncles
+      description: |
+        Get uncles mined by address
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
+      responses:
+        200:
+          description: uncles mined by specific address
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Uncle'
         400:
           description: bad input parameter
           
@@ -485,6 +508,15 @@ definitions:
        items:
         type: string
        example: ["0xe0591f521db8d59f0362ad7bb946ecf98fd2d5eaf0a24b6fce378a00db6389d7"]
+      staticReward:
+        type: integer
+        example: 5000000000000000000
+      uncleInclusionReward:
+        type: integer
+        example: 156250000000000000
+      txFees:
+        type: integer
+        example: 52569880000000000
 
   Uncle:
     properties:
@@ -556,6 +588,9 @@ definitions:
       blockNumber:
        type: integer
        example: 19190
+      reward:
+        type: integer
+        example: 3750000000000000000
       
   
   Receipt:
@@ -668,16 +703,16 @@ definitions:
       result:
         type: object
         
-  Ballance:
+  Balance:
     properties:
-      ballance:
+      balance:
         type: integer
       address:
         type: string
         format: address
       
 schemes:
- - https
+ - http
 
 
-basePath: /brjiza/js1/1.0.0
+basePath: /

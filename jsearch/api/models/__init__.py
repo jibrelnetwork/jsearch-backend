@@ -1,5 +1,5 @@
 from jsearch.api.models.account import Account
-from jsearch.api.models.ballance import Ballance
+from jsearch.api.models.ballance import Balance
 from jsearch.api.models.block import Block
 from jsearch.api.models.log import Log
 from jsearch.api.models.receipt import Receipt

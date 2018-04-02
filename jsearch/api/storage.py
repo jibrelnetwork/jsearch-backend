@@ -77,7 +77,7 @@ class Storage:
                 return None
             data = dict(row)
             del data['is_sequence_sync']
-            
+
             data['static_reward'] = int(data['static_reward'])
             data['uncle_inclusion_reward'] = int(data['uncle_inclusion_reward'])
             data['tx_fees'] = int(data['tx_fees'])
@@ -101,6 +101,20 @@ class Storage:
 
             return [models.Block(**row) for row in rows]
 
+    async def get_account_mined_blocks(self, address, limit, offset, order):
+        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+        query = """SELECT * FROM blocks WHERE miner= $1 ORDER BY number {} LIMIT $2 OFFSET $3""".format(order)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, address, limit, offset)
+            rows = [dict(r) for r in rows]
+            for r in rows:
+                del r['is_sequence_sync']
+
+                r['static_reward'] = int(r['static_reward'])
+                r['uncle_inclusion_reward'] = int(r['uncle_inclusion_reward'])
+                r['tx_fees'] = int(r['tx_fees'])
+
+            return [models.Block(**row) for row in rows]
 
     async def get_uncle(self, tag):
         if tag.is_hash():
@@ -133,6 +147,16 @@ class Storage:
                 r['reward'] = int(r['reward'])
             return [models.Uncle(**row) for row in rows]
 
+    async def get_account_mined_uncles(self, address, limit, offset, order):
+        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+        query = """SELECT * FROM uncles WHERE miner=$1 ORDER BY number {} LIMIT $2 OFFSET $3""".format(order)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, address, limit, offset)
+            rows = [dict(r) for r in rows]
+            for r in rows:
+                del r['block_hash']
+                r['reward'] = int(r['reward'])
+            return [models.Uncle(**row) for row in rows]
 
     async def get_block_uncles(self, tag):
         if tag.is_hash():
@@ -170,3 +194,12 @@ class Storage:
                 return None
             row = dict(row)
             return models.Receipt(_from=row.pop('from'), **row)
+
+    async def get_accounts_balances(self, addresses):
+        query = """SELECT a.address, a.balance FROM accounts a
+                    INNER JOIN (SELECT address, max(block_number) bn FROM accounts
+                                 WHERE address = any($1::text[]) GROUP BY address) gn
+                    ON a.address=gn.address AND a.block_number=gn.bn;"""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, addresses)
+            return [models.Balance(balance=int(r['balance']), address=r['address']) for r in rows]

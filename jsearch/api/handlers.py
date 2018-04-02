@@ -85,7 +85,7 @@ async def get_account(request):
     Get account by adress
     """
     storage = request.app['storage']
-    address = request.match_info.get('address')
+    address = request.match_info.get('address').lower()
     tag = get_tag(request)
 
     account = await storage.get_account(address, tag)
@@ -99,7 +99,7 @@ async def get_account_transactions(request):
     Get account transactions
     """
     storage = request.app['storage']
-    address = request.match_info.get('address')
+    address = request.match_info.get('address').lower()
     params = validate_params(request)
 
     txs = await storage.get_account_transactions(address, params['limit'], params['offset'])
@@ -111,10 +111,33 @@ async def get_account_mined_blocks(request):
     Get account mined blocks
     """
     storage = request.app['storage']
-    address = request.match_info.get('address')
+    address = request.match_info.get('address').lower()
+    params = validate_params(request)
 
-    blocks = await storage.get_account_mined_blocks(address)
+    blocks = await storage.get_account_mined_blocks(address, params['limit'], params['offset'], params['order'])
     return web.json_response([b.to_dict() for b in blocks])
+
+
+async def get_account_mined_uncles(request):
+    """
+    Get account mined uncles
+    """
+    storage = request.app['storage']
+    address = request.match_info.get('address').lower()
+    params = validate_params(request)
+
+    uncles = await storage.get_account_mined_uncles(address, params['limit'], params['offset'], params['order'])
+    return web.json_response([u.to_dict() for u in uncles])
+
+
+async def get_accounts_balances(request):
+    """
+    Get ballances for list of accounts
+    """
+    storage = request.app['storage']
+    addresses = request.query.get('addresses', '').lower().split(',')
+    ballances = await storage.get_accounts_balances(addresses)
+    return web.json_response([b.to_dict() for b in ballances])
 
 
 async def get_blocks(request):
