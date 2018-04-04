@@ -1,10 +1,12 @@
-from jsearch.api.models.account import Account
-from jsearch.api.models.ballance import Balance
-from jsearch.api.models.block import Block
-from jsearch.api.models.log import Log
-from jsearch.api.models.receipt import Receipt
-from jsearch.api.models.reward import Reward
-from jsearch.api.models.transaction import Transaction
-from jsearch.api.models.uncle import Uncle
-from jsearch.api.models.web3_call import Web3Call
-from jsearch.api.models.web3_call_response import Web3CallResponse
+# from jsearch.api.models.account import Account
+# from jsearch.api.models.ballance import Balance
+# from jsearch.api.models.block import Block
+# from jsearch.api.models.log import Log
+# from jsearch.api.models.receipt import Receipt
+# from jsearch.api.models.reward import Reward
+# from jsearch.api.models.transaction import Transaction
+# from jsearch.api.models.uncle import Uncle
+# from jsearch.api.models.web3_call import Web3Call
+# from jsearch.api.models.web3_call_response import Web3CallResponse
+
+from jsearch.api.models.all import *

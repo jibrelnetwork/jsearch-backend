@@ -41,7 +41,7 @@ class Storage:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address.lower(), limit, offset)
             rows = [dict(r) for r in rows]
-            return [models.Transaction(_from=r.pop('from'), **r) for r in rows]
+            return [models.Transaction(**r) for r in rows]
 
     async def get_block_transactions(self, tag):
         if tag.is_hash():
@@ -56,7 +56,7 @@ class Storage:
             else:
                 rows = await conn.fetch(query, tag.value)
             rows = [dict(r) for r in rows]
-            return [models.Transaction(_from=r.pop('from'), **r) for r in rows]
+            return [models.Transaction(**r) for r in rows]
 
     async def get_block(self, tag):
 
@@ -84,6 +84,7 @@ class Storage:
 
             txs = await conn.fetch(tx_query, data['number'])
             data['transactions'] = [tx['hash'] for tx in txs]
+            data['uncles'] = None
             return models.Block(**data)
 
     async def get_blocks(self, limit, offset, order):
@@ -98,6 +99,8 @@ class Storage:
                 r['static_reward'] = int(r['static_reward'])
                 r['uncle_inclusion_reward'] = int(r['uncle_inclusion_reward'])
                 r['tx_fees'] = int(r['tx_fees'])
+                r['transactions'] = None
+                r['uncles'] = None
 
             return [models.Block(**row) for row in rows]
 
@@ -184,7 +187,7 @@ class Storage:
             if row is None:
                 return None
             row = dict(row)
-            return models.Transaction(_from=row.pop('from'), **row)
+            return models.Transaction(**row)
 
     async def get_receipt(self, tx_hash):
         query = """SELECT * FROM receipts WHERE transaction_hash=$1"""
@@ -193,7 +196,14 @@ class Storage:
             if row is None:
                 return None
             row = dict(row)
-            return models.Receipt(_from=row.pop('from'), **row)
+            row['logs'] = await self.get_logs(row['transaction_hash'])
+            return models.Receipt(**row)
+
+    async def get_logs(self, tx_hash):
+        query = """SELECT * FROM logs WHERE transaction_hash=$1 ORDER BY log_index"""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, tx_hash)
+            return [models.Log(**r) for r in rows]
 
     async def get_accounts_balances(self, addresses):
         query = """SELECT a.address, a.balance FROM accounts a

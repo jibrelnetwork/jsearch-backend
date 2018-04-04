@@ -18,6 +18,12 @@ class Model(object):
     # value is json key in definition.
     attribute_map = {}
 
+    def __init__(self, **fields):
+        for k, v in fields.items():
+            assert k in self.attribute_map, 'Invalid field "{}"'.format(k)
+            assert k in self.swagger_types, 'Invalid field "{}"'.format(k)
+            setattr(self, k, v)
+
     @classmethod
     def from_dict(cls: typing.Type[T], dikt) -> T:
         """Returns the dict as a model"""

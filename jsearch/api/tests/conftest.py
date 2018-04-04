@@ -255,3 +255,34 @@ async def uncles(db, blocks):
         await pg.execute(query)
     yield accounts
     await pg.execute("DELETE FROM uncles")
+
+
+@pytest.fixture
+@pytest.mark.asyncio
+async def logs(db, transactions):
+    records = [
+      {"transaction_hash":"0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
+       "block_number":1498834,
+       "block_hash":"0x70c3dd4bcf59829be6d4a8b97ce8ac821660bc7006c76d107ffffd50372b9832",
+       "log_index":0,
+       "address":"0x2b237f94b3e8afb3d1d66c8f5e98d78c9c060f9c",
+       "data":"0x0000000000000000000000008bc16dae51dfcf0aba8eebb63a2d01cc249f79310000000000000000000000000000000000000000000000004563918244f40000000000000000000000000000bb9bc244d798123fde783fcc1c72d3bb8c18941300000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000",
+       "removed":False,
+       "topics":["0x92ca3a80853e6663fa31fa10b99225f18d4902939b4c53a9caae9043f6efd004"],
+       "transaction_index":2},
+      {"transaction_hash":"0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
+       "block_number":1498834,
+       "block_hash":"0x70c3dd4bcf59829be6d4a8b97ce8ac821660bc7006c76d107ffffd50372b9832",
+       "log_index":1,
+       "address":"0xbb9bc244d798123fde783fcc1c72d3bb8c189413",
+       "data":"0x0000000000000000000000000000000000000000000000004563918244f40000",
+       "removed":False,
+       "topics":["0xdbccb92686efceafb9bb7e0394df7f58f71b954061b81afb57109bf247d3d75a","0x0000000000000000000000002b237f94b3e8afb3d1d66c8f5e98d78c9c060f9c"],
+       "transaction_index":2}
+
+    ]
+    for r in records:
+        query = t.logs_t.insert().values(**r)
+        await pg.execute(query)
+    yield receipts
+    await pg.execute("DELETE FROM logs")

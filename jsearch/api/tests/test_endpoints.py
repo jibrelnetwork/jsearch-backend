@@ -208,7 +208,7 @@ async def test_get_transaction(cli, blocks, transactions):
                                  'value': '0x1068e7e28b45fc80'}
 
 
-async def test_get_receipt(cli, blocks, transactions, receipts):
+async def test_get_receipt(cli, blocks, transactions, receipts, logs):
     resp = await cli.get('/receipts/0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a')
     assert resp.status == 200
     assert await resp.json() == {'blockHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
@@ -217,7 +217,25 @@ async def test_get_receipt(cli, blocks, transactions, receipts):
                                  'cumulativeGasUsed': 231000,
                                  'from': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
                                  'gasUsed': 21000,
-                                 'logs': None,
+                                 'logs': [{'address': '0x2b237f94b3e8afb3d1d66c8f5e98d78c9c060f9c',
+                                         'blockHash': '0x70c3dd4bcf59829be6d4a8b97ce8ac821660bc7006c76d107ffffd50372b9832',
+                                         'blockNumber': 1498834,
+                                         'data': '0x0000000000000000000000008bc16dae51dfcf0aba8eebb63a2d01cc249f79310000000000000000000000000000000000000000000000004563918244f40000000000000000000000000000bb9bc244d798123fde783fcc1c72d3bb8c18941300000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000',
+                                         'logIndex': 0,
+                                         'removed': False,
+                                         'topics': ['0x92ca3a80853e6663fa31fa10b99225f18d4902939b4c53a9caae9043f6efd004'],
+                                         'transactionHash': '0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a',
+                                         'transactionIndex': 2},
+                                        {'address': '0xbb9bc244d798123fde783fcc1c72d3bb8c189413',
+                                         'blockHash': '0x70c3dd4bcf59829be6d4a8b97ce8ac821660bc7006c76d107ffffd50372b9832',
+                                         'blockNumber': 1498834,
+                                         'data': '0x0000000000000000000000000000000000000000000000004563918244f40000',
+                                         'logIndex': 1,
+                                         'removed': False,
+                                         'topics': ['0xdbccb92686efceafb9bb7e0394df7f58f71b954061b81afb57109bf247d3d75a',
+                                                    '0x0000000000000000000000002b237f94b3e8afb3d1d66c8f5e98d78c9c060f9c'],
+                                         'transactionHash': '0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a',
+                                         'transactionIndex': 2}],
                                  'logsBloom': '0x',
                                  'root': '0x2acfe9e09e5278ca573b2cba963f624d003b1dbfd318343994aa91de1bd84936',
                                  'status': 1,
