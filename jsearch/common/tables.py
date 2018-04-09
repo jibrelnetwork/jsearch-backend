@@ -185,6 +185,23 @@ class Block(Base):
     tx_fees = sa.Column('tx_fees', postgresql.NUMERIC(32, 0))
 
 
+class Contract(Base):
+    __tablename__ = 'contracts'
+
+    address = sa.Column('address', sa.String, primary_key=True)
+    name = sa.Column('name', sa.String)
+    byte_code = sa.Column('byte_code', sa.Text)
+    source_code = sa.Column('source_code', sa.Text)
+    abi = sa.Column('abi', postgresql.JSONB)
+    compiler_version = sa.Column('compiler_version', sa.String)
+    optimization_enabled = sa.Column('optimization_enabled', sa.Boolean)
+    optimization_runs = sa.Column('optimization_runs', sa.Integer)
+
+    is_erc20_token = sa.Column('is_erc20_token', sa.Boolean, default=False)
+    token_name = sa.Column('token_name', sa.String)
+    token_symbol = sa.Column('token_symbol', sa.String)
+
+
 
 blocks_t = Block.__table__
 uncles_t = Uncle.__table__
@@ -192,3 +209,4 @@ transactions_t = Transaction.__table__
 receipts_t = Receipt.__table__
 logs_t = Log.__table__
 accounts_t = Account.__table__
+contracts_t = Contract.__table__

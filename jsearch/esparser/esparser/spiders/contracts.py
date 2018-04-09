@@ -1,0 +1,68 @@
+import scrapy
+from scrapy.linkextractors import LinkExtractor
+
+from esparser.items import ContractItem
+
+class ContractsSpider(scrapy.Spider):
+    name = 'contracts'
+    allowed_domains = ['etherscan.io']
+
+    listing_url = 'https://etherscan.io/contractsVerified'
+
+    def start_requests(self):
+        yield scrapy.Request(url=self.listing_url, callback=self.parse_listing, meta={'page': 0})
+
+    def parse_listing(self, response):
+        next_page = response.meta['page'] + 1
+
+        links = LinkExtractor(allow='\/address\/0x.*', restrict_css='.table-responsive').extract_links(response)
+        for link in links:
+            yield scrapy.Request(url=link.url, callback=self.parse_contract)
+
+        yield scrapy.Request(url=self.listing_url + '/{}'.format(next_page),
+                             callback=self.parse_listing,
+                             meta={'page': next_page})
+
+    def parse_contract(self, response):
+        """
+        {'Compiler Version:\n': '\nv0.4.19+commit.c4cbbb05\n',
+         'Contract Name:\n': '\nDgxDemurrageReporter\n',
+         'Optimization Enabled:\n': '\nNo\n',
+         'Runs (Optimiser):\xa0\n': '\n200\n'}
+
+            
+          Item:
+            name = scrapy.Field()
+            compiler_version = scrapy.Field()
+            optimization_enabled = scrapy.Field()
+            optimization_runs = scrapy.Field()
+
+            source_code = scrapy.Field()
+            byte_code = scrapy.Field()
+            abi = scrapy.
+
+        """
+        item = ContractItem()
+
+        item['address'] = response.css('#mainaddress::text').extract()[0]
+        item['source_code'] = response.css('.js-sourcecopyarea::text').extract()[0]
+        item['abi'] = response.css('.js-copytextarea2::text').extract()[0]
+        item['byte_code'] = response.css('#verifiedbytecode2::text').extract()[0]
+
+        # compile params
+        parts = response.css('#code').css("table.table td::text").extract()
+        parts = [i.strip() for i in parts]
+        compile_params = dict(zip(parts[::2], parts[1::2]))
+
+        item['name'] = compile_params['Contract Name:']
+        item['compiler_version'] = compile_params['Compiler Version:']
+        if compile_params['Optimization Enabled:'] == 'Yes':
+            item['optimization_enabled'] = True
+        elif compile_params['Optimization Enabled:'] == 'No':
+            item['optimization_enabled'] = False
+        else:
+            raise AssertionError('Optimization Enabled: invalid value {}'.format(
+                compile_params['Optimization Enabled:']))
+        item['optimization_runs'] = compile_params['Runs (Optimiser):']
+
+        yield item
