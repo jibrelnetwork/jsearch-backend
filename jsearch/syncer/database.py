@@ -174,6 +174,7 @@ class MainDB(DBWrapper):
     async def insert_transactions(self, conn, block_number, block_hash, transactions):
         for transaction in transactions:
             data = dict_keys_case_convert(transaction)
+            data = await self.process_transaction(data)
             query = transactions_t.insert().values(block_number=block_number,
                                                    block_hash=block_hash, **data)
             await conn.execute(query)
@@ -208,6 +209,12 @@ class MainDB(DBWrapper):
                                                address=account['address'].lower(),
                                                block_hash=block_hash, **data)
             await conn.execute(query)
+
+    async def process_transaction(self, tx_data):
+        contract = self.get_contract(tx_data['to'])
+        if contract is not None:
+            
+        return tx_data
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')

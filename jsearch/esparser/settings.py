@@ -11,8 +11,8 @@
 
 BOT_NAME = 'esparser'
 
-SPIDER_MODULES = ['esparser.spiders']
-NEWSPIDER_MODULE = 'esparser.spiders'
+SPIDER_MODULES = ['jsearch.esparser.spiders']
+NEWSPIDER_MODULE = 'jsearch.esparser.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
@@ -27,7 +27,7 @@ ROBOTSTXT_OBEY = True
 # Configure a delay for requests for the same website (default: 0)
 # See https://doc.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-DOWNLOAD_DELAY = 2
+DOWNLOAD_DELAY = 1
 # The download delay setting will honor only one of:
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
@@ -65,7 +65,7 @@ DOWNLOAD_DELAY = 2
 # Configure item pipelines
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   'esparser.pipelines.ContractPipeline': 300,
+   'jsearch.esparser.pipelines.ContractPipeline': 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

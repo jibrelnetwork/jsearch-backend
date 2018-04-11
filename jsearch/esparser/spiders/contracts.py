@@ -1,7 +1,8 @@
 import scrapy
 from scrapy.linkextractors import LinkExtractor
 
-from esparser.items import ContractItem
+from jsearch.esparser.items import ContractItem
+
 
 class ContractsSpider(scrapy.Spider):
     name = 'contracts'
@@ -13,13 +14,15 @@ class ContractsSpider(scrapy.Spider):
         yield scrapy.Request(url=self.listing_url, callback=self.parse_listing, meta={'page': 0})
 
     def parse_listing(self, response):
-        next_page = response.meta['page'] + 1
-
         links = LinkExtractor(allow='\/address\/0x.*', restrict_css='.table-responsive').extract_links(response)
         for link in links:
             yield scrapy.Request(url=link.url, callback=self.parse_contract)
 
-        yield scrapy.Request(url=self.listing_url + '/{}'.format(next_page),
+        yield self.get_next_page_request(response)
+
+    def get_next_page_request(self, response):
+        next_page = response.meta['page'] + 1
+        return scrapy.Request(url=self.listing_url + '/{}'.format(next_page),
                              callback=self.parse_listing,
                              meta={'page': next_page})
 
