@@ -4,6 +4,9 @@
 #
 # See documentation in:
 # https://doc.scrapy.org/en/latest/topics/spider-middleware.html
+import base64
+import random
+import logging
 
 from scrapy import signals
 
@@ -61,10 +64,13 @@ class EsparserDownloaderMiddleware(object):
     # scrapy acts as if the downloader middleware does not modify the
     # passed objects.
 
+    def __init__(self, settings):
+        self.settings = settings
+
     @classmethod
     def from_crawler(cls, crawler):
         # This method is used by Scrapy to create your spiders.
-        s = cls()
+        s = cls(crawler.settings)
         crawler.signals.connect(s.spider_opened, signal=signals.spider_opened)
         return s
 
@@ -78,6 +84,19 @@ class EsparserDownloaderMiddleware(object):
         # - or return a Request object
         # - or raise IgnoreRequest: process_exception() methods of
         #   installed downloader middleware will be called
+        logging.info('PROCESS REQUEST')
+
+        if 'proxy' in request.meta:
+            return None
+
+        proxy_url = random.choice(self.settings['PROXY_LIST'])
+        user, pwd = self.settings['PROXY_USER'], self.settings['PROXY_PASS']
+        creds = base64.b64encode('{}:{}'.format(user, pwd).encode()).strip()
+
+        request.meta['proxy'] = proxy_url
+        request.headers['Proxy-Authorization'] = b'Basic ' + creds
+
+        logging.info('CREDS %s %s', proxy_url, creds)
         return None
 
     def process_response(self, request, response, spider):
