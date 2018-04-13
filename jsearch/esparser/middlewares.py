@@ -6,6 +6,7 @@
 # https://doc.scrapy.org/en/latest/topics/spider-middleware.html
 import base64
 import random
+import itertools
 import logging
 
 from scrapy import signals
@@ -66,6 +67,7 @@ class EsparserDownloaderMiddleware(object):
 
     def __init__(self, settings):
         self.settings = settings
+        self.proxy_cycle = itertools.cycle(self.settings['PROXY_LIST'])
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -89,14 +91,12 @@ class EsparserDownloaderMiddleware(object):
         if 'proxy' in request.meta:
             return None
 
-        proxy_url = random.choice(self.settings['PROXY_LIST'])
+        proxy_host = next(self.proxy_cycle)
         user, pwd = self.settings['PROXY_USER'], self.settings['PROXY_PASS']
-        creds = base64.b64encode('{}:{}'.format(user, pwd).encode()).strip()
 
+        scheme = request.url.split('//')[0]
+        proxy_url = '{}//{}:{}@{}'.format(scheme, user, pwd, proxy_host)
         request.meta['proxy'] = proxy_url
-        request.headers['Proxy-Authorization'] = b'Basic ' + creds
-
-        logging.info('CREDS %s %s', proxy_url, creds)
         return None
 
     def process_response(self, request, response, spider):
