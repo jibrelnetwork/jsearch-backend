@@ -4,8 +4,6 @@
 #
 # See documentation in:
 # https://doc.scrapy.org/en/latest/topics/spider-middleware.html
-import base64
-import random
 import itertools
 import logging
 
@@ -86,10 +84,9 @@ class EsparserDownloaderMiddleware(object):
         # - or return a Request object
         # - or raise IgnoreRequest: process_exception() methods of
         #   installed downloader middleware will be called
-        logging.info('PROCESS REQUEST')
 
-        if 'proxy' in request.meta:
-            return None
+        # if 'proxy' in request.meta:
+        #     return None
 
         proxy_host = next(self.proxy_cycle)
         user, pwd = self.settings['PROXY_USER'], self.settings['PROXY_PASS']
@@ -97,6 +94,7 @@ class EsparserDownloaderMiddleware(object):
         scheme = request.url.split('//')[0]
         proxy_url = '{}//{}:{}@{}'.format(scheme, user, pwd, proxy_host)
         request.meta['proxy'] = proxy_url
+        logging.debug('Using proxy %s', proxy_host)
         return None
 
     def process_response(self, request, response, spider):
