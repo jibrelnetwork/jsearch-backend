@@ -94,6 +94,10 @@ class Transaction(Base):
     v = sa.Column('v', sa.String)
     value = sa.Column('value', sa.String)
 
+    is_token_transfer = sa.Column('is_token_transfer', sa.Boolean)
+    contract_call_description = sa.Column('contract_call_description', postgresql.JSONB)
+    token_amount = sa.Column('token_amount', sa.BigInteger)
+
 
 class Receipt(Base):
     __tablename__ = 'receipts'
@@ -124,6 +128,8 @@ class Log(Base):
     removed = sa.Column('removed', sa.Boolean)
     topics = sa.Column('topics', postgresql.ARRAY(sa.String))
     transaction_index = sa.Column('transaction_index', HexInteger)
+    event_type = sa.Column('event_type', sa.String)
+    event_args = sa.Column('event_args', postgresql.JSONB)
 
 
 class Account(Base):
@@ -197,10 +203,11 @@ class Contract(Base):
     optimization_enabled = sa.Column('optimization_enabled', sa.Boolean)
     optimization_runs = sa.Column('optimization_runs', sa.Integer)
 
-    is_erc20_token = sa.Column('is_erc20_token', sa.Boolean, default=False)
+    is_erc20_token = sa.Column('is_erc20_token', sa.Boolean)
     token_name = sa.Column('token_name', sa.String)
     token_symbol = sa.Column('token_symbol', sa.String)
-
+    token_decimals = sa.Column('token_decimals', sa.Integer)
+    token_total_supply = sa.Column('token_total_supply', postgresql.NUMERIC(32, 0))
 
 
 blocks_t = Block.__table__

@@ -34,10 +34,10 @@ class Storage:
             return models.Account(**row)
 
     async def get_account_transactions(self, address, limit, offset):
-        query = """SELECT * FROM transactions WHERE "to"=$1 OR "from"=$1 ORDER BY block_number, transaction_index LIMIT $2 OFFSET $3"""
-
+        query = """SELECT {fields} FROM transactions WHERE "to"=$1 OR "from"=$1 ORDER BY block_number, transaction_index LIMIT $2 OFFSET $3"""
+        query = query.format(fields=models.Transaction.select_fields())
         limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
-
+        print(query)
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address.lower(), limit, offset)
             rows = [dict(r) for r in rows]
@@ -45,11 +45,12 @@ class Storage:
 
     async def get_block_transactions(self, tag):
         if tag.is_hash():
-            query = """SELECT * FROM transactions WHERE block_hash=$1"""
+            query = """SELECT {fields} FROM transactions WHERE block_hash=$1"""
         elif tag.is_number():
-            query = """SELECT * FROM transactions WHERE block_number=$1"""
+            query = """SELECT {fields} FROM transactions WHERE block_number=$1"""
         else:
-            query = """SELECT * FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"""
+            query = """SELECT {fields} FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"""
+        query = query.format(fields=models.Transaction.select_fields())
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 rows = await conn.fetch(query)
@@ -181,7 +182,9 @@ class Storage:
             return [models.Uncle(**r) for r in rows]
 
     async def get_transaction(self, tx_hash):
-        query = """SELECT * FROM transactions WHERE hash=$1"""
+        query = """SELECT {fields} FROM transactions WHERE hash=$1"""
+        query = query.format(fields=models.Transaction.select_fields())
+
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, tx_hash)
             if row is None:

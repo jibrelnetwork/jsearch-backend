@@ -7,8 +7,10 @@ import json
 import asyncpg
 from asyncpgsa import pg
 import sqlalchemy as sa
+from sqlalchemy.sql import select
 
 from jsearch.common.tables import *
+from jsearch.common import contract_utils
 
 
 logger = logging.getLogger(__name__)
@@ -151,8 +153,8 @@ class MainDB(DBWrapper):
         async with pg.transaction() as conn:
             await self.insert_header(conn, header, block_reward)
             await self.insert_uncles(conn, block_number, block_hash, uncles, uncles_rewards)
-            await self.insert_transactions(conn, block_number, block_hash, transactions)
-            await self.insert_receipts(conn, block_number, block_hash, receipts, transactions)
+            # await self.insert_transactions(conn, block_number, block_hash, transactions)
+            await self.insert_transactions_and_receipts(conn, block_number, block_hash, receipts, transactions)
             await self.insert_accounts(conn, block_number, block_hash, accounts)
 
     async def insert_header(self, conn, header, reward):
@@ -171,15 +173,15 @@ class MainDB(DBWrapper):
                                              block_hash=block_hash, **data)
             await conn.execute(query)
 
-    async def insert_transactions(self, conn, block_number, block_hash, transactions):
-        for transaction in transactions:
-            data = dict_keys_case_convert(transaction)
-            data = await self.process_transaction(data)
-            query = transactions_t.insert().values(block_number=block_number,
-                                                   block_hash=block_hash, **data)
-            await conn.execute(query)
+    # async def insert_transactions(self, conn, block_number, block_hash, transactions):
+    #     for transaction in transactions:
+    #         data = dict_keys_case_convert(transaction)
+    #         data = await self.process_transaction(conn, data)
+    #         query = transactions_t.insert().values(block_number=block_number,
+    #                                                block_hash=block_hash, **data)
+    #         await conn.execute(query)
 
-    async def insert_receipts(self, conn, block_number, block_hash, receipts, transactions):
+    async def insert_transactions_and_receipts(self, conn, block_number, block_hash, receipts, transactions):
         rdata = json.loads(receipts['fields'])['Receipts'] or []
         for i, receipt in enumerate(rdata):
             data = dict_keys_case_convert(receipt)
@@ -192,6 +194,15 @@ class MainDB(DBWrapper):
             logs = data.pop('logs') or []
             query = receipts_t.insert().values(block_number=block_number,
                                                block_hash=block_hash, **data)
+            await conn.execute(query)
+
+            tx_data = dict_keys_case_convert(tx)
+            
+            contract = await self.get_contract(conn, tx_data['to'])
+            logs = self.process_logs(contract, logs)
+            data = self.process_transaction(contract, tx_data, logs)
+            query = transactions_t.insert().values(block_number=block_number,
+                                                   block_hash=block_hash, **data)
             await conn.execute(query)
             await self.insert_logs(conn, block_number, block_hash, logs)
 
@@ -210,12 +221,31 @@ class MainDB(DBWrapper):
                                                block_hash=block_hash, **data)
             await conn.execute(query)
 
-    async def process_transaction(self, tx_data):
-        contract = self.get_contract(tx_data['to'])
+    def process_logs(self, contract, logs):
         if contract is not None:
-            
+            for log in logs:
+                e = contract_utils.decode_event(json.loads(contract['abi']), log)
+                event_type = e.pop('_event_type')
+                log['event_type'] = event_type.decode()
+                log['event_args'] = e
+        return logs
+
+    def process_transaction(self, contract, tx_data, logs):
+        if contract is not None:
+            call = contract_utils.decode_contract_call(json.loads(contract['abi']), tx_data['input'])
+            if call:
+                tx_data['contract_call_description'] = call
+                transfer_events = [l for l in logs if l['event_type'] == 'Transfer']
+                if call['function'] in {'transfer', 'transerFrom'} and transfer_events:
+                    tx_data['is_token_transfer'] = True
+                    if contract['token_decimals']:
+                        tx_data['token_amount'] = call['args'][-1] / (10 ** contract['token_decimals'])
         return tx_data
 
+    async def get_contract(self, conn, address):
+        q = select([contracts_t]).where(contracts_t.c.address == address)
+        row = await pg.fetchrow(q)
+        return row
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')

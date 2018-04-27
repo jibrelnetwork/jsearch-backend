@@ -93,7 +93,7 @@ ITEM_PIPELINES = {
 # Retry many times since proxies often fail
 RETRY_TIMES = int(os.environ.get('SCRAPY_RETRY_TIMES', 20))
 # Retry on most error codes since proxies fail for different reasons
-RETRY_HTTP_CODES = [500, 503, 504, 400, 403, 404, 408]
+RETRY_HTTP_CODES = [500, 503, 504, 523, 400, 403, 404, 408]
 
 DOWNLOADER_MIDDLEWARES = {
     'scrapy.downloadermiddlewares.retry.RetryMiddleware': 90,

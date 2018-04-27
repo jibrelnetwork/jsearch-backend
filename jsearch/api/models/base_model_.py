@@ -70,6 +70,10 @@ class Model(object):
 
         return result
 
+    @classmethod
+    def select_fields(cls):
+        return ','.join(['"{}"'.format(f) for f in cls.attribute_map.keys()])
+
     def to_str(self):
         """Returns the string representation of the model
 

@@ -47,7 +47,7 @@ class ContractsSpider(scrapy.Spider):
         """
         item = ContractItem()
 
-        item['address'] = response.css('#mainaddress::text').extract()[0]
+        item['address'] = response.css('#mainaddress::text').extract()[0].lower()
         item['source_code'] = response.css('.js-sourcecopyarea::text').extract()[0]
         item['abi'] = response.css('.js-copytextarea2::text').extract()[0]
         item['byte_code'] = response.css('#verifiedbytecode2::text').extract()[0]
