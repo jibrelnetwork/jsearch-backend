@@ -209,6 +209,10 @@ class Contract(Base):
     token_decimals = sa.Column('token_decimals', sa.Integer)
     token_total_supply = sa.Column('token_total_supply', postgresql.NUMERIC(32, 0))
 
+    grabbed_at = sa.Column(sa.DateTime)
+    verified_at = sa.Column(sa.DateTime)
+
+
 
 blocks_t = Block.__table__
 uncles_t = Uncle.__table__

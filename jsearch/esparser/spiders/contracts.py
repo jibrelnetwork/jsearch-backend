@@ -1,3 +1,6 @@
+import json
+import datetime
+
 import scrapy
 from scrapy.linkextractors import LinkExtractor
 
@@ -49,7 +52,7 @@ class ContractsSpider(scrapy.Spider):
 
         item['address'] = response.css('#mainaddress::text').extract()[0].lower()
         item['source_code'] = response.css('.js-sourcecopyarea::text').extract()[0]
-        item['abi'] = response.css('.js-copytextarea2::text').extract()[0]
+        item['abi'] = json.loads(response.css('.js-copytextarea2::text').extract()[0])
         item['byte_code'] = response.css('#verifiedbytecode2::text').extract()[0]
 
         # compile params
@@ -67,5 +70,7 @@ class ContractsSpider(scrapy.Spider):
             raise AssertionError('Optimization Enabled: invalid value {}'.format(
                 compile_params['Optimization Enabled:']))
         item['optimization_runs'] = compile_params['Runs (Optimiser):']
+
+        item['scraped_at'] = datetime.datetime.now()
 
         yield item

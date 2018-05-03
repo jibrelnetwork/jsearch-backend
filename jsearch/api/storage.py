@@ -37,7 +37,6 @@ class Storage:
         query = """SELECT {fields} FROM transactions WHERE "to"=$1 OR "from"=$1 ORDER BY block_number, transaction_index LIMIT $2 OFFSET $3"""
         query = query.format(fields=models.Transaction.select_fields())
         limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
-        print(query)
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address.lower(), limit, offset)
             rows = [dict(r) for r in rows]
@@ -203,7 +202,9 @@ class Storage:
             return models.Receipt(**row)
 
     async def get_logs(self, tx_hash):
-        query = """SELECT * FROM logs WHERE transaction_hash=$1 ORDER BY log_index"""
+        query = """SELECT {fields} FROM logs WHERE transaction_hash=$1 ORDER BY log_index"""
+        query = query.format(fields=models.Log.select_fields())
+
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, tx_hash)
             return [models.Log(**r) for r in rows]
