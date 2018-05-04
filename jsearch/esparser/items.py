@@ -19,5 +19,7 @@ class ContractItem(scrapy.Item):
     byte_code = scrapy.Field()
     abi = scrapy.Field()
 
+    grabbed_at = scrapy.Field()
+
     def __repr__(self):
         return 'Contract {} at {}'.format(self['name'], self['address'])

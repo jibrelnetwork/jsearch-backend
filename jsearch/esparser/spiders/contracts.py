@@ -3,6 +3,7 @@ import datetime
 
 import scrapy
 from scrapy.linkextractors import LinkExtractor
+from w3lib.html import remove_tags
 
 from jsearch.esparser.items import ContractItem
 
@@ -56,9 +57,11 @@ class ContractsSpider(scrapy.Spider):
         item['byte_code'] = response.css('#verifiedbytecode2::text').extract()[0]
 
         # compile params
-        parts = response.css('#code').css("table.table td::text").extract()
-        parts = [i.strip() for i in parts]
+        parts = response.css('#code').css("table.table td").extract()
+        parts = [remove_tags(p).strip() for p in parts]
         compile_params = dict(zip(parts[::2], parts[1::2]))
+
+        print('CPP', compile_params, parts)
 
         item['name'] = compile_params['Contract Name:']
         item['compiler_version'] = compile_params['Compiler Version:']
@@ -71,6 +74,6 @@ class ContractsSpider(scrapy.Spider):
                 compile_params['Optimization Enabled:']))
         item['optimization_runs'] = compile_params['Runs (Optimiser):']
 
-        item['scraped_at'] = datetime.datetime.now()
+        item['grabbed_at'] = datetime.datetime.now()
 
         yield item
