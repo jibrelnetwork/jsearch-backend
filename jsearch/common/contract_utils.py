@@ -255,7 +255,7 @@ def _fix_string_args(args, types):
         elif t.startswith('byte'):
             arg = arg.decode()  # FIXME! handle bytes properly
         fixed.append(arg)
-    return args
+    return fixed
 
 
 def decode_contract_call(contract_abi: list, call_data: str):

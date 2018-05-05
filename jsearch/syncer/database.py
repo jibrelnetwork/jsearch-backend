@@ -202,7 +202,7 @@ class MainDB(DBWrapper):
             logs = self.process_logs(contract, logs)
             data = self.process_transaction(contract, tx_data, logs)
             # from pprint import pprint;pprint(data)
-            # from pprint import pprint;pprint(contract)
+            # from pprint import pprint;pprint(logs)
             query = transactions_t.insert().values(block_number=block_number,
                                                    block_hash=block_hash, **data)
             await conn.execute(query)
