@@ -246,6 +246,18 @@ ERC20_ABI = [
 ]
 
 
+def _fix_string_args(args, types):
+    fixed = []
+    for i, arg in enumerate(args):
+        t = types[i]
+        if t == 'string' and isinstance(arg, bytes):
+            arg = arg.decode()
+        elif t.startswith('byte'):
+            arg = arg.decode()  # FIXME! handle bytes properly
+        fixed.append(arg)
+    return args
+
+
 def decode_contract_call(contract_abi: list, call_data: str):
     call_data = call_data.replace('0x', '')
     call_data_bin = decode_hex(call_data)
@@ -259,6 +271,7 @@ def decode_contract_call(contract_abi: list, call_data: str):
         if zpad(encode_int(method_id), 4) == method_signature:
             try:
                 args = decode_abi(arg_types, call_data_bin[4:])
+                args = _fix_string_args(args, arg_types)
             except AssertionError as e:
                 continue
             return {'function': method_name, 'args': args}
