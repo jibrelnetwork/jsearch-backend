@@ -1,3 +1,5 @@
+import binascii
+
 from ethereum.abi import (
     decode_abi,
     normalize_name as normalize_abi_method_name,
@@ -253,7 +255,7 @@ def _fix_string_args(args, types):
         if t == 'string' and isinstance(arg, bytes):
             arg = arg.decode()
         elif t.startswith('byte'):
-            arg = arg.decode()  # FIXME! handle bytes properly
+            arg = binascii.hexlify(arg).decode()  # FIXME! handle bytes properly
         fixed.append(arg)
     return fixed
 
