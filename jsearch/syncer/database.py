@@ -226,10 +226,17 @@ class MainDB(DBWrapper):
     def process_logs(self, contract, logs):
         if contract is not None:
             for log in logs:
-                e = contract_utils.decode_event(json.loads(contract['abi']), log)
-                event_type = e.pop('_event_type')
-                log['event_type'] = event_type.decode()
-                log['event_args'] = e
+                try:
+                    e = contract_utils.decode_event(json.loads(contract['abi']), log)
+                except ValueError:
+                    # ValueError: Unknown log type
+                    logger.warn('Unknown log type: %s', log)
+                    log['event_type'] = None
+                    log['event_args'] = None
+                else:
+                    event_type = e.pop('_event_type')
+                    log['event_type'] = event_type.decode()
+                    log['event_args'] = e
         return logs
 
     def process_transaction(self, contract, tx_data, logs):
