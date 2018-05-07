@@ -235,7 +235,7 @@ class MainDB(DBWrapper):
                     log['event_args'] = None
                 else:
                     event_type = e.pop('_event_type')
-                    log['event_type'] = event_type.decode()
+                    log['event_type'] = event_type
                     log['event_args'] = e
         return logs
 

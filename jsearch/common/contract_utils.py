@@ -252,12 +252,17 @@ def _fix_string_args(args, types):
     fixed = []
     for i, arg in enumerate(args):
         t = types[i]
-        if t == 'string' and isinstance(arg, bytes):
-            arg = arg.decode()
-        elif t.startswith('byte'):
-            arg = binascii.hexlify(arg).decode()  # FIXME! handle bytes properly
+        arg = _fix_arg(arg, t)
         fixed.append(arg)
     return fixed
+
+
+def _fix_arg(arg, typ):
+    if typ == 'string' and isinstance(arg, bytes):
+        arg = arg.decode()
+    elif typ.startswith('byte'):
+        arg = binascii.hexlify(arg).decode()  # FIXME! handle bytes properly
+    return arg
 
 
 def decode_contract_call(contract_abi: list, call_data: str):
@@ -283,4 +288,12 @@ def decode_event(contract_abi, event):
     ct = ContractTranslator(contract_abi)
     log_topics = [int(t[2:], 16) for t in event['topics']]
     log_data = decode_hex(event['data'].replace('0x', ''))
-    return ct.decode_event(log_topics, log_data)
+    decoded = ct.decode_event(log_topics, log_data)
+    event_type = decoded.pop('_event_type').decode()
+    eabi = [e for e in contract_abi if e['type'] == 'event' and e['name'] == event_type][0]
+    args_map = {i['name']: i['type'] for i in eabi['inputs']}
+    fixed_event = {'_event_type': event_type}
+    for k, v in decoded.items():
+        t = args_map[k]
+        fixed_event[k] = _fix_arg(v, t)
+    return fixed_event
