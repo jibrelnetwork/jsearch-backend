@@ -228,9 +228,9 @@ class MainDB(DBWrapper):
             for log in logs:
                 try:
                     e = contract_utils.decode_event(json.loads(contract['abi']), log)
-                except ValueError:
+                except (ValueError, AssertionError) as e:
                     # ValueError: Unknown log type
-                    logger.warn('Unknown log type: %s', log)
+                    logger.warn('Log decode error: %s [%s]', log, e)
                     log['event_type'] = None
                     log['event_args'] = None
                 else:

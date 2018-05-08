@@ -264,6 +264,8 @@ def _fix_arg(arg, typ, decoder=None):
             arg = arg.decode()
         elif typ.startswith('byte'):
             decoder = lambda a: binascii.hexlify(a).decode()  # FIXME! handle bytes properly
+        else:
+            decoder = lambda a: a
 
     if isinstance(arg, list):
         return [_fix_arg(a, typ, decoder) for a in arg]
