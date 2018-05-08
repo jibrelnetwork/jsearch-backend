@@ -257,12 +257,17 @@ def _fix_string_args(args, types):
     return fixed
 
 
-def _fix_arg(arg, typ):
-    if typ == 'string' and isinstance(arg, bytes):
-        arg = arg.decode()
-    elif typ.startswith('byte'):
-        arg = binascii.hexlify(arg).decode()  # FIXME! handle bytes properly
-    return arg
+def _fix_arg(arg, typ, decoder=None):
+    if not decoder:
+        if typ == 'string' and isinstance(arg, bytes):
+            decoder = lambda a: a.decode()
+            arg = arg.decode()
+        elif typ.startswith('byte'):
+            decoder = lambda a: binascii.hexlify(a).decode()  # FIXME! handle bytes properly
+
+    if isinstance(arg, list):
+        return [_fix_arg(a, typ, decoder) for a in arg]
+    return decoder(arg)
 
 
 def decode_contract_call(contract_abi: list, call_data: str):
@@ -297,3 +302,26 @@ def decode_event(contract_abi, event):
         t = args_map[k]
         fixed_event[k] = _fix_arg(v, t)
     return fixed_event
+
+
+def collect_types():
+    from jsearch.common.tables import contracts_t
+    from sqlalchemy.sql import select
+    from sqlalchemy import create_engine
+    import json
+
+    engine = create_engine('postgresql://dbuser@localhost/jsearch_main')
+    conn = engine.connect()
+    types = set()
+    s = select([contracts_t])
+    rows = conn.execute(s)
+
+    for row in rows:
+        print(row['address'])
+        # abi = json.loads(row['abi'])
+        abi = row['abi']
+        for t in abi:
+            if t['type'] in ('function', 'event'):
+                for i in t['inputs']:
+                    types.add(i['type'])
+    return types
