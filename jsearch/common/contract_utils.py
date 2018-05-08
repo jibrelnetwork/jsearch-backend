@@ -249,6 +249,7 @@ ERC20_ABI = [
 
 
 def _fix_string_args(args, types):
+    print('FSA', args, types)
     fixed = []
     for i, arg in enumerate(args):
         t = types[i]
@@ -261,7 +262,6 @@ def _fix_arg(arg, typ, decoder=None):
     if not decoder:
         if typ == 'string' and isinstance(arg, bytes):
             decoder = lambda a: a.decode()
-            arg = arg.decode()
         elif typ.startswith('byte'):
             decoder = lambda a: binascii.hexlify(a).decode()  # FIXME! handle bytes properly
         else:
