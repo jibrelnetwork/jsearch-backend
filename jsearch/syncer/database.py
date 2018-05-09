@@ -210,6 +210,7 @@ class MainDB(DBWrapper):
 
     async def insert_logs(self, conn, block_number, block_hash, logs):
         for log_record in logs:
+            import pprint; pprint.pprint(log_record)
             data = dict_keys_case_convert(log_record)
             query = logs_t.insert().values(**data)
             await conn.execute(query)

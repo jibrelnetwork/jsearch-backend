@@ -261,7 +261,7 @@ def _fix_string_args(args, types):
 def _fix_arg(arg, typ, decoder=None):
     if not decoder:
         if typ == 'string' and isinstance(arg, bytes):
-            decoder = lambda a: a.decode().strip('\x00')
+            decoder = lambda a: a.decode().replace('\x00', '')
         elif typ.startswith('byte'):
             decoder = lambda a: binascii.hexlify(a).decode()  # FIXME! handle bytes properly
         else:
