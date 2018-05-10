@@ -249,7 +249,7 @@ ERC20_ABI = [
 
 
 def _fix_string_args(args, types):
-    print('FSA', args, types)
+    # print('FSA', args, types)
     fixed = []
     for i, arg in enumerate(args):
         t = types[i]

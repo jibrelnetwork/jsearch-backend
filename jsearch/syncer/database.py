@@ -210,7 +210,7 @@ class MainDB(DBWrapper):
 
     async def insert_logs(self, conn, block_number, block_hash, logs):
         for log_record in logs:
-            import pprint; pprint.pprint(log_record)
+            # import pprint; pprint.pprint(log_record)
             data = dict_keys_case_convert(log_record)
             query = logs_t.insert().values(**data)
             await conn.execute(query)
@@ -229,9 +229,9 @@ class MainDB(DBWrapper):
             for log in logs:
                 try:
                     e = contract_utils.decode_event(json.loads(contract['abi']), log)
-                except (ValueError, AssertionError) as e:
+                except Exception as e:
                     # ValueError: Unknown log type
-                    logger.warn('Log decode error: %s [%s]', log, e)
+                    logger.exception('Log decode error: <%s>', log)
                     log['event_type'] = None
                     log['event_args'] = None
                 else:
@@ -242,14 +242,18 @@ class MainDB(DBWrapper):
 
     def process_transaction(self, contract, tx_data, logs):
         if contract is not None:
-            call = contract_utils.decode_contract_call(json.loads(contract['abi']), tx_data['input'])
-            if call:
-                tx_data['contract_call_description'] = call
-                transfer_events = [l for l in logs if l['event_type'] == 'Transfer']
-                if call['function'] in {'transfer', 'transerFrom'} and transfer_events:
-                    tx_data['is_token_transfer'] = True
-                    if contract['token_decimals']:
-                        tx_data['token_amount'] = call['args'][-1] / (10 ** contract['token_decimals'])
+            try:
+                call = contract_utils.decode_contract_call(json.loads(contract['abi']), tx_data['input'])
+            except Exception as e:
+                logger.exception('Call decode error: <%s>', tx_data)
+            else:
+                if call:
+                    tx_data['contract_call_description'] = call
+                    transfer_events = [l for l in logs if l['event_type'] == 'Transfer']
+                    if call['function'] in {'transfer', 'transerFrom'} and transfer_events:
+                        tx_data['is_token_transfer'] = True
+                        if contract['token_decimals']:
+                            tx_data['token_amount'] = call['args'][-1] / (10 ** contract['token_decimals'])
         return tx_data
 
     async def get_contract(self, conn, address):
