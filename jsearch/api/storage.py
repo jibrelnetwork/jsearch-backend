@@ -217,3 +217,5 @@ class Storage:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, addresses)
             return [models.Balance(balance=int(r['balance']), address=r['address']) for r in rows]
+
+        

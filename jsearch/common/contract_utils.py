@@ -306,6 +306,13 @@ def decode_event(contract_abi, event):
     return fixed_event
 
 
+def is_erc20_interface(abi):
+    for item in ERC20_ABI:
+        if item not in abi:
+            return False
+    return True
+
+
 def collect_types():
     from jsearch.common.tables import contracts_t
     from sqlalchemy.sql import select
@@ -327,3 +334,6 @@ def collect_types():
                 for i in t['inputs']:
                     types.add(i['type'])
     return types
+
+
+

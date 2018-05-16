@@ -3,11 +3,13 @@ import logging
 import re
 import time
 import json
+from datetime import datetime
 
 import asyncpg
 from asyncpgsa import pg
 import sqlalchemy as sa
 from sqlalchemy.sql import select
+from sqlalchemy import and_
 
 from jsearch.common.tables import *
 from jsearch.common import contract_utils
@@ -260,6 +262,54 @@ class MainDB(DBWrapper):
         q = select([contracts_t]).where(contracts_t.c.address == address)
         row = await pg.fetchrow(q)
         return row
+
+    async def save_verified_contract(self, address, contract_creation_code, source_code, contract_name, abi, compiler,
+                                     optimization_enabled, mhash, constructor_args):
+        """
+        address = sa.Column('address', sa.String, primary_key=True)
+        name = sa.Column('name', sa.String)
+        byte_code = sa.Column('byte_code', sa.Text)
+        source_code = sa.Column('source_code', sa.Text)
+        abi = sa.Column('abi', postgresql.JSONB)
+        compiler_version = sa.Column('compiler_version', sa.String)
+        optimization_enabled = sa.Column('optimization_enabled', sa.Boolean)
+        optimization_runs = sa.Column('optimization_runs', sa.Integer)
+
+        is_erc20_token = sa.Column('is_erc20_token', sa.Boolean)
+        token_name = sa.Column('token_name', sa.String)
+        token_symbol = sa.Column('token_symbol', sa.String)
+        token_decimals = sa.Column('token_decimals', sa.Integer)
+        token_total_supply = sa.Column('token_total_supply', postgresql.NUMERIC(32, 0))
+
+        grabbed_at = sa.Column(sa.DateTime)
+        verified_at = sa.Column(sa.DateTime)
+        """
+        query = contracts_t.insert().values(
+            address=address,
+            name=contract_name,
+            byte_code=contract_creation_code,
+            source_code=source_code,
+            abi=abi,
+            compiler_version=compiler,
+            optimization_enabled=optimization_enabled,
+            optimization_runs=200,
+            constructor_args=constructor_args,
+            metadata_hash=mhash,
+            is_erc20_token=False,
+            grabbed_at=None,
+            verified_at=datetime.now()
+        )
+        logger.info('Saving verified contract at %s', address)
+        async with pg.transaction() as conn:
+            await conn.execute(query)
+
+    async def get_contact_creation_code(self, address):
+        q = select([transactions_t.c.input]).select_from(
+            transactions_t.join(receipts_t, and_(receipts_t.c.transaction_hash == transactions_t.c.hash,
+                                                 receipts_t.c.contract_address == address)))
+        row = await pg.fetchrow(q)
+        return row['input']
+
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')

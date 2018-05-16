@@ -1,3 +1,6 @@
+import os
+import json
+
 from aiohttp import web
 import pytest
 
@@ -477,3 +480,40 @@ async def test_get_uncle_by_number(cli, blocks, uncles):
                                   'totalDifficulty': None,
                                   'reward': 3750000000000000000,
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}
+
+
+async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts):
+    contract_data = {
+        'address': '0xbb7b8287f3f0a933474a79eae42cbcaaaaaaaaaa',
+        'contract_name': 'FucksToken',
+        'compiler': 'v0.4.18+commit.9cf6e910',
+        'optimization_enabled': True,
+        'constructor_args': None,
+        'source_code': open(os.path.join(os.path.dirname(__file__), 'FucksToken.sol'), 'r').read()
+    }
+    resp = await cli.post('/verify_contract', json=contract_data)
+    assert resp.status == 200
+    assert await resp.json() == {'verification_passed': True}
+
+    from sqlalchemy import select
+    from jsearch.common.tables import contracts_t
+    from jsearch.common.contract_utils import ERC20_ABI
+
+    q = select([contracts_t])
+    rows = await db.fetch(q)
+    assert len(rows) == 1
+    c = rows[0]
+    assert c['address'] == contract_data['address']
+    assert c['name'] == contract_data['contract_name']
+    assert c['compiler_version'] == contract_data['compiler']
+    assert c['optimization_enabled'] == contract_data['optimization_enabled']
+    assert c['constructor_args'] == ''
+    assert c['source_code'] == contract_data['source_code']
+    abi = json.load(open(os.path.join(os.path.dirname(__file__), 'FucksToken.abi'), 'rb'))
+    assert json.loads(c['abi']) == abi
+    assert c['metadata_hash'] == 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa55d'
+    assert c['grabbed_at'] is None
+    assert c['verified_at'] is not None
+    assert c['is_erc20_token'] is False
+
+

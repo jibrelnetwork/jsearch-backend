@@ -105,7 +105,7 @@ class Receipt(Base):
     transaction_hash = sa.Column('transaction_hash', sa.String, primary_key=True)
     block_number = sa.Column('block_number', HexInteger, index=True)
     block_hash = sa.Column('block_hash', sa.String)
-    contract_address = sa.Column('contract_address', sa.String)
+    contract_address = sa.Column('contract_address', sa.String, index=True)
     cumulative_gas_used = sa.Column('cumulative_gas_used', HexInteger)
     from_addr = sa.Column('from', sa.String)
     to_addr = sa.Column('to', sa.String)
@@ -202,6 +202,8 @@ class Contract(Base):
     compiler_version = sa.Column('compiler_version', sa.String)
     optimization_enabled = sa.Column('optimization_enabled', sa.Boolean)
     optimization_runs = sa.Column('optimization_runs', sa.Integer)
+    constructor_args = sa.Column('constructor_args', sa.String)
+    metadata_hash = sa.Column('metadata_hash', sa.String)
 
     is_erc20_token = sa.Column('is_erc20_token', sa.Boolean)
     token_name = sa.Column('token_name', sa.String)

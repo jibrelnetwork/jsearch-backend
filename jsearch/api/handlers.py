@@ -1,5 +1,11 @@
+import asyncio
+
 import aiohttp
 from aiohttp import web
+
+
+from jsearch.compiler.tasks import compile_contract_task
+from jsearch.compiler.utils import cut_contract_metadata_hash
 
 
 DEFAULT_LIMIT = 20
@@ -89,6 +95,7 @@ async def get_account(request):
     tag = get_tag(request)
 
     account = await storage.get_account(address, tag)
+    print('dddd')
     if account is None:
         return web.json_response(status=404)
     return web.json_response(account.to_dict())
@@ -227,3 +234,49 @@ async def call_web3_method(request):
             resp.status
             data = await resp.json()
             return web.json_response(data, status=resp.status)
+
+
+async def verify_contract(request):
+    """
+    address
+    contract_name
+    compiler
+    optimization_enabled
+    constructor_args
+    source_code
+    """
+
+    input_data = await request.json()
+    constructor_args = input_data.pop('constructor_args') or ''
+    address = input_data.pop('address')
+
+    contract_creation_code = await request.app['main_db'].get_contact_creation_code(address)
+
+    async_res = compile_contract_task.delay(**input_data)
+
+    while not async_res.ready():
+        await asyncio.sleep(0.5)
+
+    if async_res.successful():
+        res = async_res.result
+    else:
+        raise async_res.result
+    byte_code = res['bin']
+    # import pprint; pprint.pprint(res)
+
+    byte_code, _ = cut_contract_metadata_hash(byte_code)
+    bc_byte_code, mhash = cut_contract_metadata_hash(contract_creation_code)
+
+    if byte_code + constructor_args == bc_byte_code.replace('0x', ''):
+        verification_passed = True
+        await request.app['main_db'].save_verified_contract(
+            address=address,
+            contract_creation_code=contract_creation_code,
+            mhash=mhash,
+            abi=res['abi'],
+            constructor_args=constructor_args,
+            **input_data
+        )
+    else:
+        verification_passed = False
+    return web.json_response({'verification_passed': verification_passed})

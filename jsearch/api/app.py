@@ -8,6 +8,7 @@ from aiohttp_swagger import setup_swagger
 
 
 from jsearch.api.storage import Storage
+from jsearch.syncer.database import MainDB
 from jsearch.api import handlers
 
 
@@ -22,7 +23,10 @@ async def make_app():
     app = web.Application()
     # Create a database connection pool
     app['db_pool'] = await asyncpg.create_pool(dsn=os.environ.get('DATABASE_URL'))
+
     app['storage'] = Storage(app['db_pool'])
+    app['main_db'] = MainDB(os.environ.get('DATABASE_URL'))
+    await app['main_db'].connect()
     app['node_proxy_url'] = os.environ.get('NODE_PROXY_URL')
     # Configure service routes
     app.router.add_route('GET', '/accounts/balances', handlers.get_accounts_balances)
@@ -43,6 +47,7 @@ async def make_app():
     app.router.add_route('GET', '/uncles/{tag}', handlers.get_uncle)
 
     app.router.add_route('POST', '/web3', handlers.call_web3_method)
+    app.router.add_route('POST', '/verify_contract', handlers.verify_contract)
 
     app.router.add_static('/apidoc', swagger_ui_path)
 
@@ -50,9 +55,9 @@ async def make_app():
     return app
 
 
-loop = asyncio.get_event_loop()
-app = loop.run_until_complete(make_app())
 
 
 if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    app = loop.run_until_complete(make_app(loop))
     web.run_app(app)
