@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import re
+import os
 import time
 import json
 from datetime import datetime
@@ -311,6 +312,7 @@ class MainDB(DBWrapper):
         return row['input']
 
 
+
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')
 
@@ -322,3 +324,21 @@ def case_convert(name):
 
 def dict_keys_case_convert(d):
     return {case_convert(k): v for k, v in d.items()}
+
+
+class MainDBSync:
+
+    def __init__(self, connection_string):
+        self.connection_string = connection_string
+        engine = sa.create_engine(self.connection_string)
+        self.conn = engine.connect()
+
+    def update_contract(self, address, data):
+        q = contracts_t.update().where(
+            contracts_t.c.address == address).values(**data)
+        print('Q', q)
+        self.conn.execute(q)
+
+
+def get_main_db():
+    return MainDBSync(os.environ['MAIN_DATABASE_URL'])
