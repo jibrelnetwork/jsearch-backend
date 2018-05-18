@@ -5,16 +5,10 @@ import json
 import re
 
 from solc import compile_source, install_solc
-from jsearch.common.tables import contracts_t
-from sqlalchemy.sql import select
-from sqlalchemy import create_engine
 
 
 logger = logging.getLogger(__name__)
 
-
-engine = create_engine('postgresql://dbuser@localhost/jsearch_main')
-conn = engine.connect()
 
 
 def compile_contract(source, contract_name, compiler_version,
@@ -66,12 +60,6 @@ def wait_install_solc(identifier):
         os.unlink(guard_path)
     logger.debug('Solc installed, version %s, time %s', identifier, time.time() - start_time)
     return True
-
-
-def get_contract(address):
-    s = select([contracts_t]).where(contracts_t.c.address == address)
-    contract = conn.execute(s).fetchone()
-    return contract
 
 
 def cut_contract_metadata_hash(byte_code):

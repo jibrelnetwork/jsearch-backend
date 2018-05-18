@@ -1,6 +1,6 @@
 import os
 
-from jsearch.compiler.utils import compile_contract, get_contract
+from jsearch.compiler.utils import compile_contract
 from jsearch.compiler.celery import app
 
 from jsearch.common.contract_utils import ERC20_ABI
