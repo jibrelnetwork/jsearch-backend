@@ -4,8 +4,9 @@ import aiohttp
 from aiohttp import web
 
 
-from jsearch.compiler.tasks import compile_contract_task
+from jsearch.compiler.tasks import compile_contract_task, write_token_info
 from jsearch.compiler.utils import cut_contract_metadata_hash
+from jsearch.common.contract_utils import is_erc20_compatible
 
 
 DEFAULT_LIMIT = 20
@@ -269,14 +270,22 @@ async def verify_contract(request):
 
     if byte_code + constructor_args == bc_byte_code.replace('0x', ''):
         verification_passed = True
+        if is_erc20_compatible(res['abi']):
+            is_erc20_token = True
+        else:
+            is_erc20_token = False
         await request.app['main_db'].save_verified_contract(
             address=address,
             contract_creation_code=contract_creation_code,
             mhash=mhash,
             abi=res['abi'],
             constructor_args=constructor_args,
+            is_erc20_token=is_erc20_token,
             **input_data
         )
+
+        if is_erc20_token:
+            write_token_info.delay(address)
     else:
         verification_passed = False
     return web.json_response({'verification_passed': verification_passed})

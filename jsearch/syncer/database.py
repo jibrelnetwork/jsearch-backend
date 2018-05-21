@@ -265,7 +265,7 @@ class MainDB(DBWrapper):
         return row
 
     async def save_verified_contract(self, address, contract_creation_code, source_code, contract_name, abi, compiler,
-                                     optimization_enabled, mhash, constructor_args):
+                                     optimization_enabled, mhash, constructor_args, is_erc20_token):
         """
         address = sa.Column('address', sa.String, primary_key=True)
         name = sa.Column('name', sa.String)
@@ -296,7 +296,7 @@ class MainDB(DBWrapper):
             optimization_runs=200,
             constructor_args=constructor_args,
             metadata_hash=mhash,
-            is_erc20_token=False,
+            is_erc20_token=is_erc20_token,
             grabbed_at=None,
             verified_at=datetime.now()
         )
@@ -336,7 +336,6 @@ class MainDBSync:
     def update_contract(self, address, data):
         q = contracts_t.update().where(
             contracts_t.c.address == address).values(**data)
-        print('Q', q)
         self.conn.execute(q)
 
 

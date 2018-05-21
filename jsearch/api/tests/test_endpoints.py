@@ -514,6 +514,6 @@ async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts
     assert c['metadata_hash'] == 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa55d'
     assert c['grabbed_at'] is None
     assert c['verified_at'] is not None
-    assert c['is_erc20_token'] is False
+    assert c['is_erc20_token'] is True
 
 

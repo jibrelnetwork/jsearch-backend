@@ -248,6 +248,22 @@ ERC20_ABI = [
 ]
 
 
+ERC20_ABI_SIMPLE = [
+    {'type': 'function', 'name': 'name', 'inputs': [], 'outputs': ['string']},
+    {'type': 'function', 'name': 'approve', 'inputs': ['address', 'uint256'], 'outputs': ['bool']},
+    {'type': 'function', 'name': 'totalSupply', 'inputs': [], 'outputs': ['uint256']},
+    {'type': 'function', 'name': 'transferFrom', 'inputs': ['address', 'address', 'uint256'], 'outputs': ['bool']},
+    {'type': 'function', 'name': 'decimals', 'inputs': [], 'outputs': ['uint8']},
+    {'type': 'function', 'name': 'balanceOf', 'inputs': ['address'], 'outputs': ['uint256']},
+    {'type': 'function', 'name': 'symbol', 'inputs': [], 'outputs': ['string']},
+    {'type': 'function', 'name': 'transfer', 'inputs': ['address', 'uint256'], 'outputs': ['bool']},
+    {'type': 'function', 'name': 'allowance', 'inputs': ['address', 'address'], 'outputs': ['uint256']},
+
+    {'type': 'event', 'name': 'Approval', 'inputs': ['address', 'address', 'uint256']},
+    {'type': 'event', 'name': 'Transfer', 'inputs': ['address', 'address', 'uint256']},
+]
+
+
 def _fix_string_args(args, types):
     # print('FSA', args, types)
     fixed = []
@@ -261,11 +277,11 @@ def _fix_string_args(args, types):
 def _fix_arg(arg, typ, decoder=None):
     if not decoder:
         if typ == 'string' and isinstance(arg, bytes):
-            decoder = lambda a: a.decode().replace('\x00', '')
+            def decoder(a): return a.decode().replace('\x00', '')
         elif typ.startswith('byte'):
-            decoder = lambda a: binascii.hexlify(a).decode()  # FIXME! handle bytes properly
+            def decoder(a): return binascii.hexlify(a).decode()  # FIXME! handle bytes properly
         else:
-            decoder = lambda a: a
+            def decoder(a): return a
 
     if isinstance(arg, list):
         return [_fix_arg(a, typ, decoder) for a in arg]
@@ -306,11 +322,34 @@ def decode_event(contract_abi, event):
     return fixed_event
 
 
-def is_erc20_interface(abi):
+def is_erc20_stricte(abi):
     for item in ERC20_ABI:
         if item not in abi:
             return False
     return True
+
+
+def is_erc20_compatible(abi):
+    abi_simple = simplify_abi(abi)
+    for item in ERC20_ABI_SIMPLE:
+        if item not in abi_simple:
+            return False
+    return True
+
+
+def simplify_abi(abi):
+    abi_simple = []
+    for item in abi:
+        if item.get('type') not in {'function', 'event'}:
+            continue
+        s = {}
+        s['name'] = item['name']
+        s['type'] = item['type']
+        s['inputs'] = [v['type'] for v in item['inputs']]
+        if 'outputs' in item:
+            s['outputs'] = [v['type'] for v in item['outputs']]
+        abi_simple.append(s)
+    return abi_simple
 
 
 def collect_types():
@@ -334,6 +373,3 @@ def collect_types():
                 for i in t['inputs']:
                     types.add(i['type'])
     return types
-
-
-
