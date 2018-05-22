@@ -500,7 +500,7 @@ async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts
     from jsearch.common.contract_utils import ERC20_ABI
 
     q = select([contracts_t])
-    rows = await db.fetch(q)
+    rows = db.execute(q).fetchall()
     assert len(rows) == 1
     c = rows[0]
     assert c['address'] == contract_data['address']
@@ -510,7 +510,7 @@ async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts
     assert c['constructor_args'] == ''
     assert c['source_code'] == contract_data['source_code']
     abi = json.load(open(os.path.join(os.path.dirname(__file__), 'FucksToken.abi'), 'rb'))
-    assert json.loads(c['abi']) == abi
+    assert c['abi'] == abi
     assert c['metadata_hash'] == 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa55d'
     assert c['grabbed_at'] is None
     assert c['verified_at'] is not None

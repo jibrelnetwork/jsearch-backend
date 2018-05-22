@@ -117,7 +117,7 @@ class MainDB(DBWrapper):
         await pg.init(self.connection_string)
 
     async def disconnect(self):
-        pass
+        await pg.pool.close()
 
     async def get_latest_sequence_synced_block_number(self):
         """
@@ -340,4 +340,5 @@ class MainDBSync:
 
 
 def get_main_db():
+    print('Oooops')
     return MainDBSync(os.environ['MAIN_DATABASE_URL'])

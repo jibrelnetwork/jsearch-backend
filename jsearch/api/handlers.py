@@ -96,7 +96,6 @@ async def get_account(request):
     tag = get_tag(request)
 
     account = await storage.get_account(address, tag)
-    print('dddd')
     if account is None:
         return web.json_response(status=404)
     return web.json_response(account.to_dict())

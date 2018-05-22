@@ -16,11 +16,17 @@ swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.sw
 swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
 
 
+async def on_shutdown(app):
+    await app['db_pool'].close()
+    await app['main_db'].disconnect()
+
+
 async def make_app():
     """
     Create and initialize the application instance.
     """
     app = web.Application()
+    app.on_shutdown.append(on_shutdown)
     # Create a database connection pool
     app['db_pool'] = await asyncpg.create_pool(dsn=os.environ.get('DATABASE_URL'))
 

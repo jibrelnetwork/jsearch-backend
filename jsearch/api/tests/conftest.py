@@ -2,7 +2,8 @@ import os
 import asyncio
 
 import pytest
-from asyncpgsa import pg
+from asyncpgsa import PG
+from sqlalchemy import create_engine
 
 from jsearch.common.testutils import setup_database, teardown_database
 from jsearch.common import tables as t
@@ -41,16 +42,16 @@ async def cli(event_loop, aiohttp_client):
     return await aiohttp_client(app)
 
 
-@pytest.fixture
-@pytest.mark.asyncio
-async def db():
-    await pg.init(os.environ['JSEARCH_MAIN_DB_TEST'])
-    return pg
+@pytest.fixture(scope="session")
+def db():
+    engine = create_engine(os.environ['JSEARCH_MAIN_DB_TEST'])
+    conn = engine.connect()
+    yield conn
+    conn.close()
 
 
 @pytest.fixture
-@pytest.mark.asyncio
-async def blocks(db):
+def blocks(db):
     blocks = [{"difficulty": 18136429964,
                "extra_data": "0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32",
                "gas_limit": 5000,
@@ -97,14 +98,13 @@ async def blocks(db):
                'tx_fees': 52569880000000000}]
     for b in blocks:
         query = t.blocks_t.insert().values(**b)
-        res = await pg.execute(query)
+        res = db.execute(query)
     yield blocks
-    await pg.execute("DELETE FROM blocks")
+    db.execute("DELETE FROM blocks")
 
 
 @pytest.fixture
-@pytest.mark.asyncio
-async def transactions(db, blocks):
+def transactions(db, blocks):
     txs = [
         {
             "block_hash": blocks[0]['hash'],
@@ -157,14 +157,13 @@ async def transactions(db, blocks):
     ]
     for tx in txs:
         query = t.transactions_t.insert().values(**tx)
-        await pg.execute(query)
+        db.execute(query)
     yield txs
-    await pg.execute("DELETE FROM transactions")
+    db.execute("DELETE FROM transactions")
 
 
 @pytest.fixture
-@pytest.mark.asyncio
-async def receipts(db, blocks):
+def receipts(db, blocks):
     receipts = [
         {
           "block_hash": "0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7",
@@ -197,14 +196,13 @@ async def receipts(db, blocks):
     ]
     for r in receipts:
         query = t.receipts_t.insert().values(**r)
-        await pg.execute(query)
+        db.execute(query)
     yield receipts
-    await pg.execute("DELETE FROM receipts")
+    db.execute("DELETE FROM receipts")
 
 
 @pytest.fixture
-@pytest.mark.asyncio
-async def accounts(db, blocks):
+def accounts(db, blocks):
     accounts = [
         {"block_number": blocks[0]['number'],
          "block_hash": blocks[0]['hash'],
@@ -227,14 +225,13 @@ async def accounts(db, blocks):
     ]
     for acc in accounts:
         query = t.accounts_t.insert().values(**acc)
-        await pg.execute(query)
+        db.execute(query)
     yield accounts
-    await pg.execute("DELETE FROM accounts")
+    db.execute("DELETE FROM accounts")
 
 
 @pytest.fixture
-@pytest.mark.asyncio
-async def uncles(db, blocks):
+def uncles(db, blocks):
     uncles = [{"difficulty": 17578564779,
                "extra_data": "0x476574682f76312e302e302f6c696e75782f676f312e342e32",
                "gas_limit": 5000,
@@ -281,14 +278,13 @@ async def uncles(db, blocks):
               ]
     for u in uncles:
         query = t.uncles_t.insert().values(**u)
-        await pg.execute(query)
+        db.execute(query)
     yield accounts
-    await pg.execute("DELETE FROM uncles")
+    db.execute("DELETE FROM uncles")
 
 
 @pytest.fixture
-@pytest.mark.asyncio
-async def logs(db, transactions):
+def logs(db, transactions):
     records = [
       {"transaction_hash":"0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
        "block_number":1498834,
@@ -312,9 +308,9 @@ async def logs(db, transactions):
     ]
     for r in records:
         query = t.logs_t.insert().values(**r)
-        await pg.execute(query)
+        db.execute(query)
     yield receipts
-    await pg.execute("DELETE FROM logs")
+    db.execute("DELETE FROM logs")
 
 
 @pytest.fixture(scope='session')
