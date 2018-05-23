@@ -4,7 +4,7 @@ import pytest
 from asyncpgsa import pg
 
 from jsearch.common.testutils import setup_database, teardown_database
-from jsearch.common.contract_utils import ERC20_ABI
+from jsearch.common.contracts import ERC20_ABI
 from jsearch.common import tables as t
 
 

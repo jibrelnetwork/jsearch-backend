@@ -1,6 +1,6 @@
 import copy
 
-from jsearch.common.contract_utils import ERC20_ABI, ERC20_ABI_SIMPLE, simplify_abi, is_erc20_compatible, is_erc20_stricte
+from jsearch.common.contracts import ERC20_ABI, simplify_abi, is_erc20_compatible, is_erc20_stricte
 
 
 def test_simplify_abi():

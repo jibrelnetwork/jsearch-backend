@@ -1,10 +1,7 @@
 
-from typing import List, Dict, Any
+from typing import List, Any
 
 from jsearch.api.models.base_model_ import Model
-
-
-
 
 
 class Log(Model):
@@ -34,8 +31,6 @@ class Log(Model):
     }
 
 
-
-
 class Account(Model):
 
     swagger_types = {
@@ -57,8 +52,6 @@ class Account(Model):
         'code_hash': 'codeHash',
         'balance': 'balance',
     }
-
-
 
 
 class Transaction(Model):
@@ -96,8 +89,6 @@ class Transaction(Model):
         'v': 'v',
         'value': 'value',
     }
-
-
 
 
 class Block(Model):
@@ -155,8 +146,6 @@ class Block(Model):
     }
 
 
-
-
 class Uncle(Model):
 
     swagger_types = {
@@ -206,8 +195,6 @@ class Uncle(Model):
     }
 
 
-
-
 class Receipt(Model):
 
     swagger_types = {
@@ -243,8 +230,6 @@ class Receipt(Model):
     }
 
 
-
-
 class Reward(Model):
 
     swagger_types = {
@@ -256,8 +241,6 @@ class Reward(Model):
         'address': 'address',
         'amount': 'amount',
     }
-
-
 
 
 class Web3Call(Model):
@@ -273,8 +256,6 @@ class Web3Call(Model):
     }
 
 
-
-
 class Web3CallResponse(Model):
 
     swagger_types = {
@@ -288,8 +269,6 @@ class Web3CallResponse(Model):
     }
 
 
-
-
 class Balance(Model):
 
     swagger_types = {
@@ -301,5 +280,3 @@ class Balance(Model):
         'balance': 'balance',
         'address': 'address',
     }
-
-

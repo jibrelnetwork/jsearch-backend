@@ -27,8 +27,8 @@ class ContractsSpider(scrapy.Spider):
     def get_next_page_request(self, response):
         next_page = response.meta['page'] + 1
         return scrapy.Request(url=self.listing_url + '/{}'.format(next_page),
-                             callback=self.parse_listing,
-                             meta={'page': next_page})
+                              callback=self.parse_listing,
+                              meta={'page': next_page})
 
     def parse_contract(self, response):
         """
@@ -37,7 +37,7 @@ class ContractsSpider(scrapy.Spider):
          'Optimization Enabled:\n': '\nNo\n',
          'Runs (Optimiser):\xa0\n': '\n200\n'}
 
-            
+
           Item:
             name = scrapy.Field()
             compiler_version = scrapy.Field()

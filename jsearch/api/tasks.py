@@ -1,10 +1,10 @@
 import os
 
-from jsearch.compiler.utils import compile_contract
-from jsearch.compiler.celery import app
+from jsearch.common.contracts import compile_contract
+from jsearch.common.celery import app
 
-from jsearch.common.contract_utils import ERC20_ABI
-from jsearch.syncer.database import get_main_db
+from jsearch.common.contracts import ERC20_ABI
+from jsearch.common.database import get_main_db
 
 from web3 import Web3
 

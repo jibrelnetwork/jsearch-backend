@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from jsearch.syncer import database
+from jsearch.common import database
 
 
 @pytest.mark.asyncio

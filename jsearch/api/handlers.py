@@ -4,9 +4,9 @@ import aiohttp
 from aiohttp import web
 
 
-from jsearch.compiler.tasks import compile_contract_task, write_token_info
-from jsearch.compiler.utils import cut_contract_metadata_hash
-from jsearch.common.contract_utils import is_erc20_compatible
+from jsearch.api.tasks import compile_contract_task, write_token_info
+from jsearch.common.contracts import cut_contract_metadata_hash
+from jsearch.common.contracts import is_erc20_compatible
 
 
 DEFAULT_LIMIT = 20

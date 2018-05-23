@@ -13,7 +13,7 @@ from sqlalchemy.sql import select
 from sqlalchemy import and_
 
 from jsearch.common.tables import *
-from jsearch.common import contract_utils
+from jsearch.common import contracts
 
 
 logger = logging.getLogger(__name__)
@@ -156,7 +156,6 @@ class MainDB(DBWrapper):
         async with pg.transaction() as conn:
             await self.insert_header(conn, header, block_reward)
             await self.insert_uncles(conn, block_number, block_hash, uncles, uncles_rewards)
-            # await self.insert_transactions(conn, block_number, block_hash, transactions)
             await self.insert_transactions_and_receipts(conn, block_number, block_hash, receipts, transactions)
             await self.insert_accounts(conn, block_number, block_hash, accounts)
 
@@ -176,14 +175,6 @@ class MainDB(DBWrapper):
                                              block_hash=block_hash, **data)
             await conn.execute(query)
 
-    # async def insert_transactions(self, conn, block_number, block_hash, transactions):
-    #     for transaction in transactions:
-    #         data = dict_keys_case_convert(transaction)
-    #         data = await self.process_transaction(conn, data)
-    #         query = transactions_t.insert().values(block_number=block_number,
-    #                                                block_hash=block_hash, **data)
-    #         await conn.execute(query)
-
     async def insert_transactions_and_receipts(self, conn, block_number, block_hash, receipts, transactions):
         rdata = json.loads(receipts['fields'])['Receipts'] or []
         for i, receipt in enumerate(rdata):
@@ -200,7 +191,7 @@ class MainDB(DBWrapper):
             await conn.execute(query)
 
             tx_data = dict_keys_case_convert(tx)
-            
+
             contract = await self.get_contract(conn, tx_data['to'])
             logs = self.process_logs(contract, logs)
             data = self.process_transaction(contract, tx_data, logs)
@@ -221,7 +212,7 @@ class MainDB(DBWrapper):
     async def insert_accounts(self, conn, block_number, block_hash, accounts):
         for account in accounts:
             data = dict_keys_case_convert(json.loads(account['fields']))
-            data['storage'] = None  # FIXME!!! 
+            data['storage'] = None  # FIXME!!!
             query = accounts_t.insert().values(block_number=block_number,
                                                address=account['address'].lower(),
                                                block_hash=block_hash, **data)
@@ -231,7 +222,7 @@ class MainDB(DBWrapper):
         if contract is not None:
             for log in logs:
                 try:
-                    e = contract_utils.decode_event(json.loads(contract['abi']), log)
+                    e = contracts.decode_event(json.loads(contract['abi']), log)
                 except Exception as e:
                     # ValueError: Unknown log type
                     logger.exception('Log decode error: <%s>', log)
@@ -246,7 +237,7 @@ class MainDB(DBWrapper):
     def process_transaction(self, contract, tx_data, logs):
         if contract is not None:
             try:
-                call = contract_utils.decode_contract_call(json.loads(contract['abi']), tx_data['input'])
+                call = contracts.decode_contract_call(json.loads(contract['abi']), tx_data['input'])
             except Exception as e:
                 logger.exception('Call decode error: <%s>', tx_data)
             else:
@@ -310,7 +301,6 @@ class MainDB(DBWrapper):
                                                  receipts_t.c.contract_address == address)))
         row = await pg.fetchrow(q)
         return row['input']
-
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')

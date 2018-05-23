@@ -1,6 +1,6 @@
 
 
-from jsearch.compiler.utils import cut_contract_metadata_hash
+from jsearch.common.contracts import cut_contract_metadata_hash
 
 
 def test_cut_contract_metadata_hash_noop():

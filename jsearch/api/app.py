@@ -1,5 +1,4 @@
 import os
-import json
 
 import asyncio
 import asyncpg
@@ -8,7 +7,7 @@ from aiohttp_swagger import setup_swagger
 
 
 from jsearch.api.storage import Storage
-from jsearch.syncer.database import MainDB
+from jsearch.common.database import MainDB
 from jsearch.api import handlers
 
 
@@ -59,8 +58,6 @@ async def make_app():
 
     setup_swagger(app, swagger_from_file=swagger_file)
     return app
-
-
 
 
 if __name__ == '__main__':
