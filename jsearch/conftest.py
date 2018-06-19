@@ -17,7 +17,7 @@ from jsearch.api.app import make_app
 
 @pytest.fixture
 def here():
-    return py.path.local(os.path.dirname(__file__))
+    return py.path.local(os.path.dirname(__file__) + '/tests')
 
 
 @pytest.fixture

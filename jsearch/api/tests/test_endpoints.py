@@ -407,14 +407,14 @@ async def test_get_uncle_by_number(cli, blocks, uncles, main_db_data):
     }
 
 
-async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts, main_db_data):
+async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts, main_db_data, here):
     contract_data = {
         'address': main_db_data['accounts'][2]['address'],
         'contract_name': 'FucksToken',
         'compiler': 'v0.4.18+commit.9cf6e910',
         'optimization_enabled': True,
         'constructor_args': None,
-        'source_code': open(os.path.join(os.path.dirname(__file__), 'FucksToken.sol'), 'r').read()
+        'source_code': here.join('FucksToken.sol').read()
     }
     resp = await cli.post('/verify_contract', json=contract_data)
     assert resp.status == 200
@@ -434,7 +434,7 @@ async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts
     assert c['optimization_enabled'] == contract_data['optimization_enabled']
     assert c['constructor_args'] == ''
     assert c['source_code'] == contract_data['source_code']
-    abi = json.load(open(os.path.join(os.path.dirname(__file__), 'FucksToken.abi'), 'rb'))
+    abi = json.loads(here.join('FucksToken.abi').read())
     assert c['abi'] == abi
     assert c['metadata_hash'] == '4c3e25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f55155'
     assert c['grabbed_at'] is None

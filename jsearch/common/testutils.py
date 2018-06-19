@@ -22,8 +22,8 @@ def teardown_database():
 
 FUCKS_TOKEN = {
         'name': 'FucksToken',
-        'byte_code': open(os.path.dirname(__file__) + '/../api/tests/FucksToken.bin', 'r').read(),
-        'source_code': open(os.path.dirname(__file__) + '/../api/tests/FucksToken.sol', 'r').read(),
+        'byte_code': open(os.path.dirname(__file__) + '/../tests/FucksToken.bin', 'r').read(),
+        'source_code': open(os.path.dirname(__file__) + '/../tests/FucksToken.sol', 'r').read(),
         'abi': ERC20_ABI,
         'compiler_version': 'v0.4.18+commit.9cf6e910',
         'optimization_enabled': True,
