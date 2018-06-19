@@ -39,6 +39,7 @@ async def make_app():
     app.router.add_route('GET', '/accounts/{address}/transactions', handlers.get_account_transactions)
     app.router.add_route('GET', '/accounts/{address}/mined_blocks', handlers.get_account_mined_blocks)
     app.router.add_route('GET', '/accounts/{address}/mined_uncles', handlers.get_account_mined_uncles)
+    app.router.add_route('GET', '/accounts/{address}/token_transfers', handlers.get_account_token_transfers)
 
     app.router.add_route('GET', '/blocks', handlers.get_blocks)
     app.router.add_route('GET', '/blocks/{tag}', handlers.get_block)
@@ -53,6 +54,12 @@ async def make_app():
 
     app.router.add_route('POST', '/web3', handlers.call_web3_method)
     app.router.add_route('POST', '/verify_contract', handlers.verify_contract)
+
+    app.router.add_route('GET', '/verified_contracts', handlers.get_verified_contracts_list)
+    app.router.add_route('GET', '/verified_contracts/{address}', handlers.get_verified_contract)
+    app.router.add_route('GET', '/tokens', handlers.get_tokens_list)
+    app.router.add_route('GET', '/tokens/{address}', handlers.get_token)
+    app.router.add_route('GET', '/tokens/{address}/transfers', handlers.get_token_transfers)
 
     app.router.add_static('/apidoc', swagger_ui_path)
 

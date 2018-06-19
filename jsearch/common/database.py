@@ -9,7 +9,7 @@ from datetime import datetime
 import asyncpg
 from asyncpgsa import pg
 import sqlalchemy as sa
-from sqlalchemy.sql import select
+from sqlalchemy.sql import select, update
 from sqlalchemy import and_
 
 from jsearch.common.tables import *
@@ -197,6 +197,7 @@ class MainDB(DBWrapper):
             data = self.process_transaction(contract, tx_data, logs)
             # from pprint import pprint;pprint(data)
             # from pprint import pprint;pprint(logs)
+            data['transaction_index'] = i
             query = transactions_t.insert().values(block_number=block_number,
                                                    block_hash=block_hash, **data)
             await conn.execute(query)
@@ -244,8 +245,13 @@ class MainDB(DBWrapper):
                 if call:
                     tx_data['contract_call_description'] = call
                     transfer_events = [l for l in logs if l['event_type'] == 'Transfer']
-                    if call['function'] in {'transfer', 'transerFrom'} and transfer_events:
+                    if call['function'] in {'transfer', 'transferFrom'} and transfer_events:
                         tx_data['is_token_transfer'] = True
+                        tx_data['token_transfer_to'] = call['args'][-2]
+                        if call['function'] == 'transferFrom':
+                            tx_data['token_transfer_from'] = call['args'][0]
+                        else:
+                            tx_data['token_transfer_from'] = tx_data['from']
                         if contract['token_decimals']:
                             tx_data['token_amount'] = call['args'][-1] / (10 ** contract['token_decimals'])
         return tx_data
@@ -254,6 +260,10 @@ class MainDB(DBWrapper):
         q = select([contracts_t]).where(contracts_t.c.address == address)
         row = await pg.fetchrow(q)
         return row
+
+    async def get_transaction_logs(self, conn, tx_hash):
+        q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
+        return await conn.fetch(q)
 
     async def save_verified_contract(self, address, contract_creation_code, source_code, contract_name, abi, compiler,
                                      optimization_enabled, mhash, constructor_args, is_erc20_token):
@@ -301,6 +311,27 @@ class MainDB(DBWrapper):
                                                  receipts_t.c.contract_address == address)))
         row = await pg.fetchrow(q)
         return row['input']
+
+    async def process_token_transfer(self, tx_hash):
+        logger.info('Processing token transfer for TX %s', tx_hash)
+        q = select([transactions_t]).where(transactions_t.c.hash == tx_hash)
+        async with pg.transaction() as conn:
+            tx = await conn.fetchrow(q)
+            if tx is None:
+                logger.warn('TX with hash %s not found', tx_hash)
+                return
+            contract = await self.get_contract(conn, tx['to'])
+            logs = await self.get_transaction_logs(conn, tx['hash'])
+            logs = self.process_logs(contract, [dict(l) for l in logs])
+            tx_data = dict(tx)
+            data = self.process_transaction(contract, tx_data, logs)
+            query = update(transactions_t).where(transactions_t.c.hash == tx_hash).values(**data)
+            await conn.execute(query)
+            for rec in logs:
+                query = update(logs_t).where(and_(logs_t.c.transaction_hash == tx_hash,
+                                             logs_t.c.log_index == rec['log_index'])).values(**rec)
+                await conn.execute(query)
+
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')

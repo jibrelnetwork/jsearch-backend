@@ -288,3 +288,51 @@ async def verify_contract(request):
     else:
         verification_passed = False
     return web.json_response({'verification_passed': verification_passed})
+
+
+async def get_verified_contracts_list(request):
+    storage = request.app['storage']
+    params = validate_params(request)
+    contracts = await storage.get_verified_contracts(params['limit'], params['offset'], params['order'])
+    return web.json_response([c.to_dict() for c in contracts])
+
+
+async def get_verified_contract(request):
+    storage = request.app['storage']
+    address = request.match_info['address']
+    contract = await storage.get_verified_contract(address)
+    if contract is None:
+        return web.json_response(status=404)
+    return web.json_response(contract.to_dict())
+
+
+async def get_tokens_list(request):
+    storage = request.app['storage']
+    params = validate_params(request)
+    contracts = await storage.get_tokens_list(params['limit'], params['offset'], params['order'])
+    return web.json_response([c.to_dict() for c in contracts])
+
+
+async def get_token(request):
+    storage = request.app['storage']
+    address = request.match_info['address']
+    token = await storage.get_token(address)
+    if token is None:
+        return web.json_response(status=404)
+    return web.json_response(token.to_dict())
+
+
+async def get_token_transfers(request):
+    storage = request.app['storage']
+    params = validate_params(request)
+    contract_address = request.match_info['address']
+    transfers = await storage.get_tokens_transfers(contract_address, params['limit'], params['offset'], params['order'])
+    return web.json_response([t.to_dict() for t in transfers])
+
+
+async def get_account_token_transfers(request):
+    storage = request.app['storage']
+    params = validate_params(request)
+    account_address = request.match_info['address']
+    transfers = await storage.get_account_tokens_transfers(account_address  , params['limit'], params['offset'], params['order'])
+    return web.json_response([t.to_dict() for t in transfers])

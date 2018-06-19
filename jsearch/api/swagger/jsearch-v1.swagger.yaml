@@ -178,6 +178,28 @@ paths:
               $ref: '#/definitions/Uncle'
         400:
           description: bad input parameter
+
+  /accounts/{address}/token_transfers:
+    get:
+      operationId: getAccountTokenTransfers
+      description: |
+        Get tokens transfered to or from this address
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
+      responses:
+        200:
+          description: tokens transfered to or from specific address
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TokenTransfer'
+        400:
+          description: bad input parameter
           
   /blocks:
     get:
@@ -345,7 +367,105 @@ paths:
             $ref: '#/definitions/Uncle'
         400:
           description: bad input parameter
-    
+
+  /verified_contracts:
+    get:
+      operationId: getVerifiedContractsList
+      description: |
+        Get verified contracts list
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
+      responses:
+        200:
+          description: Contract
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Contract'
+        400:
+          description: bad input parameter
+
+  /verified_contracts/{address}:
+    get:
+      operationId: getVerifiedContract
+      description: |
+        Get verified contract data
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      responses:
+        200:
+          description: Contract
+          schema:
+            $ref: '#/definitions/Contract'
+        404:
+          description: Contract not found
+
+  /tokens:
+    get:
+      operationId: getTokensList
+      description: |
+        Get ERC20 tokens list
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
+      responses:
+        200:
+          description: Token
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Token'
+        400:
+          description: bad input parameter
+
+  /tokens/{address}:
+    get:
+      operationId: getToken
+      description: |
+        Get token data
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      responses:
+        200:
+          description: Token
+          schema:
+            $ref: '#/definitions/Token'
+        404:
+          description: Token not found
+
+  /tokens/{address}/token_transfers:
+    get:
+      operationId: getTokenTransfers
+      description: |
+        Get token transfers for specific token
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
+      responses:
+        200:
+          description: token transfers
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TokenTransfer'
+        400:
+          description: bad input parameter
+
   /web3:
     post:
       operationId: web3ApiMethodCall
@@ -710,9 +830,63 @@ definitions:
       address:
         type: string
         format: address
+        
+  Contract:
+    properties:
+      name:
+        type: string      
+      address:
+        type: string
+        format: address
+      byteCode:
+        type: string
+      sourceCode:
+        type: string
+      abi:
+        type: array
+      compilerVersion:
+        type: string
+      optimizationEnabled:
+        type: boolean
+      optimizationRuns:
+        type: integer
+      constructorArgs:
+        type: array
+      verified_at:
+        type: string
+      token:
+        type: string
+  
+  Token:
+    properties:
+      contractAddress:
+        type: string
+        format: address
+      name:
+        type: string
+      symbol:
+        type: string
+      decimals:
+        type: integer
+      totalSupply:
+        type: number
+  
+  TokenTransfer:
+    properties:
+      transaction:
+        type: string
+        format: hex
+      from:
+        type: string
+        format: address
+      to:
+        type: string
+        format: address
+      amount:
+        type: integer
       
 schemes:
  - http
 
 
-basePath: /
+basePath: /brjiza/js1/1.0.0

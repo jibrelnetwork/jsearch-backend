@@ -1,5 +1,7 @@
 import pprint
 import json
+from datetime import datetime
+from decimal import Decimal 
 
 import six
 import typing
@@ -21,7 +23,7 @@ class Model(object):
     def __init__(self, **fields):
         for k, v in fields.items():
             assert k in self.attribute_map, 'Invalid field "{}"'.format(k)
-            assert k in self.swagger_types, 'Invalid field "{}"'.format(k)
+            # assert k in self.swagger_types, 'Invalid field "{}"'.format(k)
             setattr(self, k, v)
 
     @classmethod
@@ -65,6 +67,10 @@ class Model(object):
                     if hasattr(item[1], "to_dict") else item,
                     value.items()
                 ))
+            elif isinstance(value, datetime):
+                result[nattr] = value.isoformat()
+            elif isinstance(value, Decimal):
+                result[nattr] = int(value)
             else:
                 result[nattr] = value
 

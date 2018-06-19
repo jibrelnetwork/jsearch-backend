@@ -3,6 +3,7 @@ import json
 
 from aiohttp import web
 import pytest
+from unittest import mock
 
 
 async def test_get_block_404(cli):
@@ -10,94 +11,95 @@ async def test_get_block_404(cli):
     assert resp.status == 404
 
 
-async def test_get_block_by_number(cli, blocks, transactions):
-    resp = await cli.get('/blocks/125')
+async def test_get_block_by_number(cli, blocks, transactions, main_db_data):
+    resp = await cli.get('/blocks/2')
     assert resp.status == 200
+    b = main_db_data['blocks'][1]
     assert await resp.json() == {
-        'difficulty': 18136429964,
-        'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
-        'gasLimit': 5000,
-        'gasUsed': 0,
-        'hash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-        'logsBloom': '0x01',
-        'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
-        'mixHash': '0x665913f982272782b5190dd6ce57d3e1800c80388b8c725c8414f6556cff65f8',
-        'nonce': '0x697c2379797b4af9',
-        'number': 125,
-        'parentHash': '0x57b6c499b06c497350c9f96e8a46ee0503a3888a8ee297f612d1d9dfb0eb376f',
-        'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-        'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-        'size': None,
-        'stateRoot': '0xfa528c95ea0455a48e9cd513453c907635315a556679f8b73c2fbad9c8a90423',
-        'timestamp': 1438270497,
-        'totalDifficulty': 18136429964,
-        'transactions': ["0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
-                         "0x67762945eeabcd08851c83fc0d0042474f3c32b774abc0f5b435b671d3122cc2"],
-        'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-        'staticReward': 5000000000000000000,
-        'txFees': 52569880000000000,
-        'uncleInclusionReward': 156250000000000000,
+        'difficulty': b['difficulty'],
+        'extraData': b['extra_data'],
+        'gasLimit': b['gas_limit'],
+        'gasUsed': b['gas_used'],
+        'hash': b['hash'],
+        'logsBloom': b['logs_bloom'],
+        'miner': b['miner'],
+        'mixHash': b['mix_hash'],
+        'nonce': b['nonce'],
+        'number': b['number'],
+        'parentHash': b['parent_hash'],
+        'receiptsRoot': b['receipts_root'],
+        'sha3Uncles': b['sha3_uncles'],
+        'size': b['size'],
+        'stateRoot': b['state_root'],
+        'timestamp': b['timestamp'],
+        'totalDifficulty': b['total_difficulty'],
+        'transactions': [main_db_data['transactions'][0]['hash'],
+                         main_db_data['transactions'][1]['hash']],
+        'transactionsRoot': b['transactions_root'],
+        'staticReward': b['static_reward'],
+        'txFees': b['tx_fees'],
+        'uncleInclusionReward': b['uncle_inclusion_reward'],
         'uncles': None}
 
 
-async def test_get_block_by_hash(cli, blocks, transactions):
-    resp = await cli.get('/blocks/0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7')
+async def test_get_block_by_hash(cli, blocks, transactions, main_db_data):
+    resp = await cli.get('/blocks/' + main_db_data['blocks'][0]['hash'])
     assert resp.status == 200
+    b = main_db_data['blocks'][0]
     assert await resp.json() == {
-        'difficulty': 18136429964,
-        'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
-        'gasLimit': 5000,
-        'gasUsed': 0,
-        'hash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-        'logsBloom': '0x01',
-        'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
-        'mixHash': '0x665913f982272782b5190dd6ce57d3e1800c80388b8c725c8414f6556cff65f8',
-        'nonce': '0x697c2379797b4af9',
-        'number': 125,
-        'parentHash': '0x57b6c499b06c497350c9f96e8a46ee0503a3888a8ee297f612d1d9dfb0eb376f',
-        'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-        'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-        'size': None,
-        'stateRoot': '0xfa528c95ea0455a48e9cd513453c907635315a556679f8b73c2fbad9c8a90423',
-        'timestamp': 1438270497,
-        'totalDifficulty': 18136429964,
-        'transactions': ["0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
-                         "0x67762945eeabcd08851c83fc0d0042474f3c32b774abc0f5b435b671d3122cc2"],
-        'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-        'staticReward': 5000000000000000000,
-        'txFees': 52569880000000000,
-        'uncleInclusionReward': 156250000000000000,
+        'difficulty': b['difficulty'],
+        'extraData': b['extra_data'],
+        'gasLimit': b['gas_limit'],
+        'gasUsed': b['gas_used'],
+        'hash': b['hash'],
+        'logsBloom': b['logs_bloom'],
+        'miner': b['miner'],
+        'mixHash': b['mix_hash'],
+        'nonce': b['nonce'],
+        'number': b['number'],
+        'parentHash': b['parent_hash'],
+        'receiptsRoot': b['receipts_root'],
+        'sha3Uncles': b['sha3_uncles'],
+        'size': b['size'],
+        'stateRoot': b['state_root'],
+        'timestamp': b['timestamp'],
+        'totalDifficulty': b['total_difficulty'],
+        'transactions': [],
+        'transactionsRoot': b['transactions_root'],
+        'staticReward': b['static_reward'],
+        'txFees': b['tx_fees'],
+        'uncleInclusionReward': b['uncle_inclusion_reward'],
         'uncles': None}
 
 
-async def test_get_block_latest(cli, blocks, transactions):
+async def test_get_block_latest(cli, blocks, transactions, main_db_data):
     resp = await cli.get('/blocks/latest')
     assert resp.status == 200
+    b = main_db_data['blocks'][-1]
     assert await resp.json() == {
-        'difficulty': 18145285642,
-        'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
-        'gasLimit': 5000,
-        'gasUsed': 0,
-        'hash': '0x6a27d325aa1f3a1639cb72b704cf80f25470139efaaf5d48ea6e318269a28f8a',
-        'logsBloom': '0x01',
-        'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
-        'mixHash': '0xb6f0e4ea1b694de4755f0405c53e136cace8a2b8763235dba7e1d6f736966a64',
-        'nonce': '0xa4dabf1919c3b4ee',
-        'number': 126,
-        'parentHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-        'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-        'sha3Uncles': '0xce79e1ed35eb08ba6262ebba998721bed2c6bf960282c5a5ba796891a19f69b6',
-        'size': None,
-        'stateRoot': '0x18e42e4f80a76649687e71bf099f9bab0de463155fd085fd4ec7117608b8f55c',
-        'timestamp': 1438270500,
-        'totalDifficulty': 18136429964,
-        'transactions': ['0x8accbe5a1836237291a21cd23f5e0dcb86fcd35dde5aa6b5f0e11a9587743093'],
-        'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-        'staticReward': 5000000000000000000,
-        'txFees': 52569880000000000,
-        'uncleInclusionReward': 156250000000000000,
-        'uncles': None
-    }
+        'difficulty': b['difficulty'],
+        'extraData': b['extra_data'],
+        'gasLimit': b['gas_limit'],
+        'gasUsed': b['gas_used'],
+        'hash': b['hash'],
+        'logsBloom': b['logs_bloom'],
+        'miner': b['miner'],
+        'mixHash': b['mix_hash'],
+        'nonce': b['nonce'],
+        'number': b['number'],
+        'parentHash': b['parent_hash'],
+        'receiptsRoot': b['receipts_root'],
+        'sha3Uncles': b['sha3_uncles'],
+        'size': b['size'],
+        'stateRoot': b['state_root'],
+        'timestamp': b['timestamp'],
+        'totalDifficulty': b['total_difficulty'],
+        'transactions': [main_db_data['transactions'][-1]['hash']],
+        'transactionsRoot': b['transactions_root'],
+        'staticReward': b['static_reward'],
+        'txFees': b['tx_fees'],
+        'uncleInclusionReward': b['uncle_inclusion_reward'],
+        'uncles': None}
 
 
 async def test_get_account_404(cli, accounts):
@@ -105,75 +107,76 @@ async def test_get_account_404(cli, accounts):
     assert resp.status == 404
 
 
-async def test_get_account(cli, accounts):
-    resp = await cli.get('/accounts/0xbb7b8287f3f0a933474a79eae42cbca977791171')
+async def test_get_account(cli, accounts, main_db_data):
+    resp = await cli.get('/accounts/' + main_db_data['accounts'][0]['address'])
     assert resp.status == 200
-    assert await resp.json() == {'address': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
-                                 'balance': 420937500000000000000,
-                                 'blockHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-                                 'blockNumber': 125,
-                                 'code': '',
-                                 'codeHash': 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470',
-                                 'nonce': 0}
+    a = main_db_data['accounts'][-1]
+    assert await resp.json() == {'address': a['address'],
+                                 'balance': a['balance'],
+                                 'blockHash': a['block_hash'],
+                                 'blockNumber': a['block_number'],
+                                 'code': a['code'],
+                                 'codeHash': a['code_hash'],
+                                 'nonce': a['nonce']}
 
 
-async def test_get_account_transactions(cli, blocks, transactions, accounts):
-    resp = await cli.get('/accounts/0x0182673de3787e3a77cb1f25fc8b1adedd686465/transactions')
+async def test_get_account_transactions(cli, blocks, transactions, accounts, main_db_data):
+    resp = await cli.get('/accounts/' + main_db_data['accounts'][0]['address'] + '/transactions')
     assert resp.status == 200
-    assert await resp.json() == [{'blockHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-                                  'blockNumber': 125,
-                                  'from': None,
-                                  'gas': '0x61a8',
-                                  'gasPrice': '0xba43b7400',
-                                  'hash': '0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a',
-                                  'input': '0x',
-                                  'nonce': '0x51b',
-                                  'r': '0x5c3723a80187c010b631a9b288128dac10dc10eaa289902e65e2a857b7e32466',
-                                  's': '0x6e8cfc6a77b6e6d36f941baac77083f0a936a75b3df11cf48fbd49cb1323af6e',
-                                  'to': '0x0182673de3787e3a77cb1f25fc8b1adedd686465',
-                                  'transactionIndex': 1,
-                                  'v': '0x1b',
-                                  'value': '0x1068e7e28b45fc80'}]
+    txs = main_db_data['transactions']
+    res =  await resp.json()
+    assert len(res) == 4
+    assert res[0]['hash'] == txs[0]['hash']
+    assert res[1]['hash'] == txs[1]['hash']
+    assert res[2]['hash'] == txs[2]['hash']
+    assert res[3]['hash'] == txs[4]['hash']
+    assert res[0] == {
+        'blockHash': txs[0]['block_hash'],
+        'blockNumber': txs[0]['block_number'],
+        'from': txs[0]['from'],
+        'gas': txs[0]['gas'],
+        'gasPrice': txs[0]['gas_price'],
+        'hash': txs[0]['hash'],
+        'input': txs[0]['input'],
+        'nonce': txs[0]['nonce'],
+        'r': txs[0]['r'],
+        's': txs[0]['s'],
+        'to': txs[0]['to'],
+        'transactionIndex': txs[0]['transaction_index'],
+        'v': txs[0]['v'],
+        'value': txs[0]['value'],
+    }
 
 
-async def test_get_block_transactions(cli, blocks, transactions):
-    resp = await cli.get('/blocks/0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7/transactions')
+async def test_get_block_transactions(cli, blocks, transactions, main_db_data):
+    resp = await cli.get('/blocks/'+ main_db_data['blocks'][1]['hash'] +'/transactions')
     assert resp.status == 200
-    assert await resp.json() == [{'blockHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-                                  'blockNumber': 125,
-                                  'from': None,
-                                  'gas': '0x61a8',
-                                  'gasPrice': '0xba43b7400',
-                                  'hash': '0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a',
-                                  'input': '0x',
-                                  'nonce': '0x51b',
-                                  'r': '0x5c3723a80187c010b631a9b288128dac10dc10eaa289902e65e2a857b7e32466',
-                                  's': '0x6e8cfc6a77b6e6d36f941baac77083f0a936a75b3df11cf48fbd49cb1323af6e',
-                                  'to': '0x0182673de3787e3a77cb1f25fc8b1adedd686465',
-                                  'transactionIndex': 1,
-                                  'v': '0x1b',
-                                  'value': '0x1068e7e28b45fc80'},
-                                 {'blockHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-                                  'blockNumber': 125,
-                                  'from': None,
-                                  'gas': '0x61a8',
-                                  'gasPrice': '0xba43b7400',
-                                  'hash': '0x67762945eeabcd08851c83fc0d0042474f3c32b774abc0f5b435b671d3122cc2',
-                                  'input': '0x',
-                                  'nonce': '0x51c',
-                                  'r': '0x86975c372e809025d84a16b00f9abaf2433f4ed90f03013261083bec87e2035f',
-                                  's': '0x21b1ef431012daea27e3d04164e922d47a29a621350c50e825d245139d08f970',
-                                  'to': '0x22bbea521a19c065b6c83a6398e6e21c6f981406',
-                                  'transactionIndex': 2,
-                                  'v': '0x1b',
-                                  'value': '0xec23d4719579180'}]
+    res =  await resp.json()
+    txs = main_db_data['transactions']
+    assert len(res) == 2
+    assert res[0] == {
+        'blockHash': txs[0]['block_hash'],
+        'blockNumber': txs[0]['block_number'],
+        'from': txs[0]['from'],
+        'gas': txs[0]['gas'],
+        'gasPrice': txs[0]['gas_price'],
+        'hash': txs[0]['hash'],
+        'input': txs[0]['input'],
+        'nonce': txs[0]['nonce'],
+        'r': txs[0]['r'],
+        's': txs[0]['s'],
+        'to': txs[0]['to'],
+        'transactionIndex': txs[0]['transaction_index'],
+        'v': txs[0]['v'],
+        'value': txs[0]['value'],
+    }
 
 
-async def test_get_block_uncles(cli, blocks, uncles):
-    resp = await cli.get('/blocks/0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7/uncles')
+async def test_get_block_uncles(cli, blocks, uncles, main_db_data):
+    resp = await cli.get('/blocks/' + main_db_data['blocks'][1]['hash'] + '/uncles')
     assert resp.status == 200
     assert await resp.json() == [{'difficulty': 17578564779,
-                                  'blockNumber': 125,
+                                  'blockNumber': 2,
                                   'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',
                                   'gasLimit': 5000,
                                   'gasUsed': 0,
@@ -194,164 +197,76 @@ async def test_get_block_uncles(cli, blocks, uncles):
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}]
 
 
-async def test_get_transaction(cli, blocks, transactions):
-    resp = await cli.get('/transactions/0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a')
-    assert resp.status == 200
-    assert await resp.json() == {'blockHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-                                 'blockNumber': 125,
-                                 'from': None,
-                                 'gas': '0x61a8',
-                                 'gasPrice': '0xba43b7400',
-                                 'hash': '0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a',
-                                 'input': '0x',
-                                 'nonce': '0x51b',
-                                 'r': '0x5c3723a80187c010b631a9b288128dac10dc10eaa289902e65e2a857b7e32466',
-                                 's': '0x6e8cfc6a77b6e6d36f941baac77083f0a936a75b3df11cf48fbd49cb1323af6e',
-                                 'to': '0x0182673de3787e3a77cb1f25fc8b1adedd686465',
-                                 'transactionIndex': 1,
-                                 'v': '0x1b',
-                                 'value': '0x1068e7e28b45fc80'}
-
-
-async def test_get_receipt(cli, blocks, transactions, receipts, logs):
-    resp = await cli.get('/receipts/0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a')
+async def test_get_transaction(cli, blocks, transactions, main_db_data):
+    tx = main_db_data['transactions'][0]
+    resp = await cli.get('/transactions/' + tx['hash'])
     assert resp.status == 200
     assert await resp.json() == {
-        'blockHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-        'blockNumber': 125,
-        'contractAddress': '0x0000000000000000000000000000000000000000',
-        'cumulativeGasUsed': 231000,
-        'from': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
-        'gasUsed': 21000,
-        'logs': [{'address': '0x2b237f94b3e8afb3d1d66c8f5e98d78c9c060f9c',
-                  'blockHash': '0x70c3dd4bcf59829be6d4a8b97ce8ac821660bc7006c76d107ffffd50372b9832',
-                  'blockNumber': 1498834,
-                  'data': '0x0000000000000000000000008bc16dae51dfcf0aba8eebb63a2d01cc249f79310000000000000000000000000000000000000000000000004563918244f40000000000000000000000000000bb9bc244d798123fde783fcc1c72d3bb8c18941300000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000',
-                  'logIndex': 0,
-                  'removed': False,
-                  'topics': ['0x92ca3a80853e6663fa31fa10b99225f18d4902939b4c53a9caae9043f6efd004'],
-                  'transactionHash': '0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a',
-                  'transactionIndex': 2},
-                 {'address': '0xbb9bc244d798123fde783fcc1c72d3bb8c189413',
-                  'blockHash': '0x70c3dd4bcf59829be6d4a8b97ce8ac821660bc7006c76d107ffffd50372b9832',
-                  'blockNumber': 1498834,
-                  'data': '0x0000000000000000000000000000000000000000000000004563918244f40000',
-                  'logIndex': 1,
-                  'removed': False,
-                  'topics': ['0xdbccb92686efceafb9bb7e0394df7f58f71b954061b81afb57109bf247d3d75a',
-                             '0x0000000000000000000000002b237f94b3e8afb3d1d66c8f5e98d78c9c060f9c'],
-                  'transactionHash': '0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a',
-                  'transactionIndex': 2}],
-        'logsBloom': '0x',
-        'root': '0x2acfe9e09e5278ca573b2cba963f624d003b1dbfd318343994aa91de1bd84936',
-        'status': 1,
-        'to': '0xbb7b8287f3f0a933474a79eae42cbca977791172',
-        'transactionHash': '0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a',
-        'transactionIndex': 1
+        'blockHash': tx['block_hash'],
+        'blockNumber': tx['block_number'],
+        'from': tx['from'],
+        'gas': tx['gas'],
+        'gasPrice': tx['gas_price'],
+        'hash': tx['hash'],
+        'input': tx['input'],
+        'nonce': tx['nonce'],
+        'r': tx['r'],
+        's': tx['s'],
+        'to': tx['to'],
+        'transactionIndex': tx['transaction_index'],
+        'v': tx['v'],
+        'value': tx['value'],
     }
 
 
-async def test_get_blocks_def(cli, blocks):
+async def test_get_receipt(cli, blocks, transactions, receipts, logs, main_db_data):
+    r = main_db_data['receipts'][0]
+    resp = await cli.get('/receipts/' + r['transaction_hash'])
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == {
+        'blockHash': r['block_hash'],
+        'blockNumber': r['block_number'],
+        'contractAddress': r['contract_address'],
+        'cumulativeGasUsed': r['cumulative_gas_used'],
+        'from': r['from'],
+        'gasUsed': r['gas_used'],
+        'logs': [
+            {'address': main_db_data['logs'][0]['address'],
+             'blockHash': main_db_data['logs'][0]['block_hash'],
+             'blockNumber': main_db_data['logs'][0]['block_number'],
+             'data': main_db_data['logs'][0]['data'],
+             'logIndex': main_db_data['logs'][0]['log_index'],
+             'removed': main_db_data['logs'][0]['removed'],
+             'topics': main_db_data['logs'][0]['topics'],
+             'transactionHash': main_db_data['logs'][0]['transaction_hash'],
+             'transactionIndex': main_db_data['logs'][0]['transaction_index'],
+            }],
+        'logsBloom': r['logs_bloom'],
+        'root': r['root'],
+        'status': r['status'],
+        'to': r['to'],
+        'transactionHash': r['transaction_hash'],
+        'transactionIndex': r['transaction_index'],
+    }
+
+
+async def test_get_blocks_def(cli, blocks, main_db_data):
+    b = main_db_data['blocks']
     resp = await cli.get('/blocks')
     assert resp.status == 200
-    assert await resp.json() == [{'difficulty': 18145285642,
-                                  'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
-                                  'gasLimit': 5000,
-                                  'gasUsed': 0,
-                                  'hash': '0x6a27d325aa1f3a1639cb72b704cf80f25470139efaaf5d48ea6e318269a28f8a',
-                                  'logsBloom': '0x01',
-                                  'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
-                                  'mixHash': '0xb6f0e4ea1b694de4755f0405c53e136cace8a2b8763235dba7e1d6f736966a64',
-                                  'nonce': '0xa4dabf1919c3b4ee',
-                                  'number': 126,
-                                  'parentHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-                                  'sha3Uncles': '0xce79e1ed35eb08ba6262ebba998721bed2c6bf960282c5a5ba796891a19f69b6',
-                                  'size': None,
-                                  'stateRoot': '0x18e42e4f80a76649687e71bf099f9bab0de463155fd085fd4ec7117608b8f55c',
-                                  'timestamp': 1438270500,
-                                  'totalDifficulty': 18136429964,
-                                  'transactions': None,
-                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-                                  'staticReward': 5000000000000000000,
-                                  'txFees': 52569880000000000,
-                                  'uncleInclusionReward': 156250000000000000,
-                                  'uncles': None},
-                                 {'difficulty': 18136429964,
-                                  'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
-                                  'gasLimit': 5000,
-                                  'gasUsed': 0,
-                                  'hash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-                                  'logsBloom': '0x01',
-                                  'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
-                                  'mixHash': '0x665913f982272782b5190dd6ce57d3e1800c80388b8c725c8414f6556cff65f8',
-                                  'nonce': '0x697c2379797b4af9',
-                                  'number': 125,
-                                  'parentHash': '0x57b6c499b06c497350c9f96e8a46ee0503a3888a8ee297f612d1d9dfb0eb376f',
-                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-                                  'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-                                  'size': None,
-                                  'stateRoot': '0xfa528c95ea0455a48e9cd513453c907635315a556679f8b73c2fbad9c8a90423',
-                                  'timestamp': 1438270497,
-                                  'totalDifficulty': 18136429964,
-                                  'transactions': None,
-                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-                                  'staticReward': 5000000000000000000,
-                                  'txFees': 52569880000000000,
-                                  'uncleInclusionReward': 156250000000000000,
-                                  'uncles': None}]
+    res = await resp.json()
+    assert res[0]['hash'] == b[-1]['hash']
+    assert res[1]['hash'] == b[-2]['hash']
 
 
-async def test_get_blocks_ask(cli, blocks):
+async def test_get_blocks_ask(cli, blocks, main_db_data):
     resp = await cli.get('/blocks?order=asc')
+    b = main_db_data['blocks']
     assert resp.status == 200
-    assert await resp.json() == [{'difficulty': 18136429964,
-                                  'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
-                                  'gasLimit': 5000,
-                                  'gasUsed': 0,
-                                  'hash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-                                  'logsBloom': '0x01',
-                                  'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
-                                  'mixHash': '0x665913f982272782b5190dd6ce57d3e1800c80388b8c725c8414f6556cff65f8',
-                                  'nonce': '0x697c2379797b4af9',
-                                  'number': 125,
-                                  'parentHash': '0x57b6c499b06c497350c9f96e8a46ee0503a3888a8ee297f612d1d9dfb0eb376f',
-                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-                                  'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-                                  'size': None,
-                                  'stateRoot': '0xfa528c95ea0455a48e9cd513453c907635315a556679f8b73c2fbad9c8a90423',
-                                  'timestamp': 1438270497,
-                                  'totalDifficulty': 18136429964,
-                                  'transactions': None,
-                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-                                  'staticReward': 5000000000000000000,
-                                  'txFees': 52569880000000000,
-                                  'uncleInclusionReward': 156250000000000000,
-                                  'uncles': None},
-                                 {'difficulty': 18145285642,
-                                  'extraData': '0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32',
-                                  'gasLimit': 5000,
-                                  'gasUsed': 0,
-                                  'hash': '0x6a27d325aa1f3a1639cb72b704cf80f25470139efaaf5d48ea6e318269a28f8a',
-                                  'logsBloom': '0x01',
-                                  'miner': '0xbb7b8287f3f0a933474a79eae42cbca977791171',
-                                  'mixHash': '0xb6f0e4ea1b694de4755f0405c53e136cace8a2b8763235dba7e1d6f736966a64',
-                                  'nonce': '0xa4dabf1919c3b4ee',
-                                  'number': 126,
-                                  'parentHash': '0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7',
-                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-                                  'sha3Uncles': '0xce79e1ed35eb08ba6262ebba998721bed2c6bf960282c5a5ba796891a19f69b6',
-                                  'size': None,
-                                  'stateRoot': '0x18e42e4f80a76649687e71bf099f9bab0de463155fd085fd4ec7117608b8f55c',
-                                  'timestamp': 1438270500,
-                                  'totalDifficulty': 18136429964,
-                                  'transactions': None,
-                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-                                  'staticReward': 5000000000000000000,
-                                  'txFees': 52569880000000000,
-                                  'uncleInclusionReward': 156250000000000000,
-                                  'uncles': None},
-                                 ]
+    res = await resp.json()
+    assert res[0]['hash'] == b[0]['hash']
+    assert res[1]['hash'] == b[1]['hash']
 
 
 async def test_get_blocks_limit_offset(cli, blocks):
@@ -359,20 +274,20 @@ async def test_get_blocks_limit_offset(cli, blocks):
     assert resp.status == 200
     result = await resp.json()
     assert len(result) == 1
-    assert result[0]['number'] == 126
+    assert result[0]['number'] == 5
 
     resp = await cli.get('/blocks?limit=1&offset=1')
     assert resp.status == 200
     result = await resp.json()
     assert len(result) == 1
-    assert result[0]['number'] == 125
+    assert result[0]['number'] == 4 
 
 
-async def test_get_uncles(cli, blocks, uncles):
+async def test_get_uncles(cli, blocks, uncles, main_db_data):
     resp = await cli.get('/uncles')
     assert resp.status == 200
     assert await resp.json() == [
-        {'blockNumber': 126,
+        {'blockNumber': main_db_data['blocks'][2]['number'],
          'difficulty': 18180751616,
          'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
          'gasLimit': 5000,
@@ -392,7 +307,7 @@ async def test_get_uncles(cli, blocks, uncles):
          'totalDifficulty': None,
          'reward': 3750000000000000000,
          'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'},
-        {'blockNumber': 125,
+        {'blockNumber': main_db_data['blocks'][1]['number'],
          'difficulty': 17578564779,
          'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',
          'gasLimit': 5000,
@@ -438,11 +353,11 @@ async def test_get_uncle_404(cli, uncles):
     assert resp.status == 404
 
 
-async def test_get_uncle_by_hash(cli, blocks, uncles):
+async def test_get_uncle_by_hash(cli, blocks, uncles, main_db_data):
     resp = await cli.get('/uncles/0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff')
     assert resp.status == 200
     assert await resp.json() == {
-        'blockNumber': 126,
+        'blockNumber': main_db_data['blocks'][2]['number'],
         'difficulty': 18180751616,
         'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
         'gasLimit': 5000,
@@ -465,11 +380,11 @@ async def test_get_uncle_by_hash(cli, blocks, uncles):
     }
 
 
-async def test_get_uncle_by_number(cli, blocks, uncles):
+async def test_get_uncle_by_number(cli, blocks, uncles, main_db_data):
     resp = await cli.get('/uncles/62')
     assert resp.status == 200
     assert await resp.json() == {
-        'blockNumber': 126,
+        'blockNumber': main_db_data['blocks'][2]['number'],
         'difficulty': 18180751616,
         'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
         'gasLimit': 5000,
@@ -492,9 +407,9 @@ async def test_get_uncle_by_number(cli, blocks, uncles):
     }
 
 
-async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts):
+async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts, main_db_data):
     contract_data = {
-        'address': '0xbb7b8287f3f0a933474a79eae42cbcaaaaaaaaaa',
+        'address': main_db_data['accounts'][2]['address'],
         'contract_name': 'FucksToken',
         'compiler': 'v0.4.18+commit.9cf6e910',
         'optimization_enabled': True,
@@ -521,9 +436,119 @@ async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts
     assert c['source_code'] == contract_data['source_code']
     abi = json.load(open(os.path.join(os.path.dirname(__file__), 'FucksToken.abi'), 'rb'))
     assert c['abi'] == abi
-    assert c['metadata_hash'] == 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa55d'
+    assert c['metadata_hash'] == '4c3e25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f55155'
     assert c['grabbed_at'] is None
     assert c['verified_at'] is not None
     assert c['is_erc20_token'] is True
 
 
+async def test_get_verified_contracts_list_ok(cli, contracts):
+    resp = await cli.get('/verified_contracts')
+    assert resp.status == 200
+    res = await resp.json()
+    assert len(res) == 1
+    assert res == [{
+        'name': contracts[0]['name'],
+        'address': contracts[0]['address'],
+        'byteCode': contracts[0]['byte_code'],
+        'sourceCode': contracts[0]['source_code'],
+        'abi': contracts[0]['abi'],
+        'compilerVersion': contracts[0]['compiler_version'],
+        'optimizationEnabled': contracts[0]['optimization_enabled'],
+        'optimizationRuns': contracts[0]['optimization_runs'],
+        'constructorArgs': contracts[0]['constructor_args'],
+        'verified_at': contracts[0]['verified_at'],
+    }]
+
+
+async def test_get_verified_contract_ok(cli, contracts, main_db_data):
+    resp = await cli.get('/verified_contracts/' + main_db_data['accounts'][2]['address'])
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == {
+        'name': contracts[0]['name'],
+        'address': contracts[0]['address'],
+        'byteCode': contracts[0]['byte_code'],
+        'sourceCode': contracts[0]['source_code'],
+        'abi': contracts[0]['abi'],
+        'compilerVersion': contracts[0]['compiler_version'],
+        'optimizationEnabled': contracts[0]['optimization_enabled'],
+        'optimizationRuns': contracts[0]['optimization_runs'],
+        'constructorArgs': contracts[0]['constructor_args'],
+        'verified_at': contracts[0]['verified_at'],
+    }
+
+
+async def test_get_tokens_list_ok(cli, contracts):
+    resp = await cli.get('/tokens')
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == [{
+        'name': contracts[0]['token_name'],
+        'contractAddress': contracts[0]['address'],
+        'decimals': contracts[0]['token_decimals'],
+        'totalSupply': contracts[0]['token_total_supply'],
+        'symbol': contracts[0]['token_symbol'],
+    }]
+
+
+async def test_get_token_ok(cli, contracts, main_db_data):
+    resp = await cli.get('/tokens/' + main_db_data['accounts'][2]['address'])
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == {
+        'name': contracts[0]['token_name'],
+        'contractAddress': contracts[0]['address'],
+        'decimals': contracts[0]['token_decimals'],
+        'totalSupply': contracts[0]['token_total_supply'],
+        'symbol': contracts[0]['token_symbol'],
+    }
+
+
+async def test_get_token_transfers_ok(cli, transactions, contracts, main_db_data):
+    resp = await cli.get('/tokens/'+ main_db_data['accounts'][2]['address'] +'/transfers')
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == [{
+        'blockHash': main_db_data['blocks'][2]['hash'],
+        'transaction': main_db_data['transactions'][2]['hash'],
+        'from': main_db_data['accounts'][0]['address'],
+        'to': main_db_data['accounts'][1]['address'],
+        'amount': 10},
+        {'blockHash': main_db_data['blocks'][4]['hash'],
+        'transaction': main_db_data['transactions'][4]['hash'],
+        'from': main_db_data['accounts'][1]['address'],
+        'to': main_db_data['accounts'][0]['address'],
+        'amount': 4}]
+
+async def test_get_account_token_transfers_ok_one(cli, transactions, contracts, main_db_data):
+    resp = await cli.get('/accounts/'+ main_db_data['accounts'][0]['address'] +'/token_transfers')
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == [{
+                    'blockHash': main_db_data['blocks'][2]['hash'],
+                    'transaction': main_db_data['transactions'][2]['hash'],
+                    'from': main_db_data['accounts'][0]['address'],
+                    'to': main_db_data['accounts'][1]['address'],
+                    'amount': 10},
+                    {'blockHash': main_db_data['blocks'][4]['hash'],
+                    'transaction': main_db_data['transactions'][4]['hash'],
+                    'from': main_db_data['accounts'][1]['address'],
+                    'to': main_db_data['accounts'][0]['address'],
+                    'amount': 4}]
+
+async def test_get_account_token_transfers_ok_two(cli, transactions, contracts, main_db_data):
+    resp = await cli.get('/accounts/'+ main_db_data['accounts'][3]['address'] +'/token_transfers')
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == [{
+        'blockHash': main_db_data['blocks'][2]['hash'],
+        'transaction': main_db_data['transactions'][2]['hash'],
+        'from': main_db_data['accounts'][0]['address'],
+        'to': main_db_data['accounts'][1]['address'],
+        'amount': 10},
+        {'blockHash': main_db_data['blocks'][4]['hash'],
+        'transaction': main_db_data['transactions'][4]['hash'],
+        'from': main_db_data['accounts'][1]['address'],
+        'to': main_db_data['accounts'][0]['address'],
+        'amount': 4}]

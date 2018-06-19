@@ -1,35 +1,41 @@
 import os
 import asyncio
+from datetime import datetime
+import json
 
 import pytest
+import py.path
 from asyncpgsa import PG
 from sqlalchemy import create_engine
 
 from jsearch.common.testutils import setup_database, teardown_database
 from jsearch.common import tables as t
+from jsearch.common.contracts import ERC20_ABI
 
 from jsearch.api.app import make_app
 
 
-# @pytest.yield_fixture(scope='session', autouse=True)
-# def event_loop(request):
-#     """Create an instance of the default event loop for each test case."""
-#     loop = asyncio.get_event_loop_policy().new_event_loop()
-#     yield loop
-#     loop.close()
+@pytest.fixture
+def here():
+    return py.path.local(os.path.dirname(__file__))
+
+
+@pytest.fixture
+def main_db_data(here):
+    return json.loads(here.join('maindb_fixture.json').read())
 
 
 @pytest.fixture
 def loop(event_loop):
-    """Ensure usable event loop for everyone.
+    '''Ensure usable event loop for everyone.
 
     If you comment this fixture out, default pytest-aiohttp one is used
     and things start failing (when redis pool is in place).
-    """
+    '''
     return event_loop
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope='session', autouse=True)
 def setup_database_fixture(request, pytestconfig):
     setup_database()
     request.addfinalizer(teardown_database)
@@ -42,7 +48,7 @@ async def cli(event_loop, aiohttp_client):
     return await aiohttp_client(app)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def db():
     engine = create_engine(os.environ['JSEARCH_MAIN_DB_TEST'])
     conn = engine.connect()
@@ -51,187 +57,52 @@ def db():
 
 
 @pytest.fixture
-def blocks(db):
-    blocks = [{"difficulty": 18136429964,
-               "extra_data": "0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32",
-               "gas_limit": 5000,
-               "gas_used": 0,
-               "hash": "0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7",
-               "logs_bloom": "0x01",
-               "miner": "0xbb7b8287f3f0a933474a79eae42cbca977791171",
-               "mix_hash": "0x665913f982272782b5190dd6ce57d3e1800c80388b8c725c8414f6556cff65f8",
-               "nonce": "0x697c2379797b4af9",
-               "number": 125,
-               "parent_hash": "0x57b6c499b06c497350c9f96e8a46ee0503a3888a8ee297f612d1d9dfb0eb376f",
-               "receipts_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
-               "sha3_uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
-               # "size": None,
-               "state_root": "0xfa528c95ea0455a48e9cd513453c907635315a556679f8b73c2fbad9c8a90423",
-               "timestamp": 1438270497,
-               "total_difficulty": 18136429964,
-               "transactions_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
-               "is_sequence_sync": True,
-               'static_reward': 5000000000000000000,
-               'uncle_inclusion_reward': 156250000000000000,
-               'tx_fees': 52569880000000000},
-              {"difficulty": 18145285642,
-               "extra_data": "0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32",
-               "gas_limit": 5000,
-               "gas_used": 0,
-               "hash": "0x6a27d325aa1f3a1639cb72b704cf80f25470139efaaf5d48ea6e318269a28f8a",
-               "logs_bloom": "0x01",
-               "miner": "0xbb7b8287f3f0a933474a79eae42cbca977791171",
-               "mix_hash": "0xb6f0e4ea1b694de4755f0405c53e136cace8a2b8763235dba7e1d6f736966a64",
-               "nonce": "0xa4dabf1919c3b4ee",
-               "number": 126,
-               "parent_hash": "0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7",
-               "receipts_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
-               "sha3_uncles": "0xce79e1ed35eb08ba6262ebba998721bed2c6bf960282c5a5ba796891a19f69b6",
-               # "size": None,
-               "state_root": "0x18e42e4f80a76649687e71bf099f9bab0de463155fd085fd4ec7117608b8f55c",
-               "timestamp": 1438270500,
-               "total_difficulty": 18136429964,
-               "transactions_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
-               "is_sequence_sync": True,
-               'static_reward': 5000000000000000000,
-               'uncle_inclusion_reward': 156250000000000000,
-               'tx_fees': 52569880000000000}]
+def blocks(db, main_db_data):
+    blocks = main_db_data['blocks']
+    # import pprint; pprint.pprint(blocks)
     for b in blocks:
+        b['size'] = b['size'] or 0
+        b['total_difficulty'] = b['total_difficulty'] or 0
         query = t.blocks_t.insert().values(**b)
         res = db.execute(query)
     yield blocks
-    db.execute("DELETE FROM blocks")
+    db.execute('DELETE FROM blocks')
 
 
 @pytest.fixture
-def transactions(db, blocks):
-    txs = [
-        {
-            "block_hash": blocks[0]['hash'],
-            "block_number": blocks[0]['number'],
-            "from": None,
-            "gas": "0x61a8",
-            "gas_price": "0xba43b7400",
-            "hash": "0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
-            "input": "0x",
-            "nonce": "0x51b",
-            "r": "0x5c3723a80187c010b631a9b288128dac10dc10eaa289902e65e2a857b7e32466",
-            "s": "0x6e8cfc6a77b6e6d36f941baac77083f0a936a75b3df11cf48fbd49cb1323af6e",
-            "to": "0x0182673de3787e3a77cb1f25fc8b1adedd686465",
-            "transaction_index": 1,
-            "v": "0x1b",
-            "value": "0x1068e7e28b45fc80"
-        },
-        {
-            "block_hash": blocks[0]['hash'],
-            "block_number": blocks[0]['number'],
-            "from": None,
-            "gas": "0x61a8",
-            "gas_price": "0xba43b7400",
-            "hash": "0x67762945eeabcd08851c83fc0d0042474f3c32b774abc0f5b435b671d3122cc2",
-            "input": "0x",
-            "nonce": "0x51c",
-            "r": "0x86975c372e809025d84a16b00f9abaf2433f4ed90f03013261083bec87e2035f",
-            "s": "0x21b1ef431012daea27e3d04164e922d47a29a621350c50e825d245139d08f970",
-            "to": "0x22bbea521a19c065b6c83a6398e6e21c6f981406",
-            "transaction_index": 2,
-            "v": "0x1b",
-            "value": "0xec23d4719579180"
-        },
-        {
-            "block_hash": blocks[1]['hash'],
-            "block_number": blocks[1]['number'],
-            "from": None,
-            "gas": "0x61a8",
-            "gas_price": "0xba43b7400",
-            "hash": "0x8accbe5a1836237291a21cd23f5e0dcb86fcd35dde5aa6b5f0e11a9587743093",
-            "input": open(os.path.join(os.path.dirname(__file__), 'FucksToken.bin'), 'r').read(),
-            "nonce": "0x51d",
-            "r": "0x60cb761b2c786feeda43c22db251148c54ccc587a0aa47166f99d411c29290b8",
-            "s": "0x5f10a7d9473e1f19d5ebbec86007f825db60896de80b536f340a7d51f6ec8aa4",
-            "to": "0x51033f1a1a59cb6a1bf6ca2087a53bd202ac1c83",
-            "transaction_index": 1,
-            "v": "0x1c",
-            "value": "0x1425e9ad089d6600"
-        }
-    ]
+def transactions(db, blocks, here, main_db_data):
+    txs = main_db_data['transactions']
     for tx in txs:
+        tx["is_token_transfer"] == bool(tx["is_token_transfer"])
+
         query = t.transactions_t.insert().values(**tx)
         db.execute(query)
     yield txs
-    db.execute("DELETE FROM transactions")
+    db.execute('DELETE FROM transactions')
 
 
 @pytest.fixture
-def receipts(db, blocks):
-    receipts = [
-        {
-          "block_hash": "0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7",
-          "block_number": 125,
-          "contract_address": "0x0000000000000000000000000000000000000000",
-          "cumulative_gas_used": 231000,
-          "from": '0xbb7b8287f3f0a933474a79eae42cbca977791171',
-          "gas_used": 21000,
-          "logs_bloom": "0x",
-          "root": "0x2acfe9e09e5278ca573b2cba963f624d003b1dbfd318343994aa91de1bd84936",
-          "to": '0xbb7b8287f3f0a933474a79eae42cbca977791172',
-          "transaction_hash": "0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
-          "transaction_index": 1,
-          "status": 1
-        },
-        {
-          "block_hash": "0x6a27d325aa1f3a1639cb72b704cf80f25470139efaaf5d48ea6e318269a28f8a",
-          "block_number": 126,
-          "contract_address": "0xbb7b8287f3f0a933474a79eae42cbcaaaaaaaaaa",
-          "cumulative_gas_used": 273000,
-          "from": '0xbb7b8287f3f0a933474a79eae42cbca977791171',
-          "gas_used": 21000,
-          "logs_bloom": "0x0",
-          "root": "0xd0ce3248c7752b7f77b8aece6fe954ff47a5f1a0ae09c9036d1e614afd66ba6f",
-          "to": '0xbb7b8287f3f0a933474a79eae42cbca977791172',
-          "transaction_hash": "0x8accbe5a1836237291a21cd23f5e0dcb86fcd35dde5aa6b5f0e11a9587743093",
-          "transaction_index": 1,
-          "status": 1
-        }
-    ]
+def receipts(db, blocks, main_db_data):
+    receipts = main_db_data['receipts']
     for r in receipts:
         query = t.receipts_t.insert().values(**r)
         db.execute(query)
     yield receipts
-    db.execute("DELETE FROM receipts")
+    db.execute('DELETE FROM receipts')
 
 
 @pytest.fixture
-def accounts(db, blocks):
-    accounts = [
-        {"block_number": blocks[0]['number'],
-         "block_hash": blocks[0]['hash'],
-         "address":"0xbb7b8287f3f0a933474a79eae42cbca977791171",
-         "nonce":0,
-         "code":"",
-                "code_hash":"c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
-                "root":"56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
-                "storage":{},
-                "balance": 420937500000000000000},
-        {"block_number": blocks[1]['number'],
-         "block_hash": blocks[1]['hash'],
-         "address":"0xbb7b8287f3f0a933474a79eae42cbcaaaaaaaaaa",
-         "nonce":0,
-         "code":"6060604052341561000f57600080fd5b60008054600160a060020a03191633600160a060020a031617905560408051908101604052600681527f304655434b53000000000000000000000000000000000000000000000000000060208201526002908051610071929160200190610155565b5060408051908101604052600d81527f30204675636b7320546f6b656e00000000000000000000000000000000000000602082015260039080516100b9929160200190610155565b506004805460ff191660121790556a52b7d2dcc80cd2e40000006005819055735a86f0cafd4ef3ba4f0344c138afcc84bd1ed222600081815260066020527fb14e299dcc1f9cde500bfab8e0628574a7ec444d26f2ee1e7383e9fbc033982383905590917fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef9060405190815260200160405180910390a36101f0565b828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f1061019657805160ff19168380011785556101c3565b828001600101855582156101c3579182015b828111156101c35782518255916020019190600101906101a8565b506101cf9291506101d3565b5090565b6101ed91905b808211156101cf57600081556001016101d9565b90565b610b68806101ff6000396000f3006060604052600436106100f85763ffffffff60e060020a60003504166306fdde0381146100fd578063095ea7b31461018757806318160ddd146101bd57806323b872dd146101e2578063313ce5671461020a5780633eaaf86b1461023357806370a082311461024657806379ba5097146102655780638da5cb5b1461027a57806395d89b41146102a9578063a293d1e8146102bc578063a9059cbb146102d5578063b5931f7c146102f7578063cae9ca5114610310578063d05c78da14610375578063d4ee1d901461038e578063dc39d06d146103a1578063dd62ed3e146103c3578063e6cb9013146103e8578063f2fde38b14610401575b600080fd5b341561010857600080fd5b610110610420565b60405160208082528190810183818151815260200191508051906020019080838360005b8381101561014c578082015183820152602001610134565b50505050905090810190601f1680156101795780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b341561019257600080fd5b6101a9600160a060020a03600435166024356104be565b604051901515815260200160405180910390f35b34156101c857600080fd5b6101d061052b565b60405190815260200160405180910390f35b34156101ed57600080fd5b6101a9600160a060020a036004358116906024351660443561055d565b341561021557600080fd5b61021d61065e565b60405160ff909116815260200160405180910390f35b341561023e57600080fd5b6101d0610667565b341561025157600080fd5b6101d0600160a060020a036004351661066d565b341561027057600080fd5b610278610688565b005b341561028557600080fd5b61028d610716565b604051600160a060020a03909116815260200160405180910390f35b34156102b457600080fd5b610110610725565b34156102c757600080fd5b6101d0600435602435610790565b34156102e057600080fd5b6101a9600160a060020a03600435166024356107a5565b341561030257600080fd5b6101d0600435602435610858565b341561031b57600080fd5b6101a960048035600160a060020a03169060248035919060649060443590810190830135806020601f8201819004810201604051908101604052818152929190602084018383808284375094965061087995505050505050565b341561038057600080fd5b6101d06004356024356109e0565b341561039957600080fd5b61028d610a05565b34156103ac57600080fd5b6101a9600160a060020a0360043516602435610a14565b34156103ce57600080fd5b6101d0600160a060020a0360043581169060243516610ab7565b34156103f357600080fd5b6101d0600435602435610ae2565b341561040c57600080fd5b610278600160a060020a0360043516610af2565b60038054600181600116156101000203166002900480601f0160208091040260200160405190810160405280929190818152602001828054600181600116156101000203166002900480156104b65780601f1061048b576101008083540402835291602001916104b6565b820191906000526020600020905b81548152906001019060200180831161049957829003601f168201915b505050505081565b600160a060020a03338116600081815260076020908152604080832094871680845294909152808220859055909291907f8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b9259085905190815260200160405180910390a35060015b92915050565b6000805260066020527f54cdd369e4e8a8515e52ca72ec816c2101831ad1f18bf44102ed171459c9b4f8546005540390565b600160a060020a0383166000908152600660205260408120546105809083610790565b600160a060020a03808616600090815260066020908152604080832094909455600781528382203390931682529190915220546105bd9083610790565b600160a060020a03808616600090815260076020908152604080832033851684528252808320949094559186168152600690915220546105fd9083610ae2565b600160a060020a03808516600081815260066020526040908190209390935591908616907fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef9085905190815260200160405180910390a35060019392505050565b60045460ff1681565b60055481565b600160a060020a031660009081526006602052604090205490565b60015433600160a060020a039081169116146106a357600080fd5b600154600054600160a060020a0391821691167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e060405160405180910390a3600180546000805473ffffffffffffffffffffffffffffffffffffffff19908116600160a060020a03841617909155169055565b600054600160a060020a031681565b60028054600181600116156101000203166002900480601f0160208091040260200160405190810160405280929190818152602001828054600181600116156101000203166002900480156104b65780601f1061048b576101008083540402835291602001916104b6565b60008282111561079f57600080fd5b50900390565b600160a060020a0333166000908152600660205260408120546107c89083610790565b600160a060020a0333811660009081526006602052604080822093909355908516815220546107f79083610ae2565b600160a060020a0380851660008181526006602052604090819020939093559133909116907fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef9085905190815260200160405180910390a350600192915050565b600080821161086657600080fd5b818381151561087157fe5b049392505050565b600160a060020a03338116600081815260076020908152604080832094881680845294909152808220869055909291907f8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b9259086905190815260200160405180910390a383600160a060020a0316638f4ffcb1338530866040518563ffffffff1660e060020a0281526004018085600160a060020a0316600160a060020a0316815260200184815260200183600160a060020a0316600160a060020a0316815260200180602001828103825283818151815260200191508051906020019080838360005b8381101561097457808201518382015260200161095c565b50505050905090810190601f1680156109a15780820380516001836020036101000a031916815260200191505b5095505050505050600060405180830381600087803b15156109c257600080fd5b6102c65a03f115156109d357600080fd5b5060019695505050505050565b8181028215806109fa57508183828115156109f757fe5b04145b151561052557600080fd5b600154600160a060020a031681565b6000805433600160a060020a03908116911614610a3057600080fd5b60008054600160a060020a038086169263a9059cbb929091169085906040516020015260405160e060020a63ffffffff8516028152600160a060020a0390921660048301526024820152604401602060405180830381600087803b1515610a9657600080fd5b6102c65a03f11515610aa757600080fd5b5050506040518051949350505050565b600160a060020a03918216600090815260076020908152604080832093909416825291909152205490565b8181018281101561052557600080fd5b60005433600160a060020a03908116911614610b0d57600080fd5b6001805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a03929092169190911790555600a165627a7a723058204d8bba840369beabede3f2afd4e620b786d0b7ae33b43c999c9d34845c295ea50029",
-         "code_hash":"c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
-         "root":"56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
-         "storage":{},
-         "balance": 420937500000000000000},
-    ]
+def accounts(db, blocks, here, main_db_data):
+    accounts = main_db_data['accounts']
     for acc in accounts:
         query = t.accounts_t.insert().values(**acc)
         db.execute(query)
     yield accounts
-    db.execute("DELETE FROM accounts")
+    db.execute('DELETE FROM accounts')
 
 
 @pytest.fixture
-def uncles(db, blocks):
+def uncles(db, blocks, main_db_data):
     uncles = [{"difficulty": 17578564779,
                "extra_data": "0x476574682f76312e302e302f6c696e75782f676f312e342e32",
                "gas_limit": 5000,
@@ -250,14 +121,14 @@ def uncles(db, blocks):
                "timestamp": 1438270332,
                # "total_difficulty": None,
                "transactions_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
-               "block_hash": "0xd93f8129b3ed958dff542e717851243b53f2047d49147ea445af02c5e16062e7",
-               "block_number": 125,
+               "block_hash": main_db_data['blocks'][1]['hash'],
+               "block_number": main_db_data['blocks'][1]['number'],
                'reward': 3750000000000000000},
 
                {"hash": "0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff",
                 "number": 62,
-                "block_number": 126,
-                "block_hash": "0x1567c9c59d144c48d9a981fc70f72ba84ebf557622c1f82551849c77bd637bb7",
+                "block_hash": main_db_data['blocks'][2]['hash'],
+                "block_number": main_db_data['blocks'][2]['number'],
                 "parent_hash": "0x5656b852baa80ce4db00c60998f5cf6e7a8d76f0339d3cf97955d933f731fecf",
                 "difficulty": 18180751616,
                 "extra_data": "0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34",
@@ -275,41 +146,73 @@ def uncles(db, blocks):
                 # "total_difficulty":null,
                 "transactions_root": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
                 'reward': 3750000000000000000}
-              ]
+              ] 
     for u in uncles:
         query = t.uncles_t.insert().values(**u)
         db.execute(query)
     yield accounts
-    db.execute("DELETE FROM uncles")
+    db.execute('DELETE FROM uncles')
 
 
 @pytest.fixture
-def logs(db, transactions):
-    records = [
-        {"transaction_hash": "0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
-         "block_number": 1498834,
-         "block_hash": "0x70c3dd4bcf59829be6d4a8b97ce8ac821660bc7006c76d107ffffd50372b9832",
-         "log_index": 0,
-         "address": "0x2b237f94b3e8afb3d1d66c8f5e98d78c9c060f9c",
-         "data": "0x0000000000000000000000008bc16dae51dfcf0aba8eebb63a2d01cc249f79310000000000000000000000000000000000000000000000004563918244f40000000000000000000000000000bb9bc244d798123fde783fcc1c72d3bb8c18941300000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000",
-         "removed": False,
-         "topics": ["0x92ca3a80853e6663fa31fa10b99225f18d4902939b4c53a9caae9043f6efd004"],
-         "transaction_index": 2},
-        {"transaction_hash": "0x8fd6b14d790d40b4dac9651c451250e2348b845e46be9b721fab905c3b526f2a",
-         "block_number": 1498834,
-         "block_hash": "0x70c3dd4bcf59829be6d4a8b97ce8ac821660bc7006c76d107ffffd50372b9832",
-         "log_index": 1,
-         "address": "0xbb9bc244d798123fde783fcc1c72d3bb8c189413",
-         "data": "0x0000000000000000000000000000000000000000000000004563918244f40000",
-         "removed": False,
-         "topics": ["0xdbccb92686efceafb9bb7e0394df7f58f71b954061b81afb57109bf247d3d75a","0x0000000000000000000000002b237f94b3e8afb3d1d66c8f5e98d78c9c060f9c"],
-         "transaction_index": 2}
-    ]
+def logs(db, transactions, main_db_data):
+    records = main_db_data['logs']
     for r in records:
         query = t.logs_t.insert().values(**r)
         db.execute(query)
-    yield receipts
-    db.execute("DELETE FROM logs")
+    yield records
+    db.execute('DELETE FROM logs')
+
+
+@pytest.fixture
+def contracts(db, here, main_db_data):
+    contracts = [
+        {
+            'address': main_db_data['accounts'][2]['address'],
+            'name': '',
+            'byte_code': here.join('FucksToken.bin').read(),
+            'source_code': here.join('FucksToken.sol').read(),
+            'abi': ERC20_ABI,
+            'compiler_version': 'v0.4.18+commit.9cf6e910',
+            'optimization_enabled': True,
+            'optimization_runs': 200,
+            'constructor_args': '',
+            'metadata_hash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa55d',
+            'is_erc20_token': True,
+            'token_name': 'FucksToken',
+            'token_symbol': 'ZFUCK',
+            'token_decimals': 2,
+            'token_total_supply': 1000000000,
+            'grabbed_at': None,
+            'verified_at': datetime(2018, 5, 10),
+        },
+        # {
+        #     'address': 'caa',
+        #     'name': '',
+        #     'byte_code': here.join('FucksToken.bin').read(),
+        #     'source_code': here.join('FucksToken.sol').read(),
+        #     'abi': ERC20_ABI,
+        #     'compiler_version': 'v0.4.18+commit.9cf6e910',
+        #     'optimization_enabled': True,
+        #     'optimization_runs': 200,
+        #     'constructor_args': '',
+        #     'metadata_hash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa55d',
+        #     'is_erc20_token': False,
+        #     'token_name': None,
+        #     'token_symbol': None,
+        #     'token_decimals': None,
+        #     'token_total_supply': None,
+        #     'grabbed_at': None,
+        #     'verified_at': datetime(2018, 5, 10),
+        # },
+    ]
+    contracts = main_db_data['contracts']
+    db.execute('DELETE FROM contracts')
+    for c in contracts:
+        query = t.contracts_t.insert().values(**c)
+        db.execute(query)
+    yield contracts
+    db.execute('DELETE FROM contracts')
 
 
 @pytest.fixture(scope='session')

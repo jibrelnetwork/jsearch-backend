@@ -1,3 +1,5 @@
+import json
+
 from jsearch.api import models
 
 
@@ -19,7 +21,7 @@ class Storage:
         elif tag.is_number():
             query = """SELECT * FROM accounts WHERE address=$1 AND block_number<=$2 ORDER BY block_number LIMIT 1"""
         else:
-            query = """SELECT * FROM accounts WHERE address=$1 ORDER BY block_number LIMIT 1"""
+            query = """SELECT * FROM accounts WHERE address=$1 ORDER BY block_number DESC LIMIT 1"""
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 row = await conn.fetchrow(query, address)
@@ -218,4 +220,92 @@ class Storage:
             rows = await conn.fetch(query, addresses)
             return [models.Balance(balance=int(r['balance']), address=r['address']) for r in rows]
 
-        
+    async def get_verified_contracts(self, limit, offset, order):
+        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+        query = """SELECT {fields} FROM contracts ORDER BY verified_at {order} LIMIT $1 OFFSET $2"""
+        query = query.format(fields=models.Contract.select_fields(), order=order)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, limit, offset)
+            dicts = []
+            for r in rows:
+                d = dict(r)
+                d['abi'] = json.loads(r['abi'])
+                dicts.append(models.Contract(**d))
+            return dicts
+
+    async def get_verified_contract(self, address):
+        query = """SELECT {fields} FROM contracts WHERE address=$1"""
+        query = query.format(fields=models.Contract.select_fields())
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(query, address)
+            if row is None:
+                return None
+            row = dict(row)
+            row['abi'] = json.loads(row['abi'])
+            return models.Contract(**row)
+
+    async def get_tokens_list(self, limit, offset, order):
+        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+        query = """SELECT {fields} FROM contracts WHERE is_erc20_token is true ORDER BY verified_at {order} LIMIT $1 OFFSET $2"""
+        query = query.format(fields=models.Token.select_fields(), order=order)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, limit, offset)
+            rows = [dict(r) for r in rows]
+            return [models.Token(**row) for row in rows]
+
+    async def get_token(self, address):
+        query = """SELECT {fields} FROM contracts WHERE address=$1"""
+        query = query.format(fields=models.Token.select_fields())
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(query, address)
+            if row is None:
+                return None
+            row = dict(row)
+            return models.Token(**row)
+
+    async def get_tokens_transfers(self, address, limit, offset, order):
+        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+        query = """SELECT block_hash, hash, token_transfer_from, token_transfer_to, contract_call_description, token_amount
+                    FROM transactions 
+                    WHERE is_token_transfer is true
+                     AND "to"=$1 ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3"""
+        query = query.format(order=order)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, address, limit, offset)
+            # print('ROWS', rows, query, address)
+            tokens = []
+            for r in rows:
+                call = json.loads(r['contract_call_description'])
+                t = {
+                    'transaction': r['hash'],
+                    'from': r['token_transfer_from'],
+                    'to': r['token_transfer_to'],
+                    'amount': r['token_amount'],
+                    'block_hash': r['block_hash']
+                }
+                tokens.append(models.TokenTransfer(**t))
+            return tokens
+
+    async def get_account_tokens_transfers(self, address, limit, offset, order):
+        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+        query = """SELECT block_hash, hash, token_transfer_from, token_transfer_to, contract_call_description, token_amount
+                    FROM transactions 
+                    WHERE is_token_transfer is true
+                     AND token_transfer_from=$1 
+                     OR token_transfer_to=$1 ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3"""
+        query = query.format(order=order)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, address, limit, offset)
+            # print('ROWS', rows, query, address)
+            tokens = []
+            for r in rows:
+                call = json.loads(r['contract_call_description'])
+                t = {
+                    'transaction': r['hash'],
+                    'from': r['token_transfer_from'],
+                    'to': r['token_transfer_to'],
+                    'amount': r['token_amount'],
+                    'block_hash': r['block_hash']
+                }
+                tokens.append(models.TokenTransfer(**t))
+            return tokens

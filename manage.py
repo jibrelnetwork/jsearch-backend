@@ -5,6 +5,7 @@ import os, sys
 from sqlalchemy import create_engine
 from jsearch.common.tables import *
 import jsearch.common.alembic_utils as alembic
+from jsearch.common import testutils
 
 
 class Manage(object):
@@ -90,5 +91,27 @@ positional arguments:
         alembic.downgrade(args.db, args.revision)
 
 
+    def json_dump(self):
+        parser = argparse.ArgumentParser(
+            usage='''
+usage: json_dump [-h]'''
+                .format(self.__script_name))
+        parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
+        args = parser.parse_args(sys.argv[2:])
+        print(args)
+        print('Running json_dump. db: {}'.format(args.db))
+        alembic.json_dump(args.db)
+
+    def add_test_contract(self):
+        parser = argparse.ArgumentParser(
+            usage='''
+usage: json_dump [-h]'''
+                .format(self.__script_name))
+        parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
+        parser.add_argument('-address', action='store', help=argparse.SUPPRESS)
+        args = parser.parse_args(sys.argv[2:])
+        print(args)
+        print('Running add_test_contract. db: {}'.format(args.db))
+        testutils.add_test_contract(args.db, args.address)
 if __name__ == '__main__':
     Manage()

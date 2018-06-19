@@ -3,7 +3,7 @@ import json
 import logging
 import time
 
-from .database import DatabaseError
+from jsearch.common.database import DatabaseError
 
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,7 @@ class Manager:
                 blocks_to_sync = await self.get_blocks_to_sync()
                 for block in blocks_to_sync:
                     await self.sync_block(block["block_number"])
+                await asyncio.sleep(5)
             except DatabaseError:
                 logger.exception("Database Error accured:")
                 await asyncio.sleep(self.sleep_on_db_error)

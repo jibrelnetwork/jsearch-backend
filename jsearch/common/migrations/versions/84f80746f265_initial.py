@@ -1,8 +1,8 @@
 """Initial
 
-Revision ID: 824e5203bd9a
+Revision ID: 84f80746f265
 Revises: 
-Create Date: 2018-04-02 01:10:45.276068
+Create Date: 2018-06-07 15:35:41.520052
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ from jsearch.common import tables
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '824e5203bd9a'
+revision = '84f80746f265'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -37,8 +37,8 @@ def upgrade():
     sa.Column('parent_hash', sa.String(), nullable=True),
     sa.Column('difficulty', tables.HexBigInteger(), nullable=True),
     sa.Column('extra_data', sa.String(), nullable=True),
-    sa.Column('gas_limit', tables.HexInteger(), nullable=True),
-    sa.Column('gas_used', tables.HexInteger(), nullable=True),
+    sa.Column('gas_limit', tables.HexBigInteger(), nullable=True),
+    sa.Column('gas_used', tables.HexBigInteger(), nullable=True),
     sa.Column('logs_bloom', sa.String(), nullable=True),
     sa.Column('miner', sa.String(), nullable=True),
     sa.Column('mix_hash', sa.String(), nullable=True),
@@ -58,6 +58,26 @@ def upgrade():
     )
     op.create_index(op.f('ix_blocks_hash'), 'blocks', ['hash'], unique=False)
     op.create_index(op.f('ix_blocks_miner'), 'blocks', ['miner'], unique=False)
+    op.create_table('contracts',
+    sa.Column('address', sa.String(), nullable=False),
+    sa.Column('name', sa.String(), nullable=True),
+    sa.Column('byte_code', sa.Text(), nullable=True),
+    sa.Column('source_code', sa.Text(), nullable=True),
+    sa.Column('abi', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('compiler_version', sa.String(), nullable=True),
+    sa.Column('optimization_enabled', sa.Boolean(), nullable=True),
+    sa.Column('optimization_runs', sa.Integer(), nullable=True),
+    sa.Column('constructor_args', sa.String(), nullable=True),
+    sa.Column('metadata_hash', sa.String(), nullable=True),
+    sa.Column('is_erc20_token', sa.Boolean(), nullable=True),
+    sa.Column('token_name', sa.String(), nullable=True),
+    sa.Column('token_symbol', sa.String(), nullable=True),
+    sa.Column('token_decimals', sa.Integer(), nullable=True),
+    sa.Column('token_total_supply', sa.NUMERIC(precision=32, scale=0), nullable=True),
+    sa.Column('grabbed_at', sa.DateTime(), nullable=True),
+    sa.Column('verified_at', sa.DateTime(), nullable=True),
+    sa.PrimaryKeyConstraint('address')
+    )
     op.create_table('internal_transactions',
     sa.Column('block_number', tables.HexInteger(), nullable=False),
     sa.Column('parent_tx_hash', tables.HexInteger(), nullable=False),
@@ -80,6 +100,8 @@ def upgrade():
     sa.Column('removed', sa.Boolean(), nullable=True),
     sa.Column('topics', postgresql.ARRAY(sa.String()), nullable=True),
     sa.Column('transaction_index', tables.HexInteger(), nullable=True),
+    sa.Column('event_type', sa.String(), nullable=True),
+    sa.Column('event_args', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.PrimaryKeyConstraint('transaction_hash', 'log_index')
     )
     op.create_table('mined_blocks',
@@ -112,6 +134,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('transaction_hash')
     )
     op.create_index(op.f('ix_receipts_block_number'), 'receipts', ['block_number'], unique=False)
+    op.create_index(op.f('ix_receipts_contract_address'), 'receipts', ['contract_address'], unique=False)
     op.create_table('transactions',
     sa.Column('hash', sa.String(), nullable=False),
     sa.Column('block_number', tables.HexInteger(), nullable=True),
@@ -127,6 +150,9 @@ def upgrade():
     sa.Column('s', sa.String(), nullable=True),
     sa.Column('v', sa.String(), nullable=True),
     sa.Column('value', sa.String(), nullable=True),
+    sa.Column('is_token_transfer', sa.Boolean(), nullable=True),
+    sa.Column('contract_call_description', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('token_amount', sa.BigInteger(), nullable=True),
     sa.PrimaryKeyConstraint('hash')
     )
     op.create_index(op.f('ix_transactions_block_number'), 'transactions', ['block_number'], unique=False)
@@ -168,12 +194,14 @@ def downgrade():
     op.drop_index(op.f('ix_transactions_from'), table_name='transactions')
     op.drop_index(op.f('ix_transactions_block_number'), table_name='transactions')
     op.drop_table('transactions')
+    op.drop_index(op.f('ix_receipts_contract_address'), table_name='receipts')
     op.drop_index(op.f('ix_receipts_block_number'), table_name='receipts')
     op.drop_table('receipts')
     op.drop_table('mined_uncles')
     op.drop_table('mined_blocks')
     op.drop_table('logs')
     op.drop_table('internal_transactions')
+    op.drop_table('contracts')
     op.drop_index(op.f('ix_blocks_miner'), table_name='blocks')
     op.drop_index(op.f('ix_blocks_hash'), table_name='blocks')
     op.drop_table('blocks')

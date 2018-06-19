@@ -1,0 +1,1 @@
+from jsearch.api.tests.conftest import *

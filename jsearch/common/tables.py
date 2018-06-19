@@ -16,6 +16,8 @@ class HexInteger(types.TypeDecorator):
     impl = types.Integer
 
     def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
         if isinstance(value, str) and value.startswith('0x'):
             return int(value, 16)
         return int(value)
@@ -29,6 +31,8 @@ class HexBigInteger(types.TypeDecorator):
     impl = types.BigInteger
 
     def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
         if isinstance(value, str) and value.startswith('0x'):
             return int(value, 16)
         return int(value)
@@ -45,8 +49,8 @@ class Uncle(Base):
     parent_hash = sa.Column('parent_hash', sa.String)
     difficulty = sa.Column('difficulty', HexBigInteger)
     extra_data = sa.Column('extra_data', sa.String)
-    gas_limit = sa.Column('gas_limit', HexInteger)
-    gas_used = sa.Column('gas_used', HexInteger)
+    gas_limit = sa.Column('gas_limit', HexBigInteger)
+    gas_used = sa.Column('gas_used', HexBigInteger)
     logs_bloom = sa.Column('logs_bloom', sa.String)
     miner = sa.Column('miner', sa.String)
     mix_hash = sa.Column('mix_hash', sa.String)
@@ -72,7 +76,7 @@ class InternalTransaction(Base):
     from_addr = sa.Column('from', sa.String)
     to_addr = sa.Column('to', sa.String, primary_key=True)
     value = sa.Column('value', sa.String)
-    gas_limit = sa.Column('gas_limit', HexInteger)
+    gas_limit = sa.Column('gas_limit', HexBigInteger)
 
 
 class Transaction(Base):
@@ -97,6 +101,8 @@ class Transaction(Base):
     is_token_transfer = sa.Column('is_token_transfer', sa.Boolean)
     contract_call_description = sa.Column('contract_call_description', postgresql.JSONB)
     token_amount = sa.Column('token_amount', sa.BigInteger)
+    token_transfer_from = sa.Column('token_transfer_from', sa.String, index=True)
+    token_transfer_to = sa.Column('token_transfer_to', sa.String, index=True)
 
 
 class Receipt(Base):
@@ -172,8 +178,8 @@ class Block(Base):
     parent_hash = sa.Column('parent_hash', sa.String)
     difficulty = sa.Column('difficulty', HexBigInteger)
     extra_data = sa.Column('extra_data', sa.String)
-    gas_limit = sa.Column('gas_limit', HexInteger)
-    gas_used = sa.Column('gas_used', HexInteger)
+    gas_limit = sa.Column('gas_limit', HexBigInteger)
+    gas_used = sa.Column('gas_used', HexBigInteger)
     logs_bloom = sa.Column('logs_bloom', sa.String)
     miner = sa.Column('miner', sa.String, index=True)
     mix_hash = sa.Column('mix_hash', sa.String)

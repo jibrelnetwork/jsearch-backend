@@ -187,7 +187,10 @@ async def test_maindb_insert_header(contracts):
         'from': '0x147013436bd5c7def49a8e27c7fba8ac2b9dfe1',
         'is_token_transfer': None,
         'token_amount': None,
-        'transaction_index': None}
+        'token_transfer_from': None,
+        'token_transfer_to': None,
+        'transaction_index': 0,
+        }
 
     assert dict(txs[1]) == {
         "hash": "0xad901f2cf3ffb47a209c2495c593114dc83fbac7baab6b28600c8dd034f6f191",
@@ -206,5 +209,7 @@ async def test_maindb_insert_header(contracts):
         'contract_call_description': '{"args": ["0xbfe465e7eb5a2928b5bf22bef93ad06089dc6179", 100000000], "function": "transfer"}',
         'from': '0x147013436bd5c7def49a8e27c7fba8ac2b9dfe1f',
         'is_token_transfer': True,
+        'token_transfer_from': '0x147013436bd5c7def49a8e27c7fba8ac2b9dfe1f',
+        'token_transfer_to': '0xbfe465e7eb5a2928b5bf22bef93ad06089dc6179',
         'token_amount': 1,
-        'transaction_index': None}
+        'transaction_index': 1}
