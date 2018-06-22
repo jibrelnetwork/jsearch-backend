@@ -150,7 +150,7 @@ def upgrade():
     sa.Column('s', sa.String(), nullable=True),
     sa.Column('v', sa.String(), nullable=True),
     sa.Column('value', sa.String(), nullable=True),
-    sa.Column('is_token_transfer', sa.Boolean(), nullable=True),
+    sa.Column('is_token_transfer', sa.Boolean(), nullable=False, default=False),
     sa.Column('contract_call_description', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('token_amount', sa.BigInteger(), nullable=True),
     sa.PrimaryKeyConstraint('hash')

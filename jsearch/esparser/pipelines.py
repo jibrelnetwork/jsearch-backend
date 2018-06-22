@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 
 from jsearch.common import tables as t
+from jsearch.common.tasks import process_new_verified_contract_transactions
 
 engine = create_engine(os.environ['JSEARCH_MAIN_DB'], echo=True)
 conn = engine.connect()
@@ -25,4 +26,5 @@ class ContractPipeline(object):
         )
 
         conn.execute(do_update_stmt)
+        process_new_verified_contract_transactions.delay(item['address'])
         return item

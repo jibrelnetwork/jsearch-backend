@@ -3,6 +3,7 @@ import sqlalchemy.types as types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import CheckConstraint
 
 
 Base = declarative_base()
@@ -221,6 +222,16 @@ class Contract(Base):
     verified_at = sa.Column(sa.DateTime)
 
 
+class TokenHolder(Base):
+    __tablename__ = 'token_holders'
+    __table_args__ = (CheckConstraint('balance >= 0',
+                                      name='check_balance_positive'),)
+
+    account_address = sa.Column('account_address', sa.String, primary_key=True)
+    token_address = sa.Column('token_address', sa.String, primary_key=True)
+    balance = sa.Column('balance', postgresql.NUMERIC(32, 0))
+
+
 
 blocks_t = Block.__table__
 uncles_t = Uncle.__table__
@@ -229,3 +240,4 @@ receipts_t = Receipt.__table__
 logs_t = Log.__table__
 accounts_t = Account.__table__
 contracts_t = Contract.__table__
+token_holders_t = TokenHolder.__table__

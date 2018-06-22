@@ -16,6 +16,9 @@ from ethereum.utils import encode_int, zpad, decode_hex
 logger = logging.getLogger(__name__)
 
 
+NULL_ADDRESS = '0x0000000000000000000000000000000000000000'
+
+
 ERC20_METHODS_IDS = {
     'approve': '0x095ea7b3',
     'transfer': '0xa9059cbb',
@@ -257,18 +260,12 @@ ERC20_ABI = [
 
 
 ERC20_ABI_SIMPLE = [
-    {'type': 'function', 'name': 'name', 'inputs': [], 'outputs': ['string']},
-    {'type': 'function', 'name': 'approve', 'inputs': ['address', 'uint256'], 'outputs': ['bool']},
-    {'type': 'function', 'name': 'totalSupply', 'inputs': [], 'outputs': ['uint256']},
-    {'type': 'function', 'name': 'transferFrom', 'inputs': ['address', 'address', 'uint256'], 'outputs': ['bool']},
-    {'type': 'function', 'name': 'decimals', 'inputs': [], 'outputs': ['uint8']},
-    {'type': 'function', 'name': 'balanceOf', 'inputs': ['address'], 'outputs': ['uint256']},
-    {'type': 'function', 'name': 'symbol', 'inputs': [], 'outputs': ['string']},
-    {'type': 'function', 'name': 'transfer', 'inputs': ['address', 'uint256'], 'outputs': ['bool']},
-    {'type': 'function', 'name': 'allowance', 'inputs': ['address', 'address'], 'outputs': ['uint256']},
+    {'type': 'function', 'name': 'transfer', 'inputs': ['address', 'uint']},
+    {'type': 'function', 'name': 'balanceOf', 'inputs': ['address'], 'outputs': ['uint']},
+    {'type': 'function', 'name': 'decimals', 'inputs': [], 'outputs': ['uint']},
+    {'type': 'function', 'name': 'totalSupply', 'inputs': [], 'outputs': ['uint']},
 
-    {'type': 'event', 'name': 'Approval', 'inputs': ['address', 'address', 'uint256']},
-    {'type': 'event', 'name': 'Transfer', 'inputs': ['address', 'address', 'uint256']},
+    {'type': 'event', 'name': 'Transfer', 'inputs': ['address', 'address', 'uint']},
 ]
 
 
@@ -346,6 +343,12 @@ def is_erc20_compatible(abi):
 
 
 def simplify_abi(abi):
+    
+    def fix_uint(typ):
+        if typ.startswith('uint'):
+            return 'uint'
+        return typ
+
     abi_simple = []
     for item in abi:
         if item.get('type') not in {'function', 'event'}:
@@ -353,9 +356,9 @@ def simplify_abi(abi):
         s = {}
         s['name'] = item['name']
         s['type'] = item['type']
-        s['inputs'] = [v['type'] for v in item['inputs']]
-        if 'outputs' in item:
-            s['outputs'] = [v['type'] for v in item['outputs']]
+        s['inputs'] = [fix_uint(v['type']) for v in item['inputs']]
+        if 'outputs' in item and item['name'] != 'transfer':  #  dont check outputs for transfer
+            s['outputs'] = [fix_uint(v['type']) for v in item['outputs']]
         abi_simple.append(s)
     return abi_simple
 

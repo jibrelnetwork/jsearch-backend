@@ -10,6 +10,7 @@ import asyncpg
 from asyncpgsa import pg
 import sqlalchemy as sa
 from sqlalchemy.sql import select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import and_
 
 from jsearch.common.tables import *
@@ -101,7 +102,7 @@ class RawDB(DBWrapper):
         rows = await self.conn.fetch(q, block_number)
         if len(rows) > 1:
             for r in rows:
-                if r['address'] != '0x0000000000000000000000000000000000000000':
+                if r['address'] != contracts.NULL_ADDRESS:
                     return r
         elif len(rows) == 1:
             return rows[0]
@@ -115,9 +116,14 @@ class MainDB(DBWrapper):
     """
     async def connect(self):
         await pg.init(self.connection_string)
+        self.conn = pg
 
     async def disconnect(self):
         await pg.pool.close()
+
+    def call_sync(self, coro):
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(coro)
 
     async def get_latest_sequence_synced_block_number(self):
         """
@@ -183,17 +189,22 @@ class MainDB(DBWrapper):
             assert tx['hash'] == data['transaction_hash']
             data['transaction_hash'] = tx['hash']
             data['transaction_index'] = i
+            if tx['to'] in None:
+                tx['to'] == contracts.NULL_ADDRESS
             data['to'] = tx['to']
-            # data['from'] = tx['from']
+            data['from'] = tx['from']
             logs = data.pop('logs') or []
             query = receipts_t.insert().values(block_number=block_number,
                                                block_hash=block_hash, **data)
             await conn.execute(query)
 
             tx_data = dict_keys_case_convert(tx)
-
-            contract = await self.get_contract(conn, tx_data['to'])
-            logs = self.process_logs(contract, logs)
+            if tx['to'] == contracts.NULL_ADDRESS:
+                contract_address = data['contract_address']
+            else:
+                contract_address = tx['to']
+            contract = await self.get_contract(conn, contract_address)
+            logs = await self.process_logs(conn, contract, logs)
             data = self.process_transaction(contract, tx_data, logs)
             # from pprint import pprint;pprint(data)
             # from pprint import pprint;pprint(logs)
@@ -210,6 +221,15 @@ class MainDB(DBWrapper):
             query = logs_t.insert().values(**data)
             await conn.execute(query)
 
+    async def update_logs(self, conn, logs):
+        for rec in logs:
+            print('LOGUP', rec)
+            query = logs_t.update().\
+                where(and_(logs_t.c.transaction_hash == rec['transaction_hash'],
+                           logs_t.c.log_index == rec['log_index'])).\
+                values(**rec)
+            await conn.execute(query)
+
     async def insert_accounts(self, conn, block_number, block_hash, accounts):
         for account in accounts:
             data = dict_keys_case_convert(json.loads(account['fields']))
@@ -219,23 +239,59 @@ class MainDB(DBWrapper):
                                                block_hash=block_hash, **data)
             await conn.execute(query)
 
-    def process_logs(self, contract, logs):
+    async def process_logs(self, conn, contract, logs):
         if contract is not None:
+            abi = json.loads(contract['abi'])
             for log in logs:
                 try:
-                    e = contracts.decode_event(json.loads(contract['abi']), log)
+                    event = contracts.decode_event(abi, log)
                 except Exception as e:
                     # ValueError: Unknown log type
                     logger.exception('Log decode error: <%s>', log)
                     log['event_type'] = None
                     log['event_args'] = None
                 else:
-                    event_type = e.pop('_event_type')
+                    event_type = event.pop('_event_type')
                     log['event_type'] = event_type
-                    log['event_args'] = e
+                    log['event_args'] = event
+                    if event_type == 'Transfer':
+                        args_list = []
+                        event_inputs = [i['inputs'] for i in abi
+                                        if i.get('name') == event_type and
+                                        i['type'] == 'event'][0]
+                        for i in event_inputs:
+                            args_list.append(event[i['name']])
+                        token_address = log['address']
+                        to_address = args_list[1]
+                        from_address = args_list[0]
+                        print('XXXX', from_address, from_address == contracts.NULL_ADDRESS)
+                        if contract['token_decimals']:
+                            amount = args_list[2] / (10 ** contract['token_decimals'])
+                        else:
+                            amount = args_list[2]
+                        q = insert(token_holders_t).values(balance=amount,
+                                                           token_address=token_address,
+                                                           account_address=to_address)
+                        update_to_q = q.on_conflict_do_update(
+                            index_elements=['token_address', 'account_address'],
+                            set_={'balance': token_holders_t.c.balance + amount})
+                        update_from_q = token_holders_t.update().\
+                            where(and_(token_holders_t.c.token_address==token_address,
+                                       token_holders_t.c.account_address==from_address)).\
+                            values(balance=token_holders_t.c.balance - amount)
+
+                        await conn.execute(update_to_q)
+                        if from_address != contracts.NULL_ADDRESS:
+                            res = await conn.execute(update_from_q)
+                            if int(res.strip('UPDATE')) == 0:
+                                # no updates - token owner has no balance records
+                                raise RuntimeError('Token owner has unknown balance')
         return logs
 
     def process_transaction(self, contract, tx_data, logs):
+        transfer_events = [l for l in logs if l['event_type'] == 'Transfer']
+        if len(transfer_events) > 1:
+            logger.warn('Multiple transfer events at %s', tx_data['hash'])
         if contract is not None:
             try:
                 call = contracts.decode_contract_call(json.loads(contract['abi']), tx_data['input'])
@@ -244,7 +300,6 @@ class MainDB(DBWrapper):
             else:
                 if call:
                     tx_data['contract_call_description'] = call
-                    transfer_events = [l for l in logs if l['event_type'] == 'Transfer']
                     if call['function'] in {'transfer', 'transferFrom'} and transfer_events:
                         tx_data['is_token_transfer'] = True
                         tx_data['token_transfer_to'] = call['args'][-2]
@@ -254,12 +309,21 @@ class MainDB(DBWrapper):
                             tx_data['token_transfer_from'] = tx_data['from']
                         if contract['token_decimals']:
                             tx_data['token_amount'] = call['args'][-1] / (10 ** contract['token_decimals'])
+        elif tx_data['to'] == contracts.NULL_ADDRESS:
+            # contract creation, check Transfer events
+            pass
         return tx_data
 
     async def get_contract(self, conn, address):
         q = select([contracts_t]).where(contracts_t.c.address == address)
         row = await pg.fetchrow(q)
+        logger.info('get_contract %s: %s', address, bool(row))
         return row
+
+    async def update_contract(self, address, data):
+        q = contracts_t.update().where(
+            contracts_t.c.address == address).values(**data)
+        await self.conn.execute(q)
 
     async def get_transaction_logs(self, conn, tx_hash):
         q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
@@ -320,18 +384,21 @@ class MainDB(DBWrapper):
             if tx is None:
                 logger.warn('TX with hash %s not found', tx_hash)
                 return
-            contract = await self.get_contract(conn, tx['to'])
             logs = await self.get_transaction_logs(conn, tx['hash'])
-            logs = self.process_logs(contract, [dict(l) for l in logs])
+            if len(logs) == 0:
+                logger.info('No logs - no transfers')
+                return
+            if tx['to'] == contracts.NULL_ADDRESS:
+                contract_address = logs[0]['address']
+            else:
+                contract_address = tx['to']
+            contract = await self.get_contract(conn, contract_address)
+            logs = await self.process_logs(conn, contract, [dict(l) for l in logs])
             tx_data = dict(tx)
             data = self.process_transaction(contract, tx_data, logs)
             query = update(transactions_t).where(transactions_t.c.hash == tx_hash).values(**data)
             await conn.execute(query)
-            for rec in logs:
-                query = update(logs_t).where(and_(logs_t.c.transaction_hash == tx_hash,
-                                             logs_t.c.log_index == rec['log_index'])).values(**rec)
-                await conn.execute(query)
-
+            await self.update_logs(conn, logs)
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
@@ -347,19 +414,20 @@ def dict_keys_case_convert(d):
     return {case_convert(k): v for k, v in d.items()}
 
 
-class MainDBSync:
+# class MainDBSync:
 
-    def __init__(self, connection_string):
-        self.connection_string = connection_string
-        engine = sa.create_engine(self.connection_string)
-        self.conn = engine.connect()
+#     def __init__(self, connection_string):
+#         self.connection_string = connection_string
+#         engine = sa.create_engine(self.connection_string)
+#         self.conn = engine.connect()
 
-    def update_contract(self, address, data):
-        q = contracts_t.update().where(
-            contracts_t.c.address == address).values(**data)
-        self.conn.execute(q)
+#     def update_contract(self, address, data):
+#         q = contracts_t.update().where(
+#             contracts_t.c.address == address).values(**data)
+#         self.conn.execute(q)
 
 
 def get_main_db():
-    print('Oooops')
-    return MainDBSync(os.environ['MAIN_DATABASE_URL'])
+    db = MainDB(os.environ.get('DATABASE_URL'))
+    db.call_sync(db.connect())
+    return db

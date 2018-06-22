@@ -4,7 +4,8 @@ import aiohttp
 from aiohttp import web
 
 
-from jsearch.api.tasks import compile_contract_task, write_token_info
+from jsearch.api.tasks import compile_contract_task
+from jsearch.common.tasks import process_new_verified_contract_transactions
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
 
@@ -284,7 +285,7 @@ async def verify_contract(request):
         )
 
         if is_erc20_token:
-            write_token_info.delay(address)
+            process_new_verified_contract_transactions.delay(address)
     else:
         verification_passed = False
     return web.json_response({'verification_passed': verification_passed})
