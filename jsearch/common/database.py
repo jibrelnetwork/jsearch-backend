@@ -15,6 +15,7 @@ from sqlalchemy import and_
 
 from jsearch.common.tables import *
 from jsearch.common import contracts
+from jsearch import settings
 
 
 logger = logging.getLogger(__name__)
@@ -189,7 +190,7 @@ class MainDB(DBWrapper):
             assert tx['hash'] == data['transaction_hash']
             data['transaction_hash'] = tx['hash']
             data['transaction_index'] = i
-            if tx['to'] in None:
+            if tx['to'] is None:
                 tx['to'] == contracts.NULL_ADDRESS
             data['to'] = tx['to']
             data['from'] = tx['from']
@@ -223,7 +224,6 @@ class MainDB(DBWrapper):
 
     async def update_logs(self, conn, logs):
         for rec in logs:
-            print('LOGUP', rec)
             query = logs_t.update().\
                 where(and_(logs_t.c.transaction_hash == rec['transaction_hash'],
                            logs_t.c.log_index == rec['log_index'])).\
@@ -264,7 +264,6 @@ class MainDB(DBWrapper):
                         token_address = log['address']
                         to_address = args_list[1]
                         from_address = args_list[0]
-                        print('XXXX', from_address, from_address == contracts.NULL_ADDRESS)
                         if contract['token_decimals']:
                             amount = args_list[2] / (10 ** contract['token_decimals'])
                         else:
@@ -289,10 +288,10 @@ class MainDB(DBWrapper):
         return logs
 
     def process_transaction(self, contract, tx_data, logs):
-        transfer_events = [l for l in logs if l['event_type'] == 'Transfer']
-        if len(transfer_events) > 1:
-            logger.warn('Multiple transfer events at %s', tx_data['hash'])
         if contract is not None:
+            transfer_events = [l for l in logs if l['event_type'] == 'Transfer']
+            if len(transfer_events) > 1:
+                logger.warn('Multiple transfer events at %s', tx_data['hash'])
             try:
                 call = contracts.decode_contract_call(json.loads(contract['abi']), tx_data['input'])
             except Exception as e:
@@ -428,6 +427,6 @@ def dict_keys_case_convert(d):
 
 
 def get_main_db():
-    db = MainDB(os.environ.get('DATABASE_URL'))
+    db = MainDB(osettings.JSEARCH_MAIN_DB)
     db.call_sync(db.connect())
     return db

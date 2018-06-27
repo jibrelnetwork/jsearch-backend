@@ -3,12 +3,13 @@ import os
 from jsearch.common.celery import app
 from jsearch.common.contracts import ERC20_ABI
 from jsearch.common.database import get_main_db
+from jsearch import settings
 
 from web3 import Web3
 
 
 def update_token_info(address):
-    w3 = Web3(Web3.HTTPProvider(os.environ['ETH_NODE_URL']))
+    w3 = Web3(Web3.HTTPProvider(settings.ETH_NODE_URL)
     checksum_address = Web3.toChecksumAddress(address)
     c = w3.eth.contract(checksum_address, abi=ERC20_ABI)
     info = {

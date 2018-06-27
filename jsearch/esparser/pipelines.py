@@ -12,8 +12,9 @@ from sqlalchemy.dialects.postgresql import insert
 
 from jsearch.common import tables as t
 from jsearch.common.tasks import process_new_verified_contract_transactions
+from jsearch import settings
 
-engine = create_engine(os.environ['JSEARCH_MAIN_DB'], echo=True)
+engine = create_engine(settings.JSEARCH_MAIN_DB, echo=True)
 conn = engine.connect()
 
 

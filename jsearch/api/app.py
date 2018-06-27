@@ -9,6 +9,7 @@ from aiohttp_swagger import setup_swagger
 from jsearch.api.storage import Storage
 from jsearch.common.database import MainDB
 from jsearch.api import handlers
+from jsearch import settings
 
 
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
@@ -27,12 +28,12 @@ async def make_app():
     app = web.Application()
     app.on_shutdown.append(on_shutdown)
     # Create a database connection pool
-    app['db_pool'] = await asyncpg.create_pool(dsn=os.environ.get('DATABASE_URL'))
+    app['db_pool'] = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
 
     app['storage'] = Storage(app['db_pool'])
-    app['main_db'] = MainDB(os.environ.get('DATABASE_URL'))
+    app['main_db'] = MainDB(settings.JSEARCH_MAIN_DB)
     await app['main_db'].connect()
-    app['node_proxy_url'] = os.environ.get('NODE_PROXY_URL')
+    app['node_proxy_url'] = settings.ETH_NODE_URL
     # Configure service routes
     app.router.add_route('GET', '/accounts/balances', handlers.get_accounts_balances)
     app.router.add_route('GET', '/accounts/{address}', handlers.get_account)

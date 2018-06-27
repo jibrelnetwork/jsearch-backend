@@ -1,4 +1,7 @@
 from celery import Celery
 
-app = Celery('jsearch', broker='redis://localhost:6379/0', backend='redis://localhost:6379/0')
+from jsearch import settings
+
+
+app = Celery('jsearch', broker=settings.JSEARCH_CELERY_BROKER, backend=settings.JSEARCH_CELERY_BACKEND)
 app.autodiscover_tasks(['jsearch.api', 'jsearch.esparser', 'jsearch.syncer'])

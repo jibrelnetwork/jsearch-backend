@@ -376,8 +376,6 @@ def collect_types():
     rows = conn.execute(s)
 
     for row in rows:
-        print(row['address'])
-        # abi = json.loads(row['abi'])
         abi = row['abi']
         for t in abi:
             if t['type'] in ('function', 'event'):

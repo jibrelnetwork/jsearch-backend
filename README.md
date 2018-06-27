@@ -1,21 +1,34 @@
-# swagger_client# jSearch backend services
+# jSearch backend services
 
 # Description
 
-jSearch backend services incude 3 main components: 
+jSearch backend services includes following components: 
 
 - syncer
 - api
-- node proxy
+- celery task queue
+- esparser - scrapy-based parser for etherscan
 
 Syncer grabs blockchain data from RAW database and puts it into MAIN database
 
 API component is public web API server - implements access to blockchain data stored in main database and acts as Web3 API proxy
 
-Node proxy service - proxy and load balancer for web3 API calls
+Celery - for warious background tasks
+
+Esparser - used to get verified contracts data from etherscan.io
 
 ## Installation
 ```pip install -e .```
+
+## Configuration
+List of environ vars:
+```
+JSEARCH_MAIN_DB (default postgres://localhost/jsearch_main)
+JSEARCH_RAW_DB (default postgres://localhost/jsearch_raw)
+ETH_NODE_URL (default https://main-node.jwallet.network)
+JSEARCH_CELERY_BROKER (default redis://localhost:6379/0)
+JSEARCH_CELERY_BACKEND (default redis://localhost:6379/0)
+```
 
 ## DB migration
 ```python manage.py revision -db=postgresql://dbuser@localhost:5433/jsearch_main -m "Initial"```
