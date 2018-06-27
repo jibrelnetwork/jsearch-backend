@@ -2,12 +2,8 @@ import asyncio
 import logging
 
 import configargparse
-from dotenv import load_dotenv, find_dotenv
 
 from .service import Service
-
-load_dotenv(find_dotenv())
-
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +11,6 @@ logger = logging.getLogger(__name__)
 def run():
     p = configargparse.ArgParser(description='jSearch DBs sync service.',
                                  default_config_files=['/etc/jsearch-syncer.conf'])
-    p.add('-c', '--config', required=False, is_config_file=True, help='config file path')
-
-    p.add('--main-db', required=True, help='Main Database connection string', env_var='JSEARCH_MAIN_DB')
-    p.add('--raw-db', required=True, help='Raw Database connection string', env_var='JSEARCH_RAW_DB')
     p.add('--log-level', help='log level', default='INFO')
 
     options = p.parse_args()

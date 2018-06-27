@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from jsearch.common.database import MainDB, RawDB
+from jsearch import settings
 from .manager import Manager
 
 
@@ -14,8 +15,8 @@ class Service:
     """
     def __init__(self, options):
         self.options = options
-        self.raw_db = RawDB(options.raw_db)
-        self.main_db = MainDB(options.main_db)
+        self.raw_db = RawDB(settings.JSEARCH_RAW_DB)
+        self.main_db = MainDB(settings.JSEARCH_MAIN_DB)
         self.manager = Manager(self, self.main_db, self.raw_db)
 
     def run(self):

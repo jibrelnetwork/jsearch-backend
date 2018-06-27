@@ -17,8 +17,18 @@ Celery - for warious background tasks
 
 Esparser - used to get verified contracts data from etherscan.io
 
+## Prerequisites
+
+Ubuntu 16.04, git installed
+
+```
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt-get update
+sudo apt-get install python3.6 python3.6-dev postgresql-9.5-client libssl-dev python3-pip
+```
+
 ## Installation
-```pip install -e .```
+```pip3 install -e .```
 
 ## Configuration
 List of environ vars:
