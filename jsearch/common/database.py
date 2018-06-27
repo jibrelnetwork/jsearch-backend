@@ -427,6 +427,6 @@ def dict_keys_case_convert(d):
 
 
 def get_main_db():
-    db = MainDB(osettings.JSEARCH_MAIN_DB)
+    db = MainDB(settings.JSEARCH_MAIN_DB)
     db.call_sync(db.connect())
     return db
