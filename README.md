@@ -28,10 +28,13 @@ sudo apt-get install python3.6 python3.6-dev postgresql-9.5-client libssl-dev py
 ```
 
 ## Installation
+
 ```pip3 install -e .```
 
 ## Configuration
+
 List of environ vars:
+
 ```
 JSEARCH_MAIN_DB (default postgres://localhost/jsearch_main)
 JSEARCH_RAW_DB (default postgres://localhost/jsearch_raw)
@@ -41,28 +44,53 @@ JSEARCH_CELERY_BACKEND (default redis://localhost:6379/0)
 ```
 
 ## DB migration
-```python manage.py revision -db=postgresql://dbuser@localhost:5433/jsearch_main -m "Initial"```
 
-```python manage.py upgrade head -db=postgresql://dbuser@localhost:5433/jsearch_main```
+make new revision
+```
+python manage.py revision -db=postgresql://dbuser@localhost:5433/jsearch_main -m "Initial"
+```
+
+run migration on database
+```
+python manage.py upgrade head -db=postgresql://dbuser@localhost:5433/jsearch_main
+```
 
 ## Running tests
     
-    First you need blank PostgreSQL database for tests
+First you need blank PostgreSQL database for tests
 
-    Then run:
+Then run:
 
-    ```DATABASE_URL=postgresql://dbuser:@localhost:5433/jsearch_main_test JSEARCH_MAIN_DB_TEST=postgresql://dbuser@localhost:5433/jsearch_main_test pytest -v```
+```JSEARCH_MAIN_DB_TEST=postgresql://dbuser@localhost:5433/jsearch_main_test pytest -v```
 
 
 ## Starting services
 
 ### Syncer:
-```jsearch-syncer --main-db=postgresql://dbuser:passwd@localhost:5432/jsearch_main --raw-db=postgres://dbuser:passwd@localhost:5432/jsearch_raw```
+
+```
+jsearch-syncer
+```
 
 ### API:
-```gunicorn  --bind 0.0.0.0:8081 jsearch.api.app:app --worker-class aiohttp.worker.GunicornWebWorker```
 
- All endpoints do not require authorization.
+```
+gunicorn  --bind 0.0.0.0:8081 jsearch.api.app:app --worker-class aiohttp.worker.GunicornWebWorker
+```
+
+### Scraper
+
+Periodic (once in a day) scraping:
+
+```
+scrapy runspider PROJECT_ROOT/jsearch/esparser/spiders/contracts.py
+```
+
+Continous scraping:
+
+```
+scrapy runspider PROJECT_ROOT/jsearch/esparser/spiders/contracts_fresh.py
+```
 
 ## Author
 
