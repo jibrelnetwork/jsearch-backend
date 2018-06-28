@@ -2,13 +2,19 @@ import os
 
 import pytest
 
-from jsearch.common import database
+from jsearch.common import database, tables as t
 
 
 @pytest.mark.asyncio
-async def test_maindb_insert_header(contracts):
-    db = database.MainDB(os.environ['JSEARCH_MAIN_DB_TEST'])
-    await db.connect()
+async def test_maindb_insert_header(db, contracts, accounts):
+
+    q = t.token_holders_t.insert({
+        'token_address': "0x2761c0ad62d0f7f96f38332cabb9229378c9bfc9",
+        'account_address': "0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae",
+        'balance': 1000000})
+    await db.execute(q)
+    main_db = database.MainDB(os.environ['JSEARCH_MAIN_DB_TEST'])
+    await main_db.connect()
     header = {'block_number': 46170,
               'block_hash': '0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2',
               'fields': '{"hash": "0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2", \
@@ -76,7 +82,7 @@ async def test_maindb_insert_header(contracts):
                             "transactionHash": "0x9e6e19637bb625a8ff3d052b7c2fe57dc78c55a15d258d77c43d5a9c160b0384",\
                             "cumulativeGasUsed": "0x5208"},\
                             {"logs":[{"data": "0x0000000000000000000000000000000000000000000000000000000005f5e100",\
-                                                  "topics": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", "0x00000000000000000000000019628eb46e2d9e523154b3da975d08daf2b767a0", "0x00000000000000000000000019947e2ba251384fb01c3c4c046a4a3802a388aa"],\
+                                                  "topics": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", "0x000000000000000000000000e9b0363d2b53c534cc3d4a45b7024f991114d2ae", "0x00000000000000000000000019947e2ba251384fb01c3c4c046a4a3802a388aa"],\
                                                   "address": "0x2761c0ad62d0f7f96f38332cabb9229378c9bfc9",\
                                                   "removed": false,\
                                                   "logIndex": "0x1",\
@@ -93,7 +99,7 @@ async def test_maindb_insert_header(contracts):
                             "cumulativeGasUsed": "0x5208"}]}'}
 
     reward = {'fields': '{"Uncles": [{"UncleReward": 3750000000000000000, "UnclePosition": 0}], "TxsReward": 52569880000000000,  "BlockReward": 5000000000000000000, "UncleInclusionReward": 156250000000000000}'}
-    await db.write_block(header, uncles, transactions, receipts, accounts, reward)
+    await main_db.write_block(header, uncles, transactions, receipts, accounts, reward)
 
     pg = database.pg
     blocks = await pg.fetch('SELECT * FROM blocks')
@@ -129,7 +135,7 @@ async def test_maindb_insert_header(contracts):
         'block_number': 46170,
         'contract_address': '0x0000000000000000000000000000000000000000',
         'cumulative_gas_used': 21000,
-        'from': None,
+        'from': "0x147013436bd5c7def49a8e27c7fba8ac2b9dfe1",
         'gas_used': 21000,
         'logs_bloom': '0x000',
         'root': '0x59383cc2bde1aeab23d8fc741c82e213b90c0dcbba537d9cd4eae227758efd70',
@@ -161,10 +167,10 @@ async def test_maindb_insert_header(contracts):
         'log_index': 1,
         'removed': False,
         'event_args': '{"to": "0x19947e2ba251384fb01c3c4c046a4a3802a388aa", "from": '
-                      '"0x19628eb46e2d9e523154b3da975d08daf2b767a0", "value": '
+                      '"0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae", "value": '
                       '100000000}',
         'event_type': 'Transfer',
-        'topics': ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", "0x00000000000000000000000019628eb46e2d9e523154b3da975d08daf2b767a0", "0x00000000000000000000000019947e2ba251384fb01c3c4c046a4a3802a388aa"],
+        'topics': ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", "0x000000000000000000000000e9b0363d2b53c534cc3d4a45b7024f991114d2ae", "0x00000000000000000000000019947e2ba251384fb01c3c4c046a4a3802a388aa"],
         'transaction_hash': '0xad901f2cf3ffb47a209c2495c593114dc83fbac7baab6b28600c8dd034f6f191',
         'transaction_index': 1}
 
@@ -185,7 +191,7 @@ async def test_maindb_insert_header(contracts):
         'block_number': 46170,
         'contract_call_description': None,
         'from': '0x147013436bd5c7def49a8e27c7fba8ac2b9dfe1',
-        'is_token_transfer': None,
+        'is_token_transfer': False,
         'token_amount': None,
         'token_transfer_from': None,
         'token_transfer_to': None,

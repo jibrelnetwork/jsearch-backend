@@ -278,7 +278,6 @@ class MainDB(DBWrapper):
                             where(and_(token_holders_t.c.token_address==token_address,
                                        token_holders_t.c.account_address==from_address)).\
                             values(balance=token_holders_t.c.balance - amount)
-
                         await conn.execute(update_to_q)
                         if from_address != contracts.NULL_ADDRESS:
                             res = await conn.execute(update_from_q)
