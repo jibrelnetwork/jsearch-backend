@@ -1,7 +1,7 @@
 import os
 
 from jsearch.common.celery import app
-from jsearch.common.contracts import ERC20_ABI
+from jsearch.common.contracts import ERC20_ABI, wait_install_solc
 from jsearch.common.database import get_main_db
 from jsearch import settings
 
@@ -34,3 +34,8 @@ def process_new_verified_contract_transactions(address):
 @app.task
 def process_token_transfer(contract, tx):
     db.process_token_transfers(tx['hash'])
+
+
+@app.task
+def install_solc(commit):
+    wait_install_solc(commit)
