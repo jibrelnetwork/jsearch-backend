@@ -1,4 +1,5 @@
 import os
+import logging
 
 from jsearch.common.celery import app
 from jsearch.common.contracts import ERC20_ABI, wait_install_solc
@@ -6,6 +7,9 @@ from jsearch.common.database import get_main_db
 from jsearch import settings
 
 from web3 import Web3
+
+
+logger = logging.getLogger(__name__)
 
 
 def update_token_info(address, db=None):
@@ -21,25 +25,29 @@ def update_token_info(address, db=None):
     if db is None:
         db = get_main_db()
     db.call_sync(db.update_contract(address, info))
+    logger.info('Token info updated for address %s', address) 
 
 
 @app.task
 def process_new_verified_contract_transactions(address):
+    logger.info('Starting process_new_verified_contract_transactions for address %s', address)  
     db = get_main_db()
     try:
         update_token_info(address, db)
-        c = db.call_sync(db.get_contract(address))
         for tx in db.call_sync(db.get_contract_transactions(address)):
-            process_token_transfer.delay(c, tx)
+            process_token_transfer.delay(tx)
     finally:
         db.call_sync(db.disconnect())
 
 
 @app.task
-def process_token_transfer(contract, tx):
+def process_token_transfer(tx):
+    logger.info('Starting process_token_transfer for tx %s', tx['hash'])
+    db = get_main_db()
     db.process_token_transfers(tx['hash'])
 
 
 @app.task
-def install_solc(commit):
-    wait_install_solc(commit)
+def install_solc(identifier):
+    logger.info('Starting install solc #%s', identifier)
+    wait_install_solc(identifier)

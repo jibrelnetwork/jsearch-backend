@@ -109,6 +109,8 @@ scrapy runspider PROJECT_ROOT/jsearch/esparser/spiders/contracts_fresh.py
 celery worker -A jsearch.common.celery
 ```
 
+There in 3 celery queues: `scrapy` - for periodic scraping of Etherscan, `solc` - for solc installation tasks, `default` - other tasks
+
 ## Author
 
 dev@jibrel.network
