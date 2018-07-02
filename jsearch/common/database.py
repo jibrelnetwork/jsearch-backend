@@ -204,7 +204,7 @@ class MainDB(DBWrapper):
                 contract_address = data['contract_address']
             else:
                 contract_address = tx['to']
-            contract = await self.get_contract(conn, contract_address)
+            contract = await self.get_contract(contract_address)
             logs = await self.process_logs(conn, contract, logs)
             data = self.process_transaction(contract, tx_data, logs)
             # from pprint import pprint;pprint(data)
@@ -312,7 +312,7 @@ class MainDB(DBWrapper):
             pass
         return tx_data
 
-    async def get_contract(self, conn, address):
+    async def get_contract(self, address):
         q = select([contracts_t]).where(contracts_t.c.address == address)
         row = await pg.fetchrow(q)
         logger.info('get_contract %s: %s', address, bool(row))
@@ -390,7 +390,7 @@ class MainDB(DBWrapper):
                 contract_address = logs[0]['address']
             else:
                 contract_address = tx['to']
-            contract = await self.get_contract(conn, contract_address)
+            contract = await self.get_contract(contract_address)
             logs = await self.process_logs(conn, contract, [dict(l) for l in logs])
             tx_data = dict(tx)
             data = self.process_transaction(contract, tx_data, logs)
@@ -398,6 +398,10 @@ class MainDB(DBWrapper):
             await conn.execute(query)
             await self.update_logs(conn, logs)
 
+    async def get_contract_transactions(self, address):
+        q = select([transactions_t]).where(transactions_t.c.to == address)
+        rows = await pg.fetch(q)
+        return rows
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')

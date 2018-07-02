@@ -15,7 +15,7 @@ class ContractsSpider(scrapy.Spider):
     listing_url = 'https://etherscan.io/contractsVerified'
 
     def start_requests(self):
-        yield scrapy.Request(url=self.listing_url, callback=self.parse_listing, meta={'page': 0})
+        yield scrapy.Request(url=self.listing_url, callback=self.parse_listing, meta={'page': 1})
 
     def parse_listing(self, response):
         links = LinkExtractor(allow='\/address\/0x.*', restrict_css='.table-responsive').extract_links(response)
@@ -60,8 +60,6 @@ class ContractsSpider(scrapy.Spider):
         parts = response.css('#code').css("table.table td").extract()
         parts = [remove_tags(p).strip() for p in parts]
         compile_params = dict(zip(parts[::2], parts[1::2]))
-
-        print('CPP', compile_params, parts)
 
         item['name'] = compile_params['Contract Name:']
         item['compiler_version'] = compile_params['Compiler Version:']
