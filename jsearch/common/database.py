@@ -134,7 +134,8 @@ class MainDB(DBWrapper):
         row = await pg.fetchrow(q)
         return row['number'] if row else None
 
-    async def write_block(self, header, uncles, transactions, receipts, accounts, reward):
+    async def write_block(self, header, uncles, transactions, receipts,
+                          accounts, reward, internal_transactions):
         """
         Write block and all related items in main database
         """
@@ -144,6 +145,7 @@ class MainDB(DBWrapper):
         logger.debug('T: %s', transactions)
         logger.debug('R: %s', receipts)
         logger.debug('RW: %s', reward)
+        logger.debug('IT: %s', internal_transactions)
 
         block_number = header['block_number']
         block_hash = header['block_hash']
@@ -165,6 +167,7 @@ class MainDB(DBWrapper):
             await self.insert_uncles(conn, block_number, block_hash, uncles, uncles_rewards)
             await self.insert_transactions_and_receipts(conn, block_number, block_hash, receipts, transactions)
             await self.insert_accounts(conn, block_number, block_hash, accounts)
+            await self.insert_internal_transactions(conn, block_number, block_hash, internal_transactions)
 
     async def insert_header(self, conn, header, reward):
         data = dict_keys_case_convert(json.loads(header['fields']))
@@ -237,6 +240,15 @@ class MainDB(DBWrapper):
             query = accounts_t.insert().values(block_number=block_number,
                                                address=account['address'].lower(),
                                                block_hash=block_hash, **data)
+            await conn.execute(query)
+
+    async def insert_internal_transaction(self, conn, block_number, block_hash, internal_transactions):
+        for tx in internal_transactions:
+            data = dict_keys_case_convert(json.loads(tx['fields']))
+            data['timestamp'] = data.pop('time_stamp')
+            query = internal_transactions_t.insert().values(block_number=block_number,
+                                                         block_hash=block_hash,
+                                                         op=tx['type'], **data)
             await conn.execute(query)
 
     async def process_logs(self, conn, contract, logs):

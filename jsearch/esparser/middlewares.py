@@ -10,6 +10,9 @@ import logging
 from scrapy import signals
 
 
+logger = logging.getLogger(__name__)
+
+
 class EsparserSpiderMiddleware(object):
     # Not all methods need to be defined. If a method is not defined,
     # scrapy acts as if the spider middleware does not modify the
@@ -94,7 +97,7 @@ class EsparserDownloaderMiddleware(object):
         scheme = request.url.split('//')[0]
         proxy_url = '{}//{}:{}@{}'.format(scheme, user, pwd, proxy_host)
         request.meta['proxy'] = proxy_url
-        logging.debug('Using proxy %s', proxy_host)
+        logger.debug('Using proxy %s', proxy_host)
         return None
 
     def process_response(self, request, response, spider):
