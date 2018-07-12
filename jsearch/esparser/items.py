@@ -20,6 +20,7 @@ class ContractItem(scrapy.Item):
     abi = scrapy.Field()
 
     grabbed_at = scrapy.Field()
+    verified_at = scrapy.Field()
 
     def __repr__(self):
         return 'Contract {} at {}'.format(self['name'], self['address'])

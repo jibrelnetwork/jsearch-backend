@@ -78,6 +78,7 @@ class InternalTransaction(Base):
     to_addr = sa.Column('to', sa.String, primary_key=True)
     value = sa.Column('value', sa.String)
     gas_limit = sa.Column('gas_limit', HexBigInteger)
+    payload = sa.Column('payload', sa.String)
 
 
 class Transaction(Base):
@@ -230,7 +231,6 @@ class TokenHolder(Base):
     account_address = sa.Column('account_address', sa.String, primary_key=True)
     token_address = sa.Column('token_address', sa.String, primary_key=True)
     balance = sa.Column('balance', postgresql.NUMERIC(32, 0))
-
 
 
 blocks_t = Block.__table__
