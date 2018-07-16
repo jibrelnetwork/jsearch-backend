@@ -76,7 +76,7 @@ class InternalTransaction(Base):
     timestamp = sa.Column('timestamp', HexInteger)
     from_addr = sa.Column('from', sa.String)
     to_addr = sa.Column('to', sa.String)
-    value = sa.Column('value', HexBigInteger)
+    value = sa.Column('value', postgresql.NUMERIC(32, 0))
     gas_limit = sa.Column('gas_limit', HexBigInteger)
     payload = sa.Column('payload', sa.String)
     status = sa.Column('status', sa.String)
