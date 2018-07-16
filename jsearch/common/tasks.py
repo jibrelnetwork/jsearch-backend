@@ -30,12 +30,19 @@ def update_token_info(address, db=None):
 
 @app.task
 def process_new_verified_contract_transactions(address):
-    logger.info('Starting process_new_verified_contract_transactions for address %s', address)  
+    logger.info('Starting process_new_verified_contract_transactions for address %s', address)
     db = get_main_db()
+    c = db.call_sync(db.get_contract(address))
+    if c is None:
+        logger.info('Contract %s is missed in DB', address)
+        return
     try:
         update_token_info(address, db)
+        tx_count = 0
         for tx in db.call_sync(db.get_contract_transactions(address)):
             process_token_transfer.delay(tx)
+            tx_count += 1
+        logger.info('%s transactions found for %s', tx_count, address)
     finally:
         db.call_sync(db.disconnect())
 

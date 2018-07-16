@@ -70,7 +70,7 @@ class InternalTransaction(Base):
     __tablename__ = 'internal_transactions'
 
     block_number = sa.Column('block_number', HexInteger, primary_key=True)
-    parent_tx_hash = sa.Column('parent_tx_hash', HexInteger, primary_key=True)
+    parent_tx_hash = sa.Column('parent_tx_hash', sa.String, primary_key=True)
     op = sa.Column('op', sa.String)
     depth = sa.Column('depth', HexInteger)
     timestamp = sa.Column('timestamp', HexInteger)
@@ -79,6 +79,7 @@ class InternalTransaction(Base):
     value = sa.Column('value', sa.String)
     gas_limit = sa.Column('gas_limit', HexBigInteger)
     payload = sa.Column('payload', sa.String)
+    status = sa.Column('status', sa.String)
 
 
 class Transaction(Base):
@@ -241,3 +242,4 @@ logs_t = Log.__table__
 accounts_t = Account.__table__
 contracts_t = Contract.__table__
 token_holders_t = TokenHolder.__table__
+internal_transactions_t = InternalTransaction.__table__
