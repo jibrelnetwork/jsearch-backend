@@ -71,10 +71,10 @@ class Manager:
         transactions = body_fields['Transactions'] or []
         receipts = await self.raw_db.get_block_receipts(block_number)
         reward = await self.raw_db.get_reward(block_number)
-        inner_transactions = await self.raw_db.get_inner_transactions(block_number)
+        internal_transactions = await self.raw_db.get_internal_transactions(block_number)
 
         await self.main_db.write_block(header=header, uncles=uncles, accounts=accounts,
                                        transactions=transactions, receipts=receipts, reward=reward,
-                                       inner_transactions=inner_transactions)
+                                       internal_transactions=internal_transactions)
         sync_time = time.monotonic() - start_time
         logger.info("Block #%s synced on %ss", header['block_number'], sync_time)

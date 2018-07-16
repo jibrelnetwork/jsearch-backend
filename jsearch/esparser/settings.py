@@ -81,6 +81,8 @@ DOWNLOADER_MIDDLEWARES = {
     'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': 110,
 }
 
+RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 408, 403]
+
 # Proxy list containing entries like
 # http://host1:port
 # http://username:password@host2:port

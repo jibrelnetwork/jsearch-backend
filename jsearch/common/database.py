@@ -95,8 +95,8 @@ class RawDB(DBWrapper):
 
     async def get_block_receipts(self, block_number):
         q = """SELECT * FROM receipts WHERE block_number=$1"""
-        rows = await self.conn.fetchrow(q, block_number)
-        return rows
+        row = await self.conn.fetchrow(q, block_number)
+        return row
 
     async def get_reward(self, block_number):
         q = """SELECT * FROM rewards WHERE block_number=$1"""
@@ -109,6 +109,11 @@ class RawDB(DBWrapper):
             return rows[0]
         else:
             return None
+
+    async def get_internal_transactions(self, block_number):
+        q = """SELECT * FROM internal_transactions WHERE block_number=$1"""
+        rows = await self.conn.fetch(q, block_number)
+        return rows
 
 
 class MainDB(DBWrapper):
@@ -242,13 +247,14 @@ class MainDB(DBWrapper):
                                                block_hash=block_hash, **data)
             await conn.execute(query)
 
-    async def insert_internal_transaction(self, conn, block_number, block_hash, internal_transactions):
+    async def insert_internal_transactions(self, conn, block_number, block_hash, internal_transactions):
         for tx in internal_transactions:
             data = dict_keys_case_convert(json.loads(tx['fields']))
             data['timestamp'] = data.pop('time_stamp')
-            query = internal_transactions_t.insert().values(block_number=block_number,
-                                                         block_hash=block_hash,
-                                                         op=tx['type'], **data)
+            data['depth'] = data.pop('call_depth')
+            del data['operation']
+            print('GGG', data['value'])
+            query = internal_transactions_t.insert().values(op=tx['type'], **data)
             await conn.execute(query)
 
     async def process_logs(self, conn, contract, logs):
@@ -327,13 +333,13 @@ class MainDB(DBWrapper):
     async def get_contract(self, address):
         q = select([contracts_t]).where(contracts_t.c.address == address)
         row = await pg.fetchrow(q)
-        logger.info('get_contract %s: %s', address, bool(row))
+        logger.debug('get_contract %s: %s', address, bool(row))
         return row
 
     async def update_contract(self, address, data):
         q = contracts_t.update().where(
             contracts_t.c.address == address).values(**data)
-        await self.conn.execute(q)
+        res = await self.conn.execute(q)
 
     async def get_transaction_logs(self, conn, tx_hash):
         q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
