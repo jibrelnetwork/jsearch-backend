@@ -248,12 +248,11 @@ class MainDB(DBWrapper):
             await conn.execute(query)
 
     async def insert_internal_transactions(self, conn, block_number, block_hash, internal_transactions):
-        for tx in internal_transactions:
+        for i, tx in enumerate(internal_transactions, 1):
             data = dict_keys_case_convert(json.loads(tx['fields']))
             data['timestamp'] = data.pop('time_stamp')
-            data['depth'] = data.pop('call_depth')
+            data['transaction_index'] = i
             del data['operation']
-            print('GGG', data['value'])
             query = internal_transactions_t.insert().values(op=tx['type'], **data)
             await conn.execute(query)
 
