@@ -86,7 +86,7 @@ def upgrade():
     sa.Column('timestamp', tables.HexInteger(), nullable=True),
     sa.Column('from', sa.String(), nullable=True),
     sa.Column('to', sa.String(), nullable=True),
-    sa.Column('value', tables.HexBigInteger(), nullable=True),
+    sa.Column('value', sa.NUMERIC(precision=32, scale=0), nullable=True),
     sa.Column('gas_limit', tables.HexBigInteger(), nullable=True),
     sa.Column('payload', sa.String(), nullable=True),
     sa.Column('status', sa.String(), nullable=True),
