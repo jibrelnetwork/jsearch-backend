@@ -3,7 +3,7 @@ aiohttp-swagger==1.0.5
 alembic==0.9.9
 asyncpg==0.15.0
 asyncpgsa==0.22.0
-celery==4.1.0
+celery==4.1.1
 ConfigArgParse==0.13.0
 eth-utils==1.0.3
 ethereum==2.3.1

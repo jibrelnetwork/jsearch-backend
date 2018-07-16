@@ -15,12 +15,13 @@ class ContractsSpider(scrapy.Spider):
     listing_url = 'https://etherscan.io/contractsVerified'
 
     def start_requests(self):
-        yield scrapy.Request(url=self.listing_url, callback=self.parse_listing, meta={'page': 0})
+        yield scrapy.Request(url=self.listing_url, callback=self.parse_listing, meta={'page': 1})
 
     def parse_listing(self, response):
         links = LinkExtractor(allow='\/address\/0x.*', restrict_css='.table-responsive').extract_links(response)
-        for link in links:
-            yield scrapy.Request(url=link.url, callback=self.parse_contract)
+        dates = response.css('.table-responsive tr td:last-child::text').extract()
+        for link, date in zip(links, dates):
+            yield scrapy.Request(url=link.url, callback=self.parse_contract, meta={'date_verified': date})
 
         yield self.get_next_page_request(response)
 
@@ -55,13 +56,12 @@ class ContractsSpider(scrapy.Spider):
         item['source_code'] = response.css('.js-sourcecopyarea::text').extract()[0]
         item['abi'] = json.loads(response.css('.js-copytextarea2::text').extract()[0])
         item['byte_code'] = response.css('#verifiedbytecode2::text').extract()[0]
+        item['verified_at'] = datetime.datetime.strptime(response.meta['date_verified'], '%m/%d/%Y')
 
         # compile params
         parts = response.css('#code').css("table.table td").extract()
         parts = [remove_tags(p).strip() for p in parts]
         compile_params = dict(zip(parts[::2], parts[1::2]))
-
-        print('CPP', compile_params, parts)
 
         item['name'] = compile_params['Contract Name:']
         item['compiler_version'] = compile_params['Compiler Version:']

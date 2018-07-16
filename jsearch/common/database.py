@@ -95,8 +95,8 @@ class RawDB(DBWrapper):
 
     async def get_block_receipts(self, block_number):
         q = """SELECT * FROM receipts WHERE block_number=$1"""
-        rows = await self.conn.fetchrow(q, block_number)
-        return rows
+        row = await self.conn.fetchrow(q, block_number)
+        return row
 
     async def get_reward(self, block_number):
         q = """SELECT * FROM rewards WHERE block_number=$1"""
@@ -109,6 +109,11 @@ class RawDB(DBWrapper):
             return rows[0]
         else:
             return None
+
+    async def get_internal_transactions(self, block_number):
+        q = """SELECT * FROM internal_transactions WHERE block_number=$1"""
+        rows = await self.conn.fetch(q, block_number)
+        return rows
 
 
 class MainDB(DBWrapper):
@@ -134,7 +139,8 @@ class MainDB(DBWrapper):
         row = await pg.fetchrow(q)
         return row['number'] if row else None
 
-    async def write_block(self, header, uncles, transactions, receipts, accounts, reward):
+    async def write_block(self, header, uncles, transactions, receipts,
+                          accounts, reward, internal_transactions):
         """
         Write block and all related items in main database
         """
@@ -144,6 +150,7 @@ class MainDB(DBWrapper):
         logger.debug('T: %s', transactions)
         logger.debug('R: %s', receipts)
         logger.debug('RW: %s', reward)
+        logger.debug('IT: %s', internal_transactions)
 
         block_number = header['block_number']
         block_hash = header['block_hash']
@@ -165,6 +172,7 @@ class MainDB(DBWrapper):
             await self.insert_uncles(conn, block_number, block_hash, uncles, uncles_rewards)
             await self.insert_transactions_and_receipts(conn, block_number, block_hash, receipts, transactions)
             await self.insert_accounts(conn, block_number, block_hash, accounts)
+            await self.insert_internal_transactions(conn, block_number, block_hash, internal_transactions)
 
     async def insert_header(self, conn, header, reward):
         data = dict_keys_case_convert(json.loads(header['fields']))
@@ -204,7 +212,7 @@ class MainDB(DBWrapper):
                 contract_address = data['contract_address']
             else:
                 contract_address = tx['to']
-            contract = await self.get_contract(conn, contract_address)
+            contract = await self.get_contract(contract_address)
             logs = await self.process_logs(conn, contract, logs)
             data = self.process_transaction(contract, tx_data, logs)
             # from pprint import pprint;pprint(data)
@@ -237,6 +245,16 @@ class MainDB(DBWrapper):
             query = accounts_t.insert().values(block_number=block_number,
                                                address=account['address'].lower(),
                                                block_hash=block_hash, **data)
+            await conn.execute(query)
+
+    async def insert_internal_transactions(self, conn, block_number, block_hash, internal_transactions):
+        for tx in internal_transactions:
+            data = dict_keys_case_convert(json.loads(tx['fields']))
+            data['timestamp'] = data.pop('time_stamp')
+            data['depth'] = data.pop('call_depth')
+            del data['operation']
+            print('GGG', data['value'])
+            query = internal_transactions_t.insert().values(op=tx['type'], **data)
             await conn.execute(query)
 
     async def process_logs(self, conn, contract, logs):
@@ -312,16 +330,16 @@ class MainDB(DBWrapper):
             pass
         return tx_data
 
-    async def get_contract(self, conn, address):
+    async def get_contract(self, address):
         q = select([contracts_t]).where(contracts_t.c.address == address)
         row = await pg.fetchrow(q)
-        logger.info('get_contract %s: %s', address, bool(row))
+        logger.debug('get_contract %s: %s', address, bool(row))
         return row
 
     async def update_contract(self, address, data):
         q = contracts_t.update().where(
             contracts_t.c.address == address).values(**data)
-        await self.conn.execute(q)
+        res = await self.conn.execute(q)
 
     async def get_transaction_logs(self, conn, tx_hash):
         q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
@@ -390,7 +408,7 @@ class MainDB(DBWrapper):
                 contract_address = logs[0]['address']
             else:
                 contract_address = tx['to']
-            contract = await self.get_contract(conn, contract_address)
+            contract = await self.get_contract(contract_address)
             logs = await self.process_logs(conn, contract, [dict(l) for l in logs])
             tx_data = dict(tx)
             data = self.process_transaction(contract, tx_data, logs)
@@ -398,6 +416,10 @@ class MainDB(DBWrapper):
             await conn.execute(query)
             await self.update_logs(conn, logs)
 
+    async def get_contract_transactions(self, address):
+        q = select([transactions_t]).where(transactions_t.c.to == address)
+        rows = await pg.fetch(q)
+        return rows
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')
