@@ -1,8 +1,9 @@
 from setuptools import setup
 import os.path
+import pathlib
 
 
-version = '0.1.0'
+version = pathlib.Path('version.txt').read_text().strip()
 
 setup(
     name='jsearch',
