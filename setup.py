@@ -9,7 +9,7 @@ setup(
     name='jsearch',
     version=version,
     description='JSearch backend services',
-    packages=['jsearch'],
+    packages=['jsearch', 'jsearch.common', 'jsearch.syncer'],
     zip_safe=False,
     platforms='any',
     install_requires=[],
