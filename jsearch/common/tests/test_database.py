@@ -86,3 +86,4 @@ async def test_process_token_transfer_constructor(db, contracts, transactions, l
         'account_address': main_db_data['accounts'][0]['address'],
         'token_address': token_address,
     }
+    db.execute(t.token_holders_t.delete())
