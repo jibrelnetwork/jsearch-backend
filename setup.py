@@ -1,14 +1,21 @@
 from setuptools import setup
 import os.path
+import pathlib
 
 
-version = '0.1.0'
+version = pathlib.Path('version.txt').read_text().strip()
 
 setup(
     name='jsearch',
     version=version,
     description='JSearch backend services',
-    packages=['jsearch'],
+    packages=[
+        'jsearch',
+        'jsearch.common',
+        'jsearch.esparser',
+        'jsearch.esparser.spiders',
+        'jsearch.syncer'
+    ],
     zip_safe=False,
     platforms='any',
     install_requires=[],

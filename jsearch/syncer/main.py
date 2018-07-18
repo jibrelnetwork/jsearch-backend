@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 
 import configargparse
 
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 def run():
     p = configargparse.ArgParser(description='jSearch DBs sync service.',
                                  default_config_files=['/etc/jsearch-syncer.conf'])
-    p.add('--log-level', help='log level', default='INFO')
+    p.add('--log-level', help='log level', default=os.getenv('LOG_LEVEL', 'INFO'))
 
     options = p.parse_args()
 
