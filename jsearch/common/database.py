@@ -300,7 +300,8 @@ class MainDB(DBWrapper):
                             res = await conn.execute(update_from_q)
                             if int(res.strip('UPDATE')) == 0:
                                 # no updates - token owner has no balance records
-                                raise RuntimeError('Token owner has unknown balance')
+                                # raise RuntimeError('Token owner has unknown balance: %s, %s', from_address, token_address)
+                                logger.warn('Token owner has unknown balance: %s, %s', from_address, token_address)
         return logs
 
     def process_transaction(self, contract, tx_data, logs):
