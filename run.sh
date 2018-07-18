@@ -10,7 +10,7 @@ if [ "${RUNMODE}" = "app" ]; then
     python manage.py upgrade head
     gunicorn --bind 0.0.0.0:8000 jsearch.api.app:make_app --worker-class aiohttp.worker.GunicornWebWorker
 elif [ "${RUNMODE}" = "scrapy" ]; then
-    scrapy runspider /app/jsearch/esparser/spiders/contracts_fresh.py
+    scrapy runspider jsearch/esparser/spiders/contracts_fresh.py
 elif [ "${RUNMODE}" = "syncer" ]; then
     jsearch-syncer
 elif [ "${RUNMODE}" = "celerybeat" ]; then
