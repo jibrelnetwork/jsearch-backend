@@ -22,8 +22,8 @@ class ContractsSpider(scrapy.Spider):
         dates = response.css('.table-responsive tr td:last-child::text').extract()
         for link, date in zip(links, dates):
             yield scrapy.Request(url=link.url, callback=self.parse_contract, meta={'date_verified': date})
-
-        yield self.get_next_page_request(response)
+        if len(dates) > 0:
+            yield self.get_next_page_request(response)
 
     def get_next_page_request(self, response):
         next_page = response.meta['page'] + 1
