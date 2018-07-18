@@ -257,51 +257,60 @@ class MainDB(DBWrapper):
             await conn.execute(query)
 
     async def process_logs(self, conn, contract, logs):
+        contracts_cache = {}
         if contract is not None:
-            abi = json.loads(contract['abi'])
-            for log in logs:
-                try:
-                    event = contracts.decode_event(abi, log)
-                except Exception as e:
-                    # ValueError: Unknown log type
-                    logger.exception('Log decode error: <%s>', log)
-                    log['event_type'] = None
-                    log['event_args'] = None
+            contracts_cache[contract['address']] = contract
+        for log in logs:
+            try:
+                if log['address'] in contracts_cache:
+                    log_contract = contracts_cache[log['address']]
                 else:
-                    event_type = event.pop('_event_type')
-                    log['event_type'] = event_type
-                    log['event_args'] = event
-                    if event_type == 'Transfer':
-                        args_list = []
-                        event_inputs = [i['inputs'] for i in abi
-                                        if i.get('name') == event_type and
-                                        i['type'] == 'event'][0]
-                        for i in event_inputs:
-                            args_list.append(event[i['name']])
-                        token_address = log['address']
-                        to_address = args_list[1]
-                        from_address = args_list[0]
-                        if contract['token_decimals']:
-                            amount = args_list[2] / (10 ** contract['token_decimals'])
-                        else:
-                            amount = args_list[2]
-                        q = insert(token_holders_t).values(balance=amount,
-                                                           token_address=token_address,
-                                                           account_address=to_address)
-                        update_to_q = q.on_conflict_do_update(
-                            index_elements=['token_address', 'account_address'],
-                            set_={'balance': token_holders_t.c.balance + amount})
-                        update_from_q = token_holders_t.update().\
-                            where(and_(token_holders_t.c.token_address==token_address,
-                                       token_holders_t.c.account_address==from_address)).\
-                            values(balance=token_holders_t.c.balance - amount)
-                        await conn.execute(update_to_q)
-                        if from_address != contracts.NULL_ADDRESS:
-                            res = await conn.execute(update_from_q)
-                            if int(res.strip('UPDATE')) == 0:
-                                # no updates - token owner has no balance records
-                                # raise RuntimeError('Token owner has unknown balance: %s, %s', from_address, token_address)
-                                logger.warn('Token owner has unknown balance: %s, %s', from_address, token_address)
+                    log_contract = await self.get_contract(log['address'])
+                    if log_contract is None:
+                        log['event_type'] = None
+                        continue
+                    contracts_cache[log['address']] = log_contract
+                abi = json.loads(log_contract['abi'])
+                event = contracts.decode_event(abi, log)
+            except Exception as e:
+                # ValueError: Unknown log type
+                logger.exception('Log decode error: <%s>', log)
+                log['event_type'] = None
+            else:
+                event_type = event.pop('_event_type')
+                log['event_type'] = event_type
+                log['event_args'] = event
+                if event_type == 'Transfer':
+                    args_list = []
+                    event_inputs = [i['inputs'] for i in abi
+                                    if i.get('name') == event_type and
+                                    i['type'] == 'event'][0]
+                    for i in event_inputs:
+                        args_list.append(event[i['name']])
+                    token_address = log['address']
+                    to_address = args_list[1]
+                    from_address = args_list[0]
+                    if log_contract['token_decimals']:
+                        amount = args_list[2] / (10 ** log_contract['token_decimals'])
+                    else:
+                        amount = args_list[2]
+                    q = insert(token_holders_t).values(balance=amount,
+                                                       token_address=token_address,
+                                                       account_address=to_address)
+                    update_to_q = q.on_conflict_do_update(
+                        index_elements=['token_address', 'account_address'],
+                        set_={'balance': token_holders_t.c.balance + amount})
+                    update_from_q = token_holders_t.update().\
+                        where(and_(token_holders_t.c.token_address==token_address,
+                                   token_holders_t.c.account_address==from_address)).\
+                        values(balance=token_holders_t.c.balance - amount)
+                    await conn.execute(update_to_q)
+                    if from_address != contracts.NULL_ADDRESS:
+                        res = await conn.execute(update_from_q)
+                        if int(res.strip('UPDATE')) == 0:
+                            # no updates - token owner has no balance records
+                            # raise RuntimeError('Token owner has unknown balance: %s, %s', from_address, token_address)
+                            logger.warn('Token owner has unknown balance: %s, %s', from_address, token_address)
         return logs
 
     def process_transaction(self, contract, tx_data, logs):
