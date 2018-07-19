@@ -63,15 +63,14 @@ def install_solc(identifier):
 
 
 @app.task
-def update_token_holder_balance(token_address, account_address):
+def update_token_holder_balance(token_address, account_address, block_number):
     from jsearch.common.database import get_main_db
     w3 = Web3(Web3.HTTPProvider(settings.ETH_NODE_URL))
     checksum_token_address = Web3.toChecksumAddress(token_address)
     checksum_account_address = Web3.toChecksumAddress(account_address)
     c = w3.eth.contract(checksum_token_address, abi=ERC20_ABI)
-    balance = c.functions.balanceOf(checksum_account_address).call()
-    decimals = c.functions.decimals().call()
-    print('FFF', decimals)
+    balance = c.functions.balanceOf(checksum_account_address).call(block_identifier=block_number)
+    decimals = c.functions.decimals().call(block_identifier=block_number)
     balance = balance / 10 ** decimals
     db = get_main_db()
     db.call_sync(db.update_token_holder_balance(token_address, account_address, balance))

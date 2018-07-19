@@ -291,8 +291,9 @@ class MainDB(DBWrapper):
                     token_address = log['address']
                     to_address = args_list[1]
                     from_address = args_list[0]
-                    tasks.update_token_holder_balance.delay(token_address, to_address)
-                    tasks.update_token_holder_balance.delay(token_address, from_address)
+                    block_number = log.get('block_number') or int(log['blockNumber'], 16)  # FIXME
+                    tasks.update_token_holder_balance.delay(token_address, to_address, block_number)
+                    tasks.update_token_holder_balance.delay(token_address, from_address, block_number)
         return logs
 
     def process_transaction(self, contract, tx_data, logs):

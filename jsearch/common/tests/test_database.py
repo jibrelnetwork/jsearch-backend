@@ -37,8 +37,8 @@ async def test_process_token_transfer(db, contracts, transactions, logs, main_db
         holders = db.execute(holders_q).fetchall()
         assert len(holders) == 0
         mock_tasks.update_token_holder_balance.delay.assert_has_calls([
-            mock.call(token_address, main_db_data['accounts'][1]['address']),
-            mock.call(token_address, main_db_data['accounts'][0]['address']),
+            mock.call(token_address, main_db_data['accounts'][1]['address'], rows[0]['block_number']),
+            mock.call(token_address, main_db_data['accounts'][0]['address'], rows[0]['block_number']),
         ])
 
 

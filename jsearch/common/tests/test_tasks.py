@@ -34,7 +34,7 @@ def test_update_token_holder_balance(W3, db, contracts, main_db_data):
     m = W3().eth.contract()
     m.functions.balanceOf().call.return_value = 100500
     m.functions.decimals().call.return_value = 2
-    tasks.update_token_holder_balance(token_address, account_address)
+    tasks.update_token_holder_balance(token_address, account_address, 3)
 
     q = t.token_holders_t.select().where(and_(t.token_holders_t.c.token_address == token_address,
                                               t.token_holders_t.c.account_address == account_address))
@@ -45,7 +45,7 @@ def test_update_token_holder_balance(W3, db, contracts, main_db_data):
     assert rows[0].balance == 1005
 
     m.functions.balanceOf().call.return_value = 900
-    tasks.update_token_holder_balance(token_address, account_address)
+    tasks.update_token_holder_balance(token_address, account_address, 3)
     rows = db.execute(q).fetchall()
     assert len(rows) == 1
     assert rows[0].token_address == token_address
