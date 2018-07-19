@@ -64,7 +64,7 @@ async def test_maindb_insert_header(db, contracts):
                 {'address': '0xf927a40C8B7F6E07c5af7FA2155B4864a4112B13',
                  'fields': '{"code": "", "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421", "nonce": 0, "balance": "27103448000000000000000", "storage": {}, "codeHash": "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"}'}]
 
-    receipts = {'fields': '{"Receipts": [{"logs":[{"data": "0x0f400",\
+    receipts = {'fields': '{"Receipts": [{"logs":[{"data": "0x0000000000000000000000000000000000000000000000000000000005f5e100",\
                                                   "topics": ["0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c"],\
                                                   "address": "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a",\
                                                   "removed": false,\
@@ -150,7 +150,7 @@ async def test_maindb_insert_header(db, contracts):
         'address': '0xbb4af59aeaf2e83684567982af5ca21e9ac8419a',
         'block_hash': '0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2',
         'block_number': 413949,
-        'data': '0x0f400',
+        'data': '0x0000000000000000000000000000000000000000000000000000000005f5e100',
         'log_index': 0,
         'removed': False,
         'event_type': None,
