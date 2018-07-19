@@ -15,6 +15,7 @@ from sqlalchemy import and_
 
 from jsearch.common.tables import *
 from jsearch.common import contracts
+from jsearch.common import tasks
 from jsearch import settings
 
 
@@ -290,27 +291,8 @@ class MainDB(DBWrapper):
                     token_address = log['address']
                     to_address = args_list[1]
                     from_address = args_list[0]
-                    if log_contract['token_decimals']:
-                        amount = args_list[2] / (10 ** log_contract['token_decimals'])
-                    else:
-                        amount = args_list[2]
-                    q = insert(token_holders_t).values(balance=amount,
-                                                       token_address=token_address,
-                                                       account_address=to_address)
-                    update_to_q = q.on_conflict_do_update(
-                        index_elements=['token_address', 'account_address'],
-                        set_={'balance': token_holders_t.c.balance + amount})
-                    update_from_q = token_holders_t.update().\
-                        where(and_(token_holders_t.c.token_address==token_address,
-                                   token_holders_t.c.account_address==from_address)).\
-                        values(balance=token_holders_t.c.balance - amount)
-                    await conn.execute(update_to_q)
-                    if from_address != contracts.NULL_ADDRESS:
-                        res = await conn.execute(update_from_q)
-                        if int(res.strip('UPDATE')) == 0:
-                            # no updates - token owner has no balance records
-                            # raise RuntimeError('Token owner has unknown balance: %s, %s', from_address, token_address)
-                            logger.warn('Token owner has unknown balance: %s, %s', from_address, token_address)
+                    tasks.update_token_holder_balance.delay(token_address, to_address)
+                    tasks.update_token_holder_balance.delay(token_address, from_address)
         return logs
 
     def process_transaction(self, contract, tx_data, logs):
@@ -430,6 +412,18 @@ class MainDB(DBWrapper):
         rows = await pg.fetch(q)
         return rows
 
+    async def update_token_holder_balance(self, token_address, account_address, balance):
+        insert_query = insert(token_holders_t).values(
+            token_address=token_address,
+            account_address=account_address,
+            balance=balance)
+        do_update_query = insert_query.on_conflict_do_update(
+            index_elements=['token_address', 'account_address'],
+            set_=dict(balance=balance)
+        )
+        await self.conn.execute(do_update_query)
+
+
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')
 
@@ -441,19 +435,6 @@ def case_convert(name):
 
 def dict_keys_case_convert(d):
     return {case_convert(k): v for k, v in d.items()}
-
-
-# class MainDBSync:
-
-#     def __init__(self, connection_string):
-#         self.connection_string = connection_string
-#         engine = sa.create_engine(self.connection_string)
-#         self.conn = engine.connect()
-
-#     def update_contract(self, address, data):
-#         q = contracts_t.update().where(
-#             contracts_t.c.address == address).values(**data)
-#         self.conn.execute(q)
 
 
 def get_main_db():

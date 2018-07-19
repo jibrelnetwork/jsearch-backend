@@ -25,6 +25,6 @@ def run_contracts_spider():
     logger.info('Stop Contracts Spider')
 
 
-@celeryd_init.connect()
-def start_contract_spider_task(conf=None, **kwargs):
-    run_contracts_spider.delay()
+# @celeryd_init.connect()
+# def start_contract_spider_task(conf=None, **kwargs):
+#     run_contracts_spider.delay()
