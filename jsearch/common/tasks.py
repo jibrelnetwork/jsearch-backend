@@ -1,11 +1,15 @@
 import os
 import logging
+import urllib.request
+
+from web3 import Web3
+from lxml import html
+import solc.install
+from celery.signals import celeryd_init
 
 from jsearch.common.celery import app
 from jsearch.common.contracts import ERC20_ABI, wait_install_solc
 from jsearch import settings
-
-from web3 import Web3
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +29,7 @@ def update_token_info(address, db=None):
     if db is None:
         db = get_main_db()
     db.call_sync(db.update_contract(address, info))
-    logger.info('Token info updated for address %s', address) 
+    logger.info('Token info updated for address %s', address)
 
 
 @app.task
@@ -75,3 +79,25 @@ def update_token_holder_balance(token_address, account_address, block_number):
     db = get_main_db()
     db.call_sync(db.update_token_holder_balance(token_address, account_address, balance))
     logger.info('Token balance updated for token %s account %s value %s', token_address, account_address, balance)
+
+
+@app.task
+def install_all_actual_solc_versions():
+    VERSIONS_LIST_URL = 'https://etherscan.io/verifyContract'
+    req = urllib.request.Request(VERSIONS_LIST_URL, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req) as response:
+        doc = html.document_fromstring(response.read())
+    all_versions = doc.xpath(".//select[@id='ContentPlaceHolder1_ddlCompilerVersions']//option/@value")
+    actual_versions = [v for v in all_versions[1:] if 'nightly' not in v][:12]
+    for v in actual_versions:
+        commit = v.split('.')[-1]
+        if os.path.exists(solc.install.get_executable_path(commit)):
+            logger.info('Solc %s already installed', v)
+        else:
+            install_solc.delay(commit)
+            logger.info('Delay install_solc %s', v)
+
+
+@celeryd_init.connect()
+def start_install_all_actual_solc_versions_task(conf=None, **kwargs):
+    install_all_actual_solc_versions.delay()
