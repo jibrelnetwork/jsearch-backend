@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 SLEEP_ON_ERROR_DEFAULT = 0.1
 SLEEP_ON_DB_ERROR_DEFAULT = 5
+SLEEP_ON_NO_BLOCKS_DEFAULT = 1
 
 
 class Manager:
@@ -25,6 +26,7 @@ class Manager:
         self.chunk_size = 10
         self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
         self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
+        self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
 
     async def run(self):
         logger.info("Starting Sync Manager")
@@ -41,6 +43,8 @@ class Manager:
                 blocks_to_sync = await self.get_blocks_to_sync()
                 for block in blocks_to_sync:
                     await self.sync_block(block["block_number"])
+                if len(blocks_to_sync) == 0:
+                    await asyncio.sleep(self.sleep_on_no_blocks)
             except DatabaseError:
                 logger.exception("Database Error accured:")
                 await asyncio.sleep(self.sleep_on_db_error)
@@ -53,23 +57,25 @@ class Manager:
 
     async def get_blocks_to_sync(self):
         latest_block_num = await self.main_db.get_latest_sequence_synced_block_number()
-        logger.info("Latest synced block num is %s", latest_block_num)
         if latest_block_num is None:
             start_block_num = 0
         else:
             start_block_num = latest_block_num + 1
         blocks = await self.raw_db.get_blocks_to_sync(start_block_num, self.chunk_size)
+        logger.info("Latest synced block num is %s, %s blocks to sync", latest_block_num, len(blocks))
         return blocks
 
     async def sync_block(self, block_number):
         start_time = time.monotonic()
+        receipts = await self.raw_db.get_block_receipts(block_number)
+        if receipts is None:
+            logger.debug("Block #%s not ready: no receipts", block_number)
         header = await self.raw_db.get_header_by_hash(block_number)
         accounts = await self.raw_db.get_block_accounts(block_number)
         body = await self.raw_db.get_block_body(block_number)
         body_fields = json.loads(body['fields'])
         uncles = body_fields['Uncles'] or []
         transactions = body_fields['Transactions'] or []
-        receipts = await self.raw_db.get_block_receipts(block_number)
         reward = await self.raw_db.get_reward(block_number)
         internal_transactions = await self.raw_db.get_internal_transactions(block_number)
 
@@ -77,4 +83,4 @@ class Manager:
                                        transactions=transactions, receipts=receipts, reward=reward,
                                        internal_transactions=internal_transactions)
         sync_time = time.monotonic() - start_time
-        logger.info("Block #%s synced on %ss", header['block_number'], sync_time)
+        logger.debug("Block #%s synced on %ss", block_number, sync_time)

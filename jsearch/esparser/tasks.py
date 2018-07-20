@@ -3,6 +3,7 @@ import logging
 
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
+from celery.signals import celeryd_init
 
 from jsearch.esparser.spiders.contracts import ContractsSpider
 from jsearch.esparser import settings as scrapy_settings
@@ -22,3 +23,8 @@ def run_contracts_spider():
     process.crawl(ContractsSpider)
     process.start()
     logger.info('Stop Contracts Spider')
+
+
+@celeryd_init.connect()
+def start_contract_spider_task(conf=None, **kwargs):
+    run_contracts_spider.delay()

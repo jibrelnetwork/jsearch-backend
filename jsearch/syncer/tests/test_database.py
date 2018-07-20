@@ -6,13 +6,12 @@ from jsearch.common import database, tables as t
 
 
 @pytest.mark.asyncio
-async def test_maindb_insert_header(db, contracts, accounts):
-
+async def test_maindb_insert_header(db, contracts):
     q = t.token_holders_t.insert({
-        'token_address': "0x2761c0ad62d0f7f96f38332cabb9229378c9bfc9",
+        'token_address': "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a",
         'account_address': "0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae",
         'balance': 1000000})
-    await db.execute(q)
+    db.execute(q)
     main_db = database.MainDB(os.environ['JSEARCH_MAIN_DB_TEST'])
     await main_db.connect()
     header = {'block_number': 46170,
@@ -48,7 +47,7 @@ async def test_maindb_insert_header(db, contracts, accounts):
          'gasPrice': '0x746a528800'},
         {"hash": "0xad901f2cf3ffb47a209c2495c593114dc83fbac7baab6b28600c8dd034f6f191",
          "from": "0x147013436bd5c7def49a8e27c7fba8ac2b9dfe1f",
-         "to": "0x4B3A32dD76EC46a91474d5C08C3904f7cDe6D7d5",
+         "to": "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a",
          "gas": "0x15f90",
          "gasPrice": "0xba43b7400",
          "input": "0xa9059cbb000000000000000000000000bfe465e7eb5a2928b5bf22bef93ad06089dc61790000000000000000000000000000000000000000000000000000000005f5e100",
@@ -65,9 +64,9 @@ async def test_maindb_insert_header(db, contracts, accounts):
                 {'address': '0xf927a40C8B7F6E07c5af7FA2155B4864a4112B13',
                  'fields': '{"code": "", "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421", "nonce": 0, "balance": "27103448000000000000000", "storage": {}, "codeHash": "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"}'}]
 
-    receipts = {'fields': '{"Receipts": [{"logs":[{"data": "0x0f400",\
+    receipts = {'fields': '{"Receipts": [{"logs":[{"data": "0x0000000000000000000000000000000000000000000000000000000005f5e100",\
                                                   "topics": ["0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c"],\
-                                                  "address": "0x2761c0ad62d0f7f96f38332cabb9229378c9bfc9",\
+                                                  "address": "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a",\
                                                   "removed": false,\
                                                   "logIndex": "0x0",\
                                                   "blockHash": "0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2",\
@@ -83,7 +82,7 @@ async def test_maindb_insert_header(db, contracts, accounts):
                             "cumulativeGasUsed": "0x5208"},\
                             {"logs":[{"data": "0x0000000000000000000000000000000000000000000000000000000005f5e100",\
                                                   "topics": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", "0x000000000000000000000000e9b0363d2b53c534cc3d4a45b7024f991114d2ae", "0x00000000000000000000000019947e2ba251384fb01c3c4c046a4a3802a388aa"],\
-                                                  "address": "0x2761c0ad62d0f7f96f38332cabb9229378c9bfc9",\
+                                                  "address": "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a",\
                                                   "removed": false,\
                                                   "logIndex": "0x1",\
                                                   "blockHash": "0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2",\
@@ -99,7 +98,8 @@ async def test_maindb_insert_header(db, contracts, accounts):
                             "cumulativeGasUsed": "0x5208"}]}'}
 
     reward = {'fields': '{"Uncles": [{"UncleReward": 3750000000000000000, "UnclePosition": 0}], "TxsReward": 52569880000000000,  "BlockReward": 5000000000000000000, "UncleInclusionReward": 156250000000000000}'}
-    await main_db.write_block(header, uncles, transactions, receipts, accounts, reward)
+    internal_transactions = []
+    await main_db.write_block(header, uncles, transactions, receipts, accounts, reward, internal_transactions)
 
     pg = database.pg
     blocks = await pg.fetch('SELECT * FROM blocks')
@@ -147,10 +147,10 @@ async def test_maindb_insert_header(db, contracts, accounts):
     logs = await pg.fetch('SELECT * FROM logs')
     assert len(logs) == 2
     assert dict(logs[0]) == {
-        'address': '0x2761c0ad62d0f7f96f38332cabb9229378c9bfc9',
+        'address': '0xbb4af59aeaf2e83684567982af5ca21e9ac8419a',
         'block_hash': '0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2',
         'block_number': 413949,
-        'data': '0x0f400',
+        'data': '0x0000000000000000000000000000000000000000000000000000000005f5e100',
         'log_index': 0,
         'removed': False,
         'event_type': None,
@@ -160,7 +160,7 @@ async def test_maindb_insert_header(db, contracts, accounts):
         'transaction_index': 0}
 
     assert dict(logs[1]) == {
-        'address': '0x2761c0ad62d0f7f96f38332cabb9229378c9bfc9',
+        'address': '0xbb4af59aeaf2e83684567982af5ca21e9ac8419a',
         'block_hash': '0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2',
         'block_number': 413949,
         'data': '0x0000000000000000000000000000000000000000000000000000000005f5e100',
@@ -201,7 +201,7 @@ async def test_maindb_insert_header(db, contracts, accounts):
     assert dict(txs[1]) == {
         "hash": "0xad901f2cf3ffb47a209c2495c593114dc83fbac7baab6b28600c8dd034f6f191",
         "from": "0x147013436bd5c7def49a8e27c7fba8ac2b9dfe1f",
-        "to": "0x4B3A32dD76EC46a91474d5C08C3904f7cDe6D7d5",
+        "to": "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a",
         "gas": "0x15f90",
         "gas_price": "0xba43b7400",
         "input": "0xa9059cbb000000000000000000000000bfe465e7eb5a2928b5bf22bef93ad06089dc61790000000000000000000000000000000000000000000000000000000005f5e100",
@@ -217,5 +217,6 @@ async def test_maindb_insert_header(db, contracts, accounts):
         'is_token_transfer': True,
         'token_transfer_from': '0x147013436bd5c7def49a8e27c7fba8ac2b9dfe1f',
         'token_transfer_to': '0xbfe465e7eb5a2928b5bf22bef93ad06089dc6179',
-        'token_amount': 1,
+        'token_amount': 1000000,
         'transaction_index': 1}
+    db.execute(t.token_holders_t.delete())

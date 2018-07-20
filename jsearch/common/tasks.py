@@ -1,18 +1,22 @@
 import os
 import logging
+import urllib.request
+
+from web3 import Web3
+from lxml import html
+import solc.install
+from celery.signals import celeryd_init
 
 from jsearch.common.celery import app
 from jsearch.common.contracts import ERC20_ABI, wait_install_solc
-from jsearch.common.database import get_main_db
 from jsearch import settings
-
-from web3 import Web3
 
 
 logger = logging.getLogger(__name__)
 
 
 def update_token_info(address, db=None):
+    from jsearch.common.database import get_main_db
     w3 = Web3(Web3.HTTPProvider(settings.ETH_NODE_URL))
     checksum_address = Web3.toChecksumAddress(address)
     c = w3.eth.contract(checksum_address, abi=ERC20_ABI)
@@ -25,11 +29,12 @@ def update_token_info(address, db=None):
     if db is None:
         db = get_main_db()
     db.call_sync(db.update_contract(address, info))
-    logger.info('Token info updated for address %s', address) 
+    logger.info('Token info updated for address %s', address)
 
 
 @app.task
 def process_new_verified_contract_transactions(address):
+    from jsearch.common.database import get_main_db
     logger.info('Starting process_new_verified_contract_transactions for address %s', address)
     db = get_main_db()
     c = db.call_sync(db.get_contract(address))
@@ -49,6 +54,7 @@ def process_new_verified_contract_transactions(address):
 
 @app.task
 def process_token_transfer(tx):
+    from jsearch.common.database import get_main_db
     logger.info('Starting process_token_transfer for tx %s', tx['hash'])
     db = get_main_db()
     db.process_token_transfers(tx['hash'])
@@ -58,3 +64,40 @@ def process_token_transfer(tx):
 def install_solc(identifier):
     logger.info('Starting install solc #%s', identifier)
     wait_install_solc(identifier)
+
+
+@app.task
+def update_token_holder_balance(token_address, account_address, block_number):
+    from jsearch.common.database import get_main_db
+    w3 = Web3(Web3.HTTPProvider(settings.ETH_NODE_URL))
+    checksum_token_address = Web3.toChecksumAddress(token_address)
+    checksum_account_address = Web3.toChecksumAddress(account_address)
+    c = w3.eth.contract(checksum_token_address, abi=ERC20_ABI)
+    balance = c.functions.balanceOf(checksum_account_address).call(block_identifier=block_number)
+    decimals = c.functions.decimals().call(block_identifier=block_number)
+    balance = balance / 10 ** decimals
+    db = get_main_db()
+    db.call_sync(db.update_token_holder_balance(token_address, account_address, balance))
+    logger.info('Token balance updated for token %s account %s value %s', token_address, account_address, balance)
+
+
+@app.task
+def install_all_actual_solc_versions():
+    VERSIONS_LIST_URL = 'https://etherscan.io/verifyContract'
+    req = urllib.request.Request(VERSIONS_LIST_URL, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req) as response:
+        doc = html.document_fromstring(response.read())
+    all_versions = doc.xpath(".//select[@id='ContentPlaceHolder1_ddlCompilerVersions']//option/@value")
+    actual_versions = [v for v in all_versions[1:] if 'nightly' not in v][:12]
+    for v in actual_versions:
+        commit = v.split('.')[-1]
+        if os.path.exists(solc.install.get_executable_path(commit)):
+            logger.info('Solc %s already installed', v)
+        else:
+            install_solc.delay(commit)
+            logger.info('Delay install_solc %s', v)
+
+
+@celeryd_init.connect()
+def start_install_all_actual_solc_versions_task(conf=None, **kwargs):
+    install_all_actual_solc_versions.delay()

@@ -15,6 +15,7 @@ from sqlalchemy import and_
 
 from jsearch.common.tables import *
 from jsearch.common import contracts
+from jsearch.common import tasks
 from jsearch import settings
 
 
@@ -248,60 +249,51 @@ class MainDB(DBWrapper):
             await conn.execute(query)
 
     async def insert_internal_transactions(self, conn, block_number, block_hash, internal_transactions):
-        for tx in internal_transactions:
+        for i, tx in enumerate(internal_transactions, 1):
             data = dict_keys_case_convert(json.loads(tx['fields']))
             data['timestamp'] = data.pop('time_stamp')
-            data['depth'] = data.pop('call_depth')
+            data['transaction_index'] = i
             del data['operation']
-            print('GGG', data['value'])
             query = internal_transactions_t.insert().values(op=tx['type'], **data)
             await conn.execute(query)
 
     async def process_logs(self, conn, contract, logs):
+        contracts_cache = {}
         if contract is not None:
-            abi = json.loads(contract['abi'])
-            for log in logs:
-                try:
-                    event = contracts.decode_event(abi, log)
-                except Exception as e:
-                    # ValueError: Unknown log type
-                    logger.exception('Log decode error: <%s>', log)
-                    log['event_type'] = None
-                    log['event_args'] = None
+            contracts_cache[contract['address']] = contract
+        for log in logs:
+            try:
+                if log['address'] in contracts_cache:
+                    log_contract = contracts_cache[log['address']]
                 else:
-                    event_type = event.pop('_event_type')
-                    log['event_type'] = event_type
-                    log['event_args'] = event
-                    if event_type == 'Transfer':
-                        args_list = []
-                        event_inputs = [i['inputs'] for i in abi
-                                        if i.get('name') == event_type and
-                                        i['type'] == 'event'][0]
-                        for i in event_inputs:
-                            args_list.append(event[i['name']])
-                        token_address = log['address']
-                        to_address = args_list[1]
-                        from_address = args_list[0]
-                        if contract['token_decimals']:
-                            amount = args_list[2] / (10 ** contract['token_decimals'])
-                        else:
-                            amount = args_list[2]
-                        q = insert(token_holders_t).values(balance=amount,
-                                                           token_address=token_address,
-                                                           account_address=to_address)
-                        update_to_q = q.on_conflict_do_update(
-                            index_elements=['token_address', 'account_address'],
-                            set_={'balance': token_holders_t.c.balance + amount})
-                        update_from_q = token_holders_t.update().\
-                            where(and_(token_holders_t.c.token_address==token_address,
-                                       token_holders_t.c.account_address==from_address)).\
-                            values(balance=token_holders_t.c.balance - amount)
-                        await conn.execute(update_to_q)
-                        if from_address != contracts.NULL_ADDRESS:
-                            res = await conn.execute(update_from_q)
-                            if int(res.strip('UPDATE')) == 0:
-                                # no updates - token owner has no balance records
-                                raise RuntimeError('Token owner has unknown balance')
+                    log_contract = await self.get_contract(log['address'])
+                    if log_contract is None:
+                        log['event_type'] = None
+                        continue
+                    contracts_cache[log['address']] = log_contract
+                abi = json.loads(log_contract['abi'])
+                event = contracts.decode_event(abi, log)
+            except Exception as e:
+                # ValueError: Unknown log type
+                logger.exception('Log decode error: <%s>', log)
+                log['event_type'] = None
+            else:
+                event_type = event.pop('_event_type')
+                log['event_type'] = event_type
+                log['event_args'] = event
+                if event_type == 'Transfer':
+                    args_list = []
+                    event_inputs = [i['inputs'] for i in abi
+                                    if i.get('name') == event_type and
+                                    i['type'] == 'event'][0]
+                    for i in event_inputs:
+                        args_list.append(event[i['name']])
+                    token_address = log['address']
+                    to_address = args_list[1]
+                    from_address = args_list[0]
+                    block_number = log.get('block_number') or int(log['blockNumber'], 16)  # FIXME
+                    tasks.update_token_holder_balance.delay(token_address, to_address, block_number)
+                    tasks.update_token_holder_balance.delay(token_address, from_address, block_number)
         return logs
 
     def process_transaction(self, contract, tx_data, logs):
@@ -421,6 +413,18 @@ class MainDB(DBWrapper):
         rows = await pg.fetch(q)
         return rows
 
+    async def update_token_holder_balance(self, token_address, account_address, balance):
+        insert_query = insert(token_holders_t).values(
+            token_address=token_address,
+            account_address=account_address,
+            balance=balance)
+        do_update_query = insert_query.on_conflict_do_update(
+            index_elements=['token_address', 'account_address'],
+            set_=dict(balance=balance)
+        )
+        await self.conn.execute(do_update_query)
+
+
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')
 
@@ -432,19 +436,6 @@ def case_convert(name):
 
 def dict_keys_case_convert(d):
     return {case_convert(k): v for k, v in d.items()}
-
-
-# class MainDBSync:
-
-#     def __init__(self, connection_string):
-#         self.connection_string = connection_string
-#         engine = sa.create_engine(self.connection_string)
-#         self.conn = engine.connect()
-
-#     def update_contract(self, address, data):
-#         q = contracts_t.update().where(
-#             contracts_t.c.address == address).values(**data)
-#         self.conn.execute(q)
 
 
 def get_main_db():

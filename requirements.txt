@@ -17,5 +17,3 @@ web3==4.2.1
 psycopg2==2.7.4
 gunicorn==19.7.1
 rlp==0.6.0
--e git+ssh://git@github.com/jibrelnetwork/py-solc.git@feature/jsearch-compilers#egg=py-solc
-
