@@ -82,7 +82,7 @@ class Manager:
             self.raw_db.get_internal_transactions(block_number),
         )
 
-        header, accounts, body, reward, internal_transactions = **results  
+        header, accounts, body, reward, internal_transactions = *results  
 
         body_fields = json.loads(body['fields'])
         uncles = body_fields['Uncles'] or []
