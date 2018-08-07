@@ -75,11 +75,11 @@ class Manager:
             return False
 
         results = await asyncio.gather(
-            self.raw_db.get_header_by_hash(block_number)
-            self.raw_db.get_block_accounts(block_number)
-            self.raw_db.get_block_body(block_number)
-            self.raw_db.get_reward(block_number)
-            self.raw_db.get_internal_transactions(block_number)
+            self.raw_db.get_header_by_hash(block_number),
+            self.raw_db.get_block_accounts(block_number),
+            self.raw_db.get_block_body(block_number),
+            self.raw_db.get_reward(block_number),
+            self.raw_db.get_internal_transactions(block_number),
         )
 
         header, accounts, body, reward, internal_transactions = **results  
