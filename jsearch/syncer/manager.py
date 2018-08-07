@@ -41,10 +41,12 @@ class Manager:
         while self._running is True:
             try:
                 blocks_to_sync = await self.get_blocks_to_sync()
-                for block in blocks_to_sync:
-                    await self.sync_block(block["block_number"])
                 if len(blocks_to_sync) == 0:
                     await asyncio.sleep(self.sleep_on_no_blocks)
+                for block in blocks_to_sync:
+                    is_sync_ok = await self.sync_block(block["block_number"])
+                    if is_sync_ok is False:
+                        break  # FIXME!
             except DatabaseError:
                 logger.exception("Database Error accured:")
                 await asyncio.sleep(self.sleep_on_db_error)
@@ -70,17 +72,25 @@ class Manager:
         receipts = await self.raw_db.get_block_receipts(block_number)
         if receipts is None:
             logger.debug("Block #%s not ready: no receipts", block_number)
-        header = await self.raw_db.get_header_by_hash(block_number)
-        accounts = await self.raw_db.get_block_accounts(block_number)
-        body = await self.raw_db.get_block_body(block_number)
+            return False
+
+        results = await asyncio.gather(
+            self.raw_db.get_header_by_hash(block_number)
+            self.raw_db.get_block_accounts(block_number)
+            self.raw_db.get_block_body(block_number)
+            self.raw_db.get_reward(block_number)
+            self.raw_db.get_internal_transactions(block_number)
+        )
+
+        header, accounts, body, reward, internal_transactions = **results  
+
         body_fields = json.loads(body['fields'])
         uncles = body_fields['Uncles'] or []
         transactions = body_fields['Transactions'] or []
-        reward = await self.raw_db.get_reward(block_number)
-        internal_transactions = await self.raw_db.get_internal_transactions(block_number)
 
         await self.main_db.write_block(header=header, uncles=uncles, accounts=accounts,
                                        transactions=transactions, receipts=receipts, reward=reward,
                                        internal_transactions=internal_transactions)
         sync_time = time.monotonic() - start_time
         logger.debug("Block #%s synced on %ss", block_number, sync_time)
+        return True
