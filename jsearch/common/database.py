@@ -62,7 +62,7 @@ class DBWrapper:
         self.conn = None
 
     async def connect(self):
-        self.conn = await asyncpg.connect(
+        self.pool = await asyncpg.create_pool(
             self.connection_string, connection_class=LoggingConnection)
 
     async def disconnect(self):
@@ -76,32 +76,38 @@ class RawDB(DBWrapper):
     async def get_blocks_to_sync(self, start_block_num=0, chunk_size=10):
         q = """SELECT * FROM headers WHERE block_number BETWEEN $1 AND $2"""
         end_num = start_block_num + chunk_size
-        rows = await self.conn.fetch(q, start_block_num, end_num)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(q, start_block_num, end_num)
         return rows
 
     async def get_header_by_hash(self, block_number):
         q = """SELECT * FROM headers WHERE block_number=$1"""
-        row = await self.conn.fetchrow(q, block_number)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(q, block_number)
         return row
 
     async def get_block_accounts(self, block_number):
         q = """SELECT * FROM accounts WHERE block_number=$1"""
-        rows = await self.conn.fetch(q, block_number)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(q, block_number)
         return rows
 
     async def get_block_body(self, block_number):
         q = """SELECT * FROM bodies WHERE block_number=$1"""
-        rows = await self.conn.fetchrow(q, block_number)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetchrow(q, block_number)
         return rows
 
     async def get_block_receipts(self, block_number):
         q = """SELECT * FROM receipts WHERE block_number=$1"""
-        row = await self.conn.fetchrow(q, block_number)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(q, block_number)
         return row
 
     async def get_reward(self, block_number):
         q = """SELECT * FROM rewards WHERE block_number=$1"""
-        rows = await self.conn.fetch(q, block_number)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(q, block_number)
         if len(rows) > 1:
             for r in rows:
                 if r['address'] != contracts.NULL_ADDRESS:
@@ -113,7 +119,8 @@ class RawDB(DBWrapper):
 
     async def get_internal_transactions(self, block_number):
         q = """SELECT * FROM internal_transactions WHERE block_number=$1"""
-        rows = await self.conn.fetch(q, block_number)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(q, block_number)
         return rows
 
 
