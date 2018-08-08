@@ -67,7 +67,7 @@ class RawDB(DBWrapper):
     """
     async def get_blocks_to_sync(self, start_block_num=0, chunk_size=10):
         q = """SELECT * FROM headers WHERE block_number BETWEEN $1 AND $2"""
-        end_num = start_block_num + chunk_size
+        end_num = start_block_num + chunk_size - 1
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(q, start_block_num, end_num)
         return rows
@@ -133,13 +133,21 @@ class MainDB(DBWrapper):
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(coro)
 
+    async def is_block_exist(self, block_number):
+        q = """SELECT number from blocks WHERE number=$1"""
+        row = await pg.fetchrow(q, block_number)
+        return row['number'] == block_number if row else False
+
     async def get_latest_sequence_synced_block_number(self):
         """
         Get latest block writed in main DB during sequence sync
         """
-        q = """SELECT max(number) as number FROM BLOCKS WHERE is_sequence_sync=true"""
+        q = """SELECT l.number + 1 as start 
+                FROM blocks as l 
+                LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number 
+                WHERE r.number IS NULL"""
         row = await pg.fetchrow(q)
-        return row['number'] if row else None
+        return row['start'] - 1 if row else None
 
     async def write_block(self, header, uncles, transactions, receipts,
                           accounts, reward, internal_transactions):
