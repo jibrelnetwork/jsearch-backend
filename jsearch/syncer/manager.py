@@ -40,13 +40,21 @@ class Manager:
         logger.info("Entering Sequence Sync Loop")
         while self._running is True:
             try:
+                start_time = time.monotonic()
+                synced_blocks_cnt = 0
                 blocks_to_sync = await self.get_blocks_to_sync()
                 if len(blocks_to_sync) == 0:
                     await asyncio.sleep(self.sleep_on_no_blocks)
+                    continue
                 for block in blocks_to_sync:
                     is_sync_ok = await self.sync_block(block["block_number"])
                     if is_sync_ok is False:
                         break  # FIXME!
+                        logger.debug("Block #%s sync failed", block["block_number"])
+                    else:
+                        synced_blocks_cnt += 1
+                sync_time = time.monotonic() - start_time
+                logger.info("%s blocks synced on %ss, avg time %ss", synced_blocks_cnt, sync_time, sync_time/synced_blocks_cnt)
             except DatabaseError:
                 logger.exception("Database Error accured:")
                 await asyncio.sleep(self.sleep_on_db_error)
@@ -82,7 +90,11 @@ class Manager:
             self.raw_db.get_internal_transactions(block_number),
         )
 
-        header, accounts, body, reward, internal_transactions = *results  
+        header = results[0]
+        accounts = results[1]
+        body = results[2]
+        reward = results[3]
+        internal_transactions = results[4]
 
         body_fields = json.loads(body['fields'])
         uncles = body_fields['Uncles'] or []

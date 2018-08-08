@@ -46,14 +46,6 @@ class LoggingConnection(asyncpg.connection.Connection):
         logger.debug("%s params %s [%s]", query, args, query_time)
         return res
 
-    async def execute(self, query: str, *args, timeout: float=None) -> str:
-        start_time = time.monotonic()
-        res = await super().execute(query, args, timeout)
-        query_time = time.monotonic() - start_time
-        logger.debug("%s params %s [%s]", query, args, query_time)
-        return res
-
-
 class DBWrapper:
 
     def __init__(self, connection_string, **params):
@@ -66,7 +58,7 @@ class DBWrapper:
             self.connection_string, connection_class=LoggingConnection)
 
     async def disconnect(self):
-        await self.conn.close()
+        await self.pool.close()
 
 
 class RawDB(DBWrapper):
