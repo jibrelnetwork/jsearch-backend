@@ -1,3 +1,4 @@
+import asyncio
 from unittest import mock
 
 import pytest
@@ -9,6 +10,8 @@ from jsearch.common import tables as t
 
 @mock.patch('jsearch.common.tasks.Web3')
 def test_update_contract_info(W3, db, contracts, main_db_data):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     address = main_db_data['accounts'][2]['address']
     m = W3().eth.contract()
     m.functions.name().call.return_value = 'xToken'
@@ -29,6 +32,8 @@ def test_update_contract_info(W3, db, contracts, main_db_data):
 
 @mock.patch('jsearch.common.tasks.Web3')
 def test_update_token_holder_balance(W3, db, contracts, main_db_data):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     token_address = main_db_data['accounts'][2]['address']
     account_address = main_db_data['accounts'][0]['address']
     m = W3().eth.contract()
