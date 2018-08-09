@@ -19,6 +19,8 @@ from jsearch.common import tasks
 from jsearch import settings
 
 
+MAIN_DB_POOL_SIZE = 22
+
 logger = logging.getLogger(__name__)
 
 
@@ -121,7 +123,7 @@ class MainDB(DBWrapper):
     jSearch Main db wrapper
     """
     async def connect(self):
-        await pg.init(self.connection_string)
+        await pg.init(self.connection_string, max_size=MAIN_DB_POOL_SIZE)
         self.conn = pg
 
     async def disconnect(self):
