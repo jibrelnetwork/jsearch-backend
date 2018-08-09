@@ -23,7 +23,7 @@ class Manager:
         self.main_db = main_db
         self.raw_db = raw_db
         self._running = False
-        self.chunk_size = 10
+        self.chunk_size = 5
         self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
         self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
