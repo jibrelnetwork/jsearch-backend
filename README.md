@@ -47,6 +47,7 @@ ETH_NODE_URL (default https://main-node.jwallet.network)
 JSEARCH_CELERY_BROKER (default redis://localhost:6379/0)
 JSEARCH_CELERY_BACKEND (default redis://localhost:6379/0)
 SOLC_BASE_INSTALL_PATH (default ~/.py-solc)
+SCRAPY_SETTINGS_MODULE=jsearch.esparser.settings (no default)
 ```
 
 ## DB migration
