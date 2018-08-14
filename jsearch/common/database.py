@@ -5,6 +5,7 @@ import os
 import time
 import json
 from datetime import datetime
+from collections import OrderedDict
 
 import asyncpg
 from asyncpgsa import pg
@@ -47,6 +48,7 @@ class LoggingConnection(asyncpg.connection.Connection):
         query_time = time.monotonic() - start_time
         logger.debug("%s params %s [%s]", query, args, query_time)
         return res
+
 
 class DBWrapper:
 
@@ -124,6 +126,7 @@ class MainDB(DBWrapper):
     """
     async def connect(self):
         await pg.init(self.connection_string, max_size=MAIN_DB_POOL_SIZE)
+        self.pool = await asyncpg.create_pool(self.connection_string, max_size=MAIN_DB_POOL_SIZE)
         self.conn = pg
 
     async def disconnect(self):
@@ -179,68 +182,100 @@ class MainDB(DBWrapper):
             }
             uncles_rewards = reward_data['Uncles']
 
-        async with pg.transaction() as conn:
-            await self.insert_header(conn, header, block_reward)
-            await self.insert_uncles(conn, block_number, block_hash, uncles, uncles_rewards)
-            await self.insert_transactions_and_receipts(conn, block_number, block_hash, receipts, transactions)
-            await self.insert_accounts(conn, block_number, block_hash, accounts)
-            await self.insert_internal_transactions(conn, block_number, block_hash, internal_transactions)
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                await self.insert_header(conn, header, block_reward)
+                await self.insert_uncles(conn, block_number, block_hash, uncles, uncles_rewards)
+                await self.insert_transactions_and_receipts(conn, block_number, block_hash, receipts, transactions)
+                await self.insert_accounts(conn, block_number, block_hash, accounts)
+                await self.insert_internal_transactions(conn, block_number, block_hash, internal_transactions)
 
     async def insert_header(self, conn, header, reward):
         data = dict_keys_case_convert(json.loads(header['fields']))
         data.update(reward)
-        query = blocks_t.insert().values(is_sequence_sync=True, **data)
-        await conn.execute(query)
+        q = make_insert_query('blocks', data.keys())
+        hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
+        await conn.execute(q, *list(data.values()))
 
     async def insert_uncles(self, conn, block_number, block_hash, uncles, reward):
+        if not uncles:
+            return
+        items = []
         for i, uncle in enumerate(uncles):
             rwd = reward[i]
             data = dict_keys_case_convert(uncle)
             assert rwd['UnclePosition'] == i
             data['reward'] = rwd['UncleReward']
-            query = uncles_t.insert().values(block_number=block_number,
-                                             block_hash=block_hash, **data)
-            await conn.execute(query)
+            data['block_hash'] = block_hash
+            data['block_number'] = block_number
+            hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
+            items.append(data)
+        q = make_insert_query('uncles', items[0].keys())
+        await conn.executemany(q, [list(i.values()) for i in items])
 
     async def insert_transactions_and_receipts(self, conn, block_number, block_hash, receipts, transactions):
         rdata = json.loads(receipts['fields'])['Receipts'] or []
+        tx_items = []
+        recpt_items = []
+        logs_items = []
         for i, receipt in enumerate(rdata):
-            data = dict_keys_case_convert(receipt)
+            recpt_data = dict_keys_case_convert(receipt)
             tx = transactions[i]
-            assert tx['hash'] == data['transaction_hash']
-            data['transaction_hash'] = tx['hash']
-            data['transaction_index'] = i
+            assert tx['hash'] == recpt_data['transaction_hash']
+            recpt_data['transaction_hash'] = tx['hash']
+            recpt_data['transaction_index'] = i
             if tx['to'] is None:
                 tx['to'] == contracts.NULL_ADDRESS
-            data['to'] = tx['to']
-            data['from'] = tx['from']
-            logs = data.pop('logs') or []
-            query = receipts_t.insert().values(block_number=block_number,
-                                               block_hash=block_hash, **data)
-            await conn.execute(query)
+            recpt_data['to'] = tx['to']
+            recpt_data['from'] = tx['from']
+            logs = recpt_data.pop('logs') or []
+            recpt_data['block_hash'] = block_hash
+            recpt_data['block_number'] = block_number
+            hex_vals_to_int(recpt_data, ['cumulative_gas_used', 'gas_used', 'status'])
+            recpt_items.append(recpt_data)
 
             tx_data = dict_keys_case_convert(tx)
+            tx_data['is_token_transfer'] = False
+            tx_data['contract_call_description'] = None
+            tx_data['token_amount'] = None
+            tx_data['token_transfer_from'] = None
+            tx_data['token_transfer_to'] = None
+            tx_data['transaction_index'] = i
+            tx_data['block_hash'] = block_hash
+            tx_data['block_number'] = block_number
             if tx['to'] == contracts.NULL_ADDRESS:
                 contract_address = data['contract_address']
             else:
                 contract_address = tx['to']
             contract = await self.get_contract(contract_address)
             logs = await self.process_logs(conn, contract, logs)
-            data = self.process_transaction(contract, tx_data, logs)
-            # from pprint import pprint;pprint(data)
-            # from pprint import pprint;pprint(logs)
-            data['transaction_index'] = i
-            query = transactions_t.insert().values(block_number=block_number,
-                                                   block_hash=block_hash, **data)
-            await conn.execute(query)
-            await self.insert_logs(conn, block_number, block_hash, logs)
+            logs_items.extend(logs)
+            tx_data = self.process_transaction(contract, tx_data, logs)
+
+            tx_items.append(tx_data)
+
+        q = make_insert_query('receipts', recpt_items[0].keys())
+        await conn.executemany(q, [list(i.values()) for i in recpt_items])
+
+        tx_keys = tx_items[0].keys()
+        q = make_insert_query('transactions', tx_keys)
+        # print(q, tx_items[0].values())
+        await conn.executemany(q, [[i[k] for k in tx_keys] for i in tx_items])
+
+        await self.insert_logs(conn, block_number, block_hash, logs_items)
 
     async def insert_logs(self, conn, block_number, block_hash, logs):
+        items = []
+        if not logs:
+            return
         for log_record in logs:
             # import pprint; pprint.pprint(log_record)
             data = dict_keys_case_convert(log_record)
-            query = logs_t.insert().values(**data)
-            await conn.execute(query)
+            hex_vals_to_int(data, ['log_index', 'transaction_index', 'block_number'])
+            data['event_args'] = json.dumps(data['event_args'])
+            items.append(data)
+        q = make_insert_query('logs', items[0].keys())
+        await conn.executemany(q, [list(i.values()) for i in items])
 
     async def update_logs(self, conn, logs):
         for rec in logs:
@@ -251,22 +286,29 @@ class MainDB(DBWrapper):
             await conn.execute(query)
 
     async def insert_accounts(self, conn, block_number, block_hash, accounts):
+        items = []
         for account in accounts:
             data = dict_keys_case_convert(json.loads(account['fields']))
             data['storage'] = None  # FIXME!!!
-            query = accounts_t.insert().values(block_number=block_number,
-                                               address=account['address'].lower(),
-                                               block_hash=block_hash, **data)
-            await conn.execute(query)
+            data['address'] = account['address'].lower()
+            data['block_number'] = block_number
+            data['block_hash'] = block_hash
+            items.append(data)
+        q = make_insert_query('accounts', items[0].keys())
+        await conn.executemany(q, [list(i.values()) for i in items])
 
     async def insert_internal_transactions(self, conn, block_number, block_hash, internal_transactions):
+        items = []
+        if not internal_transactions:
+            return
         for i, tx in enumerate(internal_transactions, 1):
             data = dict_keys_case_convert(json.loads(tx['fields']))
             data['timestamp'] = data.pop('time_stamp')
             data['transaction_index'] = i
             del data['operation']
-            query = internal_transactions_t.insert().values(op=tx['type'], **data)
-            await conn.execute(query)
+            data['op'] = data['type']
+        q = make_insert_query('internal_transactions', items[0].keys())
+        await conn.executemany(q, [list(i.values()) for i in items])
 
     async def process_logs(self, conn, contract, logs):
         contracts_cache = {}
@@ -288,6 +330,7 @@ class MainDB(DBWrapper):
                 # ValueError: Unknown log type
                 logger.exception('Log decode error: <%s>', log)
                 log['event_type'] = None
+                log['event_args'] = None
             else:
                 event_type = event.pop('_event_type')
                 log['event_type'] = event_type
@@ -318,7 +361,7 @@ class MainDB(DBWrapper):
                 logger.exception('Call decode error: <%s>', tx_data)
             else:
                 if call:
-                    tx_data['contract_call_description'] = call
+                    tx_data['contract_call_description'] = json.dumps(call)
                     if call['function'] in {'transfer', 'transferFrom'} and transfer_events:
                         tx_data['is_token_transfer'] = True
                         tx_data['token_transfer_to'] = call['args'][-2]
@@ -436,6 +479,7 @@ class MainDB(DBWrapper):
         await self.conn.execute(do_update_query)
 
 
+
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')
 
@@ -453,3 +497,15 @@ def get_main_db():
     db = MainDB(settings.JSEARCH_MAIN_DB)
     db.call_sync(db.connect())
     return db
+
+
+def make_insert_query(table_name, fields):
+    q = """INSERT INTO {table} ({fields}) VALUES ({values})"""
+    f = ','.join(['"{}"'.format(k) for k in fields])
+    v = ','.join(['${}'.format(i) for i in range(1, len(fields) + 1)])
+    return q.format(table=table_name, fields=f, values=v)
+
+
+def hex_vals_to_int(d, keys):
+    for k in keys:
+        d[k] = int(d[k], 16)
