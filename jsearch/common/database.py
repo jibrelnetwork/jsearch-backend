@@ -246,7 +246,7 @@ class MainDB(DBWrapper):
             tx_data['block_hash'] = block_hash
             tx_data['block_number'] = block_number
             if tx['to'] == contracts.NULL_ADDRESS:
-                contract_address = data['contract_address']
+                contract_address = recpt_data['contract_address']
             else:
                 contract_address = tx['to']
             contract = await self.get_contract(contract_address)
