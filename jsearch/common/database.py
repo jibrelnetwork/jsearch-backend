@@ -322,6 +322,7 @@ class MainDB(DBWrapper):
                     log_contract = await self.get_contract(log['address'])
                     if log_contract is None:
                         log['event_type'] = None
+                        log['event_args'] = None
                         continue
                     contracts_cache[log['address']] = log_contract
                 abi = json.loads(log_contract['abi'])
