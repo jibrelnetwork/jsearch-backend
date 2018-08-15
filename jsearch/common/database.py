@@ -214,6 +214,8 @@ class MainDB(DBWrapper):
         await conn.executemany(q, [list(i.values()) for i in items])
 
     async def insert_transactions_and_receipts(self, conn, block_number, block_hash, receipts, transactions):
+        if not transactions:
+            return
         rdata = json.loads(receipts['fields'])['Receipts'] or []
         tx_items = []
         recpt_items = []
