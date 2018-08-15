@@ -306,7 +306,8 @@ class MainDB(DBWrapper):
             data['timestamp'] = data.pop('time_stamp')
             data['transaction_index'] = i
             del data['operation']
-            data['op'] = data['type']
+            data['op'] = tx['type']
+            items.append(data)
         q = make_insert_query('internal_transactions', items[0].keys())
         await conn.executemany(q, [list(i.values()) for i in items])
 
