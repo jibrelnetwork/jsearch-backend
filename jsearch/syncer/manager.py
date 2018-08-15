@@ -47,16 +47,16 @@ class Manager:
                     await asyncio.sleep(self.sleep_on_no_blocks)
                     continue
 
-                for block in blocks_to_sync:
-                   is_sync_ok = await self.sync_block(block["block_number"])
-                   if is_sync_ok is False:
-                       break  # FIXME!
-                       logger.debug("Block #%s sync failed", block["block_number"])
-                   else:
-                       synced_blocks_cnt += 1
+                # for block in blocks_to_sync:
+                #    is_sync_ok = await self.sync_block(block["block_number"])
+                #    if is_sync_ok is False:
+                #        break  # FIXME!
+                #        logger.debug("Block #%s sync failed", block["block_number"])
+                #    else:
+                #        synced_blocks_cnt += 1
 
-                # results = await asyncio.gather(*[self.sync_block(b["block_number"]) for b in blocks_to_sync])
-                # synced_blocks_cnt = sum(results)
+                results = await asyncio.gather(*[self.sync_block(b["block_number"]) for b in blocks_to_sync])
+                synced_blocks_cnt = sum(results)
                 sync_time = time.monotonic() - start_time
                 avg_time = sync_time / synced_blocks_cnt if synced_blocks_cnt else 0
                 logger.info("%s blocks synced on %ss, avg time %ss", synced_blocks_cnt, sync_time, avg_time)

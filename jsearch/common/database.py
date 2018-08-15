@@ -259,7 +259,6 @@ class MainDB(DBWrapper):
 
         tx_keys = tx_items[0].keys()
         q = make_insert_query('transactions', tx_keys)
-        # print(q, tx_items[0].values())
         await conn.executemany(q, [[i[k] for k in tx_keys] for i in tx_items])
 
         await self.insert_logs(conn, block_number, block_hash, logs_items)
@@ -269,7 +268,6 @@ class MainDB(DBWrapper):
         if not logs:
             return
         for log_record in logs:
-            # import pprint; pprint.pprint(log_record)
             data = dict_keys_case_convert(log_record)
             hex_vals_to_int(data, ['log_index', 'transaction_index', 'block_number'])
             data['event_args'] = json.dumps(data['event_args'])
