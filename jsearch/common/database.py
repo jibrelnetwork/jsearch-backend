@@ -15,8 +15,11 @@ from sqlalchemy import and_
 
 from jsearch.common.tables import *
 from jsearch.common import contracts
+from jsearch.common import tasks
 from jsearch import settings
 
+
+MAIN_DB_POOL_SIZE = 22
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +48,6 @@ class LoggingConnection(asyncpg.connection.Connection):
         logger.debug("%s params %s [%s]", query, args, query_time)
         return res
 
-    async def execute(self, query: str, *args, timeout: float=None) -> str:
-        start_time = time.monotonic()
-        res = await super().execute(query, args, timeout)
-        query_time = time.monotonic() - start_time
-        logger.debug("%s params %s [%s]", query, args, query_time)
-        return res
-
-
 class DBWrapper:
 
     def __init__(self, connection_string, **params):
@@ -61,11 +56,11 @@ class DBWrapper:
         self.conn = None
 
     async def connect(self):
-        self.conn = await asyncpg.connect(
+        self.pool = await asyncpg.create_pool(
             self.connection_string, connection_class=LoggingConnection)
 
     async def disconnect(self):
-        await self.conn.close()
+        await self.pool.close()
 
 
 class RawDB(DBWrapper):
@@ -74,33 +69,39 @@ class RawDB(DBWrapper):
     """
     async def get_blocks_to_sync(self, start_block_num=0, chunk_size=10):
         q = """SELECT * FROM headers WHERE block_number BETWEEN $1 AND $2"""
-        end_num = start_block_num + chunk_size
-        rows = await self.conn.fetch(q, start_block_num, end_num)
+        end_num = start_block_num + chunk_size - 1
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(q, start_block_num, end_num)
         return rows
 
     async def get_header_by_hash(self, block_number):
         q = """SELECT * FROM headers WHERE block_number=$1"""
-        row = await self.conn.fetchrow(q, block_number)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(q, block_number)
         return row
 
     async def get_block_accounts(self, block_number):
         q = """SELECT * FROM accounts WHERE block_number=$1"""
-        rows = await self.conn.fetch(q, block_number)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(q, block_number)
         return rows
 
     async def get_block_body(self, block_number):
         q = """SELECT * FROM bodies WHERE block_number=$1"""
-        rows = await self.conn.fetchrow(q, block_number)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetchrow(q, block_number)
         return rows
 
     async def get_block_receipts(self, block_number):
         q = """SELECT * FROM receipts WHERE block_number=$1"""
-        row = await self.conn.fetchrow(q, block_number)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(q, block_number)
         return row
 
     async def get_reward(self, block_number):
         q = """SELECT * FROM rewards WHERE block_number=$1"""
-        rows = await self.conn.fetch(q, block_number)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(q, block_number)
         if len(rows) > 1:
             for r in rows:
                 if r['address'] != contracts.NULL_ADDRESS:
@@ -112,7 +113,8 @@ class RawDB(DBWrapper):
 
     async def get_internal_transactions(self, block_number):
         q = """SELECT * FROM internal_transactions WHERE block_number=$1"""
-        rows = await self.conn.fetch(q, block_number)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(q, block_number)
         return rows
 
 
@@ -121,23 +123,33 @@ class MainDB(DBWrapper):
     jSearch Main db wrapper
     """
     async def connect(self):
-        await pg.init(self.connection_string)
+        await pg.init(self.connection_string, max_size=MAIN_DB_POOL_SIZE)
         self.conn = pg
 
     async def disconnect(self):
         await pg.pool.close()
 
     def call_sync(self, coro):
+        # loop = asyncio.new_event_loop()
+        # asyncio.set_event_loop(loop)
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(coro)
+
+    async def is_block_exist(self, block_number):
+        q = """SELECT number from blocks WHERE number=$1"""
+        row = await pg.fetchrow(q, block_number)
+        return row['number'] == block_number if row else False
 
     async def get_latest_sequence_synced_block_number(self):
         """
         Get latest block writed in main DB during sequence sync
         """
-        q = """SELECT max(number) as number FROM BLOCKS WHERE is_sequence_sync=true"""
+        q = """SELECT l.number + 1 as start 
+                FROM blocks as l 
+                LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number 
+                WHERE r.number IS NULL"""
         row = await pg.fetchrow(q)
-        return row['number'] if row else None
+        return row['start'] - 1 if row else None
 
     async def write_block(self, header, uncles, transactions, receipts,
                           accounts, reward, internal_transactions):
@@ -248,60 +260,51 @@ class MainDB(DBWrapper):
             await conn.execute(query)
 
     async def insert_internal_transactions(self, conn, block_number, block_hash, internal_transactions):
-        for tx in internal_transactions:
+        for i, tx in enumerate(internal_transactions, 1):
             data = dict_keys_case_convert(json.loads(tx['fields']))
             data['timestamp'] = data.pop('time_stamp')
-            data['depth'] = data.pop('call_depth')
+            data['transaction_index'] = i
             del data['operation']
-            print('GGG', data['value'])
             query = internal_transactions_t.insert().values(op=tx['type'], **data)
             await conn.execute(query)
 
     async def process_logs(self, conn, contract, logs):
+        contracts_cache = {}
         if contract is not None:
-            abi = json.loads(contract['abi'])
-            for log in logs:
-                try:
-                    event = contracts.decode_event(abi, log)
-                except Exception as e:
-                    # ValueError: Unknown log type
-                    logger.exception('Log decode error: <%s>', log)
-                    log['event_type'] = None
-                    log['event_args'] = None
+            contracts_cache[contract['address']] = contract
+        for log in logs:
+            try:
+                if log['address'] in contracts_cache:
+                    log_contract = contracts_cache[log['address']]
                 else:
-                    event_type = event.pop('_event_type')
-                    log['event_type'] = event_type
-                    log['event_args'] = event
-                    if event_type == 'Transfer':
-                        args_list = []
-                        event_inputs = [i['inputs'] for i in abi
-                                        if i.get('name') == event_type and
-                                        i['type'] == 'event'][0]
-                        for i in event_inputs:
-                            args_list.append(event[i['name']])
-                        token_address = log['address']
-                        to_address = args_list[1]
-                        from_address = args_list[0]
-                        if contract['token_decimals']:
-                            amount = args_list[2] / (10 ** contract['token_decimals'])
-                        else:
-                            amount = args_list[2]
-                        q = insert(token_holders_t).values(balance=amount,
-                                                           token_address=token_address,
-                                                           account_address=to_address)
-                        update_to_q = q.on_conflict_do_update(
-                            index_elements=['token_address', 'account_address'],
-                            set_={'balance': token_holders_t.c.balance + amount})
-                        update_from_q = token_holders_t.update().\
-                            where(and_(token_holders_t.c.token_address==token_address,
-                                       token_holders_t.c.account_address==from_address)).\
-                            values(balance=token_holders_t.c.balance - amount)
-                        await conn.execute(update_to_q)
-                        if from_address != contracts.NULL_ADDRESS:
-                            res = await conn.execute(update_from_q)
-                            if int(res.strip('UPDATE')) == 0:
-                                # no updates - token owner has no balance records
-                                raise RuntimeError('Token owner has unknown balance')
+                    log_contract = await self.get_contract(log['address'])
+                    if log_contract is None:
+                        log['event_type'] = None
+                        continue
+                    contracts_cache[log['address']] = log_contract
+                abi = json.loads(log_contract['abi'])
+                event = contracts.decode_event(abi, log)
+            except Exception as e:
+                # ValueError: Unknown log type
+                logger.exception('Log decode error: <%s>', log)
+                log['event_type'] = None
+            else:
+                event_type = event.pop('_event_type')
+                log['event_type'] = event_type
+                log['event_args'] = event
+                if event_type == 'Transfer':
+                    args_list = []
+                    event_inputs = [i['inputs'] for i in abi
+                                    if i.get('name') == event_type and
+                                    i['type'] == 'event'][0]
+                    for i in event_inputs:
+                        args_list.append(event[i['name']])
+                    token_address = log['address']
+                    to_address = args_list[1]
+                    from_address = args_list[0]
+                    block_number = log.get('block_number') or int(log['blockNumber'], 16)  # FIXME
+                    tasks.update_token_holder_balance.delay(token_address, to_address, block_number)
+                    tasks.update_token_holder_balance.delay(token_address, from_address, block_number)
         return logs
 
     def process_transaction(self, contract, tx_data, logs):
@@ -421,6 +424,18 @@ class MainDB(DBWrapper):
         rows = await pg.fetch(q)
         return rows
 
+    async def update_token_holder_balance(self, token_address, account_address, balance):
+        insert_query = insert(token_holders_t).values(
+            token_address=token_address,
+            account_address=account_address,
+            balance=balance)
+        do_update_query = insert_query.on_conflict_do_update(
+            index_elements=['token_address', 'account_address'],
+            set_=dict(balance=balance)
+        )
+        await self.conn.execute(do_update_query)
+
+
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')
 
@@ -432,19 +447,6 @@ def case_convert(name):
 
 def dict_keys_case_convert(d):
     return {case_convert(k): v for k, v in d.items()}
-
-
-# class MainDBSync:
-
-#     def __init__(self, connection_string):
-#         self.connection_string = connection_string
-#         engine = sa.create_engine(self.connection_string)
-#         self.conn = engine.connect()
-
-#     def update_contract(self, address, data):
-#         q = contracts_t.update().where(
-#             contracts_t.c.address == address).values(**data)
-#         self.conn.execute(q)
 
 
 def get_main_db():

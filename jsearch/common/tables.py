@@ -72,14 +72,15 @@ class InternalTransaction(Base):
     block_number = sa.Column('block_number', HexInteger, primary_key=True)
     parent_tx_hash = sa.Column('parent_tx_hash', sa.String, primary_key=True)
     op = sa.Column('op', sa.String)
-    depth = sa.Column('depth', HexInteger)
+    call_depth = sa.Column('call_depth', HexInteger)
     timestamp = sa.Column('timestamp', HexInteger)
     from_addr = sa.Column('from', sa.String)
-    to_addr = sa.Column('to', sa.String, primary_key=True)
-    value = sa.Column('value', sa.String)
+    to_addr = sa.Column('to', sa.String)
+    value = sa.Column('value', postgresql.NUMERIC(32, 0))
     gas_limit = sa.Column('gas_limit', HexBigInteger)
     payload = sa.Column('payload', sa.String)
     status = sa.Column('status', sa.String)
+    transaction_index = sa.Column('transaction_index', sa.Integer, primary_key=True)
 
 
 class Transaction(Base):
