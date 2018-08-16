@@ -17,10 +17,11 @@ NEWSPIDER_MODULE = 'jsearch.esparser.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-# USER_AGENT = 'esparser (+http://www.yourdomain.com)'
+USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'
+
 
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # CONCURRENT_REQUESTS = 32
@@ -79,6 +80,8 @@ DOWNLOADER_MIDDLEWARES = {
     'scrapy.downloadermiddlewares.retry.RetryMiddleware': 90,
     'jsearch.esparser.middlewares.EsparserDownloaderMiddleware': 100,
     'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': 110,
+    'scrapy.contrib.downloadermiddleware.useragent.UserAgentMiddleware': None,
+    'random_useragent.RandomUserAgentMiddleware': 400,
 }
 
 RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 408, 403]
@@ -163,3 +166,5 @@ SENTRY_DSN = 'https://8be30c1f50d648549d4726b55f2d06de:2831f3e43de04f1c82ed755c2
 EXTENSIONS = {
     "scrapy_sentry.extensions.Errors": 10,
 }
+
+USER_AGENT_LIST = os.path.join(os.path.dirname(__file__), 'useragents.list')
