@@ -110,7 +110,7 @@ async def test_maindb_insert_header(db, contracts):
         'gas_limit': 21364,
         'gas_used': 21000,
         'hash': '0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2',
-        'is_sequence_sync': True,
+        'is_sequence_sync': None,
         'logs_bloom': '0x0000',
         'miner': '0xf927a40c8b7f6e07c5af7fa2155b4864a4112b13',
         'mix_hash': '0xc32cda5582c2d75e20084e35f87a0e2af22a69dc43b7f5441cdcc9cb7dc7ea39',
@@ -154,7 +154,7 @@ async def test_maindb_insert_header(db, contracts):
         'log_index': 0,
         'removed': False,
         'event_type': None,
-        'event_args': None,
+        'event_args': 'null',
         'topics': ['0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c'],
         'transaction_hash': '0xf254afac1fd2a84275316e2d43bbb91a12583f75f2c556a8e69b24fe316d6920',
         'transaction_index': 0}

@@ -23,7 +23,7 @@ class Manager:
         self.main_db = main_db
         self.raw_db = raw_db
         self._running = False
-        self.chunk_size = 5
+        self.chunk_size = 10
         self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
         self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
@@ -46,6 +46,14 @@ class Manager:
                 if len(blocks_to_sync) == 0:
                     await asyncio.sleep(self.sleep_on_no_blocks)
                     continue
+
+                # for block in blocks_to_sync:
+                #    is_sync_ok = await self.sync_block(block["block_number"])
+                #    if is_sync_ok is False:
+                #        break  # FIXME!
+                #        logger.debug("Block #%s sync failed", block["block_number"])
+                #    else:
+                #        synced_blocks_cnt += 1
 
                 results = await asyncio.gather(*[self.sync_block(b["block_number"]) for b in blocks_to_sync])
                 synced_blocks_cnt = sum(results)
