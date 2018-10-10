@@ -28,7 +28,7 @@ class ContractPipeline(object):
         q = t.contracts_t.select().where(t.contracts_t.c.address == item['address'])
         insert_stmt = insert(t.contracts_t).values(**item)
         update_stmt = t.contracts_t.update().where(t.contracts_t.c.address == item['address']).values(**item)
-        
+
         contract = conn.execute(q).fetchone()
         if contract is None:
             logger.info("Inserting contact %s", item['address'])
