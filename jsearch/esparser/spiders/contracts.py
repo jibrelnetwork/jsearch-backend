@@ -33,10 +33,10 @@ class ContractsSpider(scrapy.Spider):
 
     def parse_contract(self, response):
         """
-        {'Compiler Version:\n': '\nv0.4.19+commit.c4cbbb05\n',
-         'Contract Name:\n': '\nDgxDemurrageReporter\n',
-         'Optimization Enabled:\n': '\nNo\n',
-         'Runs (Optimiser):\xa0\n': '\n200\n'}
+            {'Contract Name:': 'MDAPPSale',
+             'Compiler Text:': 'v0.4.25+commit.59dbf8f1',
+             'Optimization Enabled:': 'Yes',
+             'Runs (Optimiser):': '200'}
 
 
           Item:
@@ -60,11 +60,11 @@ class ContractsSpider(scrapy.Spider):
 
         # compile params
         parts = response.css('#code').css("table.table td").extract()
-        parts = [remove_tags(p).strip() for p in parts]
+        parts = [remove_tags(p).strip().replace('\xa0', ' ') for p in parts]
         compile_params = dict(zip(parts[::2], parts[1::2]))
 
         item['name'] = compile_params['Contract Name:']
-        item['compiler_version'] = compile_params['Compiler Version:']
+        item['compiler_version'] = compile_params['Compiler Text:']
         if compile_params['Optimization Enabled:'] == 'Yes':
             item['optimization_enabled'] = True
         elif compile_params['Optimization Enabled:'] == 'No':
