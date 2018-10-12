@@ -11,11 +11,10 @@ raven==6.6.0
 redis==2.10.6
 lxml==4.2.1
 requests==2.18.4
-scrapy-proxies==0.4
-scrapy-sentry==0.8.0
 SQLAlchemy==1.2.6
 web3==4.2.1
 psycopg2-binary==2.7.5
 gunicorn==19.7.1
 rlp==0.6.0
-scrapy-random-useragent==0.2
+eth-abi==1.1.1
+cssselect==1.0.3
