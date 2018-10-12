@@ -91,16 +91,8 @@ gunicorn  --bind 0.0.0.0:8081 jsearch.api.app:make_app --worker-class aiohttp.wo
 
 ### Scraper
 
-Periodic (once in a day) scraping:
-
 ```
-scrapy runspider PROJECT_ROOT/jsearch/esparser/spiders/contracts.py
-```
-
-Continous scraping:
-
-```
-scrapy runspider PROJECT_ROOT/jsearch/esparser/spiders/contracts_fresh.py
+jsearch-syncer
 ```
 
 ### Celery
