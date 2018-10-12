@@ -75,7 +75,7 @@ class Service:
     def fresh_parse(self):
         logger.info('Starting Fresh parse thread')
         while self._running:
-            time.sleep(0.5)
+            time.sleep(settings.DOWNLOAD_DELAY)
             self.parse_contracts_list_page()
         logger.info('Fresh parse thread is stopped')
 
@@ -83,7 +83,7 @@ class Service:
         logger.info('Starting Deep parse thread')
         p = 0
         while self._running:
-            time.sleep(0.5)
+            time.sleep(settings.DOWNLOAD_DELAY)
             contracts_num = self.parse_contracts_list_page(p)
             if contracts_num == 0:
                 p = 0
@@ -118,7 +118,7 @@ class Service:
         for url, date in contracts_urls:
             if self._running is False:
                 break
-            time.sleep(0.5)
+            time.sleep(settings.DOWNLOAD_DELAY)
             contract_page = self.fetch(BASE_URL + url)
             if contract_page is None:
                 logger.warn('Unable to fetch contract %s, skipping', url)
@@ -141,6 +141,9 @@ class Service:
         try:
             resp = requests.get(url, proxies={'https': proxy['host']}, headers=headers)
             logger.debug('HTTP status: %s', resp.status_code)
+            if resp.status_code != 200:
+                logger.warn('HTTP %s status for %s', resp.status_code, url)
+                return None
             proxy['OK'] += 1
             return resp.text
         except Exception:
