@@ -1,99 +1,19 @@
 # -*- coding: utf-8 -*-
 
-# Scrapy settings for esparser project
-#
-# For simplicity, this file contains only settings considered important or
-# commonly used. You can find more settings consulting the documentation:
-#
-#     https://doc.scrapy.org/en/latest/topics/settings.html
-#     https://doc.scrapy.org/en/latest/topics/downloader-middleware.html
-#     https://doc.scrapy.org/en/latest/topics/spider-middleware.html
+# Settings for esparser project
+
 import os
 
-BOT_NAME = 'esparser'
 
-SPIDER_MODULES = ['jsearch.esparser.spiders']
-NEWSPIDER_MODULE = 'jsearch.esparser.spiders'
-
-
-# Crawl responsibly by identifying yourself (and your website) on the user-agent
-# USER_AGENT = 'esparser (+http://www.yourdomain.com)'
-
-# Obey robots.txt rules
-ROBOTSTXT_OBEY = True
-
-# Configure maximum concurrent requests performed by Scrapy (default: 16)
-# CONCURRENT_REQUESTS = 32
-
-# Configure a delay for requests for the same website (default: 0)
-# See https://doc.scrapy.org/en/latest/topics/settings.html#download-delay
-# See also autothrottle settings and docs
 DOWNLOAD_DELAY = 0.5
-# The download delay setting will honor only one of:
-# CONCURRENT_REQUESTS_PER_DOMAIN = 16
-# CONCURRENT_REQUESTS_PER_IP = 16
 
-# Disable cookies (enabled by default)
-# COOKIES_ENABLED = False
-
-# Disable Telnet Console (enabled by default)
-# TELNETCONSOLE_ENABLED = False
-
-# Override the default request headers:
-# DEFAULT_REQUEST_HEADERS = {
-#   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-#   'Accept-Language': 'en',
-# }
-
-# Enable or disable spider middlewares
-# See https://doc.scrapy.org/en/latest/topics/spider-middleware.html
-# SPIDER_MIDDLEWARES = {
-#    'esparser.middlewares.EsparserSpiderMiddleware': 543,
-# }
-
-# Enable or disable downloader middlewares
-# See https://doc.scrapy.org/en/latest/topics/downloader-middleware.html
-# DOWNLOADER_MIDDLEWARES = {
-#    'jsearch.esparser.middlewares.EsparserDownloaderMiddleware': 50,
-# }
-
-# Enable or disable extensions
-# See https://doc.scrapy.org/en/latest/topics/extensions.html
-# EXTENSIONS = {
-#    'scrapy.extensions.telnet.TelnetConsole': None,
-# }
-
-# Configure item pipelines
-# See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
-ITEM_PIPELINES = {
-    'jsearch.esparser.pipelines.ContractPipeline': 300,
-}
-
-
-# Retry many times since proxies often fail
 RETRY_TIMES = int(os.environ.get('SCRAPY_RETRY_TIMES', 20))
-# Retry on most error codes since proxies fail for different reasons
+
 RETRY_HTTP_CODES = [500, 503, 504, 523, 400, 403, 404, 408]
 
-DOWNLOADER_MIDDLEWARES = {
-    'scrapy.downloadermiddlewares.retry.RetryMiddleware': 90,
-    'jsearch.esparser.middlewares.EsparserDownloaderMiddleware': 100,
-    'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': 110,
-}
 
 RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 408, 403]
 
-# Proxy list containing entries like
-# http://host1:port
-# http://username:password@host2:port
-# http://host3:port
-# ...
-# PROXY_LIST = os.path.join(os.path.dirname(__file__), 'proxy.list')
-
-# Proxy mode
-# 0 = Every requests have different proxy
-# 1 = Take only one proxy from the list and assign it to every requests
-# 2 = Put a custom proxy to use in the settings
 PROXY_MODE = 0
 
 PROXY_USER = 'mezrin'
@@ -160,6 +80,8 @@ PROXY_LIST = [
 
 SENTRY_DSN = 'https://8be30c1f50d648549d4726b55f2d06de:2831f3e43de04f1c82ed755c2a256206@sentry.io/1188901'
 
-EXTENSIONS = {
-    "scrapy_sentry.extensions.Errors": 10,
-}
+USER_AGENT_LIST_PATH = os.path.join(os.path.dirname(__file__), 'useragents.list')
+
+USER_AGENT_LIST = open(USER_AGENT_LIST_PATH, 'r').readlines()
+
+JSEARCH_MAIN_DB = os.getenv('JSEARCH_MAIN_DB')

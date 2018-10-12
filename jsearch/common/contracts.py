@@ -5,6 +5,7 @@ import time
 import re
 
 from solc import compile_source, install_solc
+import solc.install
 from ethereum.abi import (
     decode_abi,
     normalize_name as normalize_abi_method_name,
@@ -402,7 +403,7 @@ def compile_contract(source, contract_name, compiler_version,
 
 def get_solc_bin_path(compiler_version):
     commit = compiler_version.split('.')[-1]
-    return os.path.expanduser('~/.py-solc/{}/bin/solc'.format(commit))
+    return solc.install.get_executable_path(commit)
 
 
 INSTALL_HARD_LIMIT = 60 * 15

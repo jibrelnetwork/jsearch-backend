@@ -3,6 +3,7 @@ import logging
 
 from jsearch.common.database import MainDB, RawDB
 from jsearch import settings
+from jsearch.common.utils import get_git_revesion_num
 from .manager import Manager
 
 
@@ -23,7 +24,7 @@ class Service:
         """
         Start all process
         """
-        logger.info("Starting jSearch Syncer")
+        logger.info("Starting jSearch Syncer (rev. %s)", get_git_revesion_num())
 
         loop = asyncio.get_event_loop()
 

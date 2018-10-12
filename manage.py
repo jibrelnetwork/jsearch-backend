@@ -72,8 +72,8 @@ positional arguments:
         parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
         args = parser.parse_args(sys.argv[2:])
         print(args)
-        print('Running alembic upgrade {}. db: {}'.format(args.revision, args.db))
-        alembic.upgrade(args.db, args.revision)
+        print('Running alembic upgrade {}. db: {}'.format(args.revision, args.db or os.getenv('JSEARCH_MAIN_DB')))
+        alembic.upgrade(args.db or os.getenv('JSEARCH_MAIN_DB'), args.revision)
 
     def downgrade(self):
         parser = argparse.ArgumentParser(
