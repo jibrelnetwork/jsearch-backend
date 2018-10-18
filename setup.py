@@ -12,7 +12,6 @@ setup(
     packages=[
         'jsearch',
         'jsearch.common',
-        'jsearch.esparser',
         'jsearch.syncer'
     ],
     zip_safe=False,
@@ -23,7 +22,6 @@ setup(
     entry_points={
         'console_scripts': [
             'jsearch-syncer = jsearch.syncer.main:run',
-            'jsearch-esparser = jsearch.esparser.main:run',
         ]
     }
 )

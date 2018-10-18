@@ -263,8 +263,6 @@ async def verify_contract(request):
     else:
         raise async_res.result
     byte_code = res['bin']
-    # import pprint; pprint.pprint(res)
-
     byte_code, _ = cut_contract_metadata_hash(byte_code)
     bc_byte_code, mhash = cut_contract_metadata_hash(contract_creation_code)
 
