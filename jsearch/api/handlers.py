@@ -3,11 +3,10 @@ import asyncio
 import aiohttp
 from aiohttp import web
 
-
-from jsearch.api.tasks import compile_contract_task
 from jsearch.common.tasks import process_new_verified_contract_transactions
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
+from jsearch import settings
 
 
 DEFAULT_LIMIT = 20
@@ -253,15 +252,8 @@ async def verify_contract(request):
 
     contract_creation_code = await request.app['main_db'].get_contact_creation_code(address)
 
-    async_res = compile_contract_task.delay(**input_data)
-
-    while not async_res.ready():
-        await asyncio.sleep(0.5)
-
-    if async_res.successful():
-        res = async_res.result
-    else:
-        raise async_res.result
+    resp = aiohttp.request('POST', settings.JSEARCH_COMPILER_URL, json=input_data)
+    res = await resp.json()
     byte_code = res['bin']
     byte_code, _ = cut_contract_metadata_hash(byte_code)
     bc_byte_code, mhash = cut_contract_metadata_hash(contract_creation_code)
@@ -272,7 +264,7 @@ async def verify_contract(request):
             is_erc20_token = True
         else:
             is_erc20_token = False
-        await request.app['main_db'].save_verified_contract(
+        contract_data = dict(
             address=address,
             contract_creation_code=contract_creation_code,
             mhash=mhash,
@@ -281,6 +273,8 @@ async def verify_contract(request):
             is_erc20_token=is_erc20_token,
             **input_data
         )
+        resp = aiohttp.request('POST', settings.JSEARCH_COMPILER_URL, json=contract_data)
+        res = await resp.json()
 
         if is_erc20_token:
             process_new_verified_contract_transactions.delay(address)

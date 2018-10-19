@@ -4,6 +4,7 @@ import json
 from aiohttp import web
 import pytest
 from unittest import mock
+from asynctest import CoroutineMock, patch
 
 
 async def test_get_block_404(cli):
@@ -407,7 +408,17 @@ async def test_get_uncle_by_number(cli, blocks, uncles, main_db_data):
     }
 
 
-async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts, main_db_data, here):
+def AsyncMock(*args, **kwargs):
+    m = mock.MagicMock(*args, **kwargs)
+
+    async def mock_coro(*args, **kwargs):
+        return m(*args, **kwargs)
+
+    mock_coro.mock = m
+    return mock_coro
+
+@patch('aiohttp.request')
+async def test_verify_contract_ok(req, db, celery_worker, cli, transactions, receipts, main_db_data, here):
     contract_data = {
         'address': main_db_data['accounts'][2]['address'],
         'contract_name': 'FucksToken',
@@ -416,30 +427,45 @@ async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts
         'constructor_args': None,
         'source_code': here.join('FucksToken.sol').read()
     }
+    # import ipdb; ipdb.set_trace()
+    req.return_value.json = CoroutineMock(side_effect=[
+        {'bin': here.join('FucksToken.bin').read(), 'abi': json.loads(here.join('FucksToken.abi').read())},
+        {'OK': True}
+        ])
     resp = await cli.post('/verify_contract', json=contract_data)
     assert resp.status == 200
     assert await resp.json() == {'verification_passed': True}
 
-    from sqlalchemy import select
-    from jsearch.common.tables import contracts_t
-    from jsearch.common.contracts import ERC20_ABI
+    # from sqlalchemy import select
+    # from jsearch.common.tables import contracts_t
+    # from jsearch.common.contracts import ERC20_ABI
 
-    q = select([contracts_t])
-    rows = db.execute(q).fetchall()
-    assert len(rows) == 1
-    c = rows[0]
-    assert c['address'] == contract_data['address']
-    assert c['name'] == contract_data['contract_name']
-    assert c['compiler_version'] == contract_data['compiler']
-    assert c['optimization_enabled'] == contract_data['optimization_enabled']
-    assert c['constructor_args'] == ''
-    assert c['source_code'] == contract_data['source_code']
-    abi = json.loads(here.join('FucksToken.abi').read())
-    assert c['abi'] == abi
-    assert c['metadata_hash'] == '4c3e25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f55155'
-    assert c['grabbed_at'] is None
-    assert c['verified_at'] is not None
-    assert c['is_erc20_token'] is True
+    # q = select([contracts_t])
+    # rows = db.execute(q).fetchall()
+    # assert len(rows) == 1
+    # c = rows[0]
+    # assert c['address'] == contract_data['address']
+    # assert c['name'] == contract_data['contract_name']
+    # assert c['compiler_version'] == contract_data['compiler']
+    # assert c['optimization_enabled'] == contract_data['optimization_enabled']
+    # assert c['constructor_args'] == ''
+    # assert c['source_code'] == contract_data['source_code']
+    # abi = json.loads(here.join('FucksToken.abi').read())
+    # assert c['abi'] == abi
+    # assert c['metadata_hash'] == '4c3e25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f55155'
+    # assert c['grabbed_at'] is None
+    # assert c['verified_at'] is not None
+    # assert c['is_erc20_token'] is True
+    req.assert_called_with('POST', mock.ANY, json={'abi': json.loads(here.join('FucksToken.abi').read()),
+         'address': contract_data['address'],
+         'compiler': 'v0.4.18+commit.9cf6e910',
+         'constructor_args': '',
+         'contract_creation_code': mock.ANY,
+         'contract_name': 'FucksToken',
+         'is_erc20_token': True,
+         'mhash': '4c3e25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f55155',
+         'optimization_enabled': True,
+         'source_code': contract_data['source_code']})
 
 
 async def test_get_verified_contracts_list_ok(cli, contracts):
