@@ -213,6 +213,7 @@ class Service:
         elif contract['grabbed_at'] is not None:
             logger.info("Updating contact %s", item['address'])
             self.db_conn.execute(update_stmt)
+            return item
         else:
             logger.info("Contact %s verifid by jSearch, skipping", item['address'])
             return item

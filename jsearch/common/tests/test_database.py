@@ -1,4 +1,5 @@
 import os
+import json
 from unittest import mock
 
 import pytest
@@ -22,7 +23,7 @@ async def test_process_token_transfer(db, contracts, transactions, logs, main_db
         rows = db.execute(q).fetchall()
         assert rows[0]['is_token_transfer'] is True
         assert rows[0]['token_amount'] == 10
-        assert rows[0]['contract_call_description'] == {
+        assert json.loads(rows[0]['contract_call_description']) == {
             'args': [main_db_data['accounts'][1]['address'], 1000],
             'function': 'transfer'}
 

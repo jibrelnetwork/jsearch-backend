@@ -125,8 +125,9 @@ class MainDB(DBWrapper):
     jSearch Main db wrapper
     """
     async def connect(self):
-        await pg.init(self.connection_string, max_size=MAIN_DB_POOL_SIZE)
-        self.pool = await asyncpg.create_pool(self.connection_string, max_size=MAIN_DB_POOL_SIZE)
+        pool_size = self.params.get('pool_size', MAIN_DB_POOL_SIZE)
+        await pg.init(self.connection_string, max_size=pool_size)
+        self.pool = await asyncpg.create_pool(self.connection_string, max_size=pool_size)
         self.conn = pg
 
     async def disconnect(self):
@@ -495,8 +496,8 @@ def dict_keys_case_convert(d):
     return {case_convert(k): v for k, v in d.items()}
 
 
-def get_main_db():
-    db = MainDB(settings.JSEARCH_MAIN_DB)
+def get_main_db(pool_size=MAIN_DB_POOL_SIZE):
+    db = MainDB(settings.JSEARCH_MAIN_DB, pool_size=pool_size)
     db.call_sync(db.connect())
     return db
 
