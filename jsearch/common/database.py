@@ -16,6 +16,8 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import and_
 import aiohttp
 from async_lru import alru_cache
+import psycopg2
+from psycopg2.extras import execute_values
 
 from jsearch.common.tables import *
 from jsearch.common import contracts
@@ -88,54 +90,49 @@ class RawDB(DBWrapper):
     jSearch RAW db wrapper
     """
     async def get_blocks_to_sync(self, start_block_num=0, chunk_size=10):
-        q = """SELECT * FROM headers WHERE block_number BETWEEN %s AND %s"""
+        q = """SELECT block_number FROM headers WHERE block_number BETWEEN %s AND %s"""
         end_num = start_block_num + chunk_size - 1
         async with self.pool.acquire() as conn:
-            async with conn.cursor(cursor_factory=DictCursor) as cur:
+            async with conn.cursor() as cur:
                 await cur.execute(q, [start_block_num, end_num])
                 rows = await cur.fetchall()
         return rows
 
 
 class RawDBSync(DBWrapperSync):
-    async def get_header_by_hash(self, block_number):
+    def get_header_by_hash(self, block_number):
         q = """SELECT * FROM headers WHERE block_number=%s"""
-        async with self.pool.acquire() as conn:
-            async with conn.cursor(cursor_factory=DictCursor) as cur:
-                await cur.execute(q, [block_number])
-                row = await cur.fetchone()
+        with self.conn.cursor() as cur:
+            cur.execute(q, [block_number])
+            row = cur.fetchone()
         return row
 
-    async def get_block_accounts(self, block_number):
+    def get_block_accounts(self, block_number):
         q = """SELECT * FROM accounts WHERE block_number=%s"""
-        async with self.pool.acquire() as conn:
-            async with conn.cursor(cursor_factory=DictCursor) as cur:
-                await cur.execute(q, [block_number])
-                rows = await cur.fetchall()
+        with self.conn.cursor() as cur:
+            cur.execute(q, [block_number])
+            rows = cur.fetchall()
         return rows
 
-    async def get_block_body(self, block_number):
+    def get_block_body(self, block_number):
         q = """SELECT * FROM bodies WHERE block_number=%s"""
-        async with self.pool.acquire() as conn:
-            async with conn.cursor(cursor_factory=DictCursor) as cur:
-                await cur.execute(q, [block_number])
-                row = await cur.fetchone()
+        with self.conn.cursor() as cur:
+            cur.execute(q, [block_number])
+            row = cur.fetchone()
         return row
 
-    async def get_block_receipts(self, block_number):
+    def get_block_receipts(self, block_number):
         q = """SELECT * FROM receipts WHERE block_number=%s"""
-        async with self.pool.acquire() as conn:
-            async with conn.cursor(cursor_factory=DictCursor) as cur:
-                await cur.execute(q, [block_number])
-                row = await cur.fetchone()
+        with self.conn.cursor() as cur:
+            cur.execute(q, [block_number])
+            row = cur.fetchone()
         return row
 
-    async def get_reward(self, block_number):
+    def get_reward(self, block_number):
         q = """SELECT * FROM rewards WHERE block_number=%s"""
-        async with self.pool.acquire() as conn:
-            async with conn.cursor(cursor_factory=DictCursor) as cur:
-                await cur.execute(q, [block_number])
-                rows = await cur.fetchall()
+        with self.conn.cursor() as cur:
+            cur.execute(q, [block_number])
+            rows = cur.fetchall()
         if len(rows) > 1:
             for r in rows:
                 if r['address'] != contracts.NULL_ADDRESS:
@@ -145,12 +142,11 @@ class RawDBSync(DBWrapperSync):
         else:
             return None
 
-    async def get_internal_transactions(self, block_number):
+    def get_internal_transactions(self, block_number):
         q = """SELECT * FROM internal_transactions WHERE block_number=%s"""
-        async with self.pool.acquire() as conn:
-            async with conn.cursor(cursor_factory=DictCursor) as cur:
-                await cur.execute(q, [block_number])
-                rows = await cur.fetchall()
+        with self.conn.cursor() as cur:
+            cur.execute(q, [block_number])
+            rows = cur.fetchall()
         return rows
 
 
@@ -171,13 +167,6 @@ class MainDB(DBWrapper):
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(coro)
 
-    async def is_block_exist(self, block_number):
-        q = """SELECT number from blocks WHERE number=%s"""
-        async with self.engine.acquire() as conn:
-            res = await conn.execute(q, [block_number])
-            row = await res.first()
-        return row['number'] == block_number if row else False
-
     async def get_latest_sequence_synced_block_number(self):
         """
         Get latest block writed in main DB during sequence sync
@@ -192,7 +181,17 @@ class MainDB(DBWrapper):
             row = rows[0] if len(rows) > 0 else None
         return row['start'] - 1 if row else 5000000
 
-    async def write_block(self, header, uncles, transactions, receipts,
+
+class MainDBSync(DBWrapperSync):
+
+    def is_block_exist(self, block_number):
+        q = """SELECT number from blocks WHERE number=%s"""
+        with self.conn.cursor() as cur:
+            cur.execute(q, [block_number])
+            row = cur.fetchone()
+        return row['number'] == block_number if row else False
+
+    def write_block(self, header, uncles, transactions, receipts,
                           accounts, reward, internal_transactions):
         """
         Write block and all related items in main database
@@ -220,22 +219,22 @@ class MainDB(DBWrapper):
             }
             uncles_rewards = reward_data['Uncles']
 
-        async with self.engine.acquire() as conn:
-            async with conn.begin():
-                await self.insert_header(conn, header, block_reward)
-                await self.insert_uncles(conn, block_number, block_hash, uncles, uncles_rewards)
-                await self.insert_transactions_and_receipts(conn, block_number, block_hash, receipts, transactions)
-                await self.insert_accounts(conn, block_number, block_hash, accounts)
-                await self.insert_internal_transactions(conn, block_number, block_hash, internal_transactions)
+        with self.conn:
+            self.insert_header(header, block_reward)
+            self.insert_uncles(block_number, block_hash, uncles, uncles_rewards)
+            self.insert_transactions_and_receipts(block_number, block_hash, receipts, transactions)
+            self.insert_accounts(block_number, block_hash, accounts)
+            self.insert_internal_transactions(block_number, block_hash, internal_transactions)
 
-    async def insert_header(self, conn, header, reward):
+    def insert_header(self, header, reward):
         data = dict_keys_case_convert(header['fields'])
         data.update(reward)
         q = make_insert_query('blocks', data.keys())
         hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
-        await conn.execute(q, data)
+        with self.conn.cursor() as cur:
+            cur.execute(q, data)
 
-    async def insert_uncles(self, conn, block_number, block_hash, uncles, reward):
+    def insert_uncles(self, block_number, block_hash, uncles, reward):
         if not uncles:
             return
         items = []
@@ -248,11 +247,13 @@ class MainDB(DBWrapper):
             data['block_number'] = block_number
             hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
             items.append(data)
-        q = make_insert_query('uncles', items[0].keys())
-        for item in items:
-            await conn.execute(q, item)
+        q, t = make_insert_query_batch('uncles', items[0].keys())
+        with self.conn.cursor() as cur:
+            # for item in items:
+            execute_values(cur, q, items, t)
+                # cur.execute(q, item)
 
-    async def insert_transactions_and_receipts(self, conn, block_number, block_hash, receipts, transactions):
+    def insert_transactions_and_receipts(self, block_number, block_hash, receipts, transactions):
         if not transactions:
             return
         rdata = receipts['fields']['Receipts'] or []
@@ -288,26 +289,30 @@ class MainDB(DBWrapper):
                 contract_address = recpt_data['contract_address']
             else:
                 contract_address = tx['to']
-            contract = await self.get_contract(contract_address)
-            logs = await self.process_logs(conn, contract, logs)
+            contract = self.get_contract(contract_address)
+            logs = self.process_logs(contract, logs)
             logs_items.extend(logs)
             tx_data = self.process_transaction(contract, tx_data, logs)
 
             tx_items.append(tx_data)
 
-        q = make_insert_query('receipts', recpt_items[0].keys())
-        for item in recpt_items:
-            await conn.execute(q, item)
+        q, t = make_insert_query_batch('receipts', recpt_items[0].keys())
+        with self.conn.cursor() as cur:
+            execute_values(cur, q, recpt_items, t)
+            # for item in recpt_items:
+            #     cur.execute(q, item)
 
         tx_keys = tx_items[0].keys()
-        q = make_insert_query('transactions', tx_keys)
+        q, t = make_insert_query_batch('transactions', tx_keys)
 
-        for item in tx_items:
-            await conn.execute(q, item)
+        with self.conn.cursor() as cur:
+            execute_values(cur, q, tx_items, t)
+            # for item in tx_items:
+            #     cur.execute(q, item)
 
-        await self.insert_logs(conn, block_number, block_hash, logs_items)
+        self.insert_logs(block_number, block_hash, logs_items)
 
-    async def insert_logs(self, conn, block_number, block_hash, logs):
+    def insert_logs(self, block_number, block_hash, logs):
         items = []
         if not logs:
             return
@@ -316,19 +321,21 @@ class MainDB(DBWrapper):
             hex_vals_to_int(data, ['log_index', 'transaction_index', 'block_number'])
             data['event_args'] = json.dumps(data['event_args'])
             items.append(data)
-        q = make_insert_query('logs', items[0].keys())
-        for item in items:
-            await conn.execute(q, item)
+        q, t = make_insert_query_batch('logs', items[0].keys())
+        with self.conn.cursor() as cur:
+            execute_values(cur, q, items, t)
+            # for item in items:
+            #     cur.execute(q, item)
 
-    async def update_logs(self, conn, logs):
+    def update_logs(self, conn, logs):
         for rec in logs:
             query = logs_t.update().\
                 where(and_(logs_t.c.transaction_hash == rec['transaction_hash'],
                            logs_t.c.log_index == rec['log_index'])).\
                 values(**rec)
-            await conn.execute(query)
+            conn.execute(query)
 
-    async def insert_accounts(self, conn, block_number, block_hash, accounts):
+    def insert_accounts(self, block_number, block_hash, accounts):
         items = []
         for account in accounts:
             data = dict_keys_case_convert(account['fields'])
@@ -337,11 +344,13 @@ class MainDB(DBWrapper):
             data['block_number'] = block_number
             data['block_hash'] = block_hash
             items.append(data)
-        q = make_insert_query('accounts', items[0].keys())
-        for item in items:
-            await conn.execute(q, item)
+        q, t = make_insert_query_batch('accounts', items[0].keys())
+        with self.conn.cursor() as cur:
+            execute_values(cur, q, items, t)
+            # for item in items:
+            #     cur.execute(q, item)
 
-    async def insert_internal_transactions(self, conn, block_number, block_hash, internal_transactions):
+    def insert_internal_transactions(self, block_number, block_hash, internal_transactions):
         items = []
         if not internal_transactions:
             return
@@ -352,11 +361,13 @@ class MainDB(DBWrapper):
             del data['operation']
             data['op'] = tx['type']
             items.append(data)
-        q = make_insert_query('internal_transactions', items[0].keys())
-        for item in items:
-            await conn.execute(q, item)
+        q, t = make_insert_query_batch('internal_transactions', items[0].keys())
+        with self.conn.cursor() as cur:
+            execute_values(cur, q, items, t)
+            # for item in items:
+            #     cur.execute(q, item)
 
-    async def process_logs(self, conn, contract, logs):
+    def process_logs(self, contract, logs):
         contracts_cache = {}
         if contract is not None:
             contracts_cache[contract['address']] = contract
@@ -365,7 +376,7 @@ class MainDB(DBWrapper):
                 if log['address'] in contracts_cache:
                     log_contract = contracts_cache[log['address']]
                 else:
-                    log_contract = await self.get_contract(log['address'])
+                    log_contract = self.get_contract(log['address'])
                     if log_contract is None:
                         log['event_type'] = None
                         log['event_args'] = None
@@ -423,26 +434,26 @@ class MainDB(DBWrapper):
             pass
         return tx_data
 
-    @alru_cache(maxsize=1024)
-    async def get_contract(self, address):
+    # @alru_cache(maxsize=1024)
+    def get_contract(self, address):
         return None
-        async with aiohttp.request('GET', settings.JSEARCH_CONTRACTS_API + '/v1/contracts/{}'.format(address)) as res:
-            logger.debug('get_contract %s: %s', address, res.status)
-            if res.status == 200:
-                logger.info('Got _contract %s: %s', address, res.status)
-                contract = await res.json()
-                return contract
+        # with aiohttp.request('GET', settings.JSEARCH_CONTRACTS_API + '/v1/contracts/{}'.format(address)) as res:
+        #     logger.debug('get_contract %s: %s', address, res.status)
+        #     if res.status == 200:
+        #         logger.info('Got _contract %s: %s', address, res.status)
+        #         contract = res.json()
+        #         return contract
 
-    async def update_contract(self, address, data):
+    def update_contract(self, address, data):
         q = contracts_t.update().where(
             contracts_t.c.address == address).values(**data)
-        res = await self.conn.execute(q)
+        res = self.conn.execute(q)
 
-    async def get_transaction_logs(self, conn, tx_hash):
+    def get_transaction_logs(self, tx_hash):
         q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
-        return await conn.fetch(q)
+        return self.conn.fetch(q)
 
-    # async def save_verified_contract(self, address, contract_creation_code, source_code, contract_name, abi, compiler,
+    # def save_verified_contract(self, address, contract_creation_code, source_code, contract_name, abi, compiler,
     #                                  optimization_enabled, mhash, constructor_args, is_erc20_token):
     #     """
     #     address = sa.Column('address', sa.String, primary_key=True)
@@ -479,25 +490,25 @@ class MainDB(DBWrapper):
     #         verified_at=datetime.now()
     #     )
     #     logger.info('Saving verified contract at %s', address)
-    #     async with pg.transaction() as conn:
-    #         await conn.execute(query)
+    #     with pg.transaction() as conn:
+    #         conn.execute(query)
 
-    async def get_contact_creation_code(self, address):
+    def get_contact_creation_code(self, address):
         q = select([transactions_t.c.input]).select_from(
             transactions_t.join(receipts_t, and_(receipts_t.c.transaction_hash == transactions_t.c.hash,
                                                  receipts_t.c.contract_address == address)))
-        row = await pg.fetchrow(q)
+        row = pg.fetchrow(q)
         return row['input']
 
-    async def process_token_transfer(self, tx_hash):
+    def process_token_transfer(self, tx_hash):
         logger.info('Processing token transfer for TX %s', tx_hash)
         q = select([transactions_t]).where(transactions_t.c.hash == tx_hash)
-        async with pg.transaction() as conn:
-            tx = await conn.fetchrow(q)
+        with pg.transaction() as conn:
+            tx = conn.fetchrow(q)
             if tx is None:
                 logger.warn('TX with hash %s not found', tx_hash)
                 return
-            logs = await self.get_transaction_logs(conn, tx['hash'])
+            logs = self.get_transaction_logs(conn, tx['hash'])
             if len(logs) == 0:
                 logger.info('No logs - no transfers')
                 return
@@ -505,20 +516,20 @@ class MainDB(DBWrapper):
                 contract_address = logs[0]['address']
             else:
                 contract_address = tx['to']
-            contract = await self.get_contract(contract_address)
-            logs = await self.process_logs(conn, contract, [dict(l) for l in logs])
+            contract = self.get_contract(contract_address)
+            logs = self.process_logs(contract, [dict(l) for l in logs])
             tx_data = dict(tx)
             data = self.process_transaction(contract, tx_data, logs)
             query = update(transactions_t).where(transactions_t.c.hash == tx_hash).values(**data)
-            await conn.execute(query)
-            await self.update_logs(conn, logs)
+            conn.execute(query)
+            self.update_logs(conn, logs)
 
-    async def get_contract_transactions(self, address):
+    def get_contract_transactions(self, address):
         q = select([transactions_t]).where(transactions_t.c.to == address)
-        rows = await pg.fetch(q)
+        rows = pg.fetch(q)
         return rows
 
-    async def update_token_holder_balance(self, token_address, account_address, balance):
+    def update_token_holder_balance(self, token_address, account_address, balance):
         insert_query = insert(token_holders_t).values(
             token_address=token_address,
             account_address=account_address,
@@ -527,7 +538,7 @@ class MainDB(DBWrapper):
             index_elements=['token_address', 'account_address'],
             set_=dict(balance=balance)
         )
-        await self.conn.execute(do_update_query)
+        self.conn.execute(do_update_query)
 
 
 
@@ -555,6 +566,13 @@ def make_insert_query(table_name, fields):
     f = ','.join(['"{}"'.format(k) for k in fields])
     v = ','.join(['%({})s'.format(k) for k in fields])
     return q.format(table=table_name, fields=f, values=v)
+
+
+def make_insert_query_batch(table_name, fields):
+    q = """INSERT INTO {table} ({fields}) VALUES %s"""
+    f = ','.join(['"{}"'.format(k) for k in fields])
+    v = ','.join(['%({})s'.format(k) for k in fields])
+    return q.format(table=table_name, fields=f), '({})'.format(v)
 
 
 def hex_vals_to_int(d, keys):

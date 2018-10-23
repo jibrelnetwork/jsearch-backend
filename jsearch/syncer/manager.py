@@ -2,9 +2,10 @@ import asyncio
 import json
 import logging
 import time
+import concurrent.futures
 
 from jsearch.common.database import DatabaseError
-
+from jsearch import settings
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,9 @@ logger = logging.getLogger(__name__)
 SLEEP_ON_ERROR_DEFAULT = 0.1
 SLEEP_ON_DB_ERROR_DEFAULT = 5
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
+
+
+loop = asyncio.get_event_loop()
 
 
 class Manager:
@@ -23,10 +27,11 @@ class Manager:
         self.main_db = main_db
         self.raw_db = raw_db
         self._running = False
-        self.chunk_size = 10
+        self.chunk_size = 20
         self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
         self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
+        self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=self.chunk_size)
 
     async def run(self):
         logger.info("Starting Sync Manager")
@@ -55,7 +60,8 @@ class Manager:
                 #     else:
                 #         synced_blocks_cnt += 1
 
-                results = await asyncio.gather(*[self.sync_block(b["block_number"]) for b in blocks_to_sync])
+                coros = [loop.run_in_executor(self.executor, sync_block, b[0]) for b in blocks_to_sync]
+                results = await asyncio.gather(*coros)
                 synced_blocks_cnt = sum(results)
 
                 sync_time = time.monotonic() - start_time
@@ -82,7 +88,15 @@ class Manager:
         return blocks
 
 
+from jsearch.common.database import MainDBSync, RawDBSync
+
+
 def sync_block(block_number):
+    logger.info("Syncing Block #%s", block_number)
+    main_db = MainDBSync(settings.JSEARCH_MAIN_DB)
+    raw_db = RawDBSync(settings.JSEARCH_RAW_DB)
+    main_db.connect()
+    raw_db.connect()
     start_time = time.monotonic()
     is_block_exist = main_db.is_block_exist(block_number)
     if is_block_exist is True:
@@ -107,5 +121,7 @@ def sync_block(block_number):
                         transactions=transactions, receipts=receipts, reward=reward,
                         internal_transactions=internal_transactions)
     sync_time = time.monotonic() - start_time
-    logger.debug("Block #%s synced on %ss", block_number, sync_time)
+    logger.info("Block #%s synced on %ss", block_number, sync_time)
+    main_db.disconnect()
+    raw_db.disconnect()
     return True
