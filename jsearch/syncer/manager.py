@@ -66,7 +66,7 @@ class Manager:
 
                 sync_time = time.monotonic() - start_time
                 avg_time = sync_time / synced_blocks_cnt if synced_blocks_cnt else 0
-                logger.info("%s blocks synced on %ss, avg time %ss", synced_blocks_cnt, sync_time, avg_time)
+                logger.info("%s blocks synced on %0.2fs, avg time %0.2fs", synced_blocks_cnt, sync_time, avg_time)
             except DatabaseError:
                 logger.exception("Database Error accured:")
                 await asyncio.sleep(self.sleep_on_db_error)
@@ -92,7 +92,7 @@ from jsearch.common.database import MainDBSync, RawDBSync
 
 
 def sync_block(block_number):
-    logger.info("Syncing Block #%s", block_number)
+    logger.debug("Syncing Block #%s", block_number)
     main_db = MainDBSync(settings.JSEARCH_MAIN_DB)
     raw_db = RawDBSync(settings.JSEARCH_RAW_DB)
     main_db.connect()
@@ -121,7 +121,7 @@ def sync_block(block_number):
                         transactions=transactions, receipts=receipts, reward=reward,
                         internal_transactions=internal_transactions)
     sync_time = time.monotonic() - start_time
-    logger.info("Block #%s synced on %ss", block_number, sync_time)
+    logger.debug("Block #%s synced on %ss", block_number, sync_time)
     main_db.disconnect()
     raw_db.disconnect()
     return True

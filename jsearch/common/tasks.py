@@ -61,15 +61,18 @@ def process_token_transfer(tx):
 
 
 @app.task
-def update_token_holder_balance(token_address, account_address, block_number):
-    from jsearch.common.database import get_main_db
+def update_token_holder_balance_task(token_address, account_address, block_number):
+    from jsearch.common.database import get_engine, update_token_holder_balance
+    logger.info('Updating Token balance for token %s account %s block %s', token_address, account_address, block_number)
     w3 = Web3(Web3.HTTPProvider(settings.ETH_NODE_URL))
     checksum_token_address = Web3.toChecksumAddress(token_address)
     checksum_account_address = Web3.toChecksumAddress(account_address)
     c = w3.eth.contract(checksum_token_address, abi=ERC20_ABI)
-    balance = c.functions.balanceOf(checksum_account_address).call(block_identifier=block_number)
-    decimals = c.functions.decimals().call(block_identifier=block_number)
+    # balance = c.functions.balanceOf(checksum_account_address).call(block_identifier=block_number)
+    balance = c.functions.balanceOf(checksum_account_address).call()
+    # decimals = c.functions.decimals().call(block_identifier=block_number)
+    decimals = c.functions.decimals().call()
     balance = balance / 10 ** decimals
-    db = get_main_db()
-    db.call_sync(db.update_token_holder_balance(token_address, account_address, balance))
-    logger.info('Token balance updated for token %s account %s value %s', token_address, account_address, balance)
+    db = get_engine()
+    update_token_holder_balance(db, token_address, account_address, balance)
+    logger.info('Token balance updated for token %s account %s block %s value %s', token_address, account_address, block_number, balance)

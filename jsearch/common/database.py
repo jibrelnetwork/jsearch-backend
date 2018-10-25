@@ -18,6 +18,7 @@ import aiohttp
 from async_lru import alru_cache
 import psycopg2
 from psycopg2.extras import execute_values
+import requests
 
 from jsearch.common.tables import *
 from jsearch.common import contracts
@@ -249,9 +250,7 @@ class MainDBSync(DBWrapperSync):
             items.append(data)
         q, t = make_insert_query_batch('uncles', items[0].keys())
         with self.conn.cursor() as cur:
-            # for item in items:
             execute_values(cur, q, items, t)
-                # cur.execute(q, item)
 
     def insert_transactions_and_receipts(self, block_number, block_hash, receipts, transactions):
         if not transactions:
@@ -299,16 +298,12 @@ class MainDBSync(DBWrapperSync):
         q, t = make_insert_query_batch('receipts', recpt_items[0].keys())
         with self.conn.cursor() as cur:
             execute_values(cur, q, recpt_items, t)
-            # for item in recpt_items:
-            #     cur.execute(q, item)
 
         tx_keys = tx_items[0].keys()
         q, t = make_insert_query_batch('transactions', tx_keys)
 
         with self.conn.cursor() as cur:
             execute_values(cur, q, tx_items, t)
-            # for item in tx_items:
-            #     cur.execute(q, item)
 
         self.insert_logs(block_number, block_hash, logs_items)
 
@@ -324,8 +319,6 @@ class MainDBSync(DBWrapperSync):
         q, t = make_insert_query_batch('logs', items[0].keys())
         with self.conn.cursor() as cur:
             execute_values(cur, q, items, t)
-            # for item in items:
-            #     cur.execute(q, item)
 
     def update_logs(self, conn, logs):
         for rec in logs:
@@ -347,8 +340,6 @@ class MainDBSync(DBWrapperSync):
         q, t = make_insert_query_batch('accounts', items[0].keys())
         with self.conn.cursor() as cur:
             execute_values(cur, q, items, t)
-            # for item in items:
-            #     cur.execute(q, item)
 
     def insert_internal_transactions(self, block_number, block_hash, internal_transactions):
         items = []
@@ -364,8 +355,6 @@ class MainDBSync(DBWrapperSync):
         q, t = make_insert_query_batch('internal_transactions', items[0].keys())
         with self.conn.cursor() as cur:
             execute_values(cur, q, items, t)
-            # for item in items:
-            #     cur.execute(q, item)
 
     def process_logs(self, contract, logs):
         contracts_cache = {}
@@ -386,7 +375,7 @@ class MainDBSync(DBWrapperSync):
                 event = contracts.decode_event(abi, log)
             except Exception as e:
                 # ValueError: Unknown log type
-                logger.exception('Log decode error: <%s>', log)
+                logger.debug('Log decode error: <%s>\n ', log)
                 log['event_type'] = None
                 log['event_args'] = None
             else:
@@ -404,8 +393,8 @@ class MainDBSync(DBWrapperSync):
                     to_address = args_list[1]
                     from_address = args_list[0]
                     block_number = log.get('block_number') or int(log['blockNumber'], 16)  # FIXME
-                    tasks.update_token_holder_balance.delay(token_address, to_address, block_number)
-                    tasks.update_token_holder_balance.delay(token_address, from_address, block_number)
+                    tasks.update_token_holder_balance_task.delay(token_address, to_address, block_number)
+                    tasks.update_token_holder_balance_task.delay(token_address, from_address, block_number)
         return logs
 
     def process_transaction(self, contract, tx_data, logs):
@@ -436,13 +425,12 @@ class MainDBSync(DBWrapperSync):
 
     # @alru_cache(maxsize=1024)
     def get_contract(self, address):
-        return None
-        # with aiohttp.request('GET', settings.JSEARCH_CONTRACTS_API + '/v1/contracts/{}'.format(address)) as res:
-        #     logger.debug('get_contract %s: %s', address, res.status)
-        #     if res.status == 200:
-        #         logger.info('Got _contract %s: %s', address, res.status)
-        #         contract = res.json()
-        #         return contract
+        resp = requests.get(settings.JSEARCH_CONTRACTS_API + '/v1/contracts/{}'.format(address))
+        if resp.status_code == 200:
+            logger.debug('Got Contract %s: %s', address, resp.status_code)
+            contract = resp.json()
+            return contract
+        logger.debug('Miss Contract %s: %s', address, resp.status_code)
 
     def update_contract(self, address, data):
         q = contracts_t.update().where(
@@ -529,17 +517,17 @@ class MainDBSync(DBWrapperSync):
         rows = pg.fetch(q)
         return rows
 
-    def update_token_holder_balance(self, token_address, account_address, balance):
-        insert_query = insert(token_holders_t).values(
-            token_address=token_address,
-            account_address=account_address,
-            balance=balance)
-        do_update_query = insert_query.on_conflict_do_update(
-            index_elements=['token_address', 'account_address'],
-            set_=dict(balance=balance)
-        )
-        self.conn.execute(do_update_query)
 
+def update_token_holder_balance(engine, token_address, account_address, balance):
+    insert_query = insert(token_holders_t).values(
+        token_address=token_address,
+        account_address=account_address,
+        balance=balance)
+    do_update_query = insert_query.on_conflict_do_update(
+        index_elements=['token_address', 'account_address'],
+        set_=dict(balance=balance)
+    )
+    engine.execute(do_update_query)
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
@@ -556,8 +544,14 @@ def dict_keys_case_convert(d):
 
 
 def get_main_db():
-    db = MainDB(settings.JSEARCH_MAIN_DB)
-    db.call_sync(db.connect())
+    db = MainDBSync(settings.JSEARCH_MAIN_DB)
+    db.connect()
+    return db
+
+
+def get_engine():
+    db = sa.create_engine(settings.JSEARCH_MAIN_DB)
+    db.connect()
     return db
 
 
