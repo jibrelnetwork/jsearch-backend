@@ -12,6 +12,7 @@ from aiopg.sa import create_engine
 from psycopg2.extras import DictCursor
 import sqlalchemy as sa
 from sqlalchemy.sql import select, update
+from sqlalchemy.pool import NullPool
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import and_
 import aiohttp
@@ -185,15 +186,21 @@ class MainDB(DBWrapper):
 
 class MainDBSync(DBWrapperSync):
 
+    def connect(self):
+        self.engine = sa.create_engine(self.connection_string, poolclass=NullPool)
+        self.conn = self.engine.connect()
+        # self.conn = psycopg2.connect(self.connection_string, cursor_factory=DictCursor)
+
+    def disconnect(self):
+        self.conn.close()
+
     def is_block_exist(self, block_number):
         q = """SELECT number from blocks WHERE number=%s"""
-        with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
-            row = cur.fetchone()
+        row = self.conn.execute(q, [block_number]).fetchone()
         return row['number'] == block_number if row else False
 
     def write_block(self, header, uncles, transactions, receipts,
-                          accounts, reward, internal_transactions):
+                    accounts, reward, internal_transactions):
         """
         Write block and all related items in main database
         """
@@ -220,22 +227,21 @@ class MainDBSync(DBWrapperSync):
             }
             uncles_rewards = reward_data['Uncles']
 
-        with self.conn:
-            self.insert_header(header, block_reward)
-            self.insert_uncles(block_number, block_hash, uncles, uncles_rewards)
-            self.insert_transactions_and_receipts(block_number, block_hash, receipts, transactions)
-            self.insert_accounts(block_number, block_hash, accounts)
-            self.insert_internal_transactions(block_number, block_hash, internal_transactions)
+        with self.engine.begin() as conn:
+            self.insert_header(conn, header, block_reward)
+            self.insert_uncles(conn, block_number, block_hash, uncles, uncles_rewards)
+            self.insert_transactions_and_receipts(conn, block_number, block_hash, receipts, transactions)
+            self.insert_accounts(conn, block_number, block_hash, accounts)
+            self.insert_internal_transactions(conn, block_number, block_hash, internal_transactions)
 
-    def insert_header(self, header, reward):
+    def insert_header(self, conn, header, reward):
         data = dict_keys_case_convert(header['fields'])
         data.update(reward)
         q = make_insert_query('blocks', data.keys())
         hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
-        with self.conn.cursor() as cur:
-            cur.execute(q, data)
+        conn.execute(q, data)
 
-    def insert_uncles(self, block_number, block_hash, uncles, reward):
+    def insert_uncles(self, conn, block_number, block_hash, uncles, reward):
         if not uncles:
             return
         items = []
@@ -249,10 +255,11 @@ class MainDBSync(DBWrapperSync):
             hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
             items.append(data)
         q, t = make_insert_query_batch('uncles', items[0].keys())
-        with self.conn.cursor() as cur:
-            execute_values(cur, q, items, t)
+        # with self.conn.cursor() as cur:
+        #     execute_values(cur, q, items, t)
+        conn.execute(uncles_t.insert(), *items)
 
-    def insert_transactions_and_receipts(self, block_number, block_hash, receipts, transactions):
+    def insert_transactions_and_receipts(self, conn, block_number, block_hash, receipts, transactions):
         if not transactions:
             return
         rdata = receipts['fields']['Receipts'] or []
@@ -296,18 +303,20 @@ class MainDBSync(DBWrapperSync):
             tx_items.append(tx_data)
 
         q, t = make_insert_query_batch('receipts', recpt_items[0].keys())
-        with self.conn.cursor() as cur:
-            execute_values(cur, q, recpt_items, t)
+        # with self.conn.cursor() as cur:
+        #     execute_values(cur, q, recpt_items, t)
+        conn.execute(receipts_t.insert(), *recpt_items)
 
         tx_keys = tx_items[0].keys()
         q, t = make_insert_query_batch('transactions', tx_keys)
 
-        with self.conn.cursor() as cur:
-            execute_values(cur, q, tx_items, t)
+        # with self.conn.cursor() as cur:
+        #     execute_values(cur, q, tx_items, t)
+        conn.execute(transactions_t.insert(), *tx_items)
 
-        self.insert_logs(block_number, block_hash, logs_items)
+        self.insert_logs(conn, block_number, block_hash, logs_items)
 
-    def insert_logs(self, block_number, block_hash, logs):
+    def insert_logs(self, conn, block_number, block_hash, logs):
         items = []
         if not logs:
             return
@@ -317,8 +326,9 @@ class MainDBSync(DBWrapperSync):
             data['event_args'] = json.dumps(data['event_args'])
             items.append(data)
         q, t = make_insert_query_batch('logs', items[0].keys())
-        with self.conn.cursor() as cur:
-            execute_values(cur, q, items, t)
+        # with self.conn.cursor() as cur:
+            # execute_values(cur, q, items, t)
+        conn.execute(logs_t.insert(), *items)
 
     def update_logs(self, conn, logs):
         for rec in logs:
@@ -328,7 +338,7 @@ class MainDBSync(DBWrapperSync):
                 values(**rec)
             conn.execute(query)
 
-    def insert_accounts(self, block_number, block_hash, accounts):
+    def insert_accounts(self, conn, block_number, block_hash, accounts):
         items = []
         for account in accounts:
             data = dict_keys_case_convert(account['fields'])
@@ -338,10 +348,11 @@ class MainDBSync(DBWrapperSync):
             data['block_hash'] = block_hash
             items.append(data)
         q, t = make_insert_query_batch('accounts', items[0].keys())
-        with self.conn.cursor() as cur:
-            execute_values(cur, q, items, t)
+        # with self.conn.cursor() as cur:
+        #     execute_values(cur, q, items, t)
+        conn.execute(accounts_t.insert(), *items)
 
-    def insert_internal_transactions(self, block_number, block_hash, internal_transactions):
+    def insert_internal_transactions(self, conn, block_number, block_hash, internal_transactions):
         items = []
         if not internal_transactions:
             return
@@ -353,8 +364,9 @@ class MainDBSync(DBWrapperSync):
             data['op'] = tx['type']
             items.append(data)
         q, t = make_insert_query_batch('internal_transactions', items[0].keys())
-        with self.conn.cursor() as cur:
-            execute_values(cur, q, items, t)
+        # with self.conn.cursor() as cur:
+        #     execute_values(cur, q, items, t)
+        conn.execute(internal_transactions_t.insert(), *items)
 
     def process_logs(self, contract, logs):
         contracts_cache = {}
@@ -437,9 +449,9 @@ class MainDBSync(DBWrapperSync):
             contracts_t.c.address == address).values(**data)
         res = self.conn.execute(q)
 
-    def get_transaction_logs(self, tx_hash):
+    def get_transaction_logs(self, conn, tx_hash):
         q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
-        return self.conn.fetch(q)
+        return conn.execute(q).fetchall()
 
     # def save_verified_contract(self, address, contract_creation_code, source_code, contract_name, abi, compiler,
     #                                  optimization_enabled, mhash, constructor_args, is_erc20_token):
@@ -485,17 +497,17 @@ class MainDBSync(DBWrapperSync):
         q = select([transactions_t.c.input]).select_from(
             transactions_t.join(receipts_t, and_(receipts_t.c.transaction_hash == transactions_t.c.hash,
                                                  receipts_t.c.contract_address == address)))
-        row = pg.fetchrow(q)
+        row = self.conn.execute(q).fetchone()
         return row['input']
 
-    def process_token_transfer(self, tx_hash):
+    def process_token_transfers(self, tx_hash):
         logger.info('Processing token transfer for TX %s', tx_hash)
         q = select([transactions_t]).where(transactions_t.c.hash == tx_hash)
-        with pg.transaction() as conn:
-            tx = conn.fetchrow(q)
-            if tx is None:
-                logger.warn('TX with hash %s not found', tx_hash)
-                return
+        tx = self.conn.execute(q).fetchone()
+        if tx is None:
+            logger.warn('TX with hash %s not found', tx_hash)
+            return
+        with self.engine.begin() as conn:
             logs = self.get_transaction_logs(conn, tx['hash'])
             if len(logs) == 0:
                 logger.info('No logs - no transfers')
@@ -514,20 +526,18 @@ class MainDBSync(DBWrapperSync):
 
     def get_contract_transactions(self, address):
         q = select([transactions_t]).where(transactions_t.c.to == address)
-        rows = pg.fetch(q)
-        return rows
+        return self.conn.execute(q).fetchall()
 
-
-def update_token_holder_balance(engine, token_address, account_address, balance):
-    insert_query = insert(token_holders_t).values(
-        token_address=token_address,
-        account_address=account_address,
-        balance=balance)
-    do_update_query = insert_query.on_conflict_do_update(
-        index_elements=['token_address', 'account_address'],
-        set_=dict(balance=balance)
-    )
-    engine.execute(do_update_query)
+    def update_token_holder_balance(self, token_address, account_address, balance):
+        insert_query = insert(token_holders_t).values(
+            token_address=token_address,
+            account_address=account_address,
+            balance=balance)
+        do_update_query = insert_query.on_conflict_do_update(
+            index_elements=['token_address', 'account_address'],
+            set_=dict(balance=balance)
+        )
+        self.conn.execute(do_update_query)
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')

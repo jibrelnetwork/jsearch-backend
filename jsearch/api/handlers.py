@@ -3,7 +3,8 @@ import asyncio
 import aiohttp
 from aiohttp import web
 
-from jsearch.common.tasks import process_new_verified_contract_transactions
+# from jsearch.common.tasks import process_new_verified_contract_transactions
+from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
 from jsearch import settings
@@ -273,11 +274,8 @@ async def verify_contract(request):
             is_erc20_token=is_erc20_token,
             **input_data
         )
-        resp = aiohttp.request('POST', settings.JSEARCH_COMPILER_URL, json=contract_data)
-        res = await resp.json()
-
-        if is_erc20_token:
-            process_new_verified_contract_transactions.delay(address)
+        async with aiohttp.request('POST', settings.JSEARCH_COMPILER_URL, json=contract_data) as resp:
+            res = await resp.json()
     else:
         verification_passed = False
     return web.json_response({'verification_passed': verification_passed})
@@ -329,3 +327,11 @@ async def get_account_token_transfers(request):
     account_address = request.match_info['address']
     transfers = await storage.get_account_tokens_transfers(account_address  , params['limit'], params['offset'], params['order'])
     return web.json_response([t.to_dict() for t in transfers])
+
+
+async def on_new_contracts_added(request):
+    data = await request.json()
+    address = data['address']
+    abi = data.get('abi')
+    tasks.on_new_contracts_added_task.delay(address, abi)
+    return web.json_response()

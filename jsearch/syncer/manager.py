@@ -27,11 +27,11 @@ class Manager:
         self.main_db = main_db
         self.raw_db = raw_db
         self._running = False
-        self.chunk_size = 20
+        self.chunk_size = settings.JSEARCH_SYNC_PARALLEL
         self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
         self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
-        self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=self.chunk_size)
+        self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
 
     async def run(self):
         logger.info("Starting Sync Manager")
