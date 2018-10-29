@@ -253,8 +253,9 @@ async def verify_contract(request):
 
     contract_creation_code = await request.app['main_db'].get_contact_creation_code(address)
 
-    resp = aiohttp.request('POST', settings.JSEARCH_COMPILER_URL, json=input_data)
-    res = await resp.json()
+    async with aiohttp.request('POST', settings.JSEARCH_COMPILER_URL + '/v1/compile', json=input_data) as resp:
+        res = await resp.json()
+
     byte_code = res['bin']
     byte_code, _ = cut_contract_metadata_hash(byte_code)
     bc_byte_code, mhash = cut_contract_metadata_hash(contract_creation_code)
@@ -274,7 +275,7 @@ async def verify_contract(request):
             is_erc20_token=is_erc20_token,
             **input_data
         )
-        async with aiohttp.request('POST', settings.JSEARCH_COMPILER_URL, json=contract_data) as resp:
+        async with aiohttp.request('POST', settings.JSEARCH_CONTRACTS_API + '/v1/contracts', json=contract_data) as resp:
             res = await resp.json()
     else:
         verification_passed = False

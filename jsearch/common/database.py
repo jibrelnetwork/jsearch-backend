@@ -163,11 +163,11 @@ class MainDB(DBWrapper):
         self.engine.close()
         await self.engine.wait_closed()
 
-    def call_sync(self, coro):
-        # loop = asyncio.new_event_loop()
-        # asyncio.set_event_loop(loop)
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(coro)
+    # def call_sync(self, coro):
+    #     # loop = asyncio.new_event_loop()
+    #     # asyncio.set_event_loop(loop)
+    #     loop = asyncio.get_event_loop()
+    #     return loop.run_until_complete(coro)
 
     async def get_latest_sequence_synced_block_number(self):
         """
@@ -182,6 +182,15 @@ class MainDB(DBWrapper):
             rows = await res.fetchall()
             row = rows[0] if len(rows) > 0 else None
         return row['start'] - 1 if row else 5000000
+
+    async def get_contact_creation_code(self, address):
+        q = select([transactions_t.c.input]).select_from(
+            transactions_t.join(receipts_t, and_(receipts_t.c.transaction_hash == transactions_t.c.hash,
+                                                 receipts_t.c.contract_address == address)))
+        async with self.engine.acquire() as conn:
+            res = await conn.execute(q)
+            row = await res.fetchone()
+        return row['input']
 
 
 class MainDBSync(DBWrapperSync):
@@ -323,7 +332,7 @@ class MainDBSync(DBWrapperSync):
         for log_record in logs:
             data = dict_keys_case_convert(log_record)
             hex_vals_to_int(data, ['log_index', 'transaction_index', 'block_number'])
-            data['event_args'] = json.dumps(data['event_args'])
+            data['event_args'] = data['event_args']
             items.append(data)
         q, t = make_insert_query_batch('logs', items[0].keys())
         # with self.conn.cursor() as cur:
@@ -420,7 +429,7 @@ class MainDBSync(DBWrapperSync):
                 logger.exception('Call decode error: <%s>', tx_data)
             else:
                 if call:
-                    tx_data['contract_call_description'] = json.dumps(call)
+                    tx_data['contract_call_description'] = call
                     if call['function'] in {'transfer', 'transferFrom'} and transfer_events:
                         tx_data['is_token_transfer'] = True
                         tx_data['token_transfer_to'] = call['args'][-2]
@@ -452,53 +461,6 @@ class MainDBSync(DBWrapperSync):
     def get_transaction_logs(self, conn, tx_hash):
         q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
         return conn.execute(q).fetchall()
-
-    # def save_verified_contract(self, address, contract_creation_code, source_code, contract_name, abi, compiler,
-    #                                  optimization_enabled, mhash, constructor_args, is_erc20_token):
-    #     """
-    #     address = sa.Column('address', sa.String, primary_key=True)
-    #     name = sa.Column('name', sa.String)
-    #     byte_code = sa.Column('byte_code', sa.Text)
-    #     source_code = sa.Column('source_code', sa.Text)
-    #     abi = sa.Column('abi', postgresql.JSONB)
-    #     compiler_version = sa.Column('compiler_version', sa.String)
-    #     optimization_enabled = sa.Column('optimization_enabled', sa.Boolean)
-    #     optimization_runs = sa.Column('optimization_runs', sa.Integer)
-
-    #     is_erc20_token = sa.Column('is_erc20_token', sa.Boolean)
-    #     token_name = sa.Column('token_name', sa.String)
-    #     token_symbol = sa.Column('token_symbol', sa.String)
-    #     token_decimals = sa.Column('token_decimals', sa.Integer)
-    #     token_total_supply = sa.Column('token_total_supply', postgresql.NUMERIC(32, 0))
-
-    #     grabbed_at = sa.Column(sa.DateTime)
-    #     verified_at = sa.Column(sa.DateTime)
-    #     """
-    #     query = contracts_t.insert().values(
-    #         address=address,
-    #         name=contract_name,
-    #         byte_code=contract_creation_code,
-    #         source_code=source_code,
-    #         abi=abi,
-    #         compiler_version=compiler,
-    #         optimization_enabled=optimization_enabled,
-    #         optimization_runs=200,
-    #         constructor_args=constructor_args,
-    #         metadata_hash=mhash,
-    #         is_erc20_token=is_erc20_token,
-    #         grabbed_at=None,
-    #         verified_at=datetime.now()
-    #     )
-    #     logger.info('Saving verified contract at %s', address)
-    #     with pg.transaction() as conn:
-    #         conn.execute(query)
-
-    def get_contact_creation_code(self, address):
-        q = select([transactions_t.c.input]).select_from(
-            transactions_t.join(receipts_t, and_(receipts_t.c.transaction_hash == transactions_t.c.hash,
-                                                 receipts_t.c.contract_address == address)))
-        row = self.conn.execute(q).fetchone()
-        return row['input']
 
     def process_token_transfers(self, tx_hash):
         logger.info('Processing token transfer for TX %s', tx_hash)
