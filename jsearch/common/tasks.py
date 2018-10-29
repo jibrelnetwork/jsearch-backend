@@ -57,6 +57,7 @@ def update_token_info(address, abi=None):
 #         db.call_sync(db.disconnect())
 
 
+
 @app.task
 def update_token_holder_balance_task(token_address, account_address, block_number):
     from jsearch.common.database import get_main_db

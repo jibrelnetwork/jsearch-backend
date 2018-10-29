@@ -3,7 +3,6 @@ import logging
 
 from jsearch.common.database import MainDB, RawDB
 from jsearch import settings
-from jsearch.common.utils import get_git_revesion_num
 from .manager import Manager
 
 import cProfile, pstats, io
@@ -31,9 +30,13 @@ class Service:
         """
         Start all process
         """
+<<<<<<< HEAD
         # self.pr = cProfile.Profile()
         # self.pr.enable()
         logger.info("Starting jSearch Syncer (rev. %s)", get_git_revesion_num())
+=======
+        logger.info("Starting jSearch Syncer")
+>>>>>>> develop
 
         loop = asyncio.get_event_loop()
 

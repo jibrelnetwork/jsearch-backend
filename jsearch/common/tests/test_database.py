@@ -1,6 +1,6 @@
 import os
-from unittest import mock
 import json
+from unittest import mock
 
 import pytest
 from sqlalchemy import select
