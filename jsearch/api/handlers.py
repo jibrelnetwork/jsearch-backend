@@ -253,7 +253,7 @@ async def verify_contract(request):
 
     contract_creation_code = await request.app['main_db'].get_contact_creation_code(address)
 
-    async with aiohttp.request('POST', settings.JSEARCH_COMPILER_URL + '/v1/compile', json=input_data) as resp:
+    async with aiohttp.request('POST', settings.JSEARCH_COMPILER_API + '/v1/compile', json=input_data) as resp:
         res = await resp.json()
 
     byte_code = res['bin']

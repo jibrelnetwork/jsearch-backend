@@ -46,7 +46,9 @@ JSEARCH_RAW_DB (default postgres://localhost/jsearch_raw)
 ETH_NODE_URL (default https://main-node.jwallet.network)
 JSEARCH_CELERY_BROKER (default redis://localhost:6379/0)
 JSEARCH_CELERY_BACKEND (default redis://localhost:6379/0)
-SOLC_BASE_INSTALL_PATH (default ~/.py-solc)
+JSEARCH_COMPILER_API (default http://localhost:8101)
+JSEARCH_CONTRACTS_API (default http://localhost:8101)
+JSEARCH_SYNC_PARALLEL (default 10) - number of blocks to sync in parallel
 ```
 
 ## DB migration
@@ -64,11 +66,6 @@ python manage.py upgrade head -db=postgresql://dbuser@localhost:5433/jsearch_mai
 ## Running tests
     
 First you need blank PostgreSQL database for tests
-
-
-Test environ should have `solc` revision 9cf6e910 installed:
-
-```python -m solc.install 9cf6e910```
 
 Then run:
 
@@ -89,19 +86,11 @@ jsearch-syncer
 gunicorn  --bind 0.0.0.0:8081 jsearch.api.app:make_app --worker-class aiohttp.worker.GunicornWebWorker
 ```
 
-### Scraper
-
-```
-jsearch-syncer
-```
-
 ### Celery
 
 ```
 celery worker -A jsearch.common.celery
 ```
-
-There in 3 celery queues: `scrapy` - for periodic scraping of Etherscan, `solc` - for solc installation tasks, `default` - other tasks
 
 ## Author
 
