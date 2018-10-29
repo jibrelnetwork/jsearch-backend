@@ -5,13 +5,6 @@ from jsearch.common.database import MainDB, RawDB
 from jsearch import settings
 from .manager import Manager
 
-import cProfile, pstats, io
-# from pstats import SortKey
-# pr = cProfile.Profile()
-# pr.enable()
-# ... do something ...
-
-
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +23,8 @@ class Service:
         """
         Start all process
         """
-<<<<<<< HEAD
-        # self.pr = cProfile.Profile()
-        # self.pr.enable()
-        logger.info("Starting jSearch Syncer (rev. %s)", get_git_revesion_num())
-=======
+
         logger.info("Starting jSearch Syncer")
->>>>>>> develop
 
         loop = asyncio.get_event_loop()
 
@@ -53,10 +41,3 @@ class Service:
         self.main_db.disconnect()
         self.raw_db.disconnect()
         logger.info("Bye!")
-        
-        # self.pr.disable()
-        # s = io.StringIO()
-        # sortby = 'cumulative'
-        # ps = pstats.Stats(self.pr, stream=s).sort_stats(sortby)
-        # ps.print_stats()
-        # print(s.getvalue())
