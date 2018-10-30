@@ -344,7 +344,6 @@ def is_erc20_compatible(abi):
 
 
 def simplify_abi(abi):
-    
     def fix_uint(typ):
         if typ.startswith('uint'):
             return 'uint'
@@ -383,55 +382,6 @@ def collect_types():
                 for i in t['inputs']:
                     types.add(i['type'])
     return types
-
-
-def compile_contract(source, contract_name, compiler_version,
-                     optimization_enambled, optimizer_runs):
-    solc_bin = get_solc_bin_path(compiler_version)
-    try:
-        res = compile_source(source, output_values=['abi', 'bin', 'metadata'], solc_binary=solc_bin,
-                             optimize=optimization_enambled, optimize_runs=optimizer_runs)
-    except:
-        logger.exception('Compilation error')
-        raise RuntimeError('Compilation failed')
-    try:
-        contract_res = res['<stdin>:{}'.format(contract_name)]
-    except KeyError:
-        contract_res = res[contract_name]
-    return contract_res
-
-
-def get_solc_bin_path(compiler_version):
-    commit = compiler_version.split('.')[-1]
-    return solc.install.get_executable_path(commit)
-
-
-INSTALL_HARD_LIMIT = 60 * 15
-
-
-def wait_install_solc(identifier):
-    guard_path = '/tmp/solc_install_guard_{}'.format(identifier)
-    start_time = time.time()
-
-    if os.path.exists(guard_path):
-        logger.debug('Solc install guard %s exists, wait installation finish', identifier)
-        while os.path.exists(guard_path):
-            time.sleep(5)
-            if time.time() - start_time > INSTALL_HARD_LIMIT:
-                logger.debug('Solc %s install wait aborted', identifier)
-                return False
-        logger.debug('Solc install guard %s removed, installation done', identifier)
-        return True
-
-    with open(guard_path, 'a'):
-        pass
-    logger.debug('Installing solc, version %s', identifier)
-    try:
-        install_solc(identifier)
-    finally:
-        os.unlink(guard_path)
-    logger.debug('Solc installed, version %s, time %s', identifier, time.time() - start_time)
-    return True
 
 
 def cut_contract_metadata_hash(byte_code):

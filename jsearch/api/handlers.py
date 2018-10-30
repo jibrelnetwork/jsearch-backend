@@ -3,11 +3,11 @@ import asyncio
 import aiohttp
 from aiohttp import web
 
-
-from jsearch.api.tasks import compile_contract_task
-from jsearch.common.tasks import process_new_verified_contract_transactions
+# from jsearch.common.tasks import process_new_verified_contract_transactions
+from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
+from jsearch import settings
 
 
 DEFAULT_LIMIT = 20
@@ -253,18 +253,10 @@ async def verify_contract(request):
 
     contract_creation_code = await request.app['main_db'].get_contact_creation_code(address)
 
-    async_res = compile_contract_task.delay(**input_data)
+    async with aiohttp.request('POST', settings.JSEARCH_COMPILER_API + '/v1/compile', json=input_data) as resp:
+        res = await resp.json()
 
-    while not async_res.ready():
-        await asyncio.sleep(0.5)
-
-    if async_res.successful():
-        res = async_res.result
-    else:
-        raise async_res.result
     byte_code = res['bin']
-    # import pprint; pprint.pprint(res)
-
     byte_code, _ = cut_contract_metadata_hash(byte_code)
     bc_byte_code, mhash = cut_contract_metadata_hash(contract_creation_code)
 
@@ -274,7 +266,7 @@ async def verify_contract(request):
             is_erc20_token = True
         else:
             is_erc20_token = False
-        await request.app['main_db'].save_verified_contract(
+        contract_data = dict(
             address=address,
             contract_creation_code=contract_creation_code,
             mhash=mhash,
@@ -283,9 +275,8 @@ async def verify_contract(request):
             is_erc20_token=is_erc20_token,
             **input_data
         )
-
-        if is_erc20_token:
-            process_new_verified_contract_transactions.delay(address)
+        async with aiohttp.request('POST', settings.JSEARCH_CONTRACTS_API + '/v1/contracts', json=contract_data) as resp:
+            res = await resp.json()
     else:
         verification_passed = False
     return web.json_response({'verification_passed': verification_passed})
@@ -337,3 +328,11 @@ async def get_account_token_transfers(request):
     account_address = request.match_info['address']
     transfers = await storage.get_account_tokens_transfers(account_address  , params['limit'], params['offset'], params['order'])
     return web.json_response([t.to_dict() for t in transfers])
+
+
+async def on_new_contracts_added(request):
+    data = await request.json()
+    address = data['address']
+    abi = data.get('abi')
+    tasks.on_new_contracts_added_task.delay(address, abi)
+    return web.json_response()

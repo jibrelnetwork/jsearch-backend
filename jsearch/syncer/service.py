@@ -23,6 +23,7 @@ class Service:
         """
         Start all process
         """
+
         logger.info("Starting jSearch Syncer")
 
         loop = asyncio.get_event_loop()

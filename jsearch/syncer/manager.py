@@ -2,9 +2,10 @@ import asyncio
 import json
 import logging
 import time
+import concurrent.futures
 
 from jsearch.common.database import DatabaseError
-
+from jsearch import settings
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,9 @@ logger = logging.getLogger(__name__)
 SLEEP_ON_ERROR_DEFAULT = 0.1
 SLEEP_ON_DB_ERROR_DEFAULT = 5
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
+
+
+loop = asyncio.get_event_loop()
 
 
 class Manager:
@@ -23,10 +27,11 @@ class Manager:
         self.main_db = main_db
         self.raw_db = raw_db
         self._running = False
-        self.chunk_size = 10
+        self.chunk_size = settings.JSEARCH_SYNC_PARALLEL
         self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
         self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
+        self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
 
     async def run(self):
         logger.info("Starting Sync Manager")
@@ -48,18 +53,20 @@ class Manager:
                     continue
 
                 # for block in blocks_to_sync:
-                #    is_sync_ok = await self.sync_block(block["block_number"])
-                #    if is_sync_ok is False:
-                #        break  # FIXME!
-                #        logger.debug("Block #%s sync failed", block["block_number"])
-                #    else:
-                #        synced_blocks_cnt += 1
+                #     is_sync_ok = await self.sync_block(block["block_number"])
+                #     if is_sync_ok is False:
+                #         break  # FIXME!
+                #         logger.debug("Block #%s sync failed", block["block_number"])
+                #     else:
+                #         synced_blocks_cnt += 1
 
-                results = await asyncio.gather(*[self.sync_block(b["block_number"]) for b in blocks_to_sync])
+                coros = [loop.run_in_executor(self.executor, sync_block, b[0]) for b in blocks_to_sync]
+                results = await asyncio.gather(*coros)
                 synced_blocks_cnt = sum(results)
+
                 sync_time = time.monotonic() - start_time
                 avg_time = sync_time / synced_blocks_cnt if synced_blocks_cnt else 0
-                logger.info("%s blocks synced on %ss, avg time %ss", synced_blocks_cnt, sync_time, avg_time)
+                logger.info("%s blocks synced on %0.2fs, avg time %0.2fs", synced_blocks_cnt, sync_time, avg_time)
             except DatabaseError:
                 logger.exception("Database Error accured:")
                 await asyncio.sleep(self.sleep_on_db_error)
@@ -80,38 +87,41 @@ class Manager:
         logger.info("Latest synced block num is %s, %s blocks to sync", latest_block_num, len(blocks))
         return blocks
 
-    async def sync_block(self, block_number):
-        start_time = time.monotonic()
-        is_block_exist = await self.main_db.is_block_exist(block_number)
-        if is_block_exist is True:
-            logger.debug("Block #%s exist", block_number)
-            return False
-        receipts = await self.raw_db.get_block_receipts(block_number)
-        if receipts is None:
-            logger.debug("Block #%s not ready: no receipts", block_number)
-            return False
 
-        results = await asyncio.gather(
-            self.raw_db.get_header_by_hash(block_number),
-            self.raw_db.get_block_accounts(block_number),
-            self.raw_db.get_block_body(block_number),
-            self.raw_db.get_reward(block_number),
-            self.raw_db.get_internal_transactions(block_number),
-        )
+from jsearch.common.database import MainDBSync, RawDBSync
 
-        header = results[0]
-        accounts = results[1]
-        body = results[2]
-        reward = results[3]
-        internal_transactions = results[4]
 
-        body_fields = json.loads(body['fields'])
-        uncles = body_fields['Uncles'] or []
-        transactions = body_fields['Transactions'] or []
+def sync_block(block_number):
+    logger.debug("Syncing Block #%s", block_number)
+    main_db = MainDBSync(settings.JSEARCH_MAIN_DB)
+    raw_db = RawDBSync(settings.JSEARCH_RAW_DB)
+    main_db.connect()
+    raw_db.connect()
+    start_time = time.monotonic()
+    is_block_exist = main_db.is_block_exist(block_number)
+    if is_block_exist is True:
+        logger.debug("Block #%s exist", block_number)
+        return False
+    receipts = raw_db.get_block_receipts(block_number)
+    if receipts is None:
+        logger.debug("Block #%s not ready: no receipts", block_number)
+        return False
 
-        await self.main_db.write_block(header=header, uncles=uncles, accounts=accounts,
-                                       transactions=transactions, receipts=receipts, reward=reward,
-                                       internal_transactions=internal_transactions)
-        sync_time = time.monotonic() - start_time
-        logger.debug("Block #%s synced on %ss", block_number, sync_time)
-        return True
+    header = raw_db.get_header_by_hash(block_number)
+    accounts = raw_db.get_block_accounts(block_number)
+    body = raw_db.get_block_body(block_number)
+    reward = raw_db.get_reward(block_number)
+    internal_transactions = raw_db.get_internal_transactions(block_number)
+
+    body_fields = body['fields']
+    uncles = body_fields['Uncles'] or []
+    transactions = body_fields['Transactions'] or []
+
+    main_db.write_block(header=header, uncles=uncles, accounts=accounts,
+                        transactions=transactions, receipts=receipts, reward=reward,
+                        internal_transactions=internal_transactions)
+    sync_time = time.monotonic() - start_time
+    logger.debug("Block #%s synced on %ss", block_number, sync_time)
+    main_db.disconnect()
+    raw_db.disconnect()
+    return True
