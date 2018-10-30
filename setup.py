@@ -18,7 +18,6 @@ setup(
     platforms='any',
     install_requires=[],
     include_package_data=True,
-    data_files=[('', ['jsearch/esparser/useragents.list'])],
     entry_points={
         'console_scripts': [
             'jsearch-syncer = jsearch.syncer.main:run',
