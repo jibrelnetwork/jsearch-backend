@@ -44,19 +44,6 @@ class ConnectionError(DatabaseError):
     """
 
 
-# class LoggingConnection(asyncpg.connection.Connection):
-#     """
-#     Connection subclass with query logging
-#     """
-
-#     async def _execute(self, query, args, limit, timeout, return_status=False):
-#         start_time = time.monotonic()
-#         res = await super()._execute(query, args, limit, timeout, return_status)
-#         query_time = time.monotonic() - start_time
-#         logger.debug("%s params %s [%s]", query, args, query_time)
-#         return res
-
-
 class DBWrapper:
 
     def __init__(self, connection_string, **params):
@@ -65,12 +52,11 @@ class DBWrapper:
         self.conn = None
 
     async def connect(self):
-        self.pool = await aiopg.create_pool(
+        self.conn = await aiopg.connect(
             self.connection_string)
 
-    async def disconnect(self):
-        self.pool.close()
-        await self.pool.wait_closed()
+    def disconnect(self):
+        self.conn.close()
 
 
 class DBWrapperSync:
@@ -91,13 +77,11 @@ class RawDB(DBWrapper):
     """
     jSearch RAW db wrapper
     """
-    async def get_blocks_to_sync(self, start_block_num=0, chunk_size=10):
+    async def get_blocks_to_sync(self, start_block_num=0, end_block_num=None):
         q = """SELECT block_number FROM headers WHERE block_number BETWEEN %s AND %s"""
-        end_num = start_block_num + chunk_size - 1
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, [start_block_num, end_num])
-                rows = await cur.fetchall()
+        async with self.conn.cursor() as cur:
+            await cur.execute(q, [start_block_num, end_block_num])
+            rows = await cur.fetchall()
         return rows
 
 
@@ -159,29 +143,28 @@ class MainDB(DBWrapper):
     async def connect(self):
         self.engine = await create_engine(self.connection_string, minsize=MAIN_DB_POOL_SIZE, maxsize=MAIN_DB_POOL_SIZE)
 
-    async def disconnect(self):
+    def disconnect(self):
         self.engine.close()
-        await self.engine.wait_closed()
 
-    # def call_sync(self, coro):
-    #     # loop = asyncio.new_event_loop()
-    #     # asyncio.set_event_loop(loop)
-    #     loop = asyncio.get_event_loop()
-    #     return loop.run_until_complete(coro)
-
-    async def get_latest_sequence_synced_block_number(self):
+    async def get_latest_sequence_synced_block_number(self, blocks_range):
         """
         Get latest block writed in main DB during sequence sync
         """
+        if blocks_range[1] is None:
+            condition = 'number >= %s'
+            params = (blocks_range[0],)
+        else:
+            condition = 'number BETWEEN %s AND %s'
+            params = blocks_range
         q = """SELECT l.number + 1 as start 
-                FROM blocks as l 
-                LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number 
-                WHERE r.number IS NULL"""
+                FROM (SELECT * FROM blocks WHERE {cond}) as l 
+                LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number
+                WHERE r.number IS NULL order by start""".format(cond=condition)
         async with self.engine.acquire() as conn:
-            res = await conn.execute(q)
+            res = await conn.execute(q, params)
             rows = await res.fetchall()
             row = rows[0] if len(rows) > 0 else None
-        return row['start'] - 1 if row else 5000000
+        return row['start'] - 1 if row else None
 
     async def get_contact_creation_code(self, address):
         q = select([transactions_t.c.input]).select_from(
@@ -198,7 +181,6 @@ class MainDBSync(DBWrapperSync):
     def connect(self):
         self.engine = sa.create_engine(self.connection_string, poolclass=NullPool)
         self.conn = self.engine.connect()
-        # self.conn = psycopg2.connect(self.connection_string, cursor_factory=DictCursor)
 
     def disconnect(self):
         self.conn.close()
@@ -264,8 +246,6 @@ class MainDBSync(DBWrapperSync):
             hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
             items.append(data)
         q, t = make_insert_query_batch('uncles', items[0].keys())
-        # with self.conn.cursor() as cur:
-        #     execute_values(cur, q, items, t)
         conn.execute(uncles_t.insert(), *items)
 
     def insert_transactions_and_receipts(self, conn, block_number, block_hash, receipts, transactions):
@@ -312,15 +292,10 @@ class MainDBSync(DBWrapperSync):
             tx_items.append(tx_data)
 
         q, t = make_insert_query_batch('receipts', recpt_items[0].keys())
-        # with self.conn.cursor() as cur:
-        #     execute_values(cur, q, recpt_items, t)
         conn.execute(receipts_t.insert(), *recpt_items)
 
         tx_keys = tx_items[0].keys()
         q, t = make_insert_query_batch('transactions', tx_keys)
-
-        # with self.conn.cursor() as cur:
-        #     execute_values(cur, q, tx_items, t)
         conn.execute(transactions_t.insert(), *tx_items)
 
         self.insert_logs(conn, block_number, block_hash, logs_items)
@@ -335,8 +310,6 @@ class MainDBSync(DBWrapperSync):
             data['event_args'] = data['event_args']
             items.append(data)
         q, t = make_insert_query_batch('logs', items[0].keys())
-        # with self.conn.cursor() as cur:
-            # execute_values(cur, q, items, t)
         conn.execute(logs_t.insert(), *items)
 
     def update_logs(self, conn, logs):
@@ -357,8 +330,6 @@ class MainDBSync(DBWrapperSync):
             data['block_hash'] = block_hash
             items.append(data)
         q, t = make_insert_query_batch('accounts', items[0].keys())
-        # with self.conn.cursor() as cur:
-        #     execute_values(cur, q, items, t)
         conn.execute(accounts_t.insert(), *items)
 
     def insert_internal_transactions(self, conn, block_number, block_hash, internal_transactions):
@@ -373,8 +344,6 @@ class MainDBSync(DBWrapperSync):
             data['op'] = tx['type']
             items.append(data)
         q, t = make_insert_query_batch('internal_transactions', items[0].keys())
-        # with self.conn.cursor() as cur:
-        #     execute_values(cur, q, items, t)
         conn.execute(internal_transactions_t.insert(), *items)
 
     def process_logs(self, contract, logs):

@@ -22,10 +22,11 @@ class Manager:
     """
     Sync manager
     """
-    def __init__(self, service, main_db, raw_db):
+    def __init__(self, service, main_db, raw_db, sync_range):
         self.service = service
         self.main_db = main_db
         self.raw_db = raw_db
+        self.sync_range = sync_range
         self._running = False
         self.chunk_size = settings.JSEARCH_SYNC_PARALLEL
         self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
@@ -34,9 +35,10 @@ class Manager:
         self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
 
     async def run(self):
-        logger.info("Starting Sync Manager")
+        logger.info("Starting Sync Manager, sync range: %s", self.sync_range)
         self._running = True
         asyncio.ensure_future(self.sequence_sync_loop())
+        asyncio.ensure_future(self.listen_new_blocks(self.raw_db.conn))
 
     def stop(self):
         self._running = False
@@ -78,14 +80,30 @@ class Manager:
                 self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
 
     async def get_blocks_to_sync(self):
-        latest_block_num = await self.main_db.get_latest_sequence_synced_block_number()
+        latest_block_num = await self.main_db.get_latest_sequence_synced_block_number(blocks_range=self.sync_range)
         if latest_block_num is None:
-            start_block_num = 0
+            start_block_num = self.sync_range[0]
         else:
             start_block_num = latest_block_num + 1
-        blocks = await self.raw_db.get_blocks_to_sync(start_block_num, self.chunk_size)
+        end_block_num = start_block_num + self.chunk_size - 1
+        if self.sync_range[1]:
+            end_block_num = min(end_block_num, self.sync_range[1])
+        blocks = await self.raw_db.get_blocks_to_sync(start_block_num, end_block_num)
         logger.info("Latest synced block num is %s, %s blocks to sync", latest_block_num, len(blocks))
         return blocks
+
+    async def listen_new_blocks(self, conn):
+        async with conn.cursor() as cur:
+            await cur.execute("LISTEN newblock")
+            logger.info("Starting Listen newblock channel")
+            while self._running is True:
+                msg = await conn.notifies.get()
+                logger.info('Newblock notification received: %s', msg.payload)
+                try:
+                    block_number = int(msg.payload)
+                    loop.run_in_executor(self.executor, sync_block, block_number)
+                except Exception:
+                    logger.exception('Error on newblock listener')
 
 
 from jsearch.common.database import MainDBSync, RawDBSync
