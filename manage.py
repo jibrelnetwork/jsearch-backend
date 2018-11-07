@@ -1,4 +1,4 @@
-#!/usr/bin/env app
+#!/usr/bin/env python
 
 import argparse
 import os

@@ -59,7 +59,7 @@ python manage.py revision -db=postgresql://dbuser@localhost:5433/jsearch_main -m
 
 run migration on database
 ```
-docker-compose run --entrypoint python api manage.py upgrade head -db=postgres://postgres:postgres@main_db/jsearch_main
+python manage.py upgrade head -db=postgresql://dbuser@localhost:5433/jsearch_main
 ```
 
 ## Running tests
