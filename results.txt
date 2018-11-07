@@ -1,0 +1,543 @@
+[1m============================= test session starts ==============================[0m
+platform linux -- Python 3.6.7, pytest-3.5.0, py-1.7.0, pluggy-0.6.0
+rootdir: /app, inifile: pytest.ini
+plugins: logger-0.3.0, asyncio-0.8.0, aiohttp-0.3.0, celery-4.1.1
+[1mcollecting 0 items                                                             [0m[1mcollecting 28 items                                                            [0m[1mcollecting 33 items                                                            [0m[1mcollecting 35 items                                                            [0m[1mcollecting 37 items                                                            [0m[1mcollecting 40 items                                                            [0m[1mcollecting 41 items                                                            [0m[1mcollecting 42 items                                                            [0m[1mcollected 42 items                                                             [0m
+
+jsearch/api/tests/test_endpoints.py .FFF.FFFFFFFFFFFF.FFFFFFFFFF[36m               [0m
+jsearch/common/tests/test_contracts.py .....[36m                                   [0m
+jsearch/common/tests/test_database.py ..[36m                                       [0m
+jsearch/common/tests/test_tasks.py .F[36m                                          [0m
+jsearch/common/tests/test_utils.py ...[36m                                         [0m
+jsearch/syncer/tests/test_database.py .[36m                                        [0m
+jsearch/syncer/tests/test_event_sync.py EVENT INSERT TEST
+.
+
+=================================== FAILURES ===================================
+[31m[1m___________________________ test_get_block_by_number ___________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c4b9dd8>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+transactions = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_cal...3d4a45b7024f991114d2ae', 400], 'function': 'transferFrom'}, 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_block_by_number(cli, blocks, transactions, main_db_data):[0m
+[1m        resp = await cli.get('/blocks/2')[0m
+[1m>       assert resp.status == 200[0m
+[1m[31mE       AssertionError: assert 404 == 200[0m
+[1m[31mE        +  where 404 = <ClientResponse(http://127.0.0.1:52119/blocks/2) [404 Not Found]>\n<CIMultiDictProxy('Content-Type': 'application/json', 'Content-Length': '0', 'Date': 'Wed, 07 Nov 2018 13:55:28 GMT', 'Server': 'Python/3.6 aiohttp/3.1.2')>\n.status[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:19: AssertionError
+[31m[1m____________________________ test_get_block_by_hash ____________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c22b1d0>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+transactions = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_cal...3d4a45b7024f991114d2ae', 400], 'function': 'transferFrom'}, 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_block_by_hash(cli, blocks, transactions, main_db_data):[0m
+[1m        resp = await cli.get('/blocks/' + main_db_data['blocks'][0]['hash'])[0m
+[1m>       assert resp.status == 200[0m
+[1m[31mE       AssertionError: assert 404 == 200[0m
+[1m[31mE        +  where 404 = <ClientResponse(http://127.0.0.1:37203/blocks/0x4c99d417111714a2118b9f3e336c097c4acbdc45289ba7b3a02d078d00658a22) [404...lication/json', 'Content-Length': '0', 'Date': 'Wed, 07 Nov 2018 13:55:28 GMT', 'Server': 'Python/3.6 aiohttp/3.1.2')>\n.status[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:50: AssertionError
+[31m[1m____________________________ test_get_block_latest _____________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c18d710>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+transactions = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_cal...3d4a45b7024f991114d2ae', 400], 'function': 'transferFrom'}, 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_block_latest(cli, blocks, transactions, main_db_data):[0m
+[1m        resp = await cli.get('/blocks/latest')[0m
+[1m>       assert resp.status == 200[0m
+[1m[31mE       AssertionError: assert 404 == 200[0m
+[1m[31mE        +  where 404 = <ClientResponse(http://127.0.0.1:42339/blocks/latest) [404 Not Found]>\n<CIMultiDictProxy('Content-Type': 'application/json', 'Content-Length': '0', 'Date': 'Wed, 07 Nov 2018 13:55:28 GMT', 'Server': 'Python/3.6 aiohttp/3.1.2')>\n.status[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:80: AssertionError
+[31m[1m_______________________________ test_get_account _______________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c4c52e8>
+accounts = [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': '0x4c99d41711...0000, 'block_hash': '0x15e92be199dcdbcaa4959a6d4f0576220ed81949b1970bf9bcf455e61f1e6e0f', 'block_number': 3, ...}, ...]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_account(cli, accounts, main_db_data):[0m
+[1m        resp = await cli.get('/accounts/' + main_db_data['accounts'][0]['address'])[0m
+[1m>       assert resp.status == 200[0m
+[1m[31mE       AssertionError: assert 404 == 200[0m
+[1m[31mE        +  where 404 = <ClientResponse(http://127.0.0.1:55199/accounts/0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae) [404 Not Found]>\n<CIMultiD...lication/json', 'Content-Length': '0', 'Date': 'Wed, 07 Nov 2018 13:55:29 GMT', 'Server': 'Python/3.6 aiohttp/3.1.2')>\n.status[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:115: AssertionError
+[31m[1m________________________ test_get_account_transactions _________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa270208e48>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+transactions = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_cal...3d4a45b7024f991114d2ae', 400], 'function': 'transferFrom'}, 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', ...}]
+accounts = [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': '0x4c99d41711...0000, 'block_hash': '0x15e92be199dcdbcaa4959a6d4f0576220ed81949b1970bf9bcf455e61f1e6e0f', 'block_number': 3, ...}, ...]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_account_transactions(cli, blocks, transactions, accounts, main_db_data):[0m
+[1m        resp = await cli.get('/accounts/' + main_db_data['accounts'][0]['address'] + '/transactions')[0m
+[1m        assert resp.status == 200[0m
+[1m        txs = main_db_data['transactions'][0m
+[1m        res =  await resp.json()[0m
+[1m>       assert len(res) == 4[0m
+[1m[31mE       assert 0 == 4[0m
+[1m[31mE        +  where 0 = len([])[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:131: AssertionError
+[31m[1m_________________________ test_get_block_transactions __________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c4bbcc0>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+transactions = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_cal...3d4a45b7024f991114d2ae', 400], 'function': 'transferFrom'}, 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_block_transactions(cli, blocks, transactions, main_db_data):[0m
+[1m        resp = await cli.get('/blocks/'+ main_db_data['blocks'][1]['hash'] +'/transactions')[0m
+[1m        assert resp.status == 200[0m
+[1m        res =  await resp.json()[0m
+[1m        txs = main_db_data['transactions'][0m
+[1m>       assert len(res) == 2[0m
+[1m[31mE       assert 0 == 2[0m
+[1m[31mE        +  where 0 = len([])[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:159: AssertionError
+[31m[1m____________________________ test_get_block_uncles _____________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa2702a2ba8>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+uncles = <function accounts at 0x7fa270377e18>
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_block_uncles(cli, blocks, uncles, main_db_data):[0m
+[1m        resp = await cli.get('/blocks/' + main_db_data['blocks'][1]['hash'] + '/uncles')[0m
+[1m        assert resp.status == 200[0m
+[1m>       assert await resp.json() == [{'difficulty': 17578564779,[0m
+[1m                                      'blockNumber': 2,[0m
+[1m                                      'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',[0m
+[1m                                      'gasLimit': 5000,[0m
+[1m                                      'gasUsed': 0,[0m
+[1m                                      'hash': '0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc',[0m
+[1m                                      'logsBloom': '0x0',[0m
+[1m                                      'miner': '0x0193d941b50d91be6567c7ee1c0fe7af498b4137',[0m
+[1m                                      'mixHash': '0x94a09bb3ef9208bf434855efdb1089f80d07334d91930387a1f3150494e806cb',[0m
+[1m                                      'nonce': '0x32de6ee381be0179',[0m
+[1m                                      'number': 61,[0m
+[1m                                      'parentHash': '0x3cd0324c7ba14ba7cf6e4b664dea0360681458d76bd25dfc0d2207ce4e9abed4',[0m
+[1m                                      'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',[0m
+[1m                                      'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',[0m
+[1m                                      'size': None,[0m
+[1m                                      'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',[0m
+[1m                                      'timestamp': 1438270332,[0m
+[1m                                      'totalDifficulty': None,[0m
+[1m                                      'reward': 3750000000000000000,[0m
+[1m                                      'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}][0m
+[1m[31mE       AssertionError: assert [] == [{'blockNumber': 2, 'difficu...32', 'gasLimit': 5000, ...}][0m
+[1m[31mE         Right contains more items, first extra item: {'blockNumber': 2, 'difficulty': 17578564779, 'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32', 'gasLimit': 5000, ...}[0m
+[1m[31mE         Use -v to get the full diff[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:181: AssertionError
+[31m[1m_____________________________ test_get_transaction _____________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c1a50f0>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+transactions = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_cal...3d4a45b7024f991114d2ae', 400], 'function': 'transferFrom'}, 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_transaction(cli, blocks, transactions, main_db_data):[0m
+[1m        tx = main_db_data['transactions'][0][0m
+[1m        resp = await cli.get('/transactions/' + tx['hash'])[0m
+[1m>       assert resp.status == 200[0m
+[1m[31mE       AssertionError: assert 404 == 200[0m
+[1m[31mE        +  where 404 = <ClientResponse(http://127.0.0.1:37877/transactions/0x8b6450741b7d1d5d5b37354e6b966dfff807346cdc575c7f0a10eeb3cd7717ba...lication/json', 'Content-Length': '0', 'Date': 'Wed, 07 Nov 2018 13:55:30 GMT', 'Server': 'Python/3.6 aiohttp/3.1.2')>\n.status[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:206: AssertionError
+[31m[1m_______________________________ test_get_receipt _______________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c22b860>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+transactions = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_cal...3d4a45b7024f991114d2ae', 400], 'function': 'transferFrom'}, 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', ...}]
+receipts = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_add...block_number': 5, 'contract_address': '0x0000000000000000000000000000000000000000', 'cumulative_gas_used': 43249, ...}]
+logs = [{'address': '0xbb4af59aeaf2e83684567982af5ca21e9ac8419a', 'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480...6470bee2b1f9cf', 'block_number': 5, 'data': '0x0000000000000000000000000000000000000000000000000000000000000190', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_receipt(cli, blocks, transactions, receipts, logs, main_db_data):[0m
+[1m        r = main_db_data['receipts'][0][0m
+[1m        resp = await cli.get('/receipts/' + r['transaction_hash'])[0m
+[1m>       assert resp.status == 200[0m
+[1m[31mE       AssertionError: assert 404 == 200[0m
+[1m[31mE        +  where 404 = <ClientResponse(http://127.0.0.1:49775/receipts/0x8b6450741b7d1d5d5b37354e6b966dfff807346cdc575c7f0a10eeb3cd7717ba) [4...lication/json', 'Content-Length': '0', 'Date': 'Wed, 07 Nov 2018 13:55:30 GMT', 'Server': 'Python/3.6 aiohttp/3.1.2')>\n.status[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:228: AssertionError
+[31m[1m_____________________________ test_get_blocks_def ______________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c4a05c0>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_blocks_def(cli, blocks, main_db_data):[0m
+[1m        b = main_db_data['blocks'][0m
+[1m        resp = await cli.get('/blocks')[0m
+[1m        assert resp.status == 200[0m
+[1m        res = await resp.json()[0m
+[1m>       assert res[0]['hash'] == b[-1]['hash'][0m
+[1m[31mE       IndexError: list index out of range[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:262: IndexError
+[31m[1m_____________________________ test_get_blocks_ask ______________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c1ba2e8>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_blocks_ask(cli, blocks, main_db_data):[0m
+[1m        resp = await cli.get('/blocks?order=asc')[0m
+[1m        b = main_db_data['blocks'][0m
+[1m        assert resp.status == 200[0m
+[1m        res = await resp.json()[0m
+[1m>       assert res[0]['hash'] == b[0]['hash'][0m
+[1m[31mE       IndexError: list index out of range[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:271: IndexError
+[31m[1m_________________________ test_get_blocks_limit_offset _________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa270310f28>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+
+[1m    async def test_get_blocks_limit_offset(cli, blocks):[0m
+[1m        resp = await cli.get('/blocks?limit=1')[0m
+[1m        assert resp.status == 200[0m
+[1m        result = await resp.json()[0m
+[1m>       assert len(result) == 1[0m
+[1m[31mE       assert 0 == 1[0m
+[1m[31mE        +  where 0 = len([])[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:279: AssertionError
+[31m[1m_______________________________ test_get_uncles ________________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa2701fa8d0>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+uncles = <function accounts at 0x7fa270377e18>
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_uncles(cli, blocks, uncles, main_db_data):[0m
+[1m        resp = await cli.get('/uncles')[0m
+[1m        assert resp.status == 200[0m
+[1m>       assert await resp.json() == [[0m
+[1m            {'blockNumber': main_db_data['blocks'][2]['number'],[0m
+[1m             'difficulty': 18180751616,[0m
+[1m             'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',[0m
+[1m             'gasLimit': 5000,[0m
+[1m             'gasUsed': 0,[0m
+[1m             'hash': '0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff',[0m
+[1m             'logsBloom': '0x0',[0m
+[1m             'miner': '0x70137010922f2fc2964b3792907f79fbb75febe8',[0m
+[1m             'mixHash': '0x48b762afc38197f6962c31851fd54ebbdff137bae3c64fff414eaa14ec243dbf',[0m
+[1m             'nonce': '0x5283f7dfcd4a29ec',[0m
+[1m             'number': 62,[0m
+[1m             'parentHash': '0x5656b852baa80ce4db00c60998f5cf6e7a8d76f0339d3cf97955d933f731fecf',[0m
+[1m             'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',[0m
+[1m             'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',[0m
+[1m             'size': None,[0m
+[1m             'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',[0m
+[1m             'timestamp': 1438270505,[0m
+[1m             'totalDifficulty': None,[0m
+[1m             'reward': 3750000000000000000,[0m
+[1m             'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'},[0m
+[1m            {'blockNumber': main_db_data['blocks'][1]['number'],[0m
+[1m             'difficulty': 17578564779,[0m
+[1m             'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',[0m
+[1m             'gasLimit': 5000,[0m
+[1m             'gasUsed': 0,[0m
+[1m             'hash': '0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc',[0m
+[1m             'logsBloom': '0x0',[0m
+[1m             'miner': '0x0193d941b50d91be6567c7ee1c0fe7af498b4137',[0m
+[1m             'mixHash': '0x94a09bb3ef9208bf434855efdb1089f80d07334d91930387a1f3150494e806cb',[0m
+[1m             'nonce': '0x32de6ee381be0179',[0m
+[1m             'number': 61,[0m
+[1m             'parentHash': '0x3cd0324c7ba14ba7cf6e4b664dea0360681458d76bd25dfc0d2207ce4e9abed4',[0m
+[1m             'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',[0m
+[1m             'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',[0m
+[1m             'size': None,[0m
+[1m             'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',[0m
+[1m             'timestamp': 1438270332,[0m
+[1m             'totalDifficulty': None,[0m
+[1m             'reward': 3750000000000000000,[0m
+[1m             'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}[0m
+[1m        ][0m
+[1m[31mE       AssertionError: assert [] == [{'blockNumber': 3, 'difficu...32', 'gasLimit': 5000, ...}][0m
+[1m[31mE         Right contains more items, first extra item: {'blockNumber': 3, 'difficulty': 18180751616, 'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34', 'gasLimit': 5000, ...}[0m
+[1m[31mE         Use -v to get the full diff[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:292: AssertionError
+[31m[1m_____________________________ test_get_uncles_asc ______________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c4a0da0>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+uncles = []
+
+[1m    async def test_get_uncles_asc(cli, blocks, uncles):[0m
+[1m        resp = await cli.get('/uncles?order=asc')[0m
+[1m        assert resp.status == 200[0m
+[1m        uncles = await resp.json()[0m
+[1m>       assert uncles[0]['number'] == 61[0m
+[1m[31mE       IndexError: list index out of range[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:340: IndexError
+[31m[1m_________________________ test_get_uncles_offset_limit _________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa270310ef0>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+uncles = []
+
+[1m    async def test_get_uncles_offset_limit(cli, blocks, uncles):[0m
+[1m        resp = await cli.get('/uncles?offset=1&limit=1')[0m
+[1m        assert resp.status == 200[0m
+[1m        uncles = await resp.json()[0m
+[1m>       assert len(uncles) == 1[0m
+[1m[31mE       assert 0 == 1[0m
+[1m[31mE        +  where 0 = len([])[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:348: AssertionError
+[31m[1m____________________________ test_get_uncle_by_hash ____________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c18d3c8>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+uncles = <function accounts at 0x7fa270377e18>
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_uncle_by_hash(cli, blocks, uncles, main_db_data):[0m
+[1m        resp = await cli.get('/uncles/0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff')[0m
+[1m>       assert resp.status == 200[0m
+[1m[31mE       AssertionError: assert 404 == 200[0m
+[1m[31mE        +  where 404 = <ClientResponse(http://127.0.0.1:51035/uncles/0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff) [404...lication/json', 'Content-Length': '0', 'Date': 'Wed, 07 Nov 2018 13:55:31 GMT', 'Server': 'Python/3.6 aiohttp/3.1.2')>\n.status[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:361: AssertionError
+[31m[1m___________________________ test_get_uncle_by_number ___________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa270220ac8>
+blocks = [{'difficulty': 131072, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4290772993, 'ga...00, 'extra_data': '0xd683010803846765746886676f312e3130856c696e7578', 'gas_limit': 4274037862, 'gas_used': 43249, ...}]
+uncles = <function accounts at 0x7fa270377e18>
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_uncle_by_number(cli, blocks, uncles, main_db_data):[0m
+[1m        resp = await cli.get('/uncles/62')[0m
+[1m>       assert resp.status == 200[0m
+[1m[31mE       AssertionError: assert 404 == 200[0m
+[1m[31mE        +  where 404 = <ClientResponse(http://127.0.0.1:48587/uncles/62) [404 Not Found]>\n<CIMultiDictProxy('Content-Type': 'application/json', 'Content-Length': '0', 'Date': 'Wed, 07 Nov 2018 13:55:31 GMT', 'Server': 'Python/3.6 aiohttp/3.1.2')>\n.status[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:388: AssertionError
+[31m[1m___________________________ test_verify_contract_ok ____________________________[0m
+
+db = <sqlalchemy.engine.base.Connection object at 0x7fa27020ae80>
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c1a52e8>
+transactions = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_cal...3d4a45b7024f991114d2ae', 400], 'function': 'transferFrom'}, 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', ...}]
+receipts = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_add...block_number': 5, 'contract_address': '0x0000000000000000000000000000000000000000', 'cumulative_gas_used': 43249, ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+here = local('/app/jsearch/tests')
+
+[1m    async def test_verify_contract_ok(db, cli, transactions, receipts, main_db_data, here):[0m
+[1m        contract_data = {[0m
+[1m            'address': main_db_data['accounts'][2]['address'],[0m
+[1m            'contract_name': 'FucksToken',[0m
+[1m            'compiler': 'v0.4.18+commit.9cf6e910',[0m
+[1m            'optimization_enabled': True,[0m
+[1m            'constructor_args': None,[0m
+[1m            'source_code': here.join('FucksToken.sol').read()[0m
+[1m        }[0m
+[1m    [0m
+[1m        with mock.patch('jsearch.api.handlers.aiohttp.request', new=AsyncContextManagerMock()) as m:[0m
+[1m            m.return_value.aenter.json = CoroutineMock(side_effect=[[0m
+[1m                {'bin': here.join('FucksToken.bin').read(), 'abi': json.loads(here.join('FucksToken.abi').read())},[0m
+[1m                {}[0m
+[1m            ])[0m
+[1m    [0m
+[1m            resp = await cli.post('/verify_contract', json=contract_data)[0m
+[1m>       assert resp.status == 200[0m
+[1m[31mE       AssertionError: assert 500 == 200[0m
+[1m[31mE        +  where 500 = <ClientResponse(http://127.0.0.1:53667/verify_contract) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Type':...Length': '141', 'Date': 'Wed, 07 Nov 2018 13:55:32 GMT', 'Server': 'Python/3.6 aiohttp/3.1.2', 'Connection': 'close')>\n.status[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:438: AssertionError
+------------------------------ Captured log call -------------------------------
+web_protocol.py            310 ERROR    Error handling request
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.6/site-packages/aiohttp/web_protocol.py", line 381, in start
+    resp = await self._request_handler(request)
+  File "/usr/local/lib/python3.6/site-packages/aiohttp/web_app.py", line 322, in _handle
+    resp = await handler(request)
+  File "/app/jsearch/api/handlers.py", line 254, in verify_contract
+    contract_creation_code = await request.app['main_db'].get_contact_creation_code(address)
+  File "/app/jsearch/common/database.py", line 176, in get_contact_creation_code
+    return row['input']
+TypeError: 'NoneType' object is not subscriptable
+[31m[1m_____________________ test_get_verified_contracts_list_ok ______________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa2703104e0>
+contracts = [{'abi': [{'constant': True, 'inputs': [], 'name': 'name', 'outputs': [{'name': '', 'type': 'string'}], ...}, {'consta...25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}]
+
+[1m    async def test_get_verified_contracts_list_ok(cli, contracts):[0m
+[1m        resp = await cli.get('/verified_contracts')[0m
+[1m        assert resp.status == 200[0m
+[1m        res = await resp.json()[0m
+[1m>       assert len(res) == 1[0m
+[1m[31mE       assert 0 == 1[0m
+[1m[31mE        +  where 0 = len([])[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:458: AssertionError
+[31m[1m________________________ test_get_verified_contract_ok _________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c1acac8>
+contracts = [{'abi': [{'constant': True, 'inputs': [], 'name': 'name', 'outputs': [{'name': '', 'type': 'string'}], ...}, {'consta...25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_verified_contract_ok(cli, contracts, main_db_data):[0m
+[1m        resp = await cli.get('/verified_contracts/' + main_db_data['accounts'][2]['address'])[0m
+[1m>       assert resp.status == 200[0m
+[1m[31mE       AssertionError: assert 404 == 200[0m
+[1m[31mE        +  where 404 = <ClientResponse(http://127.0.0.1:38251/verified_contracts/0xbb4af59aeaf2e83684567982af5ca21e9ac8419a) [404 Not Found]>...lication/json', 'Content-Length': '0', 'Date': 'Wed, 07 Nov 2018 13:55:32 GMT', 'Server': 'Python/3.6 aiohttp/3.1.2')>\n.status[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:475: AssertionError
+[31m[1m___________________________ test_get_tokens_list_ok ____________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c4b5898>
+contracts = [{'abi': [{'constant': True, 'inputs': [], 'name': 'name', 'outputs': [{'name': '', 'type': 'string'}], ...}, {'consta...25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}]
+
+[1m    async def test_get_tokens_list_ok(cli, contracts):[0m
+[1m        resp = await cli.get('/tokens')[0m
+[1m        assert resp.status == 200[0m
+[1m        res = await resp.json()[0m
+[1m>       assert res == [{[0m
+[1m            'name': contracts[0]['token_name'],[0m
+[1m            'contractAddress': contracts[0]['address'],[0m
+[1m            'decimals': contracts[0]['token_decimals'],[0m
+[1m            'totalSupply': contracts[0]['token_total_supply'],[0m
+[1m            'symbol': contracts[0]['token_symbol'],[0m
+[1m        }][0m
+[1m[31mE       AssertionError: assert [] == [{'contractAddress': '0xbb4a...n', 'symbol': 'ZFUCK', ...}][0m
+[1m[31mE         Right contains more items, first extra item: {'contractAddress': '0xbb4af59aeaf2e83684567982af5ca21e9ac8419a', 'decimals': 2, 'name': 'FucksToken', 'symbol': 'ZFUCK', ...}[0m
+[1m[31mE         Use -v to get the full diff[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:495: AssertionError
+[31m[1m______________________________ test_get_token_ok _______________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa2702a2550>
+contracts = [{'abi': [{'constant': True, 'inputs': [], 'name': 'name', 'outputs': [{'name': '', 'type': 'string'}], ...}, {'consta...25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_token_ok(cli, contracts, main_db_data):[0m
+[1m        resp = await cli.get('/tokens/' + main_db_data['accounts'][2]['address'])[0m
+[1m>       assert resp.status == 200[0m
+[1m[31mE       AssertionError: assert 404 == 200[0m
+[1m[31mE        +  where 404 = <ClientResponse(http://127.0.0.1:56775/tokens/0xbb4af59aeaf2e83684567982af5ca21e9ac8419a) [404 Not Found]>\n<CIMultiDic...lication/json', 'Content-Length': '0', 'Date': 'Wed, 07 Nov 2018 13:55:32 GMT', 'Server': 'Python/3.6 aiohttp/3.1.2')>\n.status[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:506: AssertionError
+[31m[1m_________________________ test_get_token_transfers_ok __________________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c1ba0f0>
+transactions = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_cal...3d4a45b7024f991114d2ae', 400], 'function': 'transferFrom'}, 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', ...}]
+contracts = [{'abi': [{'constant': True, 'inputs': [], 'name': 'name', 'outputs': [{'name': '', 'type': 'string'}], ...}, {'consta...25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_token_transfers_ok(cli, transactions, contracts, main_db_data):[0m
+[1m        resp = await cli.get('/tokens/'+ main_db_data['accounts'][2]['address'] +'/transfers')[0m
+[1m        assert resp.status == 200[0m
+[1m        res = await resp.json()[0m
+[1m>       assert res == [{[0m
+[1m            'blockHash': main_db_data['blocks'][2]['hash'],[0m
+[1m            'transaction': main_db_data['transactions'][2]['hash'],[0m
+[1m            'from': main_db_data['accounts'][0]['address'],[0m
+[1m            'to': main_db_data['accounts'][1]['address'],[0m
+[1m            'amount': 10},[0m
+[1m            {'blockHash': main_db_data['blocks'][4]['hash'],[0m
+[1m            'transaction': main_db_data['transactions'][4]['hash'],[0m
+[1m            'from': main_db_data['accounts'][1]['address'],[0m
+[1m            'to': main_db_data['accounts'][0]['address'],[0m
+[1m            'amount': 4}][0m
+[1m[31mE       AssertionError: assert [] == [{'amount': 10, 'blockHash':...4a45b7024f991114d2ae', ...}][0m
+[1m[31mE         Right contains more items, first extra item: {'amount': 10, 'blockHash': '0x15e92be199dcdbcaa4959a6d4f0576220ed81949b1970bf9bcf455e61f1e6e0f', 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'to': '0xab30633f2b9dafe0afb65b36b51e7aae6dd4fb68', ...}[0m
+[1m[31mE         Use -v to get the full diff[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:521: AssertionError
+[31m[1m___________________ test_get_account_token_transfers_ok_one ____________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa270220c50>
+transactions = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_cal...3d4a45b7024f991114d2ae', 400], 'function': 'transferFrom'}, 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', ...}]
+contracts = [{'abi': [{'constant': True, 'inputs': [], 'name': 'name', 'outputs': [{'name': '', 'type': 'string'}], ...}, {'consta...25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_account_token_transfers_ok_one(cli, transactions, contracts, main_db_data):[0m
+[1m        resp = await cli.get('/accounts/'+ main_db_data['accounts'][0]['address'] +'/token_transfers')[0m
+[1m        assert resp.status == 200[0m
+[1m        res = await resp.json()[0m
+[1m>       assert res == [{[0m
+[1m                        'blockHash': main_db_data['blocks'][2]['hash'],[0m
+[1m                        'transaction': main_db_data['transactions'][2]['hash'],[0m
+[1m                        'from': main_db_data['accounts'][0]['address'],[0m
+[1m                        'to': main_db_data['accounts'][1]['address'],[0m
+[1m                        'amount': 10},[0m
+[1m                        {'blockHash': main_db_data['blocks'][4]['hash'],[0m
+[1m                        'transaction': main_db_data['transactions'][4]['hash'],[0m
+[1m                        'from': main_db_data['accounts'][1]['address'],[0m
+[1m                        'to': main_db_data['accounts'][0]['address'],[0m
+[1m                        'amount': 4}][0m
+[1m[31mE       AssertionError: assert [] == [{'amount': 10, 'blockHash':...4a45b7024f991114d2ae', ...}][0m
+[1m[31mE         Right contains more items, first extra item: {'amount': 10, 'blockHash': '0x15e92be199dcdbcaa4959a6d4f0576220ed81949b1970bf9bcf455e61f1e6e0f', 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'to': '0xab30633f2b9dafe0afb65b36b51e7aae6dd4fb68', ...}[0m
+[1m[31mE         Use -v to get the full diff[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:537: AssertionError
+[31m[1m___________________ test_get_account_token_transfers_ok_two ____________________[0m
+
+cli = <aiohttp.test_utils.TestClient object at 0x7fa26c193978>
+transactions = [{'block_hash': '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5', 'block_number': 2, 'contract_cal...3d4a45b7024f991114d2ae', 400], 'function': 'transferFrom'}, 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', ...}]
+contracts = [{'abi': [{'constant': True, 'inputs': [], 'name': 'name', 'outputs': [{'name': '', 'type': 'string'}], ...}, {'consta...25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    async def test_get_account_token_transfers_ok_two(cli, transactions, contracts, main_db_data):[0m
+[1m        resp = await cli.get('/accounts/'+ main_db_data['accounts'][3]['address'] +'/token_transfers')[0m
+[1m        assert resp.status == 200[0m
+[1m        res = await resp.json()[0m
+[1m>       assert res == [{[0m
+[1m            'blockHash': main_db_data['blocks'][2]['hash'],[0m
+[1m            'transaction': main_db_data['transactions'][2]['hash'],[0m
+[1m            'from': main_db_data['accounts'][0]['address'],[0m
+[1m            'to': main_db_data['accounts'][1]['address'],[0m
+[1m            'amount': 10},[0m
+[1m            {'blockHash': main_db_data['blocks'][4]['hash'],[0m
+[1m            'transaction': main_db_data['transactions'][4]['hash'],[0m
+[1m            'from': main_db_data['accounts'][1]['address'],[0m
+[1m            'to': main_db_data['accounts'][0]['address'],[0m
+[1m            'amount': 4}][0m
+[1m[31mE       AssertionError: assert [] == [{'amount': 10, 'blockHash':...4a45b7024f991114d2ae', ...}][0m
+[1m[31mE         Right contains more items, first extra item: {'amount': 10, 'blockHash': '0x15e92be199dcdbcaa4959a6d4f0576220ed81949b1970bf9bcf455e61f1e6e0f', 'from': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'to': '0xab30633f2b9dafe0afb65b36b51e7aae6dd4fb68', ...}[0m
+[1m[31mE         Use -v to get the full diff[0m
+
+[1m[31mjsearch/api/tests/test_endpoints.py[0m:553: AssertionError
+[31m[1m_______________________ test_update_token_holder_balance _______________________[0m
+
+W3 = <MagicMock name='Web3' id='140335619751608'>
+db = <sqlalchemy.engine.base.Connection object at 0x7fa27020ae80>
+contracts = [{'abi': [{'constant': True, 'inputs': [], 'name': 'name', 'outputs': [{'name': '', 'type': 'string'}], ...}, {'consta...25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}]
+main_db_data = {'accounts': [{'address': '0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae', 'balance': 5000000000000000000, 'block_hash': ...0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f551550029', 'compiler_version': 'v0.4.18+commit.9cf6e910', ...}], ...}
+
+[1m    @mock.patch('jsearch.common.tasks.Web3')[0m
+[1m    def test_update_token_holder_balance(W3, db, contracts, main_db_data):[0m
+[1m        loop = asyncio.new_event_loop()[0m
+[1m        asyncio.set_event_loop(loop)[0m
+[1m        token_address = main_db_data['accounts'][2]['address'][0m
+[1m        account_address = main_db_data['accounts'][0]['address'][0m
+[1m        m = W3().eth.contract()[0m
+[1m        m.functions.balanceOf().call.return_value = 100500[0m
+[1m        m.functions.decimals().call.return_value = 2[0m
+[1m        tasks.update_token_holder_balance_task(token_address, account_address, 3)[0m
+[1m    [0m
+[1m        q = t.token_holders_t.select().where(and_(t.token_holders_t.c.token_address == token_address,[0m
+[1m                                                  t.token_holders_t.c.account_address == account_address))[0m
+[1m        rows = db.execute(q).fetchall()[0m
+[1m>       assert len(rows) == 1[0m
+[1m[31mE       assert 0 == 1[0m
+[1m[31mE        +  where 0 = len([])[0m
+
+[1m[31mjsearch/common/tests/test_tasks.py[0m:45: AssertionError
+[31m[1m===================== 26 failed, 16 passed in 6.85 seconds =====================[0m
