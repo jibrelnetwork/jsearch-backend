@@ -5,7 +5,6 @@ import json
 
 import pytest
 import py.path
-from asyncpgsa import PG
 from sqlalchemy import create_engine
 
 from jsearch.common.testutils import setup_database, teardown_database

@@ -16,7 +16,6 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import and_
 import aiohttp
-from async_lru import alru_cache
 import psycopg2
 from psycopg2.extras import execute_values
 import requests
@@ -141,10 +140,11 @@ class MainDB(DBWrapper):
     jSearch Main db wrapper
     """
     async def connect(self):
-        self.engine = await create_engine(self.connection_string, minsize=MAIN_DB_POOL_SIZE, maxsize=MAIN_DB_POOL_SIZE)
+        self.engine = await create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
 
-    def disconnect(self):
+    async def disconnect(self):
         self.engine.close()
+        await self.engine.wait_closed()
 
     async def get_latest_sequence_synced_block_number(self, blocks_range):
         """
