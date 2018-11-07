@@ -19,7 +19,7 @@ Esparser - used to get verified contracts data from etherscan.io
 
 ## Prerequisites
 
-Ubuntu 16.04, git installed
+### Ubuntu 16.04
 
 ```
 sudo add-apt-repository ppa:deadsnakes/ppa
@@ -27,7 +27,19 @@ sudo apt-get update
 sudo apt-get install python3.6 python3.6-dev postgresql-client-9.5 libssl-dev python3-pip
 ```
 
-Contract Compilation service requires shared directory for `solc` installation, use env var `SOLC_BASE_INSTALL_PATH` to define this directory path (default `~/.py-solc`)
+### MacOS
+
+```
+brew install openssl
+brew install python@3
+```
+
+also you need to add this lines to `~/.bashrc` (or `~/.zshrc` for zsh)
+
+```
+export CPPFLAGS=-I/usr/local/opt/openssl/include
+export LDFLAGS=-L/usr/local/opt/openssl/lib
+```
 
 ## Installation
 
@@ -37,6 +49,8 @@ pip install -e .
 ```
 
 ## Configuration
+
+Contract Compilation service requires shared directory for `solc` installation, use env var `SOLC_BASE_INSTALL_PATH` to define this directory path (default `~/.py-solc`)
 
 List of environ vars:
 
