@@ -67,5 +67,7 @@ target/
 # misc
 
 .DS_Store
-.idea
 
+# IDE
+.idea
+.vscode
