@@ -1,7 +1,7 @@
 aiohttp==3.1.2
 aiohttp-swagger==1.0.5
-aiopg==0.15.0
 async-lru==1.0.1
+aiopg==0.14.0
 alembic==0.9.9
 asyncpg==0.15.0
 asyncpgsa==0.22.0
