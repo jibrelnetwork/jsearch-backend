@@ -418,7 +418,7 @@ class AsyncContextManagerMock(mock.Mock):
         pass
 
 
-async def test_verify_contract_ok(db, celery_worker, cli, transactions, receipts, main_db_data, here):
+async def test_verify_contract_ok(db, cli, transactions, receipts, main_db_data, here):
     contract_data = {
         'address': main_db_data['accounts'][2]['address'],
         'contract_name': 'FucksToken',
