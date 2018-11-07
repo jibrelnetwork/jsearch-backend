@@ -25,6 +25,9 @@ services:
     build:
       context: .
       dockerfile: ./docker/app/Dockerfile
+    networks:
+    - default
+    - jsearch-contracts_default
     image: jsearch/api
     entrypoint: jsearch-syncer
     env_file:
@@ -121,3 +124,6 @@ volumes:
   main_db:
   initial:
 
+networks:
+  jsearch-contracts_default:
+    external: True

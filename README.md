@@ -99,8 +99,8 @@ docker-copmose up -d syncer
 
 ### Running migrations
 ```
-docker-compose run --entrypoint python api manage.py revision -db=postgres://postgres:postgres@main_db/jsearch_main -m "Initial"
-docker-compose run --entrypoint python api manage.py upgrade head -db=postgres://postgres:postgres@main_db/jsearch_main
+docker-compose run --entrypoint python syncer manage.py revision -db=postgres://postgres:postgres@main_db/jsearch_main -m "Initial"
+docker-compose run --entrypoint python syncer manage.py upgrade head -db=postgres://postgres:postgres@main_db/jsearch_main
 ```
 
 ### Running tests
@@ -128,6 +128,19 @@ echo "COPY accounts FROM '/backups/accounts.tsv';" | docker-compose exec -T -u p
 echo "COPY internal_transactions FROM '/backups/internal_transactions.tsv';" | docker-compose exec -T -u postgres raw_db psql jsearch_raw;
 echo "COPY receipts FROM '/backups/receipts.tsv';" | docker-compose exec -T -u postgres raw_db psql jsearch_raw;
 ```
+After need to sync main database.
+Before do it - need to up contracts services.
+```
+cd ..
+git clone https://github.com/jibrelnetwork/jsearch-contracts
+cd jsearch-contracts
+docker-compose up -d contracts
+```
+After it - run syncer.
+```
+docker-compose run -d syncer --sync-range=5000000-
+```
+
 ## Author
 
 dev@jibrel.network
