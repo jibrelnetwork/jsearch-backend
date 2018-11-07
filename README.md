@@ -105,7 +105,7 @@ docker-compose run --entrypoint python syncer manage.py upgrade head -db=postgre
 
 ### Running tests
 ```
-docker-compose run tests
+docker-compose up tests
 ```
 
 ### Test data
