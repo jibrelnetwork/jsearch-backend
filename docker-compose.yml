@@ -122,7 +122,6 @@ services:
 volumes:
   raw_db:
   main_db:
-  initial:
 
 networks:
   jsearch-contracts_default:

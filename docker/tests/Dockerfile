@@ -1,11 +1,13 @@
 FROM jsearch/api
 
 ENV JSEARCH_MAIN_DB_TEST=postgres://postgres:posgres@test_db/jsearch_main_test
+
 USER root
 COPY --chown=app:app requirements-test.txt /app/
 RUN pip install --no-cache-dir -r requirements-test.txt
 
 COPY --chown=app:app . /app
 
+USER app
 ENTRYPOINT ["pytest"]
 CMD ["-s"]
