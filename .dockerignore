@@ -1,6 +1,8 @@
 # Byte-compiled / optimized / DLL files
-__pycache__/
+__pycache__
 *.py[cod]
+**/__pycache__
+**/*.pyc
 *$py.class
 
 # C extensions
@@ -40,13 +42,10 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+.pytest_cache
 nosetests.xml
 coverage.xml
 *,cover
-.hypothesis/
-venv/
-.python-version
-.pytest_cache
 
 # Translations
 *.mo
@@ -61,13 +60,13 @@ docs/_build/
 # PyBuilder
 target/
 
-#Ipython Notebook
-.ipynb_checkpoints
+# Docker
+Dockerfile
+docker-compose.yml
+docker-compose.override.yml
+docker/docker-compose.prod.yml
 
-# misc
+# JetBrains
+.idea/
 
-.DS_Store
-
-# IDE
-.idea
-.vscode
+./backups
