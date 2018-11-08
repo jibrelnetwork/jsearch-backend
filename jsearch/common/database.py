@@ -373,10 +373,11 @@ class MainDBSync(DBWrapperSync):
                 log['event_type'] = event_type
                 log['event_args'] = event
                 if event_type == 'Transfer':
+                    # TODO: maybe move this to process_transaction?
                     args_list = []
                     event_inputs = [i['inputs'] for i in abi
                                     if i.get('name') == event_type and
-                                    i['type'] == 'event'][0]
+                                    i['type'] == 'event' and len(i['inputs']) == 3][0]
                     for i in event_inputs:
                         args_list.append(event[i['name']])
                     token_address = log['address']
