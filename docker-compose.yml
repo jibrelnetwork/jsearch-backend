@@ -9,7 +9,7 @@ services:
     - celery_worker
     build:
       context: .
-      dockerfile: ./docker/app/Dockerfile
+      dockerfile: Dockerfile
     image: jsearch/api
     container_name: jsearch_api
     restart: always
@@ -24,7 +24,7 @@ services:
     - main_db
     build:
       context: .
-      dockerfile: ./docker/app/Dockerfile
+      dockerfile: Dockerfile
     networks:
     - default
     - jsearch-contracts_default
@@ -39,7 +39,7 @@ services:
     - redis
     build:
       context: .
-      dockerfile: ./docker/app/Dockerfile
+      dockerfile: Dockerfile
     image: jsearch/api
     container_name: jsearch_celery_broker
     restart: always
@@ -54,7 +54,7 @@ services:
     - main_db
     build:
       context: .
-      dockerfile: ./docker/app/Dockerfile
+      dockerfile: Dockerfile
     image: jsearch/api
     container_name: jsearch_celery_worker
     env_file:
