@@ -375,6 +375,8 @@ class MainDBSync(DBWrapperSync):
                 if event_type == 'Transfer':
                     # TODO: maybe move this to process_transaction?
                     args_list = []
+                    # some contracts (for example 0xaae81c0194d6459f320b70ca0cedf88e11a242ce) may have
+                    # several Transfer events with different signatures, so we try to find ERS20 copilent event (with 3 args) 
                     event_inputs = [i['inputs'] for i in abi
                                     if i.get('name') == event_type and
                                     i['type'] == 'event' and len(i['inputs']) == 3][0]
