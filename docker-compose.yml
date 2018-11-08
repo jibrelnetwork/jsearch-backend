@@ -1,0 +1,128 @@
+version: '3.2'
+
+services:
+  api:
+    depends_on:
+    - raw_db
+    - main_db
+    - celery_broker
+    - celery_worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jsearch/api
+    container_name: jsearch_api
+    restart: always
+    env_file:
+    - config/dev.env
+    ports:
+    - 8000:8000
+
+  syncer:
+    depends_on:
+    - raw_db
+    - main_db
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+    - default
+    - jsearch-contracts_default
+    image: jsearch/api
+    entrypoint: jsearch-syncer
+    env_file:
+    - config/dev.env
+    container_name: jsearch_syncer
+
+  celery_broker:
+    depends_on:
+    - redis
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jsearch/api
+    container_name: jsearch_celery_broker
+    restart: always
+    env_file:
+    - config/dev.env
+    command: celerybeat
+
+  celery_worker:
+    depends_on:
+    - redis
+    - raw_db
+    - main_db
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jsearch/api
+    container_name: jsearch_celery_worker
+    env_file:
+    - config/dev.env
+    restart: always
+    command: celeryworker
+
+  tests:
+    depends_on:
+    - main_db
+    - test_db
+    - redis
+    build:
+      context: .
+      dockerfile: ./docker/tests/Dockerfile
+    image: jsearch/tests
+    container_name: jsearch_tests
+    environment:
+    - JSEARCH_MAIN_DB_TEST=postgres://postgres:postgres@test_db/jsearch_main_test
+    - JSEARCH_MAIN_DB=postgres://postgres:postgres@test_db/jsearch_main_test
+    env_file:
+    - config/dev.env
+
+  raw_db:
+    #    image: postgres:11.0-alpine
+    image: postgres:9.6-alpine
+    container_name: jsearch_raw_db
+    volumes:
+    - raw_db:/var/lib/postgresql/data
+    - ./backups:/backups
+    environment:
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=postgres
+    - POSTGRES_DB=jsearch_raw
+    ports:
+    - 8081:8081
+
+  main_db:
+    #    image: postgres:11.0-alpine
+    image: postgres:9.6-alpine
+    container_name: jsearch_main_db
+    volumes:
+    - main_db:/var/lib/postgresql/data
+    environment:
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=postgres
+    - POSTGRES_DB=jsearch_main
+    ports:
+    - 8082:8082
+
+  test_db:
+    image: postgres:9.6-alpine
+    #    image: postgres:11.0-alpine
+    container_name: jsearch_test_db
+    environment:
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=postgres
+    - POSTGRES_DB=jsearch_main_test
+    ports:
+    - 8083:8083
+
+  redis:
+    image: redis:5.0-alpine
+
+volumes:
+  raw_db:
+  main_db:
+
+networks:
+  jsearch-contracts_default:
+    external: True

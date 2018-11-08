@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import argparse
-import os, sys
-from sqlalchemy import create_engine
-from jsearch.common.tables import *
+import os
+import sys
+
 import jsearch.common.alembic_utils as alembic
 from jsearch.common import testutils
 
@@ -90,7 +90,6 @@ positional arguments:
         print('Running alembic downgrade {}. db: {}'.format(args.revision, args.db))
         alembic.downgrade(args.db, args.revision)
 
-
     def json_dump(self):
         parser = argparse.ArgumentParser(
             usage='''
@@ -113,5 +112,7 @@ usage: json_dump [-h]'''
         print(args)
         print('Running add_test_contract. db: {}'.format(args.db))
         testutils.add_test_contract(args.db, args.address)
+
+
 if __name__ == '__main__':
     Manage()
