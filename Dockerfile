@@ -2,12 +2,12 @@ FROM python:3.6
 
 ENV LOG_LEVEL=INFO \
     JSEARCH_SYNC_PARALLEL="10" \
-    JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_mai" \
+    JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_main" \
     JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw" \
     JSEARCH_CELERY_BROKER="redis://redis/0" \
     JSEARCH_CELERY_BACKEND="redis://redis/1" \
-    JSEARCH_CONTRACT_API="http://localhost:8101" \
-    JSEARCH_COMPILER_API="http://localhost:8102" \
+    JSEARCH_CONTRACT_API="http://contracts" \
+    JSEARCH_COMPILER_API="http://compiler" \
     ENH_NODE_URL="https://main-node.jwallet.network"
 
 
