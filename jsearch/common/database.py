@@ -380,7 +380,7 @@ class MainDBSync(DBWrapperSync):
                 log['event_args'] = event
 
                 if log_contract['token_decimals'] is None:
-                    need_update_token_info(log_contract['address'])
+                    need_update_token_info.add(log_contract['address'])
                     continue
                 if event_type == 'Transfer' and len(event) == 3:
                     # some contracts (for example 0xaae81c0194d6459f320b70ca0cedf88e11a242ce) may have
