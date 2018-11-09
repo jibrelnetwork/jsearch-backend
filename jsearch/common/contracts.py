@@ -3,6 +3,8 @@ import os
 import logging
 import time
 import re
+import signal
+
 
 from solc import compile_source, install_solc
 import solc.install
@@ -294,6 +296,32 @@ def _fix_arg(arg, typ, decoder=None):
     return decoder(arg)
 
 
+class TimedOutExc(Exception):
+    pass
+
+
+def deadline(timeout, *args):
+    """
+    See https://etherscan.io/tx/0x88394b1dae9eab5de187c3fe8ff14a1090cb02b4938d2389dc470cc3a1e9accf
+    this TX could not bee decoded - etherscan.abi.decode_abi just hangs up, uses 100% and eats memory
+
+    workaround - time limit for this function execution:
+    """
+    def decorate(f):
+        def handler(signum, frame):
+            raise TimedOutExc()
+
+        def new_f(*args):
+            signal.signal(signal.SIGALRM, handler)
+            signal.alarm(timeout)
+            return f(*args)
+            signal.alarm(0)
+
+        new_f.__name__ = f.__name__
+        return new_f
+    return decorate
+
+
 def decode_contract_call(contract_abi: list, call_data: str):
     call_data = call_data.replace('0x', '')
     call_data_bin = decode_hex(call_data)
@@ -306,9 +334,13 @@ def decode_contract_call(contract_abi: list, call_data: str):
         method_id = get_abi_method_id(method_name, arg_types)
         if zpad(encode_int(method_id), 4) == method_signature:
             try:
-                args = decode_abi(arg_types, call_data_bin[4:])
+                # shit!
+                args = deadline(3)(decode_abi)(arg_types, call_data_bin[4:])
                 args = _fix_string_args(args, arg_types)
             except AssertionError as e:
+                continue
+            except TimedOutExc as e:
+                logger.warn('Fuck! ABI decode timed out!!!')
                 continue
             return {'function': method_name, 'args': args}
 
