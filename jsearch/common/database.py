@@ -357,18 +357,18 @@ class MainDBSync(DBWrapperSync):
         if contract is not None:
             contracts_cache[contract['address']] = contract
         for log in logs:
+            log['is_token_transfer'] = False
+            log['token_transfer_to'] = None
+            log['token_transfer_from'] = None
+            log['token_amount'] = None
+            log['event_type'] = None
+            log['event_args'] = None
             if log['address'] in contracts_cache:
                 log_contract = contracts_cache[log['address']]
             else:
                 log_contract = self.get_contract(log['address'])
                 contracts_cache[log['address']] = log_contract
             if log_contract is None:
-                log['event_type'] = None
-                log['event_args'] = None
-                log['is_token_transfer'] = False
-                log['token_transfer_to'] = None
-                log['token_transfer_from'] = None
-                log['token_amount'] = None
                 continue
             abi = log_contract['abi']
             try:
@@ -376,12 +376,6 @@ class MainDBSync(DBWrapperSync):
             except Exception as e:
                 # ValueError: Unknown log type
                 logger.debug('Log decode error: <%s>\n ', log)
-                log['event_type'] = None
-                log['event_args'] = None
-                log['is_token_transfer'] = False
-                log['token_transfer_to'] = None
-                log['token_transfer_from'] = None
-                log['token_amount'] = None
             else:
                 event_type = event.pop('_event_type')
                 log['event_type'] = event_type
