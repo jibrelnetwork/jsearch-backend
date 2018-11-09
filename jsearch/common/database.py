@@ -405,20 +405,22 @@ class MainDBSync(DBWrapperSync):
         return logs
 
     def process_transaction(self, contract, tx_data, logs):
-        if contract is not None:
-            transfer_events = [l for l in logs if l['event_type'] == 'Transfer']
-            if len(transfer_events) > 1:
-                logger.warn('Multiple transfer events at %s', tx_data['hash'])
-            try:
-                call = contracts.decode_contract_call(contract['abi'], tx_data['input'])
-            except Exception as e:
-                logger.exception('Call decode error: <%s>', tx_data)
-            else:
-                if call:
-                    tx_data['contract_call_description'] = call
-        elif tx_data['to'] == contracts.NULL_ADDRESS:
-            # contract creation, check Transfer events
-            pass
+        # hangs on this TX https://etherscan.io/tx/0x88394b1dae9eab5de187c3fe8ff14a1090cb02b4938d2389dc470cc3a1e9accf
+        # FUCK!!
+        # if contract is not None:
+        #     transfer_events = [l for l in logs if l['event_type'] == 'Transfer']
+        #     if len(transfer_events) > 1:
+        #         logger.warn('Multiple transfer events at %s', tx_data['hash'])
+        #     try:
+        #         call = contracts.decode_contract_call(contract['abi'], tx_data['input'])
+        #     except Exception as e:
+        #         logger.exception('Call decode error: <%s>', tx_data)
+        #     else:
+        #         if call:
+        #             tx_data['contract_call_description'] = call
+        # elif tx_data['to'] == contracts.NULL_ADDRESS:
+        #     # contract creation, check Transfer events
+        #     pass
         return tx_data
 
     # @alru_cache(maxsize=1024)
