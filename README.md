@@ -44,7 +44,6 @@ JSEARCH_MAIN_DB (default postgres://localhost/jsearch_main)
 JSEARCH_RAW_DB (default postgres://localhost/jsearch_raw)
 ETH_NODE_URL (default https://main-node.jwallet.network)
 JSEARCH_CELERY_BROKER (default redis://localhost:6379/0)
-JSEARCH_CELERY_BACKEND (default redis://localhost:6379/0)
 JSEARCH_COMPILER_API (default http://localhost:8101)
 JSEARCH_CONTRACTS_API (default http://localhost:8101)
 JSEARCH_SYNC_PARALLEL (default 10) - number of blocks to sync in parallel

@@ -104,7 +104,7 @@ class Transaction(Base):
 
     is_token_transfer = sa.Column('is_token_transfer', sa.Boolean, default=False)
     contract_call_description = sa.Column('contract_call_description', postgresql.JSONB)
-    token_amount = sa.Column('token_amount', postgresql.NUMERIC(32, 18))
+    token_amount = sa.Column('token_amount', postgresql.NUMERIC())
     token_transfer_from = sa.Column('token_transfer_from', sa.String, index=True)
     token_transfer_to = sa.Column('token_transfer_to', sa.String, index=True)
 
@@ -140,6 +140,11 @@ class Log(Base):
     transaction_index = sa.Column('transaction_index', HexInteger)
     event_type = sa.Column('event_type', sa.String)
     event_args = sa.Column('event_args', postgresql.JSONB)
+
+    is_token_transfer = sa.Column('is_token_transfer', sa.Boolean, default=False)
+    token_amount = sa.Column('token_amount', postgresql.NUMERIC())
+    token_transfer_from = sa.Column('token_transfer_from', sa.String, index=True)
+    token_transfer_to = sa.Column('token_transfer_to', sa.String, index=True)
 
 
 class Account(Base):
@@ -232,7 +237,7 @@ class TokenHolder(Base):
 
     account_address = sa.Column('account_address', sa.String, primary_key=True)
     token_address = sa.Column('token_address', sa.String, primary_key=True)
-    balance = sa.Column('balance', postgresql.NUMERIC(32, 0))
+    balance = sa.Column('balance', postgresql.NUMERIC())
 
 
 blocks_t = Block.__table__

@@ -165,53 +165,8 @@ def logs(db, transactions, main_db_data):
 
 @pytest.fixture
 def contracts(db, here, main_db_data):
-    contracts = [
-        {
-            'address': main_db_data['accounts'][2]['address'],
-            'name': '',
-            'byte_code': here.join('FucksToken.bin').read(),
-            'source_code': here.join('FucksToken.sol').read(),
-            'abi': ERC20_ABI,
-            'compiler_version': 'v0.4.18+commit.9cf6e910',
-            'optimization_enabled': True,
-            'optimization_runs': 200,
-            'constructor_args': '',
-            'metadata_hash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa55d',
-            'is_erc20_token': True,
-            'token_name': 'FucksToken',
-            'token_symbol': 'ZFUCK',
-            'token_decimals': 2,
-            'token_total_supply': 1000000000,
-            'grabbed_at': None,
-            'verified_at': datetime(2018, 5, 10),
-        },
-        # {
-        #     'address': 'caa',
-        #     'name': '',
-        #     'byte_code': here.join('FucksToken.bin').read(),
-        #     'source_code': here.join('FucksToken.sol').read(),
-        #     'abi': ERC20_ABI,
-        #     'compiler_version': 'v0.4.18+commit.9cf6e910',
-        #     'optimization_enabled': True,
-        #     'optimization_runs': 200,
-        #     'constructor_args': '',
-        #     'metadata_hash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa55d',
-        #     'is_erc20_token': False,
-        #     'token_name': None,
-        #     'token_symbol': None,
-        #     'token_decimals': None,
-        #     'token_total_supply': None,
-        #     'grabbed_at': None,
-        #     'verified_at': datetime(2018, 5, 10),
-        # },
-    ]
     contracts = main_db_data['contracts']
-    db.execute('DELETE FROM contracts')
-    for c in contracts:
-        query = t.contracts_t.insert().values(**c)
-        db.execute(query)
-    yield contracts
-    db.execute('DELETE FROM contracts')
+    return contracts
 
 
 @pytest.fixture(scope='session')

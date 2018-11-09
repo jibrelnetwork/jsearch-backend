@@ -195,13 +195,13 @@ class MainDBSync(DBWrapperSync):
         """
         Write block and all related items in main database
         """
-        logger.debug('H: %s', header)
-        logger.debug('U: %s', uncles)
-        logger.debug('A: %s', accounts)
-        logger.debug('T: %s', transactions)
-        logger.debug('R: %s', receipts)
-        logger.debug('RW: %s', reward)
-        logger.debug('IT: %s', internal_transactions)
+        # logger.debug('H: %s', header)
+        # logger.debug('U: %s', uncles)
+        # logger.debug('A: %s', accounts)
+        # logger.debug('T: %s', transactions)
+        # logger.debug('R: %s', receipts)
+        # logger.debug('RW: %s', reward)
+        # logger.debug('IT: %s', internal_transactions)
 
         block_number = header['block_number']
         block_hash = header['block_hash']
@@ -255,6 +255,8 @@ class MainDBSync(DBWrapperSync):
         tx_items = []
         recpt_items = []
         logs_items = []
+        need_update_token_balance = set()
+        need_update_token_info = set()
         for i, receipt in enumerate(rdata):
             recpt_data = dict_keys_case_convert(receipt)
             tx = transactions[i]
@@ -285,7 +287,7 @@ class MainDBSync(DBWrapperSync):
             else:
                 contract_address = tx['to']
             contract = self.get_contract(contract_address)
-            logs = self.process_logs(contract, logs)
+            logs = self.process_logs(contract, logs, need_update_token_balance, need_update_token_info)
             logs_items.extend(logs)
             tx_data = self.process_transaction(contract, tx_data, logs)
 
@@ -297,8 +299,12 @@ class MainDBSync(DBWrapperSync):
         tx_keys = tx_items[0].keys()
         q, t = make_insert_query_batch('transactions', tx_keys)
         conn.execute(transactions_t.insert(), *tx_items)
-
         self.insert_logs(conn, block_number, block_hash, logs_items)
+
+        for token_address, account_address in need_update_token_balance:
+            tasks.update_token_holder_balance_task.delay(token_address, account_address, None)
+        for address in need_update_token_info:
+            tasks.on_new_contracts_added_task.delay(address)
 
     def insert_logs(self, conn, block_number, block_hash, logs):
         items = []
@@ -346,7 +352,7 @@ class MainDBSync(DBWrapperSync):
         q, t = make_insert_query_batch('internal_transactions', items[0].keys())
         conn.execute(internal_transactions_t.insert(), *items)
 
-    def process_logs(self, contract, logs):
+    def process_logs(self, contract, logs, need_update_token_balance, need_update_token_info):
         contracts_cache = {}
         if contract is not None:
             contracts_cache[contract['address']] = contract
@@ -372,11 +378,14 @@ class MainDBSync(DBWrapperSync):
                 event_type = event.pop('_event_type')
                 log['event_type'] = event_type
                 log['event_args'] = event
-                if event_type == 'Transfer':
-                    # TODO: maybe move this to process_transaction?
-                    args_list = []
+
+                if log_contract['token_decimals'] is None:
+                    need_update_token_info(log_contract['address'])
+                    continue
+                if event_type == 'Transfer' and len(event) == 3:
                     # some contracts (for example 0xaae81c0194d6459f320b70ca0cedf88e11a242ce) may have
                     # several Transfer events with different signatures, so we try to find ERS20 copilent event (with 3 args) 
+                    args_list = []
                     event_inputs = [i['inputs'] for i in abi
                                     if i.get('name') == event_type and
                                     i['type'] == 'event' and len(i['inputs']) == 3][0]
@@ -385,9 +394,14 @@ class MainDBSync(DBWrapperSync):
                     token_address = log['address']
                     to_address = args_list[1]
                     from_address = args_list[0]
-                    block_number = log.get('block_number') or int(log['blockNumber'], 16)  # FIXME
-                    tasks.update_token_holder_balance_task.delay(token_address, to_address, block_number)
-                    tasks.update_token_holder_balance_task.delay(token_address, from_address, block_number)
+
+                    log['is_token_transfer'] = True
+                    log['token_transfer_to'] = to_address
+                    log['token_transfer_from'] = from_address
+                    log['token_amount'] = args_list[2] / (10 ** log_contract['token_decimals'])
+
+                    need_update_token_balance.add((token_address, from_address))
+                    need_update_token_balance.add((token_address, to_address))
         return logs
 
     def process_transaction(self, contract, tx_data, logs):
@@ -402,15 +416,6 @@ class MainDBSync(DBWrapperSync):
             else:
                 if call:
                     tx_data['contract_call_description'] = call
-                    if call['function'] in {'transfer', 'transferFrom'} and transfer_events:
-                        tx_data['is_token_transfer'] = True
-                        tx_data['token_transfer_to'] = call['args'][-2]
-                        if call['function'] == 'transferFrom':
-                            tx_data['token_transfer_from'] = call['args'][0]
-                        else:
-                            tx_data['token_transfer_from'] = tx_data['from']
-                        if contract['token_decimals']:
-                            tx_data['token_amount'] = call['args'][-1] / (10 ** contract['token_decimals'])
         elif tx_data['to'] == contracts.NULL_ADDRESS:
             # contract creation, check Transfer events
             pass
@@ -436,27 +441,22 @@ class MainDBSync(DBWrapperSync):
 
     def process_token_transfers(self, tx_hash):
         logger.info('Processing token transfer for TX %s', tx_hash)
-        q = select([transactions_t]).where(transactions_t.c.hash == tx_hash)
-        tx = self.conn.execute(q).fetchone()
-        if tx is None:
-            logger.warn('TX with hash %s not found', tx_hash)
-            return
+        need_update_token_balance = set()
+        need_update_token_info = set()
         with self.engine.begin() as conn:
-            logs = self.get_transaction_logs(conn, tx['hash'])
+            logs = self.get_transaction_logs(conn, tx_hash)
             if len(logs) == 0:
                 logger.info('No logs - no transfers')
                 return
-            if tx['to'] == contracts.NULL_ADDRESS:
-                contract_address = logs[0]['address']
-            else:
-                contract_address = tx['to']
+            contract_address = logs[0]['address']
             contract = self.get_contract(contract_address)
-            logs = self.process_logs(contract, [dict(l) for l in logs])
-            tx_data = dict(tx)
-            data = self.process_transaction(contract, tx_data, logs)
-            query = update(transactions_t).where(transactions_t.c.hash == tx_hash).values(**data)
-            conn.execute(query)
+            logs = self.process_logs(contract, [dict(l) for l in logs],
+                                     need_update_token_balance, need_update_token_info)
             self.update_logs(conn, logs)
+            for token_address, account_address in need_update_token_balance:
+                tasks.update_token_holder_balance_task.delay(token_address, account_address, None)
+            for address in need_update_token_info:
+                tasks.on_new_contracts_added_task.delay(address)
 
     def get_contract_transactions(self, address):
         q = select([transactions_t]).where(transactions_t.c.to == address)

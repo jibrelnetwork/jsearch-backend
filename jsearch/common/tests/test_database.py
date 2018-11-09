@@ -21,17 +21,14 @@ def test_process_token_transfers_ok(db, contracts, transactions, logs, main_db_d
 
         main_db.process_token_transfers(tx_hash)
         main_db.disconnect()
-        q = select([t.transactions_t]).where(t.transactions_t.c.hash == tx_hash)
-        rows = db.execute(q).fetchall()
-        assert rows[0]['is_token_transfer'] is True
-        assert rows[0]['token_amount'] == 10
-        assert rows[0]['contract_call_description'] == {
-            'args': [main_db_data['accounts'][1]['address'], 1000],
-            'function': 'transfer'}
 
         q = select([t.logs_t]).where(t.logs_t.c.transaction_hash == tx_hash)
         rows = db.execute(q).fetchall()
         assert dict(rows[0])['event_type'] == 'Transfer'
+        assert rows[0]['is_token_transfer'] is True
+        assert rows[0]['token_amount'] == 10
+        assert rows[0]['token_transfer_to'] == main_db_data['accounts'][1]['address']
+        assert rows[0]['token_transfer_from'] == main_db_data['accounts'][0]['address']
         assert rows[0]['event_args'] == {
             'to': main_db_data['accounts'][1]['address'],
             'from': main_db_data['accounts'][0]['address'],
@@ -40,9 +37,9 @@ def test_process_token_transfers_ok(db, contracts, transactions, logs, main_db_d
         holders = db.execute(holders_q).fetchall()
         assert len(holders) == 0
         mock_tasks.update_token_holder_balance_task.delay.assert_has_calls([
-            mock.call(token_address, main_db_data['accounts'][1]['address'], rows[0]['block_number']),
-            mock.call(token_address, main_db_data['accounts'][0]['address'], rows[0]['block_number']),
-        ])
+            mock.call(token_address, main_db_data['accounts'][1]['address'], None),
+            mock.call(token_address, main_db_data['accounts'][0]['address'], None),
+        ], any_order=True)
 
 
 def test_process_token_transfers_constructor(db, contracts, transactions, logs, main_db_data):
@@ -54,15 +51,21 @@ def test_process_token_transfers_constructor(db, contracts, transactions, logs, 
     main_db.connect()
     main_db.get_contract = mock.Mock()
     main_db.get_contract.return_value = contracts[0]
-    main_db.process_token_transfers(tx_hash)
+    with mock.patch('jsearch.common.database.tasks') as mock_tasks:
+        main_db.process_token_transfers(tx_hash)
+        mock_tasks.update_token_holder_balance_task.delay.assert_has_calls([
+            mock.call(token_address, main_db_data['accounts'][0]['address'], None),
+            mock.call(token_address, NULL_ADDRESS, None),
+        ], any_order=True)
     main_db.disconnect()
-    q = select([t.transactions_t]).where(t.transactions_t.c.hash == tx_hash)
-    rows = db.execute(q).fetchall()
-    assert rows[0]['is_token_transfer'] == False
 
     q = select([t.logs_t]).where(t.logs_t.c.transaction_hash == tx_hash)
     rows = db.execute(q).fetchall()
     assert rows[0]['event_type'] == 'Transfer'
+    assert rows[0]['is_token_transfer'] is True
+    assert rows[0]['token_amount'] == 1000000000000000000000000
+    assert rows[0]['token_transfer_to'] == main_db_data['accounts'][0]['address']
+    assert rows[0]['token_transfer_from'] == NULL_ADDRESS
     assert rows[0]['event_args'] == {
         'to': main_db_data['accounts'][0]['address'],
         'from': NULL_ADDRESS,
@@ -70,4 +73,3 @@ def test_process_token_transfers_constructor(db, contracts, transactions, logs, 
 
     holders = db.execute(holders_q).fetchall()
     assert len(holders) == 0
-
