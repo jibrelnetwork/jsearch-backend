@@ -77,11 +77,13 @@ def update_token_holder_balance_task(token_address, account_address, block_numbe
 
 
 @app.task
-def on_new_contracts_added_task(address, abi):
+def on_new_contracts_added_task(address, abi=None):
     from jsearch.common.database import get_main_db
     logger.info('Starting process transactions for contract at %s', address)
-    update_token_info(address, abi)
     db = get_main_db()
+    if abi is None:
+        abi = db.get_contract(address)['abi']
+    update_token_info(address, abi)
     tx_count = 0
     for tx in db.get_contract_transactions(address):
         db.process_token_transfers(tx['hash'])
