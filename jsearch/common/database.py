@@ -458,7 +458,7 @@ class MainDBSync(DBWrapperSync):
             for token_address, account_address in need_update_token_balance:
                 tasks.update_token_holder_balance_task.delay(token_address, account_address, None)
             for address in need_update_token_info:
-                tasks.on_new_contracts_added_task.delay(address)
+                tasks.on_new_contracts_added_task.delay(address, contract['abi'])
 
     def get_contract_transactions(self, address):
         q = select([transactions_t]).where(transactions_t.c.to == address)
