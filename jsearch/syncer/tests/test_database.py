@@ -1,6 +1,5 @@
 import os
 from unittest import mock
-import json
 
 import pytest
 
@@ -8,7 +7,8 @@ from jsearch.common import database, tables as t
 
 
 @pytest.mark.asyncio
-async def test_maindb_insert_header(db, contracts):
+async def test_maindb_insert_header(db, main_db_dump):
+    contracts = main_db_dump['contracts']
     q = t.token_holders_t.insert({
         'token_address': "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a",
         'account_address': "0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae",
@@ -20,21 +20,21 @@ async def test_maindb_insert_header(db, contracts):
     main_db.connect()
     header = {'block_number': 46170,
               'block_hash': '0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2',
-              'fields': {"hash": "0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2", 
-                          "miner": "0xf927a40c8b7f6e07c5af7fa2155b4864a4112b13", 
-                           "nonce": "0x827a6369128a45a1", 
-                           "number": "0xb45a", 
-                           "gasUsed": "0x5208", 
-                           "mixHash": "0xc32cda5582c2d75e20084e35f87a0e2af22a69dc43b7f5441cdcc9cb7dc7ea39", 
-                           "gasLimit": "0x5374", 
-                           "extraData": "0x476574682f76312e302e312f6c696e75782f676f312e342e32", 
-                           "logsBloom": "0x0000", 
-                           "stateRoot": "0x4150d34e4d7cef3cb2eb6baf1fc84a6470d1d69c7ebba950c64e0b36e27bf42b", 
-                           "timestamp": "0x55c427e6", 
-                           "difficulty": "0x15308f3e385", 
-                           "parentHash": "0x5793f91c9fa8f824d8ed77fc1687dddcf334da81c68be65a782a36463b6f7998", 
-                           "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347", 
-                           "receiptsRoot": "0xc3c8d68d9f98582e3ba95df6cfbe433993331b477fa0f6b27766c6301123d749", 
+              'fields': {"hash": "0xf4a537e8e2233149929a9b6964c9aced6ee95f42131aa6b648d2c7946dfc6fe2",
+                          "miner": "0xf927a40c8b7f6e07c5af7fa2155b4864a4112b13",
+                           "nonce": "0x827a6369128a45a1",
+                           "number": "0xb45a",
+                           "gasUsed": "0x5208",
+                           "mixHash": "0xc32cda5582c2d75e20084e35f87a0e2af22a69dc43b7f5441cdcc9cb7dc7ea39",
+                           "gasLimit": "0x5374",
+                           "extraData": "0x476574682f76312e302e312f6c696e75782f676f312e342e32",
+                           "logsBloom": "0x0000",
+                           "stateRoot": "0x4150d34e4d7cef3cb2eb6baf1fc84a6470d1d69c7ebba950c64e0b36e27bf42b",
+                           "timestamp": "0x55c427e6",
+                           "difficulty": "0x15308f3e385",
+                           "parentHash": "0x5793f91c9fa8f824d8ed77fc1687dddcf334da81c68be65a782a36463b6f7998",
+                           "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+                           "receiptsRoot": "0xc3c8d68d9f98582e3ba95df6cfbe433993331b477fa0f6b27766c6301123d749",
                            "transactionsRoot": "0x59a195bec25ed6f19d81c71ea96629abbba0cf991de9649dc6d8738c4cd7a3a4"}}
     uncles = []
     transactions = [

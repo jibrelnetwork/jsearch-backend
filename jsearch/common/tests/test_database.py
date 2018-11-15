@@ -1,15 +1,20 @@
 import os
-import json
 from unittest import mock
 
-import pytest
 from sqlalchemy import select
 
 from jsearch.common import database, tables as t
 from jsearch.common.contracts import NULL_ADDRESS
 
+pytest_plugins = [
+    'jsearch.tests.plugins.databases.dumps',
+    'jsearch.tests.plugins.databases.main_db',
+]
 
-def test_process_token_transfers_ok(db, contracts, transactions, logs, main_db_data):
+
+def test_process_token_transfers_ok(db, main_db_data):
+    contracts = main_db_data['contracts']
+
     with mock.patch('jsearch.common.database.tasks') as mock_tasks:
         main_db = database.MainDBSync(os.environ['JSEARCH_MAIN_DB_TEST'])
         main_db.connect()
@@ -45,17 +50,22 @@ def test_process_token_transfers_ok(db, contracts, transactions, logs, main_db_d
         ])
 
 
-def test_process_token_transfers_constructor(db, contracts, transactions, logs, main_db_data):
-    main_db = database.MainDBSync(os.environ['JSEARCH_MAIN_DB_TEST'])
+def test_process_token_transfers_constructor(db, db_connection_string, main_db_data):
+    contracts = main_db_data['contracts']
+
+    main_db = database.MainDBSync(db_connection_string)
     tx_hash = main_db_data['transactions'][0]['hash']
     token_address = main_db_data['accounts'][2]['address']
     holders_q = select([t.token_holders_t]).where(t.token_holders_t.c.token_address == token_address)
 
     main_db.connect()
+
     main_db.get_contract = mock.Mock()
     main_db.get_contract.return_value = contracts[0]
+
     main_db.process_token_transfers(tx_hash)
     main_db.disconnect()
+
     q = select([t.transactions_t]).where(t.transactions_t.c.hash == tx_hash)
     rows = db.execute(q).fetchall()
     assert rows[0]['is_token_transfer'] == False
@@ -66,8 +76,8 @@ def test_process_token_transfers_constructor(db, contracts, transactions, logs, 
     assert rows[0]['event_args'] == {
         'to': main_db_data['accounts'][0]['address'],
         'from': NULL_ADDRESS,
-        'value': 100000000000000000000000000}
+        'value': 100000000000000000000000000
+    }
 
     holders = db.execute(holders_q).fetchall()
     assert len(holders) == 0
-
