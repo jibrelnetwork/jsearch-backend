@@ -69,4 +69,6 @@ docker/docker-compose.prod.yml
 # JetBrains
 .idea/
 
+# Application artifacts
 ./backups
+./.ethash
