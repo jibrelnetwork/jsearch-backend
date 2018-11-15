@@ -1,19 +1,16 @@
 import asyncio
-import json
+import concurrent.futures
 import logging
 import time
-import concurrent.futures
 
-from jsearch.common.database import DatabaseError
 from jsearch import settings
+from jsearch.common.database import DatabaseError
 
 logger = logging.getLogger(__name__)
-
 
 SLEEP_ON_ERROR_DEFAULT = 0.1
 SLEEP_ON_DB_ERROR_DEFAULT = 5
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
-
 
 loop = asyncio.get_event_loop()
 
@@ -22,6 +19,7 @@ class Manager:
     """
     Sync manager
     """
+
     def __init__(self, service, main_db, raw_db, sync_range):
         self.service = service
         self.main_db = main_db
@@ -109,13 +107,14 @@ class Manager:
 from jsearch.common.database import MainDBSync, RawDBSync
 
 
-def sync_block(block_number):
+def sync_block(block_number, main_db_connection_string=None, raw_db_connection_string=None):
     logger.debug("Syncing Block #%s", block_number)
-    main_db = MainDBSync(settings.JSEARCH_MAIN_DB)
-    raw_db = RawDBSync(settings.JSEARCH_RAW_DB)
+    main_db = MainDBSync(main_db_connection_string or settings.JSEARCH_MAIN_DB)
+    raw_db = RawDBSync(raw_db_connection_string or settings.JSEARCH_RAW_DB)
     main_db.connect()
     raw_db.connect()
     start_time = time.monotonic()
+
     is_block_exist = main_db.is_block_exist(block_number)
     if is_block_exist is True:
         logger.debug("Block #%s exist", block_number)

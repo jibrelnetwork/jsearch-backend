@@ -5,7 +5,6 @@ import os
 import sys
 
 import jsearch.common.alembic_utils as alembic
-from jsearch.common import testutils
 
 
 class Manage(object):
@@ -96,12 +95,16 @@ positional arguments:
 usage: json_dump [-h]'''
                 .format(self.__script_name))
         parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
+        parser.add_argument('-out', action='store', default=None, help=argparse.SUPPRESS)
         args = parser.parse_args(sys.argv[2:])
         print(args)
         print('Running json_dump. db: {}'.format(args.db))
-        alembic.json_dump(args.db)
+        alembic.json_dump(args.db, args.out)
 
     def add_test_contract(self):
+        from jsearch.tests.utils import add_test_contract
+        from jsearch.tests.plugins.tokens.fuck_token import FuckTokenSource
+
         parser = argparse.ArgumentParser(
             usage='''
 usage: json_dump [-h]'''
@@ -111,7 +114,8 @@ usage: json_dump [-h]'''
         args = parser.parse_args(sys.argv[2:])
         print(args)
         print('Running add_test_contract. db: {}'.format(args.db))
-        testutils.add_test_contract(args.db, args.address)
+
+        add_test_contract(args.db, args.address, FuckTokenSource.load())
 
 
 if __name__ == '__main__':
