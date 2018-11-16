@@ -103,11 +103,6 @@ docker-compose run --entrypoint python syncer manage.py revision -db=postgres://
 docker-compose run --entrypoint python syncer manage.py upgrade head -db=postgres://postgres:postgres@main_db/jsearch_main
 ```
 
-### Running tests
-```
-docker-compose up tests
-```
-
 ### Test data
 To fill project from raw_db dump need to do:
 ```
@@ -139,6 +134,20 @@ docker-compose up -d contracts
 After it - run syncer.
 ```
 docker-compose run -d syncer --sync-range=5000000-
+```
+
+### Running tests
+
+#### From docker-compose:
+```
+docker-compose rm --rm tests
+```
+
+#### From shell:
+```
+pytest # all test
+pytest -m "live_chain" #only end to end tests
+pytest -v -m "live_chain" #only unit tests with
 ```
 
 ## Author
