@@ -1,19 +1,16 @@
 import asyncio
-import json
+import concurrent.futures
 import logging
 import time
-import concurrent.futures
 
-from jsearch.common.database import DatabaseError
 from jsearch import settings
+from jsearch.common.database import DatabaseError, MainDBSync, RawDBSync
 
 logger = logging.getLogger(__name__)
-
 
 SLEEP_ON_ERROR_DEFAULT = 0.1
 SLEEP_ON_DB_ERROR_DEFAULT = 5
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
-
 
 loop = asyncio.get_event_loop()
 
@@ -22,6 +19,7 @@ class Manager:
     """
     Sync manager
     """
+
     def __init__(self, service, main_db, raw_db, sync_range):
         self.service = service
         self.main_db = main_db
@@ -104,9 +102,6 @@ class Manager:
                     loop.run_in_executor(self.executor, sync_block, block_number)
                 except Exception:
                     logger.exception('Error on newblock listener')
-
-
-from jsearch.common.database import MainDBSync, RawDBSync
 
 
 def sync_block(block_number):
