@@ -140,7 +140,6 @@ services:
 volumes:
   raw_db:
   main_db:
-  eth_dag_hash:
 
 networks:
   jsearch-contracts_default:
