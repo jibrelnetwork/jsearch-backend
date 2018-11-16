@@ -150,6 +150,13 @@ pytest -m "live_chain" #only end to end tests
 pytest -v -m "live_chain" #only unit tests with
 ```
 
+#### Notes:
+ - ensure to build docker image for geth-fork 
+```
+cd ./docker/geth-fork
+./build.sh
+```
+
 ## Author
 
 dev@jibrel.network
