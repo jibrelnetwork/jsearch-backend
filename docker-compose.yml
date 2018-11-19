@@ -97,8 +97,6 @@ services:
     - POSTGRES_USER=postgres
     - POSTGRES_PASSWORD=postgres
     - POSTGRES_DB=jsearch_raw
-    ports:
-    - 8081:5432
 
   main_db:
     #    image: postgres:11.0-alpine
@@ -110,8 +108,6 @@ services:
     - POSTGRES_USER=postgres
     - POSTGRES_PASSWORD=postgres
     - POSTGRES_DB=jsearch_main
-    ports:
-    - 8082:5432
 
   test_db:
     image: postgres:9.6-alpine
@@ -121,8 +117,6 @@ services:
     - POSTGRES_USER=postgres
     - POSTGRES_PASSWORD=postgres
     - POSTGRES_DB=jsearch_main_test
-    ports:
-    - 8083:5432
 
   test_raw_db:
     image: postgres:9.6-alpine
@@ -131,8 +125,6 @@ services:
     - POSTGRES_USER=postgres
     - POSTGRES_PASSWORD=postgres
     - POSTGRES_DB=jsearch_raw
-    ports:
-    - 8084:5432
 
   redis:
     image: redis:5.0-alpine
