@@ -4,8 +4,6 @@ import logging
 import time
 import re
 
-from solc import compile_source, install_solc
-import solc.install
 from ethereum.abi import (
     decode_abi,
     normalize_name as normalize_abi_method_name,
