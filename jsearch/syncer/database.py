@@ -163,8 +163,8 @@ class MainDB(DBWrapper):
 class MainDBSync(DBWrapperSync):
 
     def connect(self):
-        self.engine = sa.create_engine(self.connection_string, poolclass=NullPool)
-        self.conn = self.engine.connect()
+        engine = sa.create_engine(self.connection_string, poolclass=NullPool)
+        self.conn = engine.connect()
 
     def is_block_exist(self, block_number):
         q = """SELECT number from blocks WHERE number=%s"""
@@ -177,35 +177,42 @@ class MainDBSync(DBWrapperSync):
         Insert block and all related items in main database
         """
 
-        with self.engine.begin() as conn:
-            self.insert_block(conn, block_data)
-            self.insert_uncles(conn, uncles_data)
-            self.insert_transactions(conn, transactions_data)
-            self.insert_receipts(conn, receipts_data)
-            self.insert_logs(conn, logs_data)
-            self.insert_accounts(conn, accounts_data)
-            self.insert_internal_transactions(conn, internal_txs_data)
+        with self.conn.begin():
+            self.insert_block(block_data)
+            self.insert_uncles(uncles_data)
+            self.insert_transactions(transactions_data)
+            self.insert_receipts(receipts_data)
+            self.insert_logs(logs_data)
+            self.insert_accounts(accounts_data)
+            self.insert_internal_transactions(internal_txs_data)
 
-    def insert_block(self, conn, block_data):
-        conn.execute(blocks_t.insert(), block_data)
+    def insert_block(self, block_data):
+        if block_data:
+            self.conn.execute(blocks_t.insert(), block_data)
 
-    def insert_uncles(self, conn, uncles_data):
-        conn.execute(uncles_t.insert(), *uncles_data)
+    def insert_uncles(self, uncles_data):
+        if uncles_data:
+            self.conn.execute(uncles_t.insert(), *uncles_data)
 
-    def insert_transactions(self, conn, transactions_data):
-        conn.execute(transactions_t.insert(), *transactions_data)
+    def insert_transactions(self, transactions_data):
+        if transactions_data:
+            self.conn.execute(transactions_t.insert(), *transactions_data)
 
-    def insert_receipts(self, conn, receipts_data):
-        conn.execute(receipts_t.insert(), *receipts_data)
+    def insert_receipts(self, receipts_data):
+        if receipts_data:
+            self.conn.execute(receipts_t.insert(), *receipts_data)
 
-    def insert_logs(self, conn, logs_data):
-        conn.execute(logs_t.insert(), *logs_data)
+    def insert_logs(self, logs_data):
+        if logs_data:
+            self.conn.execute(logs_t.insert(), *logs_data)
 
-    def insert_accounts(self, conn, accounts):
-        conn.execute(accounts_t.insert(), *accounts)
+    def insert_accounts(self, accounts):
+        if accounts:
+            self.conn.execute(accounts_t.insert(), *accounts)
 
-    def insert_internal_transactions(self, conn, internal_transactions):
-        conn.execute(internal_transactions_t.insert(), *internal_transactions)
+    def insert_internal_transactions(self, internal_transactions):
+        if internal_transactions:
+            self.conn.execute(internal_transactions_t.insert(), *internal_transactions)
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
