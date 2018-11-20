@@ -1,17 +1,16 @@
 import asyncio
 from unittest import mock
 
-import pytest
-from sqlalchemy import select, and_
+from sqlalchemy import and_
 
-from jsearch.common import tasks
-from jsearch.common import tables as t
 from jsearch import settings
+from jsearch.common import tables as t
+from jsearch.common import tasks
 
 
 @mock.patch('jsearch.common.tasks.Web3')
 @mock.patch('jsearch.common.tasks.requests')
-def test_update_contract_info(r, W3, db, contracts, main_db_data):
+def test_update_contract_info(r, W3, db, main_db_data):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     address = main_db_data['accounts'][2]['address']
@@ -29,7 +28,7 @@ def test_update_contract_info(r, W3, db, contracts, main_db_data):
 
 
 @mock.patch('jsearch.common.tasks.Web3')
-def test_update_token_holder_balance(W3, db, contracts, main_db_data):
+def test_update_token_holder_balance(W3, db, main_db_data):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     token_address = main_db_data['accounts'][2]['address']

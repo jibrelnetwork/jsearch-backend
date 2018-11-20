@@ -1,12 +1,14 @@
-import os
-import json
-
-from aiohttp import web
-import pytest
 from unittest import mock
-from asynctest import CoroutineMock, patch, MagicMock
 
-from jsearch import settings
+import pytest
+from asynctest import CoroutineMock
+
+from jsearch.tests.entities import TransactionFromDumpWrapper, BlockFromDumpWrapper
+
+pytest_plugins = [
+    'jsearch.tests.plugins.databases.main_db',
+    'jsearch.tests.plugins.databases.dumps',
+]
 
 
 async def test_get_block_404(cli):
@@ -14,38 +16,25 @@ async def test_get_block_404(cli):
     assert resp.status == 404
 
 
-async def test_get_block_by_number(cli, blocks, transactions, main_db_data):
+async def test_get_block_by_number(cli, main_db_data):
+    # given
+    txs = TransactionFromDumpWrapper.from_dump(
+        main_db_data,
+        filters={"block_number": 2},
+        bulk=True
+    )
+    block = BlockFromDumpWrapper.from_dump(
+        dump=main_db_data,
+        filters={'number': 2},
+        transactions=[tx.entity.hash for tx in txs]
+    )
+    # then
     resp = await cli.get('/blocks/2')
     assert resp.status == 200
-    b = main_db_data['blocks'][1]
-    assert await resp.json() == {
-        'difficulty': b['difficulty'],
-        'extraData': b['extra_data'],
-        'gasLimit': b['gas_limit'],
-        'gasUsed': b['gas_used'],
-        'hash': b['hash'],
-        'logsBloom': b['logs_bloom'],
-        'miner': b['miner'],
-        'mixHash': b['mix_hash'],
-        'nonce': b['nonce'],
-        'number': b['number'],
-        'parentHash': b['parent_hash'],
-        'receiptsRoot': b['receipts_root'],
-        'sha3Uncles': b['sha3_uncles'],
-        'size': b['size'],
-        'stateRoot': b['state_root'],
-        'timestamp': b['timestamp'],
-        'totalDifficulty': b['total_difficulty'],
-        'transactions': [main_db_data['transactions'][0]['hash'],
-                         main_db_data['transactions'][1]['hash']],
-        'transactionsRoot': b['transactions_root'],
-        'staticReward': b['static_reward'],
-        'txFees': b['tx_fees'],
-        'uncleInclusionReward': b['uncle_inclusion_reward'],
-        'uncles': None}
+    assert await resp.json() == block.as_dict()
 
 
-async def test_get_block_by_hash(cli, blocks, transactions, main_db_data):
+async def test_get_block_by_hash(cli, main_db_data):
     resp = await cli.get('/blocks/' + main_db_data['blocks'][0]['hash'])
     assert resp.status == 200
     b = main_db_data['blocks'][0]
@@ -72,10 +61,11 @@ async def test_get_block_by_hash(cli, blocks, transactions, main_db_data):
         'staticReward': b['static_reward'],
         'txFees': b['tx_fees'],
         'uncleInclusionReward': b['uncle_inclusion_reward'],
-        'uncles': None}
+        'uncles': None
+    }
 
 
-async def test_get_block_latest(cli, blocks, transactions, main_db_data):
+async def test_get_block_latest(cli, main_db_data):
     resp = await cli.get('/blocks/latest')
     assert resp.status == 200
     b = main_db_data['blocks'][-1]
@@ -102,15 +92,16 @@ async def test_get_block_latest(cli, blocks, transactions, main_db_data):
         'staticReward': b['static_reward'],
         'txFees': b['tx_fees'],
         'uncleInclusionReward': b['uncle_inclusion_reward'],
-        'uncles': None}
+        'uncles': None
+    }
 
 
-async def test_get_account_404(cli, accounts):
+async def test_get_account_404(cli):
     resp = await cli.get('/accounts/x')
     assert resp.status == 404
 
 
-async def test_get_account(cli, accounts, main_db_data):
+async def test_get_account(cli, main_db_data):
     resp = await cli.get('/accounts/' + main_db_data['accounts'][0]['address'])
     assert resp.status == 200
     a = main_db_data['accounts'][-1]
@@ -123,11 +114,11 @@ async def test_get_account(cli, accounts, main_db_data):
                                  'nonce': a['nonce']}
 
 
-async def test_get_account_transactions(cli, blocks, transactions, accounts, main_db_data):
+async def test_get_account_transactions(cli, main_db_data):
     resp = await cli.get('/accounts/' + main_db_data['accounts'][0]['address'] + '/transactions')
     assert resp.status == 200
     txs = main_db_data['transactions']
-    res =  await resp.json()
+    res = await resp.json()
     assert len(res) == 4
     assert res[0]['hash'] == txs[0]['hash']
     assert res[1]['hash'] == txs[1]['hash']
@@ -151,10 +142,10 @@ async def test_get_account_transactions(cli, blocks, transactions, accounts, mai
     }
 
 
-async def test_get_block_transactions(cli, blocks, transactions, main_db_data):
-    resp = await cli.get('/blocks/'+ main_db_data['blocks'][1]['hash'] +'/transactions')
+async def test_get_block_transactions(cli, main_db_data):
+    resp = await cli.get('/blocks/' + main_db_data['blocks'][1]['hash'] + '/transactions')
     assert resp.status == 200
-    res =  await resp.json()
+    res = await resp.json()
     txs = main_db_data['transactions']
     assert len(res) == 2
     assert res[0] == {
@@ -175,7 +166,8 @@ async def test_get_block_transactions(cli, blocks, transactions, main_db_data):
     }
 
 
-async def test_get_block_uncles(cli, blocks, uncles, main_db_data):
+@pytest.mark.usefixtures('uncles')
+async def test_get_block_uncles(cli, main_db_data):
     resp = await cli.get('/blocks/' + main_db_data['blocks'][1]['hash'] + '/uncles')
     assert resp.status == 200
     assert await resp.json() == [{'difficulty': 17578564779,
@@ -200,7 +192,7 @@ async def test_get_block_uncles(cli, blocks, uncles, main_db_data):
                                   'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}]
 
 
-async def test_get_transaction(cli, blocks, transactions, main_db_data):
+async def test_get_transaction(cli, main_db_data):
     tx = main_db_data['transactions'][0]
     resp = await cli.get('/transactions/' + tx['hash'])
     assert resp.status == 200
@@ -222,7 +214,7 @@ async def test_get_transaction(cli, blocks, transactions, main_db_data):
     }
 
 
-async def test_get_receipt(cli, blocks, transactions, receipts, logs, main_db_data):
+async def test_get_receipt(cli, main_db_data):
     r = main_db_data['receipts'][0]
     resp = await cli.get('/receipts/' + r['transaction_hash'])
     assert resp.status == 200
@@ -244,7 +236,7 @@ async def test_get_receipt(cli, blocks, transactions, receipts, logs, main_db_da
              'topics': main_db_data['logs'][0]['topics'],
              'transactionHash': main_db_data['logs'][0]['transaction_hash'],
              'transactionIndex': main_db_data['logs'][0]['transaction_index'],
-            }],
+             }],
         'logsBloom': r['logs_bloom'],
         'root': r['root'],
         'status': r['status'],
@@ -254,7 +246,7 @@ async def test_get_receipt(cli, blocks, transactions, receipts, logs, main_db_da
     }
 
 
-async def test_get_blocks_def(cli, blocks, main_db_data):
+async def test_get_blocks_def(cli, main_db_data):
     b = main_db_data['blocks']
     resp = await cli.get('/blocks')
     assert resp.status == 200
@@ -263,7 +255,7 @@ async def test_get_blocks_def(cli, blocks, main_db_data):
     assert res[1]['hash'] == b[-2]['hash']
 
 
-async def test_get_blocks_ask(cli, blocks, main_db_data):
+async def test_get_blocks_ask(cli, main_db_data):
     resp = await cli.get('/blocks?order=asc')
     b = main_db_data['blocks']
     assert resp.status == 200
@@ -272,7 +264,8 @@ async def test_get_blocks_ask(cli, blocks, main_db_data):
     assert res[1]['hash'] == b[1]['hash']
 
 
-async def test_get_blocks_limit_offset(cli, blocks):
+@pytest.mark.usefixtures('main_db_data')
+async def test_get_blocks_limit_offset(cli):
     resp = await cli.get('/blocks?limit=1')
     assert resp.status == 200
     result = await resp.json()
@@ -283,10 +276,11 @@ async def test_get_blocks_limit_offset(cli, blocks):
     assert resp.status == 200
     result = await resp.json()
     assert len(result) == 1
-    assert result[0]['number'] == 4 
+    assert result[0]['number'] == 4
 
 
-async def test_get_uncles(cli, blocks, uncles, main_db_data):
+@pytest.mark.usefixtures('uncles')
+async def test_get_uncles(cli, main_db_data):
     resp = await cli.get('/uncles')
     assert resp.status == 200
     assert await resp.json() == [
@@ -333,7 +327,8 @@ async def test_get_uncles(cli, blocks, uncles, main_db_data):
     ]
 
 
-async def test_get_uncles_asc(cli, blocks, uncles):
+@pytest.mark.usefixtures('uncles')
+async def test_get_uncles_asc(cli):
     resp = await cli.get('/uncles?order=asc')
     assert resp.status == 200
     uncles = await resp.json()
@@ -341,7 +336,8 @@ async def test_get_uncles_asc(cli, blocks, uncles):
     assert uncles[1]['number'] == 62
 
 
-async def test_get_uncles_offset_limit(cli, blocks, uncles):
+@pytest.mark.usefixtures('uncles')
+async def test_get_uncles_offset_limit(cli):
     resp = await cli.get('/uncles?offset=1&limit=1')
     assert resp.status == 200
     uncles = await resp.json()
@@ -349,14 +345,16 @@ async def test_get_uncles_offset_limit(cli, blocks, uncles):
     assert uncles[0]['number'] == 61
 
 
-async def test_get_uncle_404(cli, uncles):
+@pytest.mark.usefixtures('uncles')
+async def test_get_uncle_404(cli):
     resp = await cli.get('/uncles/111')
     assert resp.status == 404
     resp = await cli.get('/uncles/0x6a')
     assert resp.status == 404
 
 
-async def test_get_uncle_by_hash(cli, blocks, uncles, main_db_data):
+@pytest.mark.usefixtures('uncles')
+async def test_get_uncle_by_hash(cli, main_db_data):
     resp = await cli.get('/uncles/0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff')
     assert resp.status == 200
     assert await resp.json() == {
@@ -383,7 +381,8 @@ async def test_get_uncle_by_hash(cli, blocks, uncles, main_db_data):
     }
 
 
-async def test_get_uncle_by_number(cli, blocks, uncles, main_db_data):
+@pytest.mark.usefixtures('uncles')
+async def test_get_uncle_by_number(cli, main_db_data):
     resp = await cli.get('/uncles/62')
     assert resp.status == 200
     assert await resp.json() == {
@@ -418,19 +417,22 @@ class AsyncContextManagerMock(mock.Mock):
         pass
 
 
-async def test_verify_contract_ok(db, cli, transactions, receipts, main_db_data, here):
+async def test_verify_contract_ok(db, cli, main_db_data, here, fuck_token):
     contract_data = {
         'address': main_db_data['accounts'][2]['address'],
         'contract_name': 'FucksToken',
         'compiler': 'v0.4.18+commit.9cf6e910',
         'optimization_enabled': True,
         'constructor_args': None,
-        'source_code': here.join('FucksToken.sol').read()
+        'source_code': fuck_token.sources
     }
 
     with mock.patch('jsearch.api.handlers.aiohttp.request', new=AsyncContextManagerMock()) as m:
         m.return_value.aenter.json = CoroutineMock(side_effect=[
-            {'bin': here.join('FucksToken.bin').read(), 'abi': json.loads(here.join('FucksToken.abi').read())},
+            {
+                'bin': fuck_token.bin,
+                'abi': fuck_token.abi_as_dict(),
+            },
             {}
         ])
 
@@ -439,19 +441,27 @@ async def test_verify_contract_ok(db, cli, transactions, receipts, main_db_data,
     assert await resp.json() == {'verification_passed': True}
 
     # assert m.has_call()
-    m.assert_called_with('POST', mock.ANY, json={'abi': json.loads(here.join('FucksToken.abi').read()),
-         'address': contract_data['address'],
-         'compiler': 'v0.4.18+commit.9cf6e910',
-         'constructor_args': '',
-         'contract_creation_code': mock.ANY,
-         'contract_name': 'FucksToken',
-         'is_erc20_token': True,
-         'mhash': '4c3e25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f55155',
-         'optimization_enabled': True,
-         'source_code': contract_data['source_code']})
+    m.assert_called_with(
+        'POST',
+        mock.ANY,
+        json={
+            'abi': fuck_token.abi_as_dict(),
+            'address': contract_data['address'],
+            'compiler': 'v0.4.18+commit.9cf6e910',
+            'constructor_args': '',
+            'contract_creation_code': mock.ANY,
+            'contract_name': 'FucksToken',
+            'is_erc20_token': True,
+            'mhash': '4c3e25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f55155',
+            'optimization_enabled': True,
+            'source_code': contract_data['source_code']
+        }
+    )
 
 
-async def test_get_verified_contracts_list_ok(cli, contracts):
+async def test_get_verified_contracts_list_ok(cli, main_db_data):
+    contracts = main_db_data['contracts']
+
     resp = await cli.get('/verified_contracts')
     assert resp.status == 200
     res = await resp.json()
@@ -470,7 +480,9 @@ async def test_get_verified_contracts_list_ok(cli, contracts):
     }]
 
 
-async def test_get_verified_contract_ok(cli, contracts, main_db_data):
+async def test_get_verified_contract_ok(cli, main_db_data):
+    contracts = main_db_data['contracts']
+
     resp = await cli.get('/verified_contracts/' + main_db_data['accounts'][2]['address'])
     assert resp.status == 200
     res = await resp.json()
@@ -488,7 +500,8 @@ async def test_get_verified_contract_ok(cli, contracts, main_db_data):
     }
 
 
-async def test_get_tokens_list_ok(cli, contracts):
+async def test_get_tokens_list_ok(cli, main_db_data):
+    contracts = main_db_data['contracts']
     resp = await cli.get('/tokens')
     assert resp.status == 200
     res = await resp.json()
@@ -501,7 +514,9 @@ async def test_get_tokens_list_ok(cli, contracts):
     }]
 
 
-async def test_get_token_ok(cli, contracts, main_db_data):
+async def test_get_token_ok(cli, main_db_data):
+    contracts = main_db_data['contracts']
+
     resp = await cli.get('/tokens/' + main_db_data['accounts'][2]['address'])
     assert resp.status == 200
     res = await resp.json()
@@ -514,8 +529,8 @@ async def test_get_token_ok(cli, contracts, main_db_data):
     }
 
 
-async def test_get_token_transfers_ok(cli, transactions, contracts, main_db_data):
-    resp = await cli.get('/tokens/'+ main_db_data['accounts'][2]['address'] +'/transfers')
+async def test_get_token_transfers_ok(cli, main_db_data):
+    resp = await cli.get('/tokens/' + main_db_data['accounts'][2]['address'] + '/transfers')
     assert resp.status == 200
     res = await resp.json()
     assert res == [{
@@ -525,29 +540,14 @@ async def test_get_token_transfers_ok(cli, transactions, contracts, main_db_data
         'to': main_db_data['accounts'][1]['address'],
         'amount': 10},
         {'blockHash': main_db_data['blocks'][4]['hash'],
-        'transaction': main_db_data['transactions'][4]['hash'],
-        'from': main_db_data['accounts'][1]['address'],
-        'to': main_db_data['accounts'][0]['address'],
-        'amount': 4}]
+         'transaction': main_db_data['transactions'][4]['hash'],
+         'from': main_db_data['accounts'][1]['address'],
+         'to': main_db_data['accounts'][0]['address'],
+         'amount': 4}]
 
-async def test_get_account_token_transfers_ok_one(cli, transactions, contracts, main_db_data):
-    resp = await cli.get('/accounts/'+ main_db_data['accounts'][0]['address'] +'/token_transfers')
-    assert resp.status == 200
-    res = await resp.json()
-    assert res == [{
-                    'blockHash': main_db_data['blocks'][2]['hash'],
-                    'transaction': main_db_data['transactions'][2]['hash'],
-                    'from': main_db_data['accounts'][0]['address'],
-                    'to': main_db_data['accounts'][1]['address'],
-                    'amount': 10},
-                    {'blockHash': main_db_data['blocks'][4]['hash'],
-                    'transaction': main_db_data['transactions'][4]['hash'],
-                    'from': main_db_data['accounts'][1]['address'],
-                    'to': main_db_data['accounts'][0]['address'],
-                    'amount': 4}]
 
-async def test_get_account_token_transfers_ok_two(cli, transactions, contracts, main_db_data):
-    resp = await cli.get('/accounts/'+ main_db_data['accounts'][3]['address'] +'/token_transfers')
+async def test_get_account_token_transfers_ok_one(cli, main_db_data):
+    resp = await cli.get('/accounts/' + main_db_data['accounts'][0]['address'] + '/token_transfers')
     assert resp.status == 200
     res = await resp.json()
     assert res == [{
@@ -557,7 +557,24 @@ async def test_get_account_token_transfers_ok_two(cli, transactions, contracts, 
         'to': main_db_data['accounts'][1]['address'],
         'amount': 10},
         {'blockHash': main_db_data['blocks'][4]['hash'],
-        'transaction': main_db_data['transactions'][4]['hash'],
-        'from': main_db_data['accounts'][1]['address'],
-        'to': main_db_data['accounts'][0]['address'],
-        'amount': 4}]
+         'transaction': main_db_data['transactions'][4]['hash'],
+         'from': main_db_data['accounts'][1]['address'],
+         'to': main_db_data['accounts'][0]['address'],
+         'amount': 4}]
+
+
+async def test_get_account_token_transfers_ok_two(cli, main_db_data):
+    resp = await cli.get('/accounts/' + main_db_data['accounts'][3]['address'] + '/token_transfers')
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == [{
+        'blockHash': main_db_data['blocks'][2]['hash'],
+        'transaction': main_db_data['transactions'][2]['hash'],
+        'from': main_db_data['accounts'][0]['address'],
+        'to': main_db_data['accounts'][1]['address'],
+        'amount': 10},
+        {'blockHash': main_db_data['blocks'][4]['hash'],
+         'transaction': main_db_data['transactions'][4]['hash'],
+         'from': main_db_data['accounts'][1]['address'],
+         'to': main_db_data['accounts'][0]['address'],
+         'amount': 4}]

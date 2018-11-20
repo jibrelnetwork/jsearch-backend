@@ -71,3 +71,6 @@ target/
 # IDE
 .idea
 .vscode
+
+# Application artifacts
+.ethash
