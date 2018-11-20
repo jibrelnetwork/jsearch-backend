@@ -1,0 +1,68 @@
+import logging
+import time
+
+import pytest
+from requests.exceptions import ConnectionError
+from web3 import Web3
+
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger(__name__)
+
+pytest_plugins = (
+    "jsearch.tests.plugins.geth.node",
+    "jsearch.tests.plugins.databases.raw_db"
+)
+
+
+class Web3ClientWrapper:
+    url: str = "http://localhost:8575"
+
+    miner_threads: int = 1
+    wait_interval: int = 0.1  # seconds
+
+    def __init__(self, url):
+        self.client: Web3 = Web3(Web3.HTTPProvider(url))
+
+    @property
+    def last_block_number(self):
+        return self.client.eth.getBlock('latest')['number']
+
+    def start_miner(self):
+        self.client.miner.start(self.miner_threads)
+
+    def stop_miner(self):
+        self.client.miner.stop()
+
+    def mine_block(self):
+        block_on_start = self.last_block_number
+
+        logging.info('Start mining...')
+        logging.info('Last block number: %s', block_on_start)
+
+        self.start_miner()
+        start_time = time.time()
+        try:
+            while block_on_start == self.last_block_number:
+                time.sleep(self.wait_interval)
+                logging.info('Still mining... %0.2fs seconds', time.time() - start_time)
+        except Exception as e:
+            print(e)
+
+        logging.info('stop mining')
+        self.stop_miner()
+
+    def wait_node(self, attempts=5, waiting_interval=2):
+        for i in range(0, attempts):
+            try:
+                logging.info('Last block is %s', self.last_block_number)
+            except ConnectionError:
+                logging.info("Still waiting node...")
+                time.sleep(waiting_interval)
+
+
+@pytest.fixture(scope="session")
+def w3(geth_rpc: str):
+    client = Web3ClientWrapper(url=geth_rpc)
+    client.wait_node()
+
+    return client
