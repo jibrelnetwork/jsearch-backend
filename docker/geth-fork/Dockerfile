@@ -1,7 +1,7 @@
 FROM ubuntu:xenial
 
 ENV PATH=/usr/lib/go-1.9/bin:$PATH
-ENV JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw" \
+ENV JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw"
 
 RUN apt-get update && \
   apt-get upgrade -q -y && \
