@@ -10,8 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def run():
-    p = configargparse.ArgParser(description='jSearch DBs sync service.',
-                                 default_config_files=['/etc/jsearch-syncer.conf'])
+    p = configargparse.ArgParser(description='jSearch DBs sync service.')
     p.add('--log-level', help='log level', default=os.getenv('LOG_LEVEL', 'INFO'))
     p.add('--sync-range', help='blocks range to sync', default=None)
 
