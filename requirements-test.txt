@@ -6,3 +6,4 @@ asynctest==0.12.2
 mypy==0.641
 flake8==3.6.0
 ptpython==2.0.3
+pytest-mock==1.10.0

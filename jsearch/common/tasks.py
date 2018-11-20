@@ -1,19 +1,16 @@
-import os
 import logging
 
-from web3 import Web3
 import requests
+from web3 import Web3
 
+from jsearch import settings
 from jsearch.common.celery import app
 from jsearch.common.contracts import ERC20_ABI
-from jsearch import settings
-
 
 logger = logging.getLogger(__name__)
 
 
 def update_token_info(address, abi=None):
-    from jsearch.common.database import get_main_db
     abi = abi or ERC20_ABI
     w3 = Web3(Web3.HTTPProvider(settings.ETH_NODE_URL))
     checksum_address = Web3.toChecksumAddress(address)
@@ -57,33 +54,49 @@ def update_token_info(address, abi=None):
 #         db.call_sync(db.disconnect())
 
 
-
 @app.task
-def update_token_holder_balance_task(token_address, account_address, block_number):
+def update_token_holder_balance_task(token_address, account_address, block_number=None):
     from jsearch.common.database import get_main_db
-    logger.info('Updating Token balance for token %s account %s block %s', token_address, account_address, block_number)
+    logger.info(
+        'Updating Token balance for token %s account %s block %s',
+        token_address,
+        account_address,
+        block_number
+    )
+
     w3 = Web3(Web3.HTTPProvider(settings.ETH_NODE_URL))
+
     checksum_token_address = Web3.toChecksumAddress(token_address)
     checksum_account_address = Web3.toChecksumAddress(account_address)
+
     c = w3.eth.contract(checksum_token_address, abi=ERC20_ABI)
     # balance = c.functions.balanceOf(checksum_account_address).call(block_identifier=block_number)
+
     balance = c.functions.balanceOf(checksum_account_address).call()
     # decimals = c.functions.decimals().call(block_identifier=block_number)
+
     decimals = c.functions.decimals().call()
     balance = balance / 10 ** decimals
     db = get_main_db()
     db.update_token_holder_balance(token_address, account_address, balance)
-    logger.info('Token balance updated for token %s account %s block %s value %s', token_address, account_address, block_number, balance)
+
+    logger.info(
+        'Token balance updated for token %s account %s block %s value %s',
+        token_address, account_address, block_number, balance
+    )
 
 
 @app.task
 def on_new_contracts_added_task(address, abi):
-    from jsearch.common.database import get_main_db
+    from jsearch.common.processing.tokens import process_token_transfers
+    from jsearch.common.database import MainDBSync
+    from jsearch import settings
     logger.info('Starting process transactions for contract at %s', address)
     update_token_info(address, abi)
-    db = get_main_db()
+
     tx_count = 0
-    for tx in db.get_contract_transactions(address):
-        db.process_token_transfers(tx['hash'])
-        tx_count += 1
+    with MainDBSync(connection_string=settings.JSEARCH_MAIN_DB) as db:
+        for tx in db.get_contract_transactions(address):
+            process_token_transfers(db, tx['hash'])
+            tx_count += 1
     logger.info('%s transactions found for %s', tx_count, address)
