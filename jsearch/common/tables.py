@@ -1,7 +1,6 @@
 import sqlalchemy as sa
 import sqlalchemy.types as types
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import CheckConstraint
 
@@ -140,6 +139,13 @@ class Log(Base):
     transaction_index = sa.Column('transaction_index', HexInteger)
     event_type = sa.Column('event_type', sa.String)
     event_args = sa.Column('event_args', postgresql.JSONB)
+
+    token_amount = sa.Column('token_amount', postgresql.NUMERIC())
+    token_transfer_from = sa.Column('token_transfer_from', sa.String, index=True)
+    token_transfer_to = sa.Column('token_transfer_to', sa.String, index=True)
+
+    is_token_transfer = sa.Column('is_token_transfer', sa.Boolean, default=False)
+    is_processed = sa.Column('is_processed', sa.Boolean, default=False)
 
 
 class Account(Base):
