@@ -104,13 +104,14 @@ class Manager:
                     logger.exception('Error on newblock listener')
 
 
-def sync_block(block_number):
+def sync_block(block_number, main_db_connection_string=None, raw_db_connection_string=None):
     logger.debug("Syncing Block #%s", block_number)
-    main_db = MainDBSync(settings.JSEARCH_MAIN_DB)
-    raw_db = RawDBSync(settings.JSEARCH_RAW_DB)
+    main_db = MainDBSync(main_db_connection_string or settings.JSEARCH_MAIN_DB)
+    raw_db = RawDBSync(raw_db_connection_string or settings.JSEARCH_RAW_DB)
     main_db.connect()
     raw_db.connect()
     start_time = time.monotonic()
+
     is_block_exist = main_db.is_block_exist(block_number)
     if is_block_exist is True:
         logger.debug("Block #%s exist", block_number)

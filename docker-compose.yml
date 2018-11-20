@@ -64,12 +64,20 @@ services:
 
   tests:
     depends_on:
-    - main_db
     - test_db
+    - test_raw_db
     - redis
     build:
       context: .
       dockerfile: ./docker/tests/Dockerfile
+    tmpfs:
+    - /tmp
+    - /home/app/.ethash
+    volumes:
+    - ./:/app:delegated
+    networks:
+    - default
+    - jsearch-contracts_default
     image: jsearch/tests
     container_name: jsearch_tests
     environment:
@@ -89,8 +97,6 @@ services:
     - POSTGRES_USER=postgres
     - POSTGRES_PASSWORD=postgres
     - POSTGRES_DB=jsearch_raw
-    ports:
-    - 8081:8081
 
   main_db:
     #    image: postgres:11.0-alpine
@@ -102,8 +108,6 @@ services:
     - POSTGRES_USER=postgres
     - POSTGRES_PASSWORD=postgres
     - POSTGRES_DB=jsearch_main
-    ports:
-    - 8082:8082
 
   test_db:
     image: postgres:9.6-alpine
@@ -113,8 +117,14 @@ services:
     - POSTGRES_USER=postgres
     - POSTGRES_PASSWORD=postgres
     - POSTGRES_DB=jsearch_main_test
-    ports:
-    - 8083:8083
+
+  test_raw_db:
+    image: postgres:9.6-alpine
+    container_name: jsearch_test_raw_db
+    environment:
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=postgres
+    - POSTGRES_DB=jsearch_raw
 
   redis:
     image: redis:5.0-alpine

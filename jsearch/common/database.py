@@ -322,6 +322,9 @@ class MainDBSync(DBWrapperSync):
 
     def insert_accounts(self, conn, block_number, block_hash, accounts):
         items = []
+        if not accounts:
+            return
+
         for account in accounts:
             data = dict_keys_case_convert(account['fields'])
             data['storage'] = None  # FIXME!!!

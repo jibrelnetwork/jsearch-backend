@@ -244,3 +244,15 @@ accounts_t = Account.__table__
 contracts_t = Contract.__table__
 token_holders_t = TokenHolder.__table__
 internal_transactions_t = InternalTransaction.__table__
+
+TABLES = (
+    blocks_t,
+    uncles_t,
+    transactions_t,
+    receipts_t,
+    logs_t,
+    accounts_t,
+    contracts_t,
+    token_holders_t,
+    internal_transactions_t
+)
