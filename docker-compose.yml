@@ -5,7 +5,6 @@ services:
     depends_on:
     - raw_db
     - main_db
-    - celery_broker
     - celery_worker
     build:
       context: .
@@ -22,6 +21,7 @@ services:
     depends_on:
     - raw_db
     - main_db
+    - celery_worker
     build:
       context: .
       dockerfile: Dockerfile
@@ -33,19 +33,6 @@ services:
     env_file:
     - config/dev.env
     container_name: jsearch_syncer
-
-  celery_broker:
-    depends_on:
-    - redis
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: jsearch/api
-    container_name: jsearch_celery_broker
-    restart: always
-    env_file:
-    - config/dev.env
-    command: celerybeat
 
   celery_worker:
     depends_on:
@@ -74,7 +61,7 @@ services:
     - /tmp
     - /home/app/.ethash
     volumes:
-    - ./:/app:delegated
+    - ./:/app
     networks:
     - default
     - jsearch-contracts_default
