@@ -382,8 +382,11 @@ class MainDBSync(DBWrapperSync):
 
     @staticmethod
     @as_dicts
-    def get_logs_for_post_processing(conn, limit=500):
-        query = select([logs_t]).where(logs_t.c.is_processed == false()).limit(limit)
+    def get_logs_for_post_processing(conn, limit=1000):
+        query = select([logs_t])\
+            .where(logs_t.c.is_processed == false())\
+            .order_by(logs_t.c.block_number) \
+            .limit(limit)
         return conn.execute(query).fetchall()
 
     def get_contract_transactions(self, address):
@@ -417,7 +420,6 @@ def dict_keys_case_convert(d):
 
 def get_main_db():
     db = MainDBSync(settings.JSEARCH_MAIN_DB)
-    db.connect()
     return db
 
 

@@ -18,7 +18,7 @@ def post_processing(log_level):
     try:
         service.run()
     except Exception as e:
-        logging.error(e)
+        logging.exception(e)
     finally:
         service.stop()
 

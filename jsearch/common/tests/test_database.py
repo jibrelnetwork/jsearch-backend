@@ -12,12 +12,12 @@ pytest_plugins = [
 def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocker):
     # given
     mocker.patch('time.sleep')
-    mocker.patch('jsearch.common.tasks.update_token_holder_balance_task')
-    mocker.patch('jsearch.common.integrations.contracts.get_contract', return_value=main_db_data['contracts'][0])
+    mocker.patch('jsearch.common.processing.logs.get_contract', return_value=main_db_data['contracts'][0])
+    get_balance_mock = mocker.patch('jsearch.common.processing.operations.get_balance', return_value=999)
+    update_balance_mock = mocker.patch('jsearch.common.database.MainDBSync.update_token_holder_balance')
 
     from jsearch.common import tables as t
     from jsearch.post_processing.service import post_processing
-    from jsearch.common.tasks import update_token_holder_balance_task
 
     tx_hash = main_db_data['transactions'][2]['hash']
     token_address = main_db_data['accounts'][2]['address']
@@ -44,9 +44,14 @@ def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocke
     holders = db.execute(holders_q).fetchall()
     assert len(holders) == 0
 
-    update_token_holder_balance_task.delay.assert_has_calls([
-        mock.call(token_address, main_db_data['accounts'][1]['address'], None),
-        mock.call(token_address, main_db_data['accounts'][0]['address'], None),
+    get_balance_mock.assert_has_calls([
+        mock.call(token_address, main_db_data['accounts'][1]['address']),
+        mock.call(token_address, main_db_data['accounts'][0]['address']),
+    ], any_order=True)
+
+    update_balance_mock.assert_has_calls([
+        mock.call(token_address, main_db_data['accounts'][1]['address'], 999),
+        mock.call(token_address, main_db_data['accounts'][0]['address'], 999),
     ], any_order=True)
 
 
@@ -54,12 +59,12 @@ def test_process_token_transfers_constructor(db, db_connection_string, main_db_d
     # given
     mocker.patch('time.sleep')
     mocker.patch('jsearch.common.tasks.update_token_holder_balance_task')
-    mocker.patch('jsearch.common.integrations.contracts.get_contract', return_value=main_db_data['contracts'][0])
+    mocker.patch('jsearch.common.processing.logs.get_contract', return_value=main_db_data['contracts'][0])
 
     from jsearch.common import tables as t
     from jsearch.common.contracts import NULL_ADDRESS
     from jsearch.common.database import MainDBSync
-    from jsearch.common.processing.tokens import process_token_transfers
+    from jsearch.common.processing.transactions import process_token_transfers_for_transaction
 
     tx_hash = main_db_data['transactions'][0]['hash']
     token_address = main_db_data['accounts'][2]['address']
@@ -67,7 +72,7 @@ def test_process_token_transfers_constructor(db, db_connection_string, main_db_d
 
     # when run system under tests
     with MainDBSync(connection_string=db_connection_string) as db_wrapper:
-        process_token_transfers(db_wrapper, tx_hash=tx_hash)
+        process_token_transfers_for_transaction(db_wrapper, tx_hash=tx_hash)
 
     # then check results
     q = select([t.logs_t]).where(t.logs_t.c.transaction_hash == tx_hash)
