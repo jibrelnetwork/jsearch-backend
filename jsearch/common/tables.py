@@ -129,7 +129,7 @@ class Log(Base):
     __tablename__ = 'logs'
 
     transaction_hash = sa.Column('transaction_hash', sa.String, primary_key=True)
-    block_number = sa.Column('block_number', HexInteger)
+    block_number = sa.Column('block_number', HexInteger, index=True)
     block_hash = sa.Column('block_hash', sa.String)
     log_index = sa.Column('log_index', HexInteger, primary_key=True)
     address = sa.Column('address', sa.String)
@@ -145,7 +145,7 @@ class Log(Base):
     token_transfer_to = sa.Column('token_transfer_to', sa.String, index=True)
 
     is_token_transfer = sa.Column('is_token_transfer', sa.Boolean, default=False)
-    is_processed = sa.Column('is_processed', sa.Boolean, default=False)
+    is_processed = sa.Column('is_processed', sa.Boolean, index=True, default=False)
 
 
 class Account(Base):
