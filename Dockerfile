@@ -21,10 +21,6 @@ WORKDIR /app
 COPY --chown=app:app requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --chown=app:app py-solc /app/py-solc
-RUN cd py-solc \
- && pip install --no-cache-dir .
-
 COPY --chown=app:app . /app
 RUN pip install --no-cache-dir .
 

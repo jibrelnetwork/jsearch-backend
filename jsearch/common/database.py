@@ -185,133 +185,6 @@ class MainDBSync(DBWrapperSync):
     def disconnect(self):
         self.conn.close()
 
-    def is_block_exist(self, block_number):
-        q = """SELECT number from blocks WHERE number=%s"""
-        row = self.conn.execute(q, [block_number]).fetchone()
-        return row['number'] == block_number if row else False
-
-    def write_block(self, header, uncles, transactions, receipts,
-                    accounts, reward, internal_transactions):
-        """
-        Write block and all related items in main database
-        """
-        logger.debug('H: %s', header)
-        logger.debug('U: %s', uncles)
-        logger.debug('A: %s', accounts)
-        logger.debug('T: %s', transactions)
-        logger.debug('R: %s', receipts)
-        logger.debug('RW: %s', reward)
-        logger.debug('IT: %s', internal_transactions)
-
-        block_number = header['block_number']
-        block_hash = header['block_hash']
-
-        if block_number == 0:
-            block_reward = {'static_reward': 0, 'uncle_inclusion_reward': 0, 'tx_fees': 0}
-            uncles_rewards = []
-        else:
-            reward_data = reward['fields']
-            block_reward = {
-                'static_reward': reward_data['BlockReward'],
-                'uncle_inclusion_reward': reward_data['UncleInclusionReward'],
-                'tx_fees': reward_data['TxsReward']
-            }
-            uncles_rewards = reward_data['Uncles']
-
-        with self.engine.begin() as conn:
-            self.insert_header(conn, header, block_reward)
-            self.insert_uncles(conn, block_number, block_hash, uncles, uncles_rewards)
-            self.insert_transactions_and_receipts(conn, block_number, block_hash, receipts, transactions)
-            self.insert_accounts(conn, block_number, block_hash, accounts)
-            self.insert_internal_transactions(conn, block_number, block_hash, internal_transactions)
-
-    def insert_header(self, conn, header, reward):
-        data = dict_keys_case_convert(header['fields'])
-        data.update(reward)
-        q = make_insert_query('blocks', data.keys())
-        hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
-        conn.execute(q, data)
-
-    def insert_uncles(self, conn, block_number, block_hash, uncles, reward):
-        if not uncles:
-            return
-        items = []
-        for i, uncle in enumerate(uncles):
-            rwd = reward[i]
-            data = dict_keys_case_convert(uncle)
-            assert rwd['UnclePosition'] == i
-            data['reward'] = rwd['UncleReward']
-            data['block_hash'] = block_hash
-            data['block_number'] = block_number
-            hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
-            items.append(data)
-        q, t = make_insert_query_batch('uncles', items[0].keys())
-        conn.execute(uncles_t.insert(), *items)
-
-    def insert_transactions_and_receipts(self, conn, block_number, block_hash, receipts, transactions):
-        if not transactions:
-            return
-        rdata = receipts['fields']['Receipts'] or []
-        tx_items = []
-        recpt_items = []
-        logs_items = []
-        for i, receipt in enumerate(rdata):
-            recpt_data = dict_keys_case_convert(receipt)
-            tx = transactions[i]
-            assert tx['hash'] == recpt_data['transaction_hash']
-            recpt_data['transaction_hash'] = tx['hash']
-            recpt_data['transaction_index'] = i
-            if tx['to'] is None:
-                tx['to'] == contracts.NULL_ADDRESS
-            recpt_data['to'] = tx['to']
-            recpt_data['from'] = tx['from']
-            logs = recpt_data.pop('logs') or []
-            recpt_data['block_hash'] = block_hash
-            recpt_data['block_number'] = block_number
-            hex_vals_to_int(recpt_data, ['cumulative_gas_used', 'gas_used', 'status'])
-            recpt_items.append(recpt_data)
-
-            tx_data = dict_keys_case_convert(tx)
-            tx_data['is_token_transfer'] = False
-            tx_data['contract_call_description'] = None
-            tx_data['token_amount'] = None
-            tx_data['token_transfer_from'] = None
-            tx_data['token_transfer_to'] = None
-            tx_data['transaction_index'] = i
-            tx_data['block_hash'] = block_hash
-            tx_data['block_number'] = block_number
-            if tx['to'] == contracts.NULL_ADDRESS:
-                contract_address = recpt_data['contract_address']
-            else:
-                contract_address = tx['to']
-            contract = self.get_contract(contract_address)
-            logs = self.process_logs(contract, logs)
-            logs_items.extend(logs)
-            tx_data = self.process_transaction(contract, tx_data, logs)
-
-            tx_items.append(tx_data)
-
-        q, t = make_insert_query_batch('receipts', recpt_items[0].keys())
-        conn.execute(receipts_t.insert(), *recpt_items)
-
-        tx_keys = tx_items[0].keys()
-        q, t = make_insert_query_batch('transactions', tx_keys)
-        conn.execute(transactions_t.insert(), *tx_items)
-
-        self.insert_logs(conn, block_number, block_hash, logs_items)
-
-    def insert_logs(self, conn, block_number, block_hash, logs):
-        items = []
-        if not logs:
-            return
-        for log_record in logs:
-            data = dict_keys_case_convert(log_record)
-            hex_vals_to_int(data, ['log_index', 'transaction_index', 'block_number'])
-            data['event_args'] = data['event_args']
-            items.append(data)
-        q, t = make_insert_query_batch('logs', items[0].keys())
-        conn.execute(logs_t.insert(), *items)
-
     def update_logs(self, conn, logs):
         for rec in logs:
             query = logs_t.update().\
@@ -319,35 +192,6 @@ class MainDBSync(DBWrapperSync):
                            logs_t.c.log_index == rec['log_index'])).\
                 values(**rec)
             conn.execute(query)
-
-    def insert_accounts(self, conn, block_number, block_hash, accounts):
-        items = []
-        if not accounts:
-            return
-
-        for account in accounts:
-            data = dict_keys_case_convert(account['fields'])
-            data['storage'] = None  # FIXME!!!
-            data['address'] = account['address'].lower()
-            data['block_number'] = block_number
-            data['block_hash'] = block_hash
-            items.append(data)
-        q, t = make_insert_query_batch('accounts', items[0].keys())
-        conn.execute(accounts_t.insert(), *items)
-
-    def insert_internal_transactions(self, conn, block_number, block_hash, internal_transactions):
-        items = []
-        if not internal_transactions:
-            return
-        for i, tx in enumerate(internal_transactions, 1):
-            data = dict_keys_case_convert(tx['fields'])
-            data['timestamp'] = data.pop('time_stamp')
-            data['transaction_index'] = i
-            del data['operation']
-            data['op'] = tx['type']
-            items.append(data)
-        q, t = make_insert_query_batch('internal_transactions', items[0].keys())
-        conn.execute(internal_transactions_t.insert(), *items)
 
     def process_logs(self, contract, logs):
         contracts_cache = {}
@@ -379,7 +223,7 @@ class MainDBSync(DBWrapperSync):
                     # TODO: maybe move this to process_transaction?
                     args_list = []
                     # some contracts (for example 0xaae81c0194d6459f320b70ca0cedf88e11a242ce) may have
-                    # several Transfer events with different signatures, so we try to find ERS20 copilent event (with 3 args) 
+                    # several Transfer events with different signatures, so we try to find ERS20 copilent event (with 3 args)
                     event_inputs = [i['inputs'] for i in abi
                                     if i.get('name') == event_type and
                                     i['type'] == 'event' and len(i['inputs']) == 3][0]
@@ -419,7 +263,6 @@ class MainDBSync(DBWrapperSync):
             pass
         return tx_data
 
-    # @alru_cache(maxsize=1024)
     def get_contract(self, address):
         resp = requests.get(settings.JSEARCH_CONTRACTS_API + '/v1/contracts/{}'.format(address))
         if resp.status_code == 200:
@@ -500,20 +343,6 @@ def get_engine():
     db = sa.create_engine(settings.JSEARCH_MAIN_DB)
     db.connect()
     return db
-
-
-def make_insert_query(table_name, fields):
-    q = """INSERT INTO {table} ({fields}) VALUES ({values})"""
-    f = ','.join(['"{}"'.format(k) for k in fields])
-    v = ','.join(['%({})s'.format(k) for k in fields])
-    return q.format(table=table_name, fields=f, values=v)
-
-
-def make_insert_query_batch(table_name, fields):
-    q = """INSERT INTO {table} ({fields}) VALUES %s"""
-    f = ','.join(['"{}"'.format(k) for k in fields])
-    v = ','.join(['%({})s'.format(k) for k in fields])
-    return q.format(table=table_name, fields=f), '({})'.format(v)
 
 
 def hex_vals_to_int(d, keys):

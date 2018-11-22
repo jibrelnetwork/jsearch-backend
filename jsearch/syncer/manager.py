@@ -5,6 +5,7 @@ import time
 
 from jsearch import settings
 from jsearch.common.database import DatabaseError
+from jsearch.syncer.processor import SyncProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -46,19 +47,10 @@ class Manager:
         while self._running is True:
             try:
                 start_time = time.monotonic()
-                synced_blocks_cnt = 0
                 blocks_to_sync = await self.get_blocks_to_sync()
                 if len(blocks_to_sync) == 0:
                     await asyncio.sleep(self.sleep_on_no_blocks)
                     continue
-
-                # for block in blocks_to_sync:
-                #     is_sync_ok = await self.sync_block(block["block_number"])
-                #     if is_sync_ok is False:
-                #         break  # FIXME!
-                #         logger.debug("Block #%s sync failed", block["block_number"])
-                #     else:
-                #         synced_blocks_cnt += 1
 
                 coros = [loop.run_in_executor(self.executor, sync_block, b[0]) for b in blocks_to_sync]
                 results = await asyncio.gather(*coros)
@@ -104,41 +96,6 @@ class Manager:
                     logger.exception('Error on newblock listener')
 
 
-from jsearch.common.database import MainDBSync, RawDBSync
-
-
-def sync_block(block_number, main_db_connection_string=None, raw_db_connection_string=None):
-    logger.debug("Syncing Block #%s", block_number)
-    main_db = MainDBSync(main_db_connection_string or settings.JSEARCH_MAIN_DB)
-    raw_db = RawDBSync(raw_db_connection_string or settings.JSEARCH_RAW_DB)
-    main_db.connect()
-    raw_db.connect()
-    start_time = time.monotonic()
-
-    is_block_exist = main_db.is_block_exist(block_number)
-    if is_block_exist is True:
-        logger.debug("Block #%s exist", block_number)
-        return False
-    receipts = raw_db.get_block_receipts(block_number)
-    if receipts is None:
-        logger.debug("Block #%s not ready: no receipts", block_number)
-        return False
-
-    header = raw_db.get_header_by_hash(block_number)
-    accounts = raw_db.get_block_accounts(block_number)
-    body = raw_db.get_block_body(block_number)
-    reward = raw_db.get_reward(block_number)
-    internal_transactions = raw_db.get_internal_transactions(block_number)
-
-    body_fields = body['fields']
-    uncles = body_fields['Uncles'] or []
-    transactions = body_fields['Transactions'] or []
-
-    main_db.write_block(header=header, uncles=uncles, accounts=accounts,
-                        transactions=transactions, receipts=receipts, reward=reward,
-                        internal_transactions=internal_transactions)
-    sync_time = time.monotonic() - start_time
-    logger.debug("Block #%s synced on %ss", block_number, sync_time)
-    main_db.disconnect()
-    raw_db.disconnect()
-    return True
+def sync_block(block_number):
+    processor = SyncProcessor()
+    return processor.sync_block(block_number)
