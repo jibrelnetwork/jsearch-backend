@@ -96,6 +96,6 @@ class Manager:
                     logger.exception('Error on newblock listener')
 
 
-def sync_block(block_number, main_db_dsn, raw_db_dsn):
+def sync_block(block_number, main_db_dsn=None, raw_db_dsn=None):
     processor = SyncProcessor(main_db_dsn=main_db_dsn, raw_db_dsn=raw_db_dsn)
     return processor.sync_block(block_number)
