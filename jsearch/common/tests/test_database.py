@@ -58,7 +58,8 @@ def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocke
 def test_process_token_transfers_constructor(db, db_connection_string, main_db_data, mocker):
     # given
     mocker.patch('time.sleep')
-    mocker.patch('jsearch.common.tasks.update_token_holder_balance_task')
+    mocker.patch('jsearch.common.processing.operations.update_token_holder_balance')
+    mocker.patch('jsearch.common.processing.transactions.get_contract', return_value=main_db_data['contracts'][0])
     mocker.patch('jsearch.common.processing.logs.get_contract', return_value=main_db_data['contracts'][0])
 
     from jsearch.common import tables as t

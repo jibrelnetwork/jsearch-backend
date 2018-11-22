@@ -1,4 +1,0 @@
-[submodule "py-solc"]
-	path = py-solc
-	url = git@github.com:jibrelnetwork/py-solc.git
-	branch = feature/jsearch-compilers

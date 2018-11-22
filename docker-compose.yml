@@ -59,7 +59,7 @@ services:
       dockerfile: ./docker/tests/Dockerfile
     tmpfs:
     - /tmp
-    - /home/app/.ethash
+    - /home/root/.ethash
     volumes:
     - ./:/app
     networks:

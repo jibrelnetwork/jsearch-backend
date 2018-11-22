@@ -1,21 +1,15 @@
 import logging
 import re
-from typing import Dict
 
 import aiopg
 import psycopg2
-from aiopg.sa import create_engine, Engine as AsyncEngine
+from aiopg.sa import create_engine
 from psycopg2.extras import DictCursor
-from sqlalchemy import and_, false
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.engine.base import Connection, Engine as SyncEngine
+from sqlalchemy.engine.base import Engine as SyncEngine
 from sqlalchemy.pool import NullPool
-from sqlalchemy.sql import select
 
-from jsearch import settings
 from jsearch.common import contracts
 from jsearch.common.tables import *
-from jsearch.common.utils import as_dicts
 
 MAIN_DB_POOL_SIZE = 22
 
@@ -35,9 +29,6 @@ class ConnectionError(DatabaseError):
 
 
 class DBWrapper:
-    connection_string: str
-    params: Dict[any, any]
-    conn: Connection
 
     def __init__(self, connection_string, **params):
         self.connection_string = connection_string
@@ -65,16 +56,6 @@ class DBWrapperSync:
     def disconnect(self):
         self.conn.close()
 
-    def __enter__(self):
-        self.connect()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disconnect()
-
-        if exc_type:
-            return False
-
 
 class RawDB(DBWrapper):
     """
@@ -90,6 +71,26 @@ class RawDB(DBWrapper):
 
 
 class RawDBSync(DBWrapperSync):
+
+    def connect(self):
+        self.conn = psycopg2.connect(self.connection_string, cursor_factory=DictCursor)
+
+    def disconnect(self):
+        self.conn.close()
+
+    def get_header_by_hash(self, block_number):
+        q = """SELECT * FROM headers WHERE block_number=%s"""
+        with self.conn.cursor() as cur:
+            cur.execute(q, [block_number])
+            row = cur.fetchone()
+        return row
+
+    def get_header_by_block_number(self, block_number):
+        q = """SELECT * FROM headers WHERE block_number=%s"""
+        with self.conn.cursor() as cur:
+            cur.execute(q, [block_number])
+            row = cur.fetchone()
+        return row
 
     def get_block_accounts(self, block_number):
         q = """SELECT * FROM accounts WHERE block_number=%s"""
@@ -138,7 +139,8 @@ class MainDB(DBWrapper):
     """
     jSearch Main db wrapper
     """
-    engine: AsyncEngine
+
+    engine: SyncEngine
 
     async def connect(self):
         self.engine = await create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
@@ -149,7 +151,7 @@ class MainDB(DBWrapper):
 
     async def get_latest_sequence_synced_block_number(self, blocks_range):
         """
-        Get latest block writed in main DB during sequence sync
+        Get latest block writed in main DB
         """
         if blocks_range[1] is None:
             condition = 'number >= %s'
@@ -167,63 +169,60 @@ class MainDB(DBWrapper):
             row = rows[0] if len(rows) > 0 else None
         return row['start'] - 1 if row else None
 
-    async def get_contact_creation_code(self, address):
-        q = select([transactions_t.c.input]).select_from(
-            transactions_t.join(receipts_t, and_(receipts_t.c.transaction_hash == transactions_t.c.hash,
-                                                 receipts_t.c.contract_address == address)))
-        async with self.engine.acquire() as conn:
-            res = await conn.execute(q)
-            row = await res.fetchone()
-        return row['input']
-
 
 class MainDBSync(DBWrapperSync):
-    engine: SyncEngine
 
     def connect(self):
-        self.engine = sa.create_engine(self.connection_string, poolclass=NullPool)
-        self.conn = self.engine.connect()
+        engine = sa.create_engine(self.connection_string, poolclass=NullPool)
+        self.conn = engine.connect()
 
-    def disconnect(self):
-        self.conn.close()
+    def is_block_exist(self, block_number):
+        q = """SELECT number from blocks WHERE number=%s"""
+        row = self.conn.execute(q, [block_number]).fetchone()
+        return row['number'] == block_number if row else False
 
-    def update_logs(self, conn, logs):
-        for rec in logs:
-            query = logs_t.update(). \
-                where(and_(logs_t.c.transaction_hash == rec['transaction_hash'],
-                           logs_t.c.log_index == rec['log_index'])). \
-                values(**rec)
-            conn.execute(query)
+    def write_block_data(self, block_data, uncles_data, transactions_data, receipts_data,
+                         logs_data, accounts_data, internal_txs_data):
+        """
+        Insert block and all related items in main database
+        """
 
-    @staticmethod
-    @as_dicts
-    def get_transaction_logs(conn, tx_hash):
-        q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
-        return conn.execute(q).fetchall()
+        with self.conn.begin():
+            self.insert_block(block_data)
+            self.insert_uncles(uncles_data)
+            self.insert_transactions(transactions_data)
+            self.insert_receipts(receipts_data)
+            self.insert_logs(logs_data)
+            self.insert_accounts(accounts_data)
+            self.insert_internal_transactions(internal_txs_data)
 
-    @staticmethod
-    @as_dicts
-    def get_logs_for_post_processing(conn, limit=1000):
-        query = select([logs_t]) \
-            .where(logs_t.c.is_processed == false()) \
-            .order_by(logs_t.c.block_number) \
-            .limit(limit)
-        return conn.execute(query).fetchall()
+    def insert_block(self, block_data):
+        if block_data:
+            self.conn.execute(blocks_t.insert(), block_data)
 
-    def get_contract_transactions(self, address):
-        q = select([transactions_t]).where(transactions_t.c.to == address)
-        return self.conn.execute(q).fetchall()
+    def insert_uncles(self, uncles_data):
+        if uncles_data:
+            self.conn.execute(uncles_t.insert(), *uncles_data)
 
-    def update_token_holder_balance(self, token_address, account_address, balance):
-        insert_query = insert(token_holders_t).values(
-            token_address=token_address,
-            account_address=account_address,
-            balance=balance)
-        do_update_query = insert_query.on_conflict_do_update(
-            index_elements=['token_address', 'account_address'],
-            set_=dict(balance=balance)
-        )
-        self.conn.execute(do_update_query)
+    def insert_transactions(self, transactions_data):
+        if transactions_data:
+            self.conn.execute(transactions_t.insert(), *transactions_data)
+
+    def insert_receipts(self, receipts_data):
+        if receipts_data:
+            self.conn.execute(receipts_t.insert(), *receipts_data)
+
+    def insert_logs(self, logs_data):
+        if logs_data:
+            self.conn.execute(logs_t.insert(), *logs_data)
+
+    def insert_accounts(self, accounts):
+        if accounts:
+            self.conn.execute(accounts_t.insert(), *accounts)
+
+    def insert_internal_transactions(self, internal_transactions):
+        if internal_transactions:
+            self.conn.execute(internal_transactions_t.insert(), *internal_transactions)
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
@@ -239,18 +238,6 @@ def dict_keys_case_convert(d):
     return {case_convert(k): v for k, v in d.items()}
 
 
-def get_main_db():
-    db = MainDBSync(settings.JSEARCH_MAIN_DB)
-    return db
-
-
-def get_engine():
-    db = sa.create_engine(settings.JSEARCH_MAIN_DB)
-    db.connect()
-    return db
-
-
 def hex_vals_to_int(d, keys):
     for k in keys:
         d[k] = int(d[k], 16)
-    return d
