@@ -68,24 +68,29 @@ def update_token_info(address, abi=None):
 def do_operations_bulk(db, operations: Dict[str, List[Tuple[str, str]]]):
     start_time = time.monotonic()
 
-    futures = []
+    balance_updates = operations[OPERATION_UPDATE_TOKEN_BALANCE]
+    token_info_updates = operations[OPERATION_UPDATE_CONTRACT_INFO]
+
+    futures = {}
     with ThreadPoolExecutor(settings.JSEARCH_POST_PROCESSING_THREADS) as executor:
-        for args_list in operations[OPERATION_UPDATE_CONTRACT_INFO]:
+
+        for args_list in token_info_updates:
             func = partial(update_token_info, *args_list)
             future = executor.submit(func)
-            futures.append(future)
+            futures[future] = args_list
 
-        for args in operations[OPERATION_UPDATE_TOKEN_BALANCE]:
-            func = partial(update_token_holder_balance, db, *args)
+        for args_list in balance_updates:
+            func = partial(update_token_holder_balance, db, *args_list)
             future = executor.submit(func)
-            futures.append(future)
+            futures[future] = args_list
 
-        for futures in as_completed(futures):
-            futures.result()
-
-    update_balance_operations = (operations[OPERATION_UPDATE_TOKEN_BALANCE])
-    update_token_info_operations = len(operations[OPERATION_UPDATE_CONTRACT_INFO])
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                logger.exception(e)
+                logger.error('Operations is failed with args %s', futures[future])
 
     end_time = start_time - time.monotonic()
-    logger.info("%s update token info on %0.2fs", update_balance_operations, end_time)
-    logger.info("%s update token holder balance on %0.2fs", update_token_info_operations, end_time)
+    logger.info("%s update token info on %0.2fs", len(token_info_updates), end_time)
+    logger.info("%s update token holder balance on %0.2fs", len(balance_updates), end_time)
