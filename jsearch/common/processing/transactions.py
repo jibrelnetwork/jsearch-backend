@@ -43,7 +43,7 @@ def process_token_transfers_for_transaction(db, tx_hash: str) -> None:
         return
 
     with db.conn.begin():
-        logs = db.get_transaction_logs(db.conn, tx['hash'])
+        logs = db.get_transaction_logs(tx['hash'])
         if not logs:
             logger.info('No logs - no transfers')
             return

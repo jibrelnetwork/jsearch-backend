@@ -6,7 +6,7 @@ import aiopg
 import psycopg2
 from aiopg.sa import create_engine, Engine as AsyncEngine
 from psycopg2.extras import DictCursor
-from sqlalchemy import and_, false
+from sqlalchemy import and_, false, null, or_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine.base import Connection, Engine as SyncEngine
 from sqlalchemy.pool import NullPool
@@ -195,20 +195,19 @@ class MainDBSync(DBWrapperSync):
                 values(**rec)
             conn.execute(query)
 
-    @staticmethod
     @as_dicts
-    def get_transaction_logs(conn, tx_hash):
+    def get_transaction_logs(self, tx_hash):
         q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
-        return conn.execute(q).fetchall()
+        return self.conn.execute(q).fetchall()
 
-    @staticmethod
     @as_dicts
-    def get_logs_for_post_processing(conn, limit=1000):
+    def get_logs_for_post_processing(self, limit=1000):
         query = select([logs_t]) \
-            .where(logs_t.c.is_processed == false()) \
-            .order_by(logs_t.c.block_number) \
+            .where(or_(logs_t.c.is_processed == false(),
+                       logs_t.c.is_processed == null())) \
+            .order_by(logs_t.c.block_number.desc()) \
             .limit(limit)
-        return conn.execute(query).fetchall()
+        return self.conn.execute(query).fetchall()
 
     def get_contract_transactions(self, address):
         q = select([transactions_t]).where(transactions_t.c.to == address)

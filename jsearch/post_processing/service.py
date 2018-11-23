@@ -11,24 +11,28 @@ from jsearch.common.processing.operations import do_operations_bulk
 logger = logging.getLogger(__name__)
 
 
-def post_processing(sleep_interval: int = 10) -> None:
+def post_processing(sleep_interval: int = 5) -> None:
     contract_cache = {}
     with MainDBSync(connection_string=settings.JSEARCH_MAIN_DB) as db:
         while True:
             with db.conn.begin():
                 start_time = time.monotonic()
-                logs = db.get_logs_for_post_processing(conn=db.conn)
+                logs = db.get_logs_for_post_processing()
                 if logs:
+                    logging.info('Start processing')
+
+                    block_numbers = {log['block_number'] for log in logs}
+                    logger.info("Blocks numbers are %s", ' '.join(map(str, block_numbers)))
+                    logger.info("Processed blocks count is %s", len(block_numbers))
+
                     logs, operations = process_logs(logs, contracts_cache=contract_cache)
                     do_operations_bulk(db, operations=operations)
 
                     db.update_logs(db.conn, logs)
-                    logger.info(
-                        "%s logs processed on %0.2f s",
-                        len(logs), start_time - time.monotonic()
-                    )
+
+                    logger.info("Total %s logs processed on %0.2f s", len(logs), start_time - time.monotonic())
                 else:
-                    logger.info("There are not logs to post processing... sleep to %s seconds", sleep_interval)
+                    logger.info("There are not logs to post processing... sleep  %s seconds", sleep_interval)
                     time.sleep(sleep_interval)
 
             if not service.is_running:
