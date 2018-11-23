@@ -29,7 +29,7 @@ def process_transaction(receipt, tx_data) -> Dict[str, Any]:
             if call:
                 tx_data['contract_call_description'] = call
     elif tx_data['to'] == contracts.NULL_ADDRESS:
-        # contract creation, check Transfer events
+        # ToDo: contract creation, check Transfer events
         pass
     return tx_data
 
