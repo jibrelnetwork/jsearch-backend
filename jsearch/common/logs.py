@@ -5,10 +5,11 @@ import sys
 def configure(loglevel):
     logging.config.dictConfig({
         'version': 1,
+        'disable_existing_loggers': False,
         'formatters': {
             'default': {
                 'class': 'logging.Formatter',
-                'format': '%(asctime)s %(levelname)-8s %(message)s'
+                'format': '%(asctime)-15s %(levelname)-8s %(name)s: %(message)s'
             }
         },
         'handlers': {
@@ -19,9 +20,17 @@ def configure(loglevel):
             },
         },
         'loggers': {
-            'tools': {
+            'post_processing': {
                 'level': loglevel,
                 'handlers': ['console'],
+            },
+            'syncer': {
+                'level': loglevel,
+                'handlers': ['console'],
+            },
+            '': {
+                'level': loglevel,
+                'handlers': ['console']
             }
         }
     })
