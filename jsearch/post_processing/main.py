@@ -3,6 +3,7 @@ import logging
 
 import click
 
+from jsearch.common import logs
 from jsearch.post_processing.service import service
 
 logger = logging.getLogger(__name__)
@@ -11,10 +12,7 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click.option('--log-level', default=logging.INFO, help="Log level")
 def post_processing(log_level):
-    logging.basicConfig(
-        format='%(asctime)-15s %(levelname)-8s %(name)s: %(message)s',
-        level=log_level
-    )
+    logs.configure(log_level)
     try:
         service.run()
     except Exception as e:

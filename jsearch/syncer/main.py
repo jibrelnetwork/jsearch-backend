@@ -1,12 +1,10 @@
 import asyncio
-import logging
 import os
 
 import configargparse
 
+from jsearch.common import logs
 from .service import Service
-
-logger = logging.getLogger(__name__)
 
 
 def run():
@@ -16,11 +14,7 @@ def run():
 
     options = p.parse_args()
 
-    logging.basicConfig(
-        format='%(asctime)-15s %(levelname)-8s %(name)s: %(message)s',
-        level=options.log_level
-    )
-
+    logs.configure(options.log_level)
     service = Service(options)
     service.run()
 
