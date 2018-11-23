@@ -24,11 +24,8 @@ def get_balance(token_address, account_address):
     checksum_account_address = Web3.toChecksumAddress(account_address)
 
     c = w3.eth.contract(checksum_token_address, abi=ERC20_ABI)
-    # balance = c.functions.balanceOf(checksum_account_address).call(block_identifier=block_number)
 
     balance = c.functions.balanceOf(checksum_account_address).call()
-    # decimals = c.functions.decimals().call(block_identifier=block_number)
-
     decimals = c.functions.decimals().call()
     return balance / 10 ** decimals
 
