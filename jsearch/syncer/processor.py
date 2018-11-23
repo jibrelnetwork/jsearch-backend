@@ -169,7 +169,6 @@ class SyncProcessor:
         items = []
         for account in accounts:
             data = dict_keys_case_convert(account['fields'])
-            data['storage'] = None  # FIXME!!!
             data['address'] = account['address'].lower()
             data['block_number'] = block_number
             data['block_hash'] = block_hash

@@ -5,6 +5,7 @@ import aiopg
 import psycopg2
 from aiopg.sa import create_engine
 from psycopg2.extras import DictCursor
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.pool import NullPool
 
 from jsearch.common import contracts
@@ -207,8 +208,32 @@ class MainDBSync(DBWrapperSync):
             self.conn.execute(logs_t.insert(), *logs_data)
 
     def insert_accounts(self, accounts):
-        if accounts:
-            self.conn.execute(accounts_t.insert(), *accounts)
+        if not accounts:
+            return
+        base_items = []
+        state_items = []
+        for acc in accounts:
+            base_items.append({
+             'address': acc['address'],
+             'code': acc['code'],
+             'code_hash': acc['code_hash'],
+             'last_known_balance': acc['balance'],
+             'root': acc['root'],
+            })
+            state_items.append({
+                'block_number': acc['block_number'],
+                'block_hash': acc['block_hash'],
+                'address': acc['address'],
+                'nonce': acc['nonce'],
+                'root': acc['root'],
+                'balance': acc['balance'],
+            })
+
+        base_insert = insert(accounts_base_t).on_conflict_do_nothing(
+            index_elements=['address']
+        )
+        self.conn.execute(base_insert, *base_items)
+        self.conn.execute(accounts_state_t.insert(), *state_items)
 
     def insert_internal_transactions(self, internal_transactions):
         if internal_transactions:

@@ -156,6 +156,27 @@ class Account(Base):
     storage = sa.Column('storage', postgresql.JSONB)
 
 
+class AccountState(Base):
+    __tablename__ = 'accounts_state'
+
+    block_number = sa.Column('block_number', HexInteger, primary_key=True)
+    block_hash = sa.Column('block_hash', sa.String, index=True)
+    address = sa.Column('address', sa.String, primary_key=True)
+    nonce = sa.Column('nonce', HexInteger)
+    root = sa.Column('root', sa.String)
+    balance = sa.Column('balance', postgresql.NUMERIC(32, 0))
+
+
+class AccountBase(Base):
+    __tablename__ = 'accounts_base'
+
+    address = sa.Column('address', sa.String, primary_key=True)
+    code = sa.Column('code', sa.String)
+    code_hash = sa.Column('code_hash', sa.String)
+    last_known_balance = sa.Column('last_known_balance', postgresql.NUMERIC(32, 0))
+    root = sa.Column('root', sa.String)
+
+
 class MinedBlock(Base):
     __tablename__ = 'mined_blocks'
 
@@ -241,6 +262,8 @@ transactions_t = Transaction.__table__
 receipts_t = Receipt.__table__
 logs_t = Log.__table__
 accounts_t = Account.__table__
+accounts_base_t = AccountBase.__table__
+accounts_state_t = AccountState.__table__
 contracts_t = Contract.__table__
 token_holders_t = TokenHolder.__table__
 internal_transactions_t = InternalTransaction.__table__
@@ -252,6 +275,8 @@ TABLES = (
     receipts_t,
     logs_t,
     accounts_t,
+    accounts_state_t,
+    accounts_base_t,
     contracts_t,
     token_holders_t,
     internal_transactions_t
