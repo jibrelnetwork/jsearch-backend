@@ -84,9 +84,8 @@ def do_operations_bulk(db, operations: Dict[str, List[Tuple[str, str]]]):
         for future in as_completed(futures):
             try:
                 future.result()
-            except Exception as e:
-                logger.exception(e)
-                logger.error('Operations is failed with args %s', futures[future])
+            except Exception:
+                logger.exception('Operations is failed with args %s', futures[future])
 
     end_time = start_time - time.monotonic()
     logger.info("%s update token info on %0.2fs", len(token_info_updates), end_time)
