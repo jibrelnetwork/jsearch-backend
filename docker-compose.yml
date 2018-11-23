@@ -9,7 +9,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: jsearch/api
+    image: jsearch/backend
     container_name: jsearch_api
     restart: always
     env_file:
@@ -28,11 +28,26 @@ services:
     networks:
     - default
     - jsearch-contracts_default
-    image: jsearch/api
+    image: jsearch/backend
     entrypoint: jsearch-syncer
     env_file:
     - config/dev.env
     container_name: jsearch_syncer
+
+  post_processing:
+    depends_on:
+    - main_db
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+    - default
+    - jsearch-contracts_default
+    image: jsearch/backend
+    entrypoint: jsearch-post-processing
+    env_file:
+    - config/dev.env
+    container_name: jsearch_post_processing
 
   celery_worker:
     depends_on:
