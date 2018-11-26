@@ -1,11 +1,19 @@
+from typing import List
 from unittest import mock
 
 import pytest
 from asynctest import CoroutineMock
 
-from jsearch.tests.entities import TransactionFromDumpWrapper, BlockFromDumpWrapper
+from jsearch.tests.entities import (
+    TransactionFromDumpWrapper,
+    BlockFromDumpWrapper,
+    AccountFromDumpWrapper,
+    TokenTransferFromDumpWrapper,
+    ReceiptFromDumpWrapper)
+from jsearch.tests.utils import pprint_returned_value
 
 pytest_plugins = [
+    'jsearch.tests.plugins.tools',
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.dumps',
 ]
@@ -170,26 +178,30 @@ async def test_get_block_transactions(cli, main_db_data):
 async def test_get_block_uncles(cli, main_db_data):
     resp = await cli.get('/blocks/' + main_db_data['blocks'][1]['hash'] + '/uncles')
     assert resp.status == 200
-    assert await resp.json() == [{'difficulty': 17578564779,
-                                  'blockNumber': 2,
-                                  'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',
-                                  'gasLimit': 5000,
-                                  'gasUsed': 0,
-                                  'hash': '0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc',
-                                  'logsBloom': '0x0',
-                                  'miner': '0x0193d941b50d91be6567c7ee1c0fe7af498b4137',
-                                  'mixHash': '0x94a09bb3ef9208bf434855efdb1089f80d07334d91930387a1f3150494e806cb',
-                                  'nonce': '0x32de6ee381be0179',
-                                  'number': 61,
-                                  'parentHash': '0x3cd0324c7ba14ba7cf6e4b664dea0360681458d76bd25dfc0d2207ce4e9abed4',
-                                  'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-                                  'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-                                  'size': None,
-                                  'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
-                                  'timestamp': 1438270332,
-                                  'totalDifficulty': None,
-                                  'reward': 3750000000000000000,
-                                  'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}]
+    assert await resp.json() == [
+        {
+            'difficulty': 17578564779,
+            'blockNumber': 2,
+            'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',
+            'gasLimit': 5000,
+            'gasUsed': 0,
+            'hash': '0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc',
+            'logsBloom': '0x0',
+            'miner': '0x0193d941b50d91be6567c7ee1c0fe7af498b4137',
+            'mixHash': '0x94a09bb3ef9208bf434855efdb1089f80d07334d91930387a1f3150494e806cb',
+            'nonce': '0x32de6ee381be0179',
+            'number': 61,
+            'parentHash': '0x3cd0324c7ba14ba7cf6e4b664dea0360681458d76bd25dfc0d2207ce4e9abed4',
+            'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+            'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
+            'size': None,
+            'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
+            'timestamp': 1438270332,
+            'totalDifficulty': None,
+            'reward': 3750000000000000000,
+            'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
+        }
+    ]
 
 
 async def test_get_transaction(cli, main_db_data):
@@ -529,52 +541,61 @@ async def test_get_token_ok(cli, main_db_data):
     }
 
 
-async def test_get_token_transfers_ok(cli, main_db_data):
-    resp = await cli.get('/tokens/' + main_db_data['accounts'][2]['address'] + '/transfers')
+@pytest.mark.parametrize("account_index", [0, 1, 2])
+async def test_get_account_token_transfers(cli, account_index, main_db_data, post_processing):
+    # given
+    dump = post_processing(main_db_data)
+    account: AccountFromDumpWrapper = AccountFromDumpWrapper.from_dump(
+        dump=dump,
+        index=account_index
+    )
+    token_transfers: List[TokenTransferFromDumpWrapper] = TokenTransferFromDumpWrapper.from_dump(
+        dump=dump,
+        filters={
+            'token_transfer_to': account.entity.address,
+            'token_transfer_from': account.entity.address
+        },
+        strict=False,
+        bulk=True
+    )
+    # when
+    resp = await cli.get(f'/accounts/{account.entity.address}/token_transfers')
+
+    # then
     assert resp.status == 200
-    res = await resp.json()
-    assert res == [{
-        'blockHash': main_db_data['blocks'][2]['hash'],
-        'transaction': main_db_data['transactions'][2]['hash'],
-        'from': main_db_data['accounts'][0]['address'],
-        'to': main_db_data['accounts'][1]['address'],
-        'amount': 10},
-        {'blockHash': main_db_data['blocks'][4]['hash'],
-         'transaction': main_db_data['transactions'][4]['hash'],
-         'from': main_db_data['accounts'][1]['address'],
-         'to': main_db_data['accounts'][0]['address'],
-         'amount': 4}]
+    assert sort_token_transfers(await resp.json()) == sort_token_transfers(
+        [transfer.as_dict() for transfer in token_transfers]
+    )
 
 
-async def test_get_account_token_transfers_ok_one(cli, main_db_data):
-    resp = await cli.get('/accounts/' + main_db_data['accounts'][0]['address'] + '/token_transfers')
+async def test_get_token_transfers(cli, main_db_data, post_processing):
+    # given
+    dump = post_processing(main_db_data)
+    receipt: ReceiptFromDumpWrapper = ReceiptFromDumpWrapper.from_dump(
+        dump=dump,
+        index=0
+    )
+    token_transfers: List[TokenTransferFromDumpWrapper] = TokenTransferFromDumpWrapper.from_dump(
+        dump=dump,
+        filters={
+            'address': receipt.entity.contract_address,
+            'is_token_transfer': True,
+        },
+        bulk=True
+    )
+    # when
+    resp = await cli.get(f'/tokens/{receipt.entity.contract_address}/transfers')
+
+    # then
     assert resp.status == 200
-    res = await resp.json()
-    assert res == [{
-        'blockHash': main_db_data['blocks'][2]['hash'],
-        'transaction': main_db_data['transactions'][2]['hash'],
-        'from': main_db_data['accounts'][0]['address'],
-        'to': main_db_data['accounts'][1]['address'],
-        'amount': 10},
-        {'blockHash': main_db_data['blocks'][4]['hash'],
-         'transaction': main_db_data['transactions'][4]['hash'],
-         'from': main_db_data['accounts'][1]['address'],
-         'to': main_db_data['accounts'][0]['address'],
-         'amount': 4}]
+    assert sort_token_transfers(await resp.json()) == sort_token_transfers(
+        [transfer.as_dict() for transfer in token_transfers]
+    )
 
 
-async def test_get_account_token_transfers_ok_two(cli, main_db_data):
-    resp = await cli.get('/accounts/' + main_db_data['accounts'][3]['address'] + '/token_transfers')
-    assert resp.status == 200
-    res = await resp.json()
-    assert res == [{
-        'blockHash': main_db_data['blocks'][2]['hash'],
-        'transaction': main_db_data['transactions'][2]['hash'],
-        'from': main_db_data['accounts'][0]['address'],
-        'to': main_db_data['accounts'][1]['address'],
-        'amount': 10},
-        {'blockHash': main_db_data['blocks'][4]['hash'],
-         'transaction': main_db_data['transactions'][4]['hash'],
-         'from': main_db_data['accounts'][1]['address'],
-         'to': main_db_data['accounts'][0]['address'],
-         'amount': 4}]
+@pprint_returned_value
+def sort_token_transfers(transfers):
+    return sorted(
+        transfers,
+        key=lambda item: (item['blockHash'], item['transaction'], item['from'], item['to'], item['amount'])
+    )

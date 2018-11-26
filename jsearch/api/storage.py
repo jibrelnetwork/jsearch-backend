@@ -1,7 +1,7 @@
 import json
+from typing import List, Dict, Any
 
 from jsearch.api import models
-
 
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
@@ -263,49 +263,40 @@ class Storage:
             row = dict(row)
             return models.Token(**row)
 
-    async def get_tokens_transfers(self, address, limit, offset, order):
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = """SELECT block_hash, hash, token_transfer_from, token_transfer_to, contract_call_description, token_amount
-                    FROM transactions 
-                    WHERE is_token_transfer is true
-                     AND "to"=$1 ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3"""
-        query = query.format(order=order)
+    async def _fetch_token_transfers(self, query: str, address: str, limit: int, offset: int) \
+            -> List[models.TokenTransfer]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address, limit, offset)
-            # print('ROWS', rows, query, address)
-            tokens = []
-            for r in rows:
-                call = json.loads(r['contract_call_description'])
-                t = {
-                    'transaction': r['hash'],
-                    'from': r['token_transfer_from'],
-                    'to': r['token_transfer_to'],
-                    'amount': r['token_amount'],
-                    'block_hash': r['block_hash']
-                }
-                tokens.append(models.TokenTransfer(**t))
+            tokens: List[models.TokenTransfer] = []
+            for row in rows:
+                tokens.append(models.TokenTransfer.from_log_record(log=row))
             return tokens
+
+    async def get_tokens_transfers(self, address: str, limit: int, offset: int, order: str) \
+            -> List[models.TokenTransfer]:
+        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+        query = f"""
+            SELECT block_hash, 
+                transaction_hash, 
+                token_amount,
+                token_transfer_from,
+                token_transfer_to 
+            FROM logs 
+            WHERE is_token_transfer is true AND address = $1 
+            ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3;
+        """
+        return await self._fetch_token_transfers(query, address, limit, offset)
 
     async def get_account_tokens_transfers(self, address, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = """SELECT block_hash, hash, token_transfer_from, token_transfer_to, contract_call_description, token_amount
-                    FROM transactions 
-                    WHERE is_token_transfer is true
-                     AND token_transfer_from=$1 
-                     OR token_transfer_to=$1 ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3"""
-        query = query.format(order=order)
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, address, limit, offset)
-            # print('ROWS', rows, query, address)
-            tokens = []
-            for r in rows:
-                call = json.loads(r['contract_call_description'])
-                t = {
-                    'transaction': r['hash'],
-                    'from': r['token_transfer_from'],
-                    'to': r['token_transfer_to'],
-                    'amount': r['token_amount'],
-                    'block_hash': r['block_hash']
-                }
-                tokens.append(models.TokenTransfer(**t))
-            return tokens
+        query = f"""
+            SELECT block_hash,
+                transaction_hash, 
+                token_transfer_from, 
+                token_transfer_to, 
+                token_amount
+            FROM logs 
+            WHERE is_token_transfer is true AND token_transfer_from=$1 OR token_transfer_to=$1 
+            ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3;
+        """
+        return await self._fetch_token_transfers(query, address, limit, offset)

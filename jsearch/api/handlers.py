@@ -1,14 +1,10 @@
-import asyncio
-
 import aiohttp
 from aiohttp import web
 
-# from jsearch.common.tasks import process_new_verified_contract_transactions
+from jsearch import settings
 from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
-from jsearch import settings
-
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
@@ -275,7 +271,8 @@ async def verify_contract(request):
             is_erc20_token=is_erc20_token,
             **input_data
         )
-        async with aiohttp.request('POST', settings.JSEARCH_CONTRACTS_API + '/v1/contracts', json=contract_data) as resp:
+        async with aiohttp.request('POST', settings.JSEARCH_CONTRACTS_API + '/v1/contracts',
+                                   json=contract_data) as resp:
             res = await resp.json()
     else:
         verification_passed = False
@@ -315,19 +312,33 @@ async def get_token(request):
 
 
 async def get_token_transfers(request):
+    # todo: need to add validation. i'm worried about max size of limit
     storage = request.app['storage']
     params = validate_params(request)
     contract_address = request.match_info['address']
-    transfers = await storage.get_tokens_transfers(contract_address, params['limit'], params['offset'], params['order'])
-    return web.json_response([t.to_dict() for t in transfers])
+
+    transfers = await storage.get_tokens_transfers(
+        address=contract_address,
+        limit=params['limit'],
+        offset=params['offset'],
+        order=params['order']
+    )
+    return web.json_response([transfer.to_dict() for transfer in transfers])
 
 
 async def get_account_token_transfers(request):
+    # todo: need to add validation. I'm worried about max size of limit
     storage = request.app['storage']
     params = validate_params(request)
     account_address = request.match_info['address']
-    transfers = await storage.get_account_tokens_transfers(account_address  , params['limit'], params['offset'], params['order'])
-    return web.json_response([t.to_dict() for t in transfers])
+
+    transfers = await storage.get_account_tokens_transfers(
+        address=account_address,
+        limit=params['limit'],
+        offset=params['offset'],
+        order=params['order']
+    )
+    return web.json_response([transfer.to_dict() for transfer in transfers])
 
 
 async def on_new_contracts_added(request):
