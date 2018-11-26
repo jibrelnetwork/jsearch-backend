@@ -1,10 +1,7 @@
-import os
+from decimal import Decimal
 from unittest import mock
 
 from sqlalchemy import select
-
-from jsearch.common import database, tables as t
-from jsearch.common.contracts import NULL_ADDRESS
 
 pytest_plugins = [
     'jsearch.tests.plugins.databases.dumps',
@@ -12,68 +9,82 @@ pytest_plugins = [
 ]
 
 
-def test_process_token_transfers_ok(db, main_db_data):
-    contracts = main_db_data['contracts']
+def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocker):
+    # given
+    mocker.patch('time.sleep')
+    mocker.patch('jsearch.common.processing.logs.get_contract', return_value=main_db_data['contracts'][0])
+    get_balance_mock = mocker.patch('jsearch.common.processing.operations.get_balance', return_value=999)
+    update_balance_mock = mocker.patch('jsearch.common.database.MainDBSync.update_token_holder_balance')
 
-    with mock.patch('jsearch.common.database.tasks') as mock_tasks:
-        main_db = database.MainDBSync(os.environ['JSEARCH_MAIN_DB_TEST'])
-        main_db.connect()
-        tx_hash = main_db_data['transactions'][2]['hash']
-        token_address = main_db_data['accounts'][2]['address']
-        main_db.get_contract = mock.Mock()
-        main_db.get_contract.return_value = contracts[0]
-        holders_q = select([t.token_holders_t]).where(t.token_holders_t.c.token_address == token_address)
+    from jsearch.common import tables as t
+    from jsearch.post_processing.service import post_processing
 
-        main_db.process_token_transfers(tx_hash)
-        main_db.disconnect()
-        q = select([t.transactions_t]).where(t.transactions_t.c.hash == tx_hash)
-        rows = db.execute(q).fetchall()
-        assert rows[0]['is_token_transfer'] is True
-        assert rows[0]['token_amount'] == 10
-        assert rows[0]['contract_call_description'] == {
-            'args': [main_db_data['accounts'][1]['address'], 1000],
-            'function': 'transfer'}
+    tx_hash = main_db_data['transactions'][2]['hash']
+    token_address = main_db_data['accounts'][2]['address']
+    holders_q = select([t.token_holders_t]).where(t.token_holders_t.c.token_address == token_address)
 
-        q = select([t.logs_t]).where(t.logs_t.c.transaction_hash == tx_hash)
-        rows = db.execute(q).fetchall()
-        assert dict(rows[0])['event_type'] == 'Transfer'
-        assert rows[0]['event_args'] == {
-            'to': main_db_data['accounts'][1]['address'],
-            'from': main_db_data['accounts'][0]['address'],
-            'value': 1000}
+    # when run system under test
+    post_processing()
 
-        holders = db.execute(holders_q).fetchall()
-        assert len(holders) == 0
-        mock_tasks.update_token_holder_balance_task.delay.assert_has_calls([
-            mock.call(token_address, main_db_data['accounts'][1]['address'], rows[0]['block_number']),
-            mock.call(token_address, main_db_data['accounts'][0]['address'], rows[0]['block_number']),
-        ])
+    # then check results
+    q = select([t.logs_t]).where(t.logs_t.c.transaction_hash == tx_hash)
+    log = [dict(row) for row in db.execute(q).fetchall()][0]
+
+    assert log['is_token_transfer'] is True
+    assert log['token_transfer_to'] == main_db_data['accounts'][1]['address']
+    assert log['token_transfer_from'] == main_db_data['accounts'][0]['address']
+    assert log['token_amount'] == 10
+    assert log['event_type'] == 'Transfer'
+    assert log['event_args'] == {
+        'to': main_db_data['accounts'][1]['address'],
+        'from': main_db_data['accounts'][0]['address'],
+        'value': 1000
+    }
+
+    holders = db.execute(holders_q).fetchall()
+    assert len(holders) == 0
+
+    get_balance_mock.assert_has_calls([
+        mock.call(token_address, main_db_data['accounts'][1]['address']),
+        mock.call(token_address, main_db_data['accounts'][0]['address']),
+    ], any_order=True)
+
+    update_balance_mock.assert_has_calls([
+        mock.call(token_address, main_db_data['accounts'][1]['address'], 999),
+        mock.call(token_address, main_db_data['accounts'][0]['address'], 999),
+    ], any_order=True)
 
 
-def test_process_token_transfers_constructor(db, db_connection_string, main_db_data):
-    contracts = main_db_data['contracts']
+def test_process_token_transfers_constructor(db, db_connection_string, main_db_data, mocker):
+    # given
+    mocker.patch('time.sleep')
+    mocker.patch('jsearch.common.processing.operations.update_token_holder_balance')
+    mocker.patch('jsearch.common.processing.transactions.get_contract', return_value=main_db_data['contracts'][0])
+    mocker.patch('jsearch.common.processing.logs.get_contract', return_value=main_db_data['contracts'][0])
 
-    main_db = database.MainDBSync(db_connection_string)
+    from jsearch.common import tables as t
+    from jsearch.common.contracts import NULL_ADDRESS
+    from jsearch.common.database import MainDBSync
+    from jsearch.common.processing.transactions import process_token_transfers_for_transaction
+
     tx_hash = main_db_data['transactions'][0]['hash']
     token_address = main_db_data['accounts'][2]['address']
     holders_q = select([t.token_holders_t]).where(t.token_holders_t.c.token_address == token_address)
 
-    main_db.connect()
+    # when run system under tests
+    with MainDBSync(connection_string=db_connection_string) as db_wrapper:
+        process_token_transfers_for_transaction(db_wrapper, tx_hash=tx_hash)
 
-    main_db.get_contract = mock.Mock()
-    main_db.get_contract.return_value = contracts[0]
-
-    main_db.process_token_transfers(tx_hash)
-    main_db.disconnect()
-
-    q = select([t.transactions_t]).where(t.transactions_t.c.hash == tx_hash)
-    rows = db.execute(q).fetchall()
-    assert rows[0]['is_token_transfer'] == False
-
+    # then check results
     q = select([t.logs_t]).where(t.logs_t.c.transaction_hash == tx_hash)
-    rows = db.execute(q).fetchall()
-    assert rows[0]['event_type'] == 'Transfer'
-    assert rows[0]['event_args'] == {
+    log = [dict(row) for row in db.execute(q).fetchall()][0]
+
+    assert log['is_token_transfer'] is True
+    assert log['token_transfer_to'] == main_db_data['accounts'][0]['address']
+    assert log['token_transfer_from'] == NULL_ADDRESS
+    assert log['token_amount'] == Decimal('1000000000000000000000000')
+    assert log['event_type'] == 'Transfer'
+    assert log['event_args'] == {
         'to': main_db_data['accounts'][0]['address'],
         'from': NULL_ADDRESS,
         'value': 100000000000000000000000000

@@ -1,6 +1,7 @@
 import logging
 import re
 import time
+from typing import Optional
 
 from jsearch import settings
 from jsearch.common import contracts
@@ -14,9 +15,9 @@ class SyncProcessor:
     Raw-to-Main DB data sync processor
     """
 
-    def __init__(self):
-        self.raw_db = RawDBSync(settings.JSEARCH_RAW_DB)
-        self.main_db = MainDBSync(settings.JSEARCH_MAIN_DB)
+    def __init__(self, raw_db_dsn: Optional[str] = None, main_db_dsn: Optional[str] = None):
+        self.raw_db = RawDBSync(raw_db_dsn or settings.JSEARCH_RAW_DB)
+        self.main_db = MainDBSync(main_db_dsn or settings.JSEARCH_MAIN_DB)
 
     def sync_block(self, block_number: int) -> bool:
         """
@@ -125,11 +126,11 @@ class SyncProcessor:
             tx_data['block_hash'] = block_hash
             tx_data['block_number'] = block_number
             if tx['to'] is None:
-                tx_data['to'] == contracts.NULL_ADDRESS
+                tx_data['to'] = contracts.NULL_ADDRESS
             items.append(tx_data)
         return items
 
-    def process_receipts(self, receipts, transactions,  block_number, block_hash):
+    def process_receipts(self, receipts, transactions, block_number, block_hash):
         rdata = receipts['fields']['Receipts'] or []
         recpt_items = []
         logs_items = []
@@ -151,7 +152,6 @@ class SyncProcessor:
         return recpt_items, logs_items
 
     def process_logs(self, logs):
-
         items = []
         for log_record in logs:
             data = dict_keys_case_convert(log_record)
@@ -163,7 +163,7 @@ class SyncProcessor:
             data['event_type'] = None
             data['event_args'] = None
             items.append(data)
-        return logs
+        return items
 
     def process_accounts(self, accounts, block_number, block_hash):
         items = []

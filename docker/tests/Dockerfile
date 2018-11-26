@@ -10,6 +10,5 @@ USER root
 COPY --chown=app:app requirements-test.txt /app/
 RUN pip install --no-cache-dir -r requirements-test.txt
 
-USER app
 ENTRYPOINT ["pytest"]
 CMD ["-s"]
