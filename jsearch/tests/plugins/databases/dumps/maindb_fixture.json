@@ -509,7 +509,12 @@
             ],
             "transaction_index": 0,
             "event_type": null,
-            "event_args": null
+            "event_args": null,
+            "is_processed": false,
+            "is_token_transfer": false,
+            "token_amount": null,
+            "token_transfer_from": null,
+            "token_transfer_to": null
         },
         {
             "transaction_hash": "0xa05ccbfa4b39af30042a49a579d07c5086065523dfaa8745e8ab35cb6568dafb",
@@ -530,7 +535,12 @@
                 "to": "0xab30633f2b9dafe0afb65b36b51e7aae6dd4fb68",
                 "from": "0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae",
                 "value": 1000
-            }
+            },
+            "is_processed": false,
+            "is_token_transfer": false,
+            "token_amount": null,
+            "token_transfer_from": null,
+            "token_transfer_to": null
         },
         {
             "transaction_hash": "0x9286f83f96c8ebd793db6fc8f933b75e6e6f881d74bb3f3c7fea206f272ad8b1",
@@ -551,7 +561,12 @@
                 "owner": "0xab30633f2b9dafe0afb65b36b51e7aae6dd4fb68",
                 "value": 500,
                 "spender": "0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae"
-            }
+            },
+            "is_processed": false,
+            "is_token_transfer": false,
+            "token_amount": null,
+            "token_transfer_from": null,
+            "token_transfer_to": null
         },
         {
             "transaction_hash": "0x7ab17da91db3682480a65af664d2039e78b064bc8abfd0053c6666a209087f95",
@@ -572,7 +587,12 @@
                 "to": "0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae",
                 "from": "0xab30633f2b9dafe0afb65b36b51e7aae6dd4fb68",
                 "value": 400
-            }
+            },
+            "is_processed": false,
+            "is_token_transfer": false,
+            "token_amount": null,
+            "token_transfer_from": null,
+            "token_transfer_to": null
         }
     ],
     "mined_blocks": [],

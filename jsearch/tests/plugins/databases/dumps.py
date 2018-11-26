@@ -20,8 +20,8 @@ def db_dump_on_fuck_token_transfer_case(
 ):
     sync_blocks(
         until_to=transfer_on_fuck_token_contract,
-        main_db_connection_string=db_connection_string,
-        raw_db_connection_string=raw_db_connection_string,
+        main_db_dsn=db_connection_string,
+        raw_db_dsn=raw_db_connection_string,
     )
     return get_dump(connection_string=db_connection_string)
 

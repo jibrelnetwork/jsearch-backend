@@ -6,6 +6,7 @@ import psycopg2
 from aiopg.sa import create_engine
 from psycopg2.extras import DictCursor
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.engine.base import Engine as SyncEngine
 from sqlalchemy.pool import NullPool
 
 from jsearch.common import contracts
@@ -78,6 +79,13 @@ class RawDBSync(DBWrapperSync):
     def disconnect(self):
         self.conn.close()
 
+    def get_header_by_hash(self, block_number):
+        q = """SELECT * FROM headers WHERE block_number=%s"""
+        with self.conn.cursor() as cur:
+            cur.execute(q, [block_number])
+            row = cur.fetchone()
+        return row
+
     def get_header_by_block_number(self, block_number):
         q = """SELECT * FROM headers WHERE block_number=%s"""
         with self.conn.cursor() as cur:
@@ -132,6 +140,8 @@ class MainDB(DBWrapper):
     """
     jSearch Main db wrapper
     """
+
+    engine: SyncEngine
 
     async def connect(self):
         self.engine = await create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)

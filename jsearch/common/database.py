@@ -1,30 +1,21 @@
-import asyncio
 import logging
 import re
-import os
-import time
-import json
-from datetime import datetime
-from collections import OrderedDict
+from typing import Dict
 
 import aiopg
-from aiopg.sa import create_engine
-from psycopg2.extras import DictCursor
-import sqlalchemy as sa
-from sqlalchemy.sql import select, update
-from sqlalchemy.pool import NullPool
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import and_
-import aiohttp
 import psycopg2
-from psycopg2.extras import execute_values
-import requests
+from aiopg.sa import create_engine, Engine as AsyncEngine
+from psycopg2.extras import DictCursor
+from sqlalchemy import and_, false, null, or_
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.engine.base import Connection, Engine as SyncEngine
+from sqlalchemy.pool import NullPool
+from sqlalchemy.sql import select
 
-from jsearch.common.tables import *
-from jsearch.common import contracts
-from jsearch.common import tasks
 from jsearch import settings
-
+from jsearch.common import contracts
+from jsearch.common.tables import *
+from jsearch.common.utils import as_dicts
 
 MAIN_DB_POOL_SIZE = 22
 
@@ -44,6 +35,9 @@ class ConnectionError(DatabaseError):
 
 
 class DBWrapper:
+    connection_string: str
+    params: Dict[any, any]
+    conn: Connection
 
     def __init__(self, connection_string, **params):
         self.connection_string = connection_string
@@ -71,11 +65,22 @@ class DBWrapperSync:
     def disconnect(self):
         self.conn.close()
 
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disconnect()
+
+        if exc_type:
+            return False
+
 
 class RawDB(DBWrapper):
     """
     jSearch RAW db wrapper
     """
+
     async def get_blocks_to_sync(self, start_block_num=0, end_block_num=None):
         q = """SELECT block_number FROM headers WHERE block_number BETWEEN %s AND %s"""
         async with self.conn.cursor() as cur:
@@ -85,12 +90,6 @@ class RawDB(DBWrapper):
 
 
 class RawDBSync(DBWrapperSync):
-    def get_header_by_hash(self, block_number):
-        q = """SELECT * FROM headers WHERE block_number=%s"""
-        with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
-            row = cur.fetchone()
-        return row
 
     def get_block_accounts(self, block_number):
         q = """SELECT * FROM accounts WHERE block_number=%s"""
@@ -139,6 +138,8 @@ class MainDB(DBWrapper):
     """
     jSearch Main db wrapper
     """
+    engine: AsyncEngine
+
     async def connect(self):
         self.engine = await create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
 
@@ -177,6 +178,7 @@ class MainDB(DBWrapper):
 
 
 class MainDBSync(DBWrapperSync):
+    engine: SyncEngine
 
     def connect(self):
         self.engine = sa.create_engine(self.connection_string, poolclass=NullPool)
@@ -187,122 +189,25 @@ class MainDBSync(DBWrapperSync):
 
     def update_logs(self, conn, logs):
         for rec in logs:
-            query = logs_t.update().\
+            query = logs_t.update(). \
                 where(and_(logs_t.c.transaction_hash == rec['transaction_hash'],
-                           logs_t.c.log_index == rec['log_index'])).\
+                           logs_t.c.log_index == rec['log_index'])). \
                 values(**rec)
             conn.execute(query)
 
-    def process_logs(self, contract, logs):
-        contracts_cache = {}
-        if contract is not None:
-            contracts_cache[contract['address']] = contract
-        for log in logs:
-            try:
-                if log['address'] in contracts_cache:
-                    log_contract = contracts_cache[log['address']]
-                else:
-                    log_contract = self.get_contract(log['address'])
-                    if log_contract is None:
-                        log['event_type'] = None
-                        log['event_args'] = None
-                        continue
-                    contracts_cache[log['address']] = log_contract
-                abi = log_contract['abi']
-                event = contracts.decode_event(abi, log)
-            except Exception as e:
-                # ValueError: Unknown log type
-                logger.debug('Log decode error: <%s>\n ', log)
-                log['event_type'] = None
-                log['event_args'] = None
-            else:
-                event_type = event.pop('_event_type')
-                log['event_type'] = event_type
-                log['event_args'] = event
-                if event_type == 'Transfer':
-                    # TODO: maybe move this to process_transaction?
-                    args_list = []
-                    # some contracts (for example 0xaae81c0194d6459f320b70ca0cedf88e11a242ce) may have
-                    # several Transfer events with different signatures, so we try to find ERS20 copilent event (with 3 args)
-                    event_inputs = [i['inputs'] for i in abi
-                                    if i.get('name') == event_type and
-                                    i['type'] == 'event' and len(i['inputs']) == 3][0]
-                    for i in event_inputs:
-                        args_list.append(event[i['name']])
-                    token_address = log['address']
-                    to_address = args_list[1]
-                    from_address = args_list[0]
-                    block_number = log.get('block_number') or int(log['blockNumber'], 16)  # FIXME
-                    tasks.update_token_holder_balance_task.delay(token_address, to_address, block_number)
-                    tasks.update_token_holder_balance_task.delay(token_address, from_address, block_number)
-        return logs
-
-    def process_transaction(self, contract, tx_data, logs):
-        if contract is not None:
-            transfer_events = [l for l in logs if l['event_type'] == 'Transfer']
-            if len(transfer_events) > 1:
-                logger.warn('Multiple transfer events at %s', tx_data['hash'])
-            try:
-                call = contracts.decode_contract_call(contract['abi'], tx_data['input'])
-            except Exception as e:
-                logger.exception('Call decode error: <%s>', tx_data)
-            else:
-                if call:
-                    tx_data['contract_call_description'] = call
-                    if call['function'] in {'transfer', 'transferFrom'} and transfer_events:
-                        tx_data['is_token_transfer'] = True
-                        tx_data['token_transfer_to'] = call['args'][-2]
-                        if call['function'] == 'transferFrom':
-                            tx_data['token_transfer_from'] = call['args'][0]
-                        else:
-                            tx_data['token_transfer_from'] = tx_data['from']
-                        if contract['token_decimals']:
-                            tx_data['token_amount'] = call['args'][-1] / (10 ** contract['token_decimals'])
-        elif tx_data['to'] == contracts.NULL_ADDRESS:
-            # contract creation, check Transfer events
-            pass
-        return tx_data
-
-    def get_contract(self, address):
-        resp = requests.get(settings.JSEARCH_CONTRACTS_API + '/v1/contracts/{}'.format(address))
-        if resp.status_code == 200:
-            logger.debug('Got Contract %s: %s', address, resp.status_code)
-            contract = resp.json()
-            return contract
-        logger.debug('Miss Contract %s: %s', address, resp.status_code)
-
-    def update_contract(self, address, data):
-        q = contracts_t.update().where(
-            contracts_t.c.address == address).values(**data)
-        res = self.conn.execute(q)
-
-    def get_transaction_logs(self, conn, tx_hash):
+    @as_dicts
+    def get_transaction_logs(self, tx_hash):
         q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
-        return conn.execute(q).fetchall()
+        return self.conn.execute(q).fetchall()
 
-    def process_token_transfers(self, tx_hash):
-        logger.info('Processing token transfer for TX %s', tx_hash)
-        q = select([transactions_t]).where(transactions_t.c.hash == tx_hash)
-        tx = self.conn.execute(q).fetchone()
-        if tx is None:
-            logger.warn('TX with hash %s not found', tx_hash)
-            return
-        with self.engine.begin() as conn:
-            logs = self.get_transaction_logs(conn, tx['hash'])
-            if len(logs) == 0:
-                logger.info('No logs - no transfers')
-                return
-            if tx['to'] == contracts.NULL_ADDRESS:
-                contract_address = logs[0]['address']
-            else:
-                contract_address = tx['to']
-            contract = self.get_contract(contract_address)
-            logs = self.process_logs(contract, [dict(l) for l in logs])
-            tx_data = dict(tx)
-            data = self.process_transaction(contract, tx_data, logs)
-            query = update(transactions_t).where(transactions_t.c.hash == tx_hash).values(**data)
-            conn.execute(query)
-            self.update_logs(conn, logs)
+    @as_dicts
+    def get_logs_for_post_processing(self, limit=1000):
+        query = select([logs_t]) \
+            .where(or_(logs_t.c.is_processed == false(),
+                       logs_t.c.is_processed == null())) \
+            .order_by(logs_t.c.block_number.desc()) \
+            .limit(limit)
+        return self.conn.execute(query).fetchall()
 
     def get_contract_transactions(self, address):
         q = select([transactions_t]).where(transactions_t.c.to == address)
@@ -335,7 +240,6 @@ def dict_keys_case_convert(d):
 
 def get_main_db():
     db = MainDBSync(settings.JSEARCH_MAIN_DB)
-    db.connect()
     return db
 
 
@@ -348,3 +252,4 @@ def get_engine():
 def hex_vals_to_int(d, keys):
     for k in keys:
         d[k] = int(d[k], 16)
+    return d

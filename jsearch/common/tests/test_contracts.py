@@ -1,8 +1,5 @@
 import copy
 
-from jsearch.common.contracts import ERC20_ABI, simplify_abi, is_erc20_compatible, is_erc20_stricte
-
-
 """
 ERC_20 items:
 
@@ -22,6 +19,7 @@ None,
 
 
 def test_simplify_abi():
+    from jsearch.common.contracts import ERC20_ABI, simplify_abi
     abi_simple = simplify_abi(ERC20_ABI)
 
     assert abi_simple == [
@@ -41,6 +39,7 @@ def test_simplify_abi():
 
 
 def test_is_erc20_compatible_true():
+    from jsearch.common.contracts import ERC20_ABI, is_erc20_compatible
     assert True is is_erc20_compatible(ERC20_ABI)
     abi = copy.deepcopy(ERC20_ABI)
     abi[0].pop('constant')
@@ -52,6 +51,7 @@ def test_is_erc20_compatible_true():
 
 
 def test_is_erc20_compatible_false():
+    from jsearch.common.contracts import ERC20_ABI, is_erc20_compatible
     abi = copy.deepcopy(ERC20_ABI)
     # change transfer description:
     abi[7]['inputs'] = [{'type': 'string', 'name': 'var'}]
@@ -59,10 +59,12 @@ def test_is_erc20_compatible_false():
 
 
 def test_is_erc20_strict_true():
+    from jsearch.common.contracts import ERC20_ABI, is_erc20_stricte
     assert True is is_erc20_stricte(ERC20_ABI)
 
 
 def test_is_erc20_strict_false():
+    from jsearch.common.contracts import ERC20_ABI, is_erc20_stricte
     abi = copy.deepcopy(ERC20_ABI)
     abi[0].pop('constant')
     abi[1]['inputs'][0]['name'] = 'foo'
