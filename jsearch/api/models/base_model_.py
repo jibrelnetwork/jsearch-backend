@@ -1,10 +1,10 @@
-import pprint
 import json
+import pprint
+import typing
 from datetime import datetime
-from decimal import Decimal 
+from decimal import Decimal
 
 import six
-import typing
 
 from jsearch.api import util
 
