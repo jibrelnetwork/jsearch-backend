@@ -58,3 +58,13 @@ def add_test_contract(connection_string, address, fuck_token):
     conn = engine.connect()
     query = contracts_t.insert().values(address=address, **fuck_token.as_db_record())
     conn.execute(query)
+
+
+def pprint_returned_value(func):
+    def _wrapper(*args, **kwargs):
+        from pprint import pprint
+        result = func(*args, **kwargs)
+        pprint(result)
+        return result
+
+    return _wrapper

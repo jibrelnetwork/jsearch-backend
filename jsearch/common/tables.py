@@ -101,11 +101,7 @@ class Transaction(Base):
     v = sa.Column('v', sa.String)
     value = sa.Column('value', sa.String)
 
-    is_token_transfer = sa.Column('is_token_transfer', sa.Boolean, default=False)
     contract_call_description = sa.Column('contract_call_description', postgresql.JSONB)
-    token_amount = sa.Column('token_amount', postgresql.NUMERIC(32, 18))
-    token_transfer_from = sa.Column('token_transfer_from', sa.String, index=True)
-    token_transfer_to = sa.Column('token_transfer_to', sa.String, index=True)
 
 
 class Receipt(Base):

@@ -685,11 +685,7 @@
             "s": "0x77e2f1c081e192916b90453c956c5c03726cec291ff996245a3a359d3d09a775",
             "v": "0xac",
             "value": "0x0",
-            "is_token_transfer": false,
-            "contract_call_description": null,
-            "token_amount": null,
-            "token_transfer_from": null,
-            "token_transfer_to": null
+            "contract_call_description": null
         },
         {
             "hash": "0x125fa8f17c970ff63db176860b94ea3d004ec42c1c446b99553e8bbfc2d2a892",
@@ -706,11 +702,7 @@
             "s": "0x68ecdc0d4aeab1058d36f86d3944590ea02ea68b12816351e2dffaab64eb1f1",
             "v": "0xac",
             "value": "0xde0b6b3a7640000",
-            "is_token_transfer": false,
-            "contract_call_description": null,
-            "token_amount": null,
-            "token_transfer_from": null,
-            "token_transfer_to": null
+            "contract_call_description": null
         },
         {
             "hash": "0xa05ccbfa4b39af30042a49a579d07c5086065523dfaa8745e8ab35cb6568dafb",
@@ -727,17 +719,13 @@
             "s": "0x59bdd99c708a71ebca8ec3a04ba2b9caf9fa4bbc6a22e33a00beb6d7d33e783a",
             "v": "0xab",
             "value": "0x0",
-            "is_token_transfer": true,
             "contract_call_description": {
                 "args": [
                     "0xab30633f2b9dafe0afb65b36b51e7aae6dd4fb68",
                     1000
                 ],
                 "function": "transfer"
-            },
-            "token_amount": 10,
-            "token_transfer_from": "0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae",
-            "token_transfer_to": "0xab30633f2b9dafe0afb65b36b51e7aae6dd4fb68"
+            }
         },
         {
             "hash": "0x9286f83f96c8ebd793db6fc8f933b75e6e6f881d74bb3f3c7fea206f272ad8b1",
@@ -754,17 +742,13 @@
             "s": "0x41648b15284f1d976907607e1e28086a5e08a9f694a5f62533c13851effd9046",
             "v": "0xab",
             "value": "0x0",
-            "is_token_transfer": false,
             "contract_call_description": {
                 "args": [
                     "0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae",
                     500
                 ],
                 "function": "approve"
-            },
-            "token_amount": null,
-            "token_transfer_from": null,
-            "token_transfer_to": null
+            }
         },
         {
             "hash": "0x7ab17da91db3682480a65af664d2039e78b064bc8abfd0053c6666a209087f95",
@@ -781,7 +765,6 @@
             "s": "0x39737dd460faf28c04eb0fab72872e4b4e07853b559bbea8e2525a773606c9b8",
             "v": "0xab",
             "value": "0x0",
-            "is_token_transfer": true,
             "contract_call_description": {
                 "args": [
                     "0xab30633f2b9dafe0afb65b36b51e7aae6dd4fb68",
@@ -789,10 +772,7 @@
                     400
                 ],
                 "function": "transferFrom"
-            },
-            "token_amount": 4,
-            "token_transfer_from": "0xab30633f2b9dafe0afb65b36b51e7aae6dd4fb68",
-            "token_transfer_to": "0xe9b0363d2b53c534cc3d4a45b7024f991114d2ae"
+            }
         }
     ],
     "uncles": []

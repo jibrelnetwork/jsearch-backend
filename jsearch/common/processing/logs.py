@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, List, Tuple, Set
 
 from jsearch import settings
 from jsearch.common import contracts
+from jsearch.common.contracts import is_erc20_compatible
 from jsearch.common.integrations.contracts import get_contract
 from jsearch.common.processing.operations import OPERATION_UPDATE_TOKEN_BALANCE, OPERATION_UPDATE_CONTRACT_INFO
 
@@ -88,8 +89,7 @@ def update_contract_cache(logs: List[Dict[str, Any]], contract_cache: Dict[str, 
     return contract_cache
 
 
-def process_log(log: Dict[str, Any], contract: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    operations = defaultdict(set)
+def decode_token_transfer_event(log: Dict[str, Any], contract: Dict[str, Any]) -> Dict[str, Any]:
     abi = contract['abi']
     try:
         event = contracts.decode_event(abi, log)
@@ -102,23 +102,34 @@ def process_log(log: Dict[str, Any], contract: Dict[str, Any]) -> Tuple[Dict[str
             'event_type': event_type,
             'event_args': event
         })
+    return log
 
-        token_decimals = contract['token_decimals']
-        if token_decimals is None:
-            operations[OPERATION_UPDATE_CONTRACT_INFO].add((contract['address'],))
 
-        elif event_type == EventTypes.TRANSFER and len(event) == TRANSFER_EVENT_INPUT_SIZE:
-            from_address, to_address, token_amount = process_erc20_transfer_event(event, abi, token_decimals)
+def process_erc20_log(log: Dict[str, Any], contract: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    operations = defaultdict(set)
 
-            log.update({
-                'is_token_transfer': True,
-                'token_transfer_to': to_address,
-                'token_transfer_from': from_address,
-                'token_amount': token_amount,
-            })
+    abi = contract['abi']
+    event_args = log['event_args']
+    event_type = log['event_type']
+    token_decimals = contract['token_decimals']
 
-            operations[OPERATION_UPDATE_TOKEN_BALANCE].add((log['address'], from_address))
-            operations[OPERATION_UPDATE_TOKEN_BALANCE].add((log['address'], to_address))
+    if token_decimals is None:
+        contract_address = contract['address']
+        args_list = (contract_address, )
+        operations[OPERATION_UPDATE_CONTRACT_INFO].add(args_list)
+
+    elif event_type == EventTypes.TRANSFER and len(event_args) == TRANSFER_EVENT_INPUT_SIZE:
+        from_address, to_address, token_amount = process_erc20_transfer_event(event_args, abi, token_decimals)
+
+        log.update({
+            'is_token_transfer': True,
+            'token_transfer_to': to_address,
+            'token_transfer_from': from_address,
+            'token_amount': token_amount,
+        })
+
+        operations[OPERATION_UPDATE_TOKEN_BALANCE].add((log['address'], from_address))
+        operations[OPERATION_UPDATE_TOKEN_BALANCE].add((log['address'], to_address))
 
     return log, operations
 
@@ -128,10 +139,12 @@ def process_token_transfer_logs(logs, contracts_cache, contract=None) -> Dict[st
     operations = defaultdict(set)
     for log in logs:
         log_contract = contract or contracts_cache[log['address']]
-        log, log_operations = process_log(log, log_contract)
+        log = decode_token_transfer_event(log, log_contract)
+        if is_erc20_compatible(log_contract['abi']):
+            log, log_operations = process_erc20_log(log, log_contract)
 
-        operations[OPERATION_UPDATE_TOKEN_BALANCE] |= log_operations[OPERATION_UPDATE_TOKEN_BALANCE]
-        operations[OPERATION_UPDATE_CONTRACT_INFO] |= log_operations[OPERATION_UPDATE_CONTRACT_INFO]
+            operations[OPERATION_UPDATE_TOKEN_BALANCE] |= log_operations[OPERATION_UPDATE_TOKEN_BALANCE]
+            operations[OPERATION_UPDATE_CONTRACT_INFO] |= log_operations[OPERATION_UPDATE_CONTRACT_INFO]
 
     logger.info(
         "%s logs of token transfer processed on %0.2f s",
