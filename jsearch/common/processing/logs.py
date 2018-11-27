@@ -89,7 +89,7 @@ def update_contract_cache(logs: List[Dict[str, Any]], contract_cache: Dict[str, 
     return contract_cache
 
 
-def process_log(log: Dict[str, Any], contract: Dict[str, Any]) -> Dict[str, Any]:
+def decode_token_transfer_event(log: Dict[str, Any], contract: Dict[str, Any]) -> Dict[str, Any]:
     abi = contract['abi']
     try:
         event = contracts.decode_event(abi, log)
@@ -115,7 +115,8 @@ def process_erc20_log(log: Dict[str, Any], contract: Dict[str, Any]) -> Tuple[Di
 
     if token_decimals is None:
         contract_address = contract['address']
-        operations[OPERATION_UPDATE_CONTRACT_INFO].add(contract_address)
+        args_list = (contract_address, )
+        operations[OPERATION_UPDATE_CONTRACT_INFO].add(args_list)
 
     elif event_type == EventTypes.TRANSFER and len(event_args) == TRANSFER_EVENT_INPUT_SIZE:
         from_address, to_address, token_amount = process_erc20_transfer_event(event_args, abi, token_decimals)
@@ -138,7 +139,7 @@ def process_token_transfer_logs(logs, contracts_cache, contract=None) -> Dict[st
     operations = defaultdict(set)
     for log in logs:
         log_contract = contract or contracts_cache[log['address']]
-        log = process_log(log, log_contract)
+        log = decode_token_transfer_event(log, log_contract)
         if is_erc20_compatible(log_contract['abi']):
             log, log_operations = process_erc20_log(log, log_contract)
 
