@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from jsearch.common.database import MainDB, RawDB
+from jsearch.syncer.database import MainDB, RawDB
 from jsearch import settings
 from .manager import Manager
 
