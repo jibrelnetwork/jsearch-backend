@@ -1,22 +1,18 @@
 import binascii
-import os
 import logging
-import time
 import re
 
 from ethereum.abi import (
     decode_abi,
     normalize_name as normalize_abi_method_name,
     method_id as get_abi_method_id,
-    ContractTranslator)
+    ContractTranslator
+)
 from ethereum.utils import encode_int, zpad, decode_hex
-
 
 logger = logging.getLogger(__name__)
 
-
 NULL_ADDRESS = '0x0000000000000000000000000000000000000000'
-
 
 ERC20_METHODS_IDS = {
     'approve': '0x095ea7b3',
@@ -32,7 +28,6 @@ ERC20_METHODS_IDS = {
     'totalSupply': '0x18160ddd',
 
 }
-
 
 ERC20_ABI = [
     {
@@ -257,7 +252,6 @@ ERC20_ABI = [
     }
 ]
 
-
 ERC20_ABI_SIMPLE = [
     {'type': 'function', 'name': 'transfer', 'inputs': ['address', 'uint']},
     {'type': 'function', 'name': 'balanceOf', 'inputs': ['address'], 'outputs': ['uint']},
@@ -281,11 +275,14 @@ def _fix_string_args(args, types):
 def _fix_arg(arg, typ, decoder=None):
     if not decoder:
         if typ == 'string' and isinstance(arg, bytes):
-            def decoder(a): return a.decode().replace('\x00', '')
+            def decoder(a):
+                return a.decode().replace('\x00', '')
         elif typ.startswith('byte'):
-            def decoder(a): return binascii.hexlify(a).decode()  # FIXME! handle bytes properly
+            def decoder(a):
+                return binascii.hexlify(a).decode()  # FIXME! handle bytes properly
         else:
-            def decoder(a): return a
+            def decoder(a):
+                return a
 
     if isinstance(arg, list):
         return [_fix_arg(a, typ, decoder) for a in arg]
@@ -306,7 +303,7 @@ def decode_contract_call(contract_abi: list, call_data: str):
             try:
                 args = decode_abi(arg_types, call_data_bin[4:])
                 args = _fix_string_args(args, arg_types)
-            except AssertionError as e:
+            except AssertionError:
                 continue
             return {'function': method_name, 'args': args}
 
@@ -355,7 +352,7 @@ def simplify_abi(abi):
         s['name'] = item['name']
         s['type'] = item['type']
         s['inputs'] = [fix_uint(v['type']) for v in item['inputs']]
-        if 'outputs' in item and item['name'] != 'transfer':  #  dont check outputs for transfer
+        if 'outputs' in item and item['name'] != 'transfer':  # dont check outputs for transfer
             s['outputs'] = [fix_uint(v['type']) for v in item['outputs']]
         abi_simple.append(s)
     return abi_simple
@@ -365,7 +362,6 @@ def collect_types():
     from jsearch.common.tables import contracts_t
     from sqlalchemy.sql import select
     from sqlalchemy import create_engine
-    import json
 
     engine = create_engine('postgresql://dbuser@localhost/jsearch_main')
     conn = engine.connect()
@@ -384,7 +380,7 @@ def collect_types():
 
 def cut_contract_metadata_hash(byte_code):
     """
-    https://github.com/ethereum/solidity/blob/c9bdbcf470f4ca7f8d2d71f1be180274f534888d/libsolidity/interface/CompilerStack.cpp#L699
+    https://github.com/ethereum/solidity/blob/c9bdbcf470f4ca7f8d2d71f1be180274f534888d/libsolidity/interface/CompilerStack.cpp#L699  # noqa: E501
 
     bytes cborEncodedHash =
         // CBOR-encoding of the key "bzzr0"
@@ -403,7 +399,7 @@ def cut_contract_metadata_hash(byte_code):
             bytes{0xa2} +
             cborEncodedHash +
             bytes{0x6c, 'e', 'x', 'p', 'e', 'r', 'i', 'm', 'e', 'n', 't', 'a', 'l', 0xf5};
-    solAssert(cborEncodedMetadata.size() <= 0xffff, "Metadata too large");
+    solAssert(cborEncodedMetadata.size() <= 0xffff, "Met:306adata too large");
     """
 
     cbor_hash = '65627a7a72305820(.*)'

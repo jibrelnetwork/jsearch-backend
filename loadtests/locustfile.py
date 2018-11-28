@@ -1,9 +1,8 @@
 import os
 import random
 
-from locust import HttpLocust, TaskSet, task
 import psycopg2
-
+from locust import HttpLocust, TaskSet, task
 
 keys = {}
 
@@ -21,7 +20,12 @@ class UserBehavior(TaskSet):
         cur.execute('SELECT hash from transactions LIMIT 10000')
         keys['transactions'] = cur.fetchall()
         conn.close()
-        print('Keys loaded: B: {}, A: {}, Tx: {}'.format(len(keys['blocks']), len(keys['accounts']), len(keys['transactions'])))
+
+        blocks = len(keys['blocks'])
+        accounts = len(keys['accounts'])
+        txs = len(keys['transactions'])
+
+        print(f'Keys loaded: B: {blocks}, A: {accounts}, Tx: {txs}')
 
     @task(1)
     def get_block_latest(self):
@@ -40,7 +44,11 @@ class UserBehavior(TaskSet):
     @task(1)
     def get_block_transactions(self):
         block_num = random.choice(keys['blocks'])[0]
-        self.client.get("/blocks/{}/transactions".format(block_num), catch_response=False, name="/blocks/{number}/transactions")
+        self.client.get(
+            "/blocks/{}/transactions".format(block_num),
+            catch_response=False,
+            name="/blocks/{number}/transactions"
+        )
 
 
 class ApiUser(HttpLocust):

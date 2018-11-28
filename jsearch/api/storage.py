@@ -1,7 +1,8 @@
 import json
-from typing import List, Dict, Any
+from typing import List
 
 from jsearch.api import models
+from jsearch.api.models.all import TokenTransfer
 
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
@@ -17,11 +18,15 @@ class Storage:
         Get account info by address
         """
         if tag.is_hash():
-            query = """SELECT * FROM accounts WHERE address=$1 AND block_number<=(SELECT number FROM blocks WHERE hash=$2) ORDER BY block_number LIMIT 1"""
+            query = """
+                SELECT * FROM accounts
+                WHERE address=$1
+                    AND block_number<=(SELECT number FROM blocks WHERE hash=$2) ORDER BY block_number LIMIT 1
+            """
         elif tag.is_number():
-            query = """SELECT * FROM accounts WHERE address=$1 AND block_number<=$2 ORDER BY block_number LIMIT 1"""
+            query = "SELECT * FROM accounts WHERE address=$1 AND block_number<=$2 ORDER BY block_number LIMIT 1"
         else:
-            query = """SELECT * FROM accounts WHERE address=$1 ORDER BY block_number DESC LIMIT 1"""
+            query = "SELECT * FROM accounts WHERE address=$1 ORDER BY block_number DESC LIMIT 1"
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 row = await conn.fetchrow(query, address)
@@ -36,8 +41,14 @@ class Storage:
             return models.Account(**row)
 
     async def get_account_transactions(self, address, limit, offset):
-        query = """SELECT {fields} FROM transactions WHERE "to"=$1 OR "from"=$1 ORDER BY block_number, transaction_index LIMIT $2 OFFSET $3"""
-        query = query.format(fields=models.Transaction.select_fields())
+        fields = models.Transaction.select_fields()
+
+        query = f"""
+            SELECT {fields} FROM transactions
+            WHERE "to"=$1 OR "from"=$1
+            ORDER BY block_number, transaction_index LIMIT $2 OFFSET $3
+        """
+
         limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address.lower(), limit, offset)
@@ -45,13 +56,15 @@ class Storage:
             return [models.Transaction(**r) for r in rows]
 
     async def get_block_transactions(self, tag):
+        fields = models.Transaction.select_fields()
+
         if tag.is_hash():
-            query = """SELECT {fields} FROM transactions WHERE block_hash=$1"""
+            query = f"SELECT {fields} FROM transactions WHERE block_hash=$1"
         elif tag.is_number():
-            query = """SELECT {fields} FROM transactions WHERE block_number=$1"""
+            query = f"SELECT {fields} FROM transactions WHERE block_number=$1"
         else:
-            query = """SELECT {fields} FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"""
-        query = query.format(fields=models.Transaction.select_fields())
+            query = f"SELECT {fields} FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"
+
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 rows = await conn.fetch(query)
@@ -63,13 +76,13 @@ class Storage:
     async def get_block(self, tag):
 
         if tag.is_hash():
-            query = """SELECT * FROM blocks WHERE hash=$1"""
+            query = "SELECT * FROM blocks WHERE hash=$1"
         elif tag.is_number():
-            query = """SELECT * FROM blocks WHERE number=$1"""
+            query = "SELECT * FROM blocks WHERE number=$1"
         else:
-            query = """SELECT * FROM blocks WHERE number=(SELECT max(number) FROM blocks)"""
+            query = "SELECT * FROM blocks WHERE number=(SELECT max(number) FROM blocks)"
 
-        tx_query = """SELECT hash FROM transactions WHERE block_number=$1 ORDER BY transaction_index"""
+        tx_query = "SELECT hash FROM transactions WHERE block_number=$1 ORDER BY transaction_index"
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 row = await conn.fetchrow(query)
@@ -91,7 +104,7 @@ class Storage:
 
     async def get_blocks(self, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = """SELECT * FROM blocks ORDER BY number {} LIMIT $1 OFFSET $2""".format(order)
+        query = f"""SELECT * FROM blocks ORDER BY number {order} LIMIT $1 OFFSET $2"""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, limit, offset)
             rows = [dict(r) for r in rows]
@@ -108,7 +121,7 @@ class Storage:
 
     async def get_account_mined_blocks(self, address, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = """SELECT * FROM blocks WHERE miner= $1 ORDER BY number {} LIMIT $2 OFFSET $3""".format(order)
+        query = f"""SELECT * FROM blocks WHERE miner= $1 ORDER BY number {order} LIMIT $2 OFFSET $3"""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address, limit, offset)
             rows = [dict(r) for r in rows]
@@ -123,11 +136,11 @@ class Storage:
 
     async def get_uncle(self, tag):
         if tag.is_hash():
-            query = """SELECT * FROM uncles WHERE hash=$1"""
+            query = "SELECT * FROM uncles WHERE hash=$1"
         elif tag.is_number():
-            query = """SELECT * FROM uncles WHERE number=$1"""
+            query = "SELECT * FROM uncles WHERE number=$1"
         else:
-            query = """SELECT * FROM uncles WHERE number=(SELECT max(number) FROM uncles)"""
+            query = "SELECT * FROM uncles WHERE number=(SELECT max(number) FROM uncles)"
 
         async with self.pool.acquire() as conn:
             if tag.is_latest():
@@ -143,7 +156,7 @@ class Storage:
 
     async def get_uncles(self, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = """SELECT * FROM uncles ORDER BY number {} LIMIT $1 OFFSET $2""".format(order)
+        query = f"""SELECT * FROM uncles ORDER BY number {order} LIMIT $1 OFFSET $2"""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, limit, offset)
             rows = [dict(r) for r in rows]
@@ -154,7 +167,7 @@ class Storage:
 
     async def get_account_mined_uncles(self, address, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = """SELECT * FROM uncles WHERE miner=$1 ORDER BY number {} LIMIT $2 OFFSET $3""".format(order)
+        query = f"""SELECT * FROM uncles WHERE miner=$1 ORDER BY number {order} LIMIT $2 OFFSET $3"""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address, limit, offset)
             rows = [dict(r) for r in rows]
@@ -165,11 +178,11 @@ class Storage:
 
     async def get_block_uncles(self, tag):
         if tag.is_hash():
-            query = """SELECT * FROM uncles WHERE block_hash=$1"""
+            query = "SELECT * FROM uncles WHERE block_hash=$1"
         elif tag.is_number():
-            query = """SELECT * FROM uncles WHERE block_number=$1"""
+            query = "SELECT * FROM uncles WHERE block_number=$1"
         else:
-            query = """SELECT * FROM uncles WHERE block_number=(SELECT max(number) FROM blocks)"""
+            query = "SELECT * FROM uncles WHERE block_number=(SELECT max(number) FROM blocks)"
 
         async with self.pool.acquire() as conn:
             if tag.is_latest():
@@ -183,8 +196,8 @@ class Storage:
             return [models.Uncle(**r) for r in rows]
 
     async def get_transaction(self, tx_hash):
-        query = """SELECT {fields} FROM transactions WHERE hash=$1"""
-        query = query.format(fields=models.Transaction.select_fields())
+        fields = models.Transaction.select_fields()
+        query = f"SELECT {fields} FROM transactions WHERE hash=$1"
 
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, tx_hash)
@@ -194,7 +207,7 @@ class Storage:
             return models.Transaction(**row)
 
     async def get_receipt(self, tx_hash):
-        query = """SELECT * FROM receipts WHERE transaction_hash=$1"""
+        query = "SELECT * FROM receipts WHERE transaction_hash=$1"
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, tx_hash)
             if row is None:
@@ -204,8 +217,8 @@ class Storage:
             return models.Receipt(**row)
 
     async def get_logs(self, tx_hash):
-        query = """SELECT {fields} FROM logs WHERE transaction_hash=$1 ORDER BY log_index"""
-        query = query.format(fields=models.Log.select_fields())
+        fields = models.Log.select_fields()
+        query = f"SELECT {fields} FROM logs WHERE transaction_hash=$1 ORDER BY log_index"
 
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, tx_hash)
@@ -222,8 +235,10 @@ class Storage:
 
     async def get_verified_contracts(self, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = """SELECT {fields} FROM contracts ORDER BY verified_at {order} LIMIT $1 OFFSET $2"""
-        query = query.format(fields=models.Contract.select_fields(), order=order)
+
+        fields = models.Contract.select_fields()
+        query = f"SELECT {fields} FROM contracts ORDER BY verified_at {order} LIMIT $1 OFFSET $2"
+
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, limit, offset)
             dicts = []
@@ -234,8 +249,9 @@ class Storage:
             return dicts
 
     async def get_verified_contract(self, address):
-        query = """SELECT {fields} FROM contracts WHERE address=$1"""
-        query = query.format(fields=models.Contract.select_fields())
+        fields = models.Contract.select_fields()
+        query = f"SELECT {fields} FROM contracts WHERE address=$1"
+
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, address)
             if row is None:
@@ -246,16 +262,23 @@ class Storage:
 
     async def get_tokens_list(self, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = """SELECT {fields} FROM contracts WHERE is_erc20_token is true ORDER BY verified_at {order} LIMIT $1 OFFSET $2"""
-        query = query.format(fields=models.Token.select_fields(), order=order)
+
+        fields = models.Token.select_fields()
+        query = f"""
+            SELECT {fields} FROM contracts
+            WHERE is_erc20_token is true
+            ORDER BY verified_at {order} LIMIT $1 OFFSET $2;
+        """
+
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, limit, offset)
             rows = [dict(r) for r in rows]
             return [models.Token(**row) for row in rows]
 
     async def get_token(self, address):
-        query = """SELECT {fields} FROM contracts WHERE address=$1"""
-        query = query.format(fields=models.Token.select_fields())
+        fields = models.Token.select_fields()
+        query = f"SELECT {fields} FROM contracts WHERE address=$1;"
+
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, address)
             if row is None:
@@ -264,7 +287,7 @@ class Storage:
             return models.Token(**row)
 
     async def _fetch_token_transfers(self, query: str, address: str, limit: int, offset: int) \
-            -> List[models.TokenTransfer]:
+            -> List[TokenTransfer]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address, limit, offset)
             tokens: List[models.TokenTransfer] = []
@@ -276,13 +299,13 @@ class Storage:
             -> List[models.TokenTransfer]:
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
         query = f"""
-            SELECT block_hash, 
-                transaction_hash, 
+            SELECT block_hash,
+                transaction_hash,
                 token_amount,
                 token_transfer_from,
-                token_transfer_to 
-            FROM logs 
-            WHERE is_token_transfer is true AND address = $1 
+                token_transfer_to
+            FROM logs
+            WHERE is_token_transfer is true AND address = $1
             ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3;
         """
         return await self._fetch_token_transfers(query, address, limit, offset)
@@ -291,12 +314,12 @@ class Storage:
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
         query = f"""
             SELECT block_hash,
-                transaction_hash, 
-                token_transfer_from, 
-                token_transfer_to, 
+                transaction_hash,
+                token_transfer_from,
+                token_transfer_to,
                 token_amount
-            FROM logs 
-            WHERE is_token_transfer is true AND token_transfer_from=$1 OR token_transfer_to=$1 
+            FROM logs
+            WHERE is_token_transfer is true AND token_transfer_from=$1 OR token_transfer_to=$1
             ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3;
         """
         return await self._fetch_token_transfers(query, address, limit, offset)

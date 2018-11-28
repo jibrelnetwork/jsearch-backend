@@ -3,14 +3,24 @@ import re
 
 import aiopg
 import psycopg2
-from aiopg.sa import create_engine
+from aiopg.sa import create_engine as async_create_engine
 from psycopg2.extras import DictCursor
+from sqlalchemy import create_engine as sync_create_engine
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine.base import Engine as SyncEngine
 from sqlalchemy.pool import NullPool
 
 from jsearch.common import contracts
-from jsearch.common.tables import *
+from jsearch.common.tables import (
+    accounts_base_t,
+    accounts_state_t,
+    blocks_t,
+    internal_transactions_t,
+    logs_t,
+    receipts_t,
+    transactions_t,
+    uncles_t
+)
 
 MAIN_DB_POOL_SIZE = 22
 
@@ -144,7 +154,7 @@ class MainDB(DBWrapper):
     engine: SyncEngine
 
     async def connect(self):
-        self.engine = await create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
+        self.engine = await async_create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
 
     async def disconnect(self):
         self.engine.close()
@@ -160,8 +170,8 @@ class MainDB(DBWrapper):
         else:
             condition = 'number BETWEEN %s AND %s'
             params = blocks_range
-        q = """SELECT l.number + 1 as start 
-                FROM (SELECT * FROM blocks WHERE {cond}) as l 
+        q = """SELECT l.number + 1 as start
+                FROM (SELECT * FROM blocks WHERE {cond}) as l
                 LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number
                 WHERE r.number IS NULL order by start""".format(cond=condition)
         async with self.engine.acquire() as conn:
@@ -174,7 +184,7 @@ class MainDB(DBWrapper):
 class MainDBSync(DBWrapperSync):
 
     def connect(self):
-        engine = sa.create_engine(self.connection_string, poolclass=NullPool)
+        engine = sync_create_engine(self.connection_string, poolclass=NullPool)
         self.conn = engine.connect()
 
     def is_block_exist(self, block_number):
@@ -224,11 +234,11 @@ class MainDBSync(DBWrapperSync):
         state_items = []
         for acc in accounts:
             base_items.append({
-             'address': acc['address'],
-             'code': acc['code'],
-             'code_hash': acc['code_hash'],
-             'last_known_balance': acc['balance'],
-             'root': acc['root'],
+                'address': acc['address'],
+                'code': acc['code'],
+                'code_hash': acc['code_hash'],
+                'last_known_balance': acc['balance'],
+                'root': acc['root'],
             })
             state_items.append({
                 'block_number': acc['block_number'],
