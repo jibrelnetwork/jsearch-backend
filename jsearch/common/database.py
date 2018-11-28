@@ -4,9 +4,10 @@ from typing import Dict
 
 import aiopg
 import psycopg2
-from aiopg.sa import create_engine, Engine as AsyncEngine
+from aiopg import sa
+from aiopg.sa import create_engine as async_create_engine, Engine as AsyncEngine
 from psycopg2.extras import DictCursor
-from sqlalchemy import and_, false, null, or_
+from sqlalchemy import and_, false, null, or_, create_engine as sync_create_engine
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine.base import Connection, Engine as SyncEngine
 from sqlalchemy.pool import NullPool
@@ -14,7 +15,7 @@ from sqlalchemy.sql import select
 
 from jsearch import settings
 from jsearch.common import contracts
-from jsearch.common.tables import *
+from jsearch.common.tables import transactions_t, receipts_t, logs_t, token_holders_t
 from jsearch.common.utils import as_dicts
 
 MAIN_DB_POOL_SIZE = 22
@@ -141,7 +142,7 @@ class MainDB(DBWrapper):
     engine: AsyncEngine
 
     async def connect(self):
-        self.engine = await create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
+        self.engine = await async_create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
 
     async def disconnect(self):
         self.engine.close()
@@ -157,10 +158,14 @@ class MainDB(DBWrapper):
         else:
             condition = 'number BETWEEN %s AND %s'
             params = blocks_range
-        q = """SELECT l.number + 1 as start 
-                FROM (SELECT * FROM blocks WHERE {cond}) as l 
-                LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number
-                WHERE r.number IS NULL order by start""".format(cond=condition)
+
+        q = f"""
+            SELECT l.number + 1 as start
+                FROM (SELECT * FROM blocks WHERE {condition}) as l
+            LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number
+            WHERE r.number IS NULL order by start;
+        """
+
         async with self.engine.acquire() as conn:
             res = await conn.execute(q, params)
             rows = await res.fetchall()
@@ -181,7 +186,7 @@ class MainDBSync(DBWrapperSync):
     engine: SyncEngine
 
     def connect(self):
-        self.engine = sa.create_engine(self.connection_string, poolclass=NullPool)
+        self.engine = sync_create_engine(self.connection_string, poolclass=NullPool)
         self.conn = self.engine.connect()
 
     def disconnect(self):
