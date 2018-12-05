@@ -19,14 +19,14 @@ class Storage:
         """
         if tag.is_hash():
             query = """
-                SELECT * FROM accounts
+                SELECT * FROM accounts_state
                 WHERE address=$1
                     AND block_number<=(SELECT number FROM blocks WHERE hash=$2) ORDER BY block_number LIMIT 1
             """
         elif tag.is_number():
-            query = "SELECT * FROM accounts WHERE address=$1 AND block_number<=$2 ORDER BY block_number LIMIT 1"
+            query = "SELECT * FROM accounts_state WHERE address=$1 AND block_number<=$2 ORDER BY block_number LIMIT 1"
         else:
-            query = "SELECT * FROM accounts WHERE address=$1 ORDER BY block_number DESC LIMIT 1"
+            query = "SELECT * FROM accounts_state WHERE address=$1 ORDER BY block_number DESC LIMIT 1"
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 row = await conn.fetchrow(query, address)

@@ -19,39 +19,39 @@ class SyncProcessor:
         self.raw_db = RawDBSync(raw_db_dsn or settings.JSEARCH_RAW_DB)
         self.main_db = MainDBSync(main_db_dsn or settings.JSEARCH_MAIN_DB)
 
-    def sync_block(self, block_number: int) -> bool:
+    def sync_block(self, block_hash: str, block_number: int = None) -> bool:
         """
         :param block_number: number of block to sync
         :return: True if sync is successfull, False if syn fails or block already synced
         """
 
-        logger.debug("Syncing Block #%s", block_number)
+        logger.debug("Syncing Block %s #%s", block_hash, block_number)
 
         self.main_db.connect()
         self.raw_db.connect()
 
         start_time = time.monotonic()
-        is_block_exist = self.main_db.is_block_exist(block_number)
+        is_block_exist = self.main_db.is_block_exist(block_hash)
         if is_block_exist is True:
-            logger.debug("Block #%s exist", block_number)
+            logger.debug("Block #%s exist", block_hash)
             return False
-        receipts = self.raw_db.get_block_receipts(block_number)
+        receipts = self.raw_db.get_block_receipts(block_hash)
         if receipts is None:
-            logger.debug("Block #%s not ready: no receipts", block_number)
+            logger.debug("Block #%s not ready: no receipts", block_hash)
             return False
 
-        header = self.raw_db.get_header_by_hash(block_number)
-        body = self.raw_db.get_block_body(block_number)
-        accounts = self.raw_db.get_block_accounts(block_number)
-        reward = self.raw_db.get_reward(block_number)
-        internal_transactions = self.raw_db.get_internal_transactions(block_number)
+        header = self.raw_db.get_header_by_hash(block_hash)
+        body = self.raw_db.get_block_body(block_hash)
+        accounts = self.raw_db.get_block_accounts(block_hash)
+        reward = self.raw_db.get_reward(block_hash)
+        internal_transactions = self.raw_db.get_internal_transactions(block_hash)
 
         self.write_block(header=header, body=body, accounts=accounts,
                          receipts=receipts, reward=reward,
                          internal_transactions=internal_transactions)
 
         sync_time = time.monotonic() - start_time
-        logger.debug("Block #%s synced on %ss", block_number, sync_time)
+        logger.debug("Block %s #%s synced on %ss", block_hash, block_number, sync_time)
         self.main_db.disconnect()
         self.raw_db.disconnect()
         return True

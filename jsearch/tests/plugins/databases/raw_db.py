@@ -2,14 +2,16 @@ import logging
 import os
 from functools import partial
 from pathlib import Path
+import json
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 SQL_FOLDER = Path(__file__).parent / "sql"
+DUMPS_FOLDER = Path(__file__).parent / "dumps"
 
 
 def setup_database(connection_string):
@@ -33,6 +35,7 @@ def truncate(db):
         "receipts",
         "accounts",
         "rewards",
+        "reorgs",
         "internal_transactions"
     ]
     for table in tables:
@@ -71,3 +74,20 @@ def raw_db(raw_db_connection_string):
 @pytest.fixture
 def clean_test_raw_db(db):
     return partial(truncate, db)
+
+
+@pytest.fixture
+def raw_db_sample(raw_db_connection_string):
+    engine = create_engine(raw_db_connection_string)
+    meta = MetaData()
+    meta.reflect(bind=engine)
+    sample_data = {}
+    for t in meta.sorted_tables:
+        p = DUMPS_FOLDER / 'raw_db_sample' / f'{t}.json'
+        if not p.exists():
+            continue
+        table_data = json.load(p.open())
+        engine.execute(t.insert(), *table_data)
+        sample_data[t.name] = table_data
+    yield sample_data
+    truncate(engine)

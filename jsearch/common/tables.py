@@ -42,10 +42,10 @@ class Uncle(Base):
     __tablename__ = 'uncles'
 
     hash = sa.Column('hash', sa.String, primary_key=True)
-    number = sa.Column('number', HexInteger, primary_key=True)
+    number = sa.Column('number', HexInteger, index=True)
 
     block_number = sa.Column('block_number', HexInteger, index=True)
-    block_hash = sa.Column('block_hash', sa.String)
+    block_hash = sa.Column('block_hash', sa.String, primary_key=True)
     parent_hash = sa.Column('parent_hash', sa.String)
     difficulty = sa.Column('difficulty', HexBigInteger)
     extra_data = sa.Column('extra_data', sa.String)
@@ -63,12 +63,14 @@ class Uncle(Base):
     total_difficulty = sa.Column('total_difficulty', HexBigInteger)
     transactions_root = sa.Column('transactions_root', sa.String)
     reward = sa.Column('reward', postgresql.NUMERIC(32, 0))
+    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
 
 
 class InternalTransaction(Base):
     __tablename__ = 'internal_transactions'
 
-    block_number = sa.Column('block_number', HexInteger, primary_key=True)
+    block_number = sa.Column('block_number', HexInteger, index=True)
+    block_hash = sa.Column('block_hash', HexInteger, primary_key=True)
     parent_tx_hash = sa.Column('parent_tx_hash', sa.String, primary_key=True)
     op = sa.Column('op', sa.String)
     call_depth = sa.Column('call_depth', HexInteger)
@@ -80,16 +82,17 @@ class InternalTransaction(Base):
     payload = sa.Column('payload', sa.String)
     status = sa.Column('status', sa.String)
     transaction_index = sa.Column('transaction_index', sa.Integer, primary_key=True)
+    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
 
 
 class Transaction(Base):
     __tablename__ = 'transactions'
 
-    hash = sa.Column('hash', sa.String, primary_key=True)
+    hash = sa.Column('hash', sa.String, index=True)
 
     block_number = sa.Column('block_number', HexInteger, index=True)
-    block_hash = sa.Column('block_hash', sa.String)
-    transaction_index = sa.Column('transaction_index', HexInteger)
+    block_hash = sa.Column('block_hash', sa.String, index=True, primary_key=True)
+    transaction_index = sa.Column('transaction_index', HexInteger, primary_key=True)
     from_addr = sa.Column('from', sa.String, index=True)
     to_addr = sa.Column('to', sa.String, index=True)
     gas = sa.Column('gas', sa.String)
@@ -102,14 +105,15 @@ class Transaction(Base):
     value = sa.Column('value', sa.String)
 
     contract_call_description = sa.Column('contract_call_description', postgresql.JSONB)
+    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
 
 
 class Receipt(Base):
     __tablename__ = 'receipts'
 
-    transaction_hash = sa.Column('transaction_hash', sa.String, primary_key=True)
+    transaction_hash = sa.Column('transaction_hash', sa.String, index=True)
     block_number = sa.Column('block_number', HexInteger, index=True)
-    block_hash = sa.Column('block_hash', sa.String)
+    block_hash = sa.Column('block_hash', sa.String, primary_key=True)
     contract_address = sa.Column('contract_address', sa.String, index=True)
     cumulative_gas_used = sa.Column('cumulative_gas_used', HexInteger)
     from_addr = sa.Column('from', sa.String)
@@ -117,8 +121,9 @@ class Receipt(Base):
     gas_used = sa.Column('gas_used', HexInteger)
     logs_bloom = sa.Column('logs_bloom', sa.String)
     root = sa.Column('root', sa.String)
-    transaction_index = sa.Column('transaction_index', HexInteger)
+    transaction_index = sa.Column('transaction_index', HexInteger, primary_key=True)
     status = sa.Column('status', HexInteger)
+    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
 
 
 class Log(Base):
@@ -126,7 +131,7 @@ class Log(Base):
 
     transaction_hash = sa.Column('transaction_hash', sa.String, primary_key=True)
     block_number = sa.Column('block_number', HexInteger, index=True)
-    block_hash = sa.Column('block_hash', sa.String)
+    block_hash = sa.Column('block_hash', sa.String, index=True, primary_key=True)
     log_index = sa.Column('log_index', HexInteger, primary_key=True)
     address = sa.Column('address', sa.String)
     data = sa.Column('data', sa.String)
@@ -142,31 +147,19 @@ class Log(Base):
 
     is_token_transfer = sa.Column('is_token_transfer', sa.Boolean, default=False)
     is_processed = sa.Column('is_processed', sa.Boolean, index=True, default=False)
-
-
-class Account(Base):
-    __tablename__ = 'accounts'
-
-    block_number = sa.Column('block_number', HexInteger, primary_key=True)
-    block_hash = sa.Column('block_hash', sa.String)
-    address = sa.Column('address', sa.String, primary_key=True)
-    nonce = sa.Column('nonce', HexInteger)
-    code = sa.Column('code', sa.String)
-    code_hash = sa.Column('code_hash', sa.String)
-    balance = sa.Column('balance', postgresql.NUMERIC(32, 0))
-    root = sa.Column('root', sa.String)
-    storage = sa.Column('storage', postgresql.JSONB)
+    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
 
 
 class AccountState(Base):
     __tablename__ = 'accounts_state'
 
-    block_number = sa.Column('block_number', HexInteger, primary_key=True)
-    block_hash = sa.Column('block_hash', sa.String, index=True)
+    block_number = sa.Column('block_number', HexInteger, index=True)
+    block_hash = sa.Column('block_hash', sa.String, primary_key=True)
     address = sa.Column('address', sa.String, primary_key=True)
     nonce = sa.Column('nonce', HexInteger)
     root = sa.Column('root', sa.String)
     balance = sa.Column('balance', postgresql.NUMERIC(32, 0))
+    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
 
 
 class AccountBase(Base):
@@ -200,8 +193,8 @@ class MinedUncle(Base):
 class Block(Base):
     __tablename__ = 'blocks'
 
-    number = sa.Column('number', HexInteger, primary_key=True)
-    hash = sa.Column('hash', sa.String, index=True)
+    number = sa.Column('number', HexInteger, index=True)
+    hash = sa.Column('hash', sa.String, primary_key=True)
     parent_hash = sa.Column('parent_hash', sa.String)
     difficulty = sa.Column('difficulty', HexBigInteger)
     extra_data = sa.Column('extra_data', sa.String)
@@ -222,30 +215,7 @@ class Block(Base):
     static_reward = sa.Column('static_reward', postgresql.NUMERIC(32, 0))
     uncle_inclusion_reward = sa.Column('uncle_inclusion_reward', postgresql.NUMERIC(32, 0))
     tx_fees = sa.Column('tx_fees', postgresql.NUMERIC(32, 0))
-
-
-class Contract(Base):
-    __tablename__ = 'contracts'
-
-    address = sa.Column('address', sa.String, primary_key=True)
-    name = sa.Column('name', sa.String)
-    byte_code = sa.Column('byte_code', sa.Text)
-    source_code = sa.Column('source_code', sa.Text)
-    abi = sa.Column('abi', postgresql.JSONB)
-    compiler_version = sa.Column('compiler_version', sa.String)
-    optimization_enabled = sa.Column('optimization_enabled', sa.Boolean)
-    optimization_runs = sa.Column('optimization_runs', sa.Integer)
-    constructor_args = sa.Column('constructor_args', sa.String)
-    metadata_hash = sa.Column('metadata_hash', sa.String)
-
-    is_erc20_token = sa.Column('is_erc20_token', sa.Boolean)
-    token_name = sa.Column('token_name', sa.String)
-    token_symbol = sa.Column('token_symbol', sa.String)
-    token_decimals = sa.Column('token_decimals', sa.Integer)
-    token_total_supply = sa.Column('token_total_supply', postgresql.NUMERIC(32, 0))
-
-    grabbed_at = sa.Column(sa.DateTime)
-    verified_at = sa.Column(sa.DateTime)
+    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
 
 
 class TokenHolder(Base):
@@ -255,7 +225,15 @@ class TokenHolder(Base):
 
     account_address = sa.Column('account_address', sa.String, primary_key=True)
     token_address = sa.Column('token_address', sa.String, primary_key=True)
-    balance = sa.Column('balance', postgresql.NUMERIC(32, 0))
+    balance = sa.Column('balance', postgresql.NUMERIC(32, 0), index=True)
+
+
+class Reorg(Base):
+    __tablename__ = 'reorgs'
+    id = sa.Column(sa.BigInteger, primary_key=True)
+    block_hash = sa.Column('block_hash', sa.String)
+    block_number = sa.Column('block_number', sa.Integer)
+    reinserted = sa.Column('reinserted', sa.Boolean)
 
 
 blocks_t = Block.__table__
@@ -263,12 +241,11 @@ uncles_t = Uncle.__table__
 transactions_t = Transaction.__table__
 receipts_t = Receipt.__table__
 logs_t = Log.__table__
-accounts_t = Account.__table__
 accounts_base_t = AccountBase.__table__
 accounts_state_t = AccountState.__table__
-contracts_t = Contract.__table__
 token_holders_t = TokenHolder.__table__
 internal_transactions_t = InternalTransaction.__table__
+reorgs_t = Reorg.__table__
 
 TABLES = (
     blocks_t,
@@ -276,10 +253,9 @@ TABLES = (
     transactions_t,
     receipts_t,
     logs_t,
-    accounts_t,
     accounts_state_t,
     accounts_base_t,
-    contracts_t,
     token_holders_t,
-    internal_transactions_t
+    internal_transactions_t,
+    reorgs_t,
 )
