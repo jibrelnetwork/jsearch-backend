@@ -10,6 +10,8 @@ from ethereum.abi import (
 )
 from ethereum.utils import encode_int, zpad, decode_hex
 
+from jsearch.typing import Abi_ERC20
+
 logger = logging.getLogger(__name__)
 
 NULL_ADDRESS = '0x0000000000000000000000000000000000000000'
@@ -29,7 +31,7 @@ ERC20_METHODS_IDS = {
 
 }
 
-ERC20_ABI = [
+ERC20_ABI: Abi_ERC20 = [
     {
         "constant": True,
         "inputs": [],

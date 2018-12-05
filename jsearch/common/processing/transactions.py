@@ -5,8 +5,8 @@ from sqlalchemy.sql import select
 
 from jsearch.common import contracts
 from jsearch.common.integrations.contracts import get_contract
-from jsearch.common.processing.logs import process_logs
-from jsearch.common.processing.operations import do_operations_bulk
+from jsearch.common.processing.logs import process_log_event
+from jsearch.common.processing.erc20_transfer_logs import process_log_operations_bulk
 from jsearch.common.tables import transactions_t
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,8 @@ def process_token_transfers_for_transaction(db, tx_hash: str) -> None:
             contract_address = tx['to']
 
         contract = get_contract(contract_address)
-        logs, operations = process_logs(logs, contract)
 
-        do_operations_bulk(db, operations)
-        db.update_logs(db.conn, logs)
+        logs = [process_log_event(log) for log in logs]
+        process_log_operations_bulk(db, logs, contract)
+        for log in logs:
+            db.update_log(log)

@@ -1,9 +1,8 @@
 import sqlalchemy as sa
 import sqlalchemy.types as types
+from sqlalchemy import CheckConstraint
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import CheckConstraint
-
 
 Base = declarative_base()
 
@@ -140,8 +139,9 @@ class Log(Base):
     token_transfer_from = sa.Column('token_transfer_from', sa.String, index=True)
     token_transfer_to = sa.Column('token_transfer_to', sa.String, index=True)
 
-    is_token_transfer = sa.Column('is_token_transfer', sa.Boolean, default=False)
+    is_token_transfer = sa.Column('is_token_transfer', sa.Boolean, index=True, default=False)
     is_processed = sa.Column('is_processed', sa.Boolean, index=True, default=False)
+    is_transfer_processed = sa.Column('is_transfer_processed', sa.Boolean, index=True, default=False)
 
 
 class Account(Base):

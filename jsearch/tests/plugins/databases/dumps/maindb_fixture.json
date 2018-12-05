@@ -512,6 +512,7 @@
             "event_args": null,
             "is_processed": false,
             "is_token_transfer": false,
+            "is_transfer_processed": false,
             "token_amount": null,
             "token_transfer_from": null,
             "token_transfer_to": null
@@ -538,6 +539,7 @@
             },
             "is_processed": false,
             "is_token_transfer": false,
+            "is_transfer_processed": false,
             "token_amount": null,
             "token_transfer_from": null,
             "token_transfer_to": null
@@ -564,6 +566,7 @@
             },
             "is_processed": false,
             "is_token_transfer": false,
+            "is_transfer_processed": false,
             "token_amount": null,
             "token_transfer_from": null,
             "token_transfer_to": null
@@ -590,6 +593,7 @@
             },
             "is_processed": false,
             "is_token_transfer": false,
+            "is_transfer_processed": false,
             "token_amount": null,
             "token_transfer_from": null,
             "token_transfer_to": null
