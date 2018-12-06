@@ -298,7 +298,6 @@ class Storage:
             rows = await conn.fetch(query, address, limit, offset)
             tokens: List[models.TokenTransfer] = []
             for row in rows:
-                del row['is_forked']
                 tokens.append(models.TokenTransfer.from_log_record(log=row))
             return tokens
 
