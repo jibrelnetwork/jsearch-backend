@@ -7,9 +7,9 @@ from asynctest import CoroutineMock
 from jsearch.tests.entities import (
     TransactionFromDumpWrapper,
     BlockFromDumpWrapper,
-    AccountFromDumpWrapper,
     TokenTransferFromDumpWrapper,
-    ReceiptFromDumpWrapper)
+    ReceiptFromDumpWrapper
+)
 from jsearch.tests.utils import pprint_returned_value
 
 pytest_plugins = [
@@ -110,9 +110,9 @@ async def test_get_account_404(cli):
 
 
 async def test_get_account(cli, main_db_data):
-    resp = await cli.get('/accounts/' + main_db_data['accounts'][0]['address'])
+    resp = await cli.get('/accounts/' + main_db_data['accounts_state'][0]['address'])
     assert resp.status == 200
-    a = main_db_data['accounts'][-1]
+    a = main_db_data['accounts_state'][-1]
     assert await resp.json() == {'address': a['address'],
                                  'balance': a['balance'],
                                  'blockHash': a['block_hash'],
@@ -123,7 +123,7 @@ async def test_get_account(cli, main_db_data):
 
 
 async def test_get_account_transactions(cli, main_db_data):
-    resp = await cli.get('/accounts/' + main_db_data['accounts'][0]['address'] + '/transactions')
+    resp = await cli.get('/accounts/' + main_db_data['accounts_state'][0]['address'] + '/transactions')
     assert resp.status == 200
     txs = main_db_data['transactions']
     res = await resp.json()
@@ -431,7 +431,7 @@ class AsyncContextManagerMock(mock.Mock):
 
 async def test_verify_contract_ok(db, cli, main_db_data, here, fuck_token):
     contract_data = {
-        'address': main_db_data['accounts'][2]['address'],
+        'address': main_db_data['accounts_state'][2]['address'],
         'contract_name': 'FucksToken',
         'compiler': 'v0.4.18+commit.9cf6e910',
         'optimization_enabled': True,
@@ -495,7 +495,7 @@ async def test_get_verified_contracts_list_ok(cli, main_db_data):
 async def test_get_verified_contract_ok(cli, main_db_data):
     contracts = main_db_data['contracts']
 
-    resp = await cli.get('/verified_contracts/' + main_db_data['accounts'][2]['address'])
+    resp = await cli.get('/verified_contracts/' + main_db_data['accounts_state'][2]['address'])
     assert resp.status == 200
     res = await resp.json()
     assert res == {
@@ -529,7 +529,7 @@ async def test_get_tokens_list_ok(cli, main_db_data):
 async def test_get_token_ok(cli, main_db_data):
     contracts = main_db_data['contracts']
 
-    resp = await cli.get('/tokens/' + main_db_data['accounts'][2]['address'])
+    resp = await cli.get('/tokens/' + main_db_data['accounts_state'][2]['address'])
     assert resp.status == 200
     res = await resp.json()
     assert res == {

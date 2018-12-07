@@ -18,7 +18,7 @@ def test_maindb_write_block_data(db, main_db_dump):
     transactions = for_block(d['transactions'])
     receipts = for_block(d['receipts'])
     logs = for_block(d['logs'])
-    accounts = for_block(d['accounts'])
+    accounts = for_block(d['accounts_state'])
     internal_txs = for_block(d['internal_transactions'])
 
     main_db.write_block_data(
@@ -58,6 +58,7 @@ def test_maindb_write_block_data(db, main_db_dump):
             'root': accounts[1]['root'],
         },
     ]
+
     assert [dict(a) for a in db_accounts_state] == [
         {
             'block_number': accounts[0]['block_number'],
@@ -66,6 +67,8 @@ def test_maindb_write_block_data(db, main_db_dump):
             'nonce': accounts[0]['nonce'],
             'root': accounts[0]['root'],
             'balance': accounts[0]['balance'],
+            'is_forked': False,
+
         },
         {
             'block_number': accounts[1]['block_number'],
@@ -74,5 +77,6 @@ def test_maindb_write_block_data(db, main_db_dump):
             'nonce': accounts[1]['nonce'],
             'root': accounts[1]['root'],
             'balance': accounts[1]['balance'],
+            'is_forked': False,
         },
     ]

@@ -60,5 +60,7 @@ def transfer_on_fuck_token_contract(w3, fuck_token) -> int:
     })
     w3.mine_block()
     w3.client.eth.waitForTransactionReceipt(tx_hash)
-
-    return w3.last_block_number
+    mined_blocks = []
+    for n in range(w3.last_block_number):
+        mined_blocks.append(w3.client.eth.getBlock(n)['hash'].hex())
+    return mined_blocks

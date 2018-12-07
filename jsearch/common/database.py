@@ -14,7 +14,6 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.sql import select
 
 from jsearch import settings
-from jsearch.common import contracts
 from jsearch.common.tables import transactions_t, receipts_t, logs_t, token_holders_t
 from jsearch.common.utils import as_dicts
 
@@ -75,64 +74,6 @@ class DBWrapperSync:
 
         if exc_type:
             return False
-
-
-class RawDB(DBWrapper):
-    """
-    jSearch RAW db wrapper
-    """
-
-    async def get_blocks_to_sync(self, start_block_num=0, end_block_num=None):
-        q = """SELECT block_number FROM headers WHERE block_number BETWEEN %s AND %s"""
-        async with self.conn.cursor() as cur:
-            await cur.execute(q, [start_block_num, end_block_num])
-            rows = await cur.fetchall()
-        return rows
-
-
-class RawDBSync(DBWrapperSync):
-
-    def get_block_accounts(self, block_number):
-        q = """SELECT * FROM accounts WHERE block_number=%s"""
-        with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
-            rows = cur.fetchall()
-        return rows
-
-    def get_block_body(self, block_number):
-        q = """SELECT * FROM bodies WHERE block_number=%s"""
-        with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
-            row = cur.fetchone()
-        return row
-
-    def get_block_receipts(self, block_number):
-        q = """SELECT * FROM receipts WHERE block_number=%s"""
-        with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
-            row = cur.fetchone()
-        return row
-
-    def get_reward(self, block_number):
-        q = """SELECT * FROM rewards WHERE block_number=%s"""
-        with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
-            rows = cur.fetchall()
-        if len(rows) > 1:
-            for r in rows:
-                if r['address'] != contracts.NULL_ADDRESS:
-                    return r
-        elif len(rows) == 1:
-            return rows[0]
-        else:
-            return None
-
-    def get_internal_transactions(self, block_number):
-        q = """SELECT * FROM internal_transactions WHERE block_number=%s"""
-        with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
-            rows = cur.fetchall()
-        return rows
 
 
 class MainDB(DBWrapper):

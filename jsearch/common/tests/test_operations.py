@@ -17,7 +17,7 @@ def test_update_contract_info(db, main_db_data, w3_contract_mock, mocker):
 
     from jsearch.common.operations import update_token_info
 
-    address = main_db_data['accounts'][2]['address']
+    address = main_db_data['accounts_state'][2]['address']
 
     # when
     update_token_info(address)

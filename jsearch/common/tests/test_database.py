@@ -14,7 +14,7 @@ def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocke
     from jsearch.common import tables as t
 
     tx_hash = main_db_data['transactions'][2]['hash']
-    token_address = main_db_data['accounts'][2]['address']
+    token_address = main_db_data['accounts_state'][2]['address']
 
     # when run system under test
     post_processing(main_db_data)
@@ -24,13 +24,13 @@ def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocke
     log = [dict(row) for row in db.execute(q).fetchall()][0]
 
     assert log['is_token_transfer'] is True
-    assert log['token_transfer_to'] == main_db_data['accounts'][1]['address']
-    assert log['token_transfer_from'] == main_db_data['accounts'][0]['address']
+    assert log['token_transfer_to'] == main_db_data['accounts_state'][1]['address']
+    assert log['token_transfer_from'] == main_db_data['accounts_state'][0]['address']
     assert log['token_amount'] == 10
     assert log['event_type'] == 'Transfer'
     assert log['event_args'] == {
-        'to': main_db_data['accounts'][1]['address'],
-        'from': main_db_data['accounts'][0]['address'],
+        'to': main_db_data['accounts_state'][1]['address'],
+        'from': main_db_data['accounts_state'][0]['address'],
         'value': 1000
     }
 
@@ -40,12 +40,12 @@ def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocke
     assert sorted(holders, key=sort_token_holders_key) == sorted([
         {
             'token_address': token_address,
-            'account_address': main_db_data['accounts'][0]['address'],
+            'account_address': main_db_data['accounts_state'][0]['address'],
             'balance': Decimal(100)
         },
         {
             'token_address': token_address,
-            'account_address': main_db_data['accounts'][1]['address'],
+            'account_address': main_db_data['accounts_state'][1]['address'],
             'balance': Decimal(100)
         },
     ], key=sort_token_holders_key)
@@ -72,7 +72,7 @@ def test_process_token_transfers_constructor(db, db_connection_string, main_db_d
     from jsearch.common.processing.transactions import process_token_transfers_for_transaction
 
     tx_hash = main_db_data['transactions'][0]['hash']
-    token_address = main_db_data['accounts'][2]['address']
+    token_address = main_db_data['accounts_state'][2]['address']
 
     # when run system under tests
     with MainDBSync(connection_string=db_connection_string) as db_wrapper:
@@ -83,12 +83,12 @@ def test_process_token_transfers_constructor(db, db_connection_string, main_db_d
     log = [dict(row) for row in db.execute(q).fetchall()][0]
 
     assert log['is_token_transfer'] is True
-    assert log['token_transfer_to'] == main_db_data['accounts'][0]['address']
+    assert log['token_transfer_to'] == main_db_data['accounts_state'][0]['address']
     assert log['token_transfer_from'] == NULL_ADDRESS
     assert log['token_amount'] == Decimal('1000000000000000000000000')
     assert log['event_type'] == 'Transfer'
     assert log['event_args'] == {
-        'to': main_db_data['accounts'][0]['address'],
+        'to': main_db_data['accounts_state'][0]['address'],
         'from': NULL_ADDRESS,
         'value': 100000000000000000000000000
     }
@@ -98,7 +98,7 @@ def test_process_token_transfers_constructor(db, db_connection_string, main_db_d
     assert holders == [
         {
             'token_address': token_address,
-            'account_address': main_db_data['accounts'][0]['address'],
+            'account_address': main_db_data['accounts_state'][0]['address'],
             'balance': Decimal(100)
         }
     ]

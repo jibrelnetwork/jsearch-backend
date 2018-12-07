@@ -79,9 +79,9 @@ class TransactionFromDumpWrapper(ModelFromDumpWrapper):
     __table__ = "transactions"
 
 
-class AccountFromDumpWrapper(ModelFromDumpWrapper):
+class AccountStateFromDumpWrapper(ModelFromDumpWrapper):
     model = Account
-    __table__ = 'accounts'
+    __table__ = 'accounts_state'
 
 
 class TokenTransferFromDumpWrapper(ModelFromDumpWrapper):

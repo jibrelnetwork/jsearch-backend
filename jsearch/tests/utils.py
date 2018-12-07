@@ -37,13 +37,13 @@ def get_dump(connection_string):
         return json.loads(dump)
 
 
-def sync_blocks(until_to, start_from=0, main_db_dsn="", raw_db_dsn=""):
+def sync_blocks(blocks, start_from=0, main_db_dsn="", raw_db_dsn=""):
     from jsearch.syncer.manager import sync_block
     with futures.ThreadPoolExecutor(max_workers=10) as executor:
-        for block_number in range(start_from, until_to or (start_from + 1)):
+        for block_hash in blocks:
             func = partial(
                 sync_block,
-                block_number=block_number,
+                block_hash=block_hash,
                 main_db_dsn=main_db_dsn,
                 raw_db_dsn=raw_db_dsn
             )

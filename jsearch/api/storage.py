@@ -19,14 +19,16 @@ class Storage:
         """
         if tag.is_hash():
             query = """
-                SELECT * FROM accounts
+                SELECT * FROM accounts_state
                 WHERE address=$1
-                    AND block_number<=(SELECT number FROM blocks WHERE hash=$2) ORDER BY block_number LIMIT 1
+                    AND block_number<=(SELECT number FROM blocks WHERE hash=$2) 
+                ORDER BY block_number LIMIT 1
             """
         elif tag.is_number():
-            query = "SELECT * FROM accounts WHERE address=$1 AND block_number<=$2 ORDER BY block_number LIMIT 1"
+            query = "SELECT * FROM accounts_state WHERE address=$1 AND block_number<=$2 ORDER BY block_number LIMIT 1"
         else:
-            query = "SELECT * FROM accounts WHERE address=$1 ORDER BY block_number DESC LIMIT 1"
+            query = "SELECT * FROM accounts_state WHERE address=$1 ORDER BY block_number DESC LIMIT 1"
+
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 row = await conn.fetchrow(query, address)
@@ -35,8 +37,10 @@ class Storage:
             if row is None:
                 return None
             row = dict(row)
-            del row['root']
-            del row['storage']
+
+            for field in ('root', 'storage', 'is_forked'):
+                row.pop(field, None)
+
             row['balance'] = int(row['balance'])
             return models.Account(**row)
 
@@ -59,11 +63,11 @@ class Storage:
         fields = models.Transaction.select_fields()
 
         if tag.is_hash():
-            query = f"SELECT {fields} FROM transactions WHERE block_hash=$1"
+            query = f"SELECT {fields} FROM transactions WHERE block_hash=$1 ORDER BY transaction_index"
         elif tag.is_number():
-            query = f"SELECT {fields} FROM transactions WHERE block_number=$1"
+            query = f"SELECT {fields} FROM transactions WHERE block_number=$1 ORDER BY transaction_index"
         else:
-            query = f"SELECT {fields} FROM transactions WHERE block_number=(SELECT max(number) FROM blocks)"
+            query = f"SELECT {fields} FROM transactions WHERE block_number=(SELECT max(number) FROM blocks) ORDER BY transaction_index"
 
         async with self.pool.acquire() as conn:
             if tag.is_latest():
@@ -92,6 +96,7 @@ class Storage:
                 return None
             data = dict(row)
             del data['is_sequence_sync']
+            del data['is_forked']
 
             data['static_reward'] = int(data['static_reward'])
             data['uncle_inclusion_reward'] = int(data['uncle_inclusion_reward'])
@@ -110,6 +115,7 @@ class Storage:
             rows = [dict(r) for r in rows]
             for r in rows:
                 del r['is_sequence_sync']
+                del r['is_forked']
 
                 r['static_reward'] = int(r['static_reward'])
                 r['uncle_inclusion_reward'] = int(r['uncle_inclusion_reward'])
@@ -151,6 +157,7 @@ class Storage:
                 return None
             data = dict(row)
             del data['block_hash']
+            del data['is_forked']
             data['reward'] = int(data['reward'])
             return models.Uncle(**data)
 
@@ -162,6 +169,7 @@ class Storage:
             rows = [dict(r) for r in rows]
             for r in rows:
                 del r['block_hash']
+                del r['is_forked']
                 r['reward'] = int(r['reward'])
             return [models.Uncle(**row) for row in rows]
 
@@ -192,6 +200,7 @@ class Storage:
             rows = [dict(r) for r in rows]
             for r in rows:
                 del r['block_hash']
+                del r['is_forked']
                 r['reward'] = int(r['reward'])
             return [models.Uncle(**r) for r in rows]
 
@@ -213,6 +222,7 @@ class Storage:
             if row is None:
                 return None
             row = dict(row)
+            del row['is_forked']
             row['logs'] = await self.get_logs(row['transaction_hash'])
             return models.Receipt(**row)
 
