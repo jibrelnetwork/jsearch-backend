@@ -23,14 +23,16 @@ CREATE TABLE IF NOT EXISTS receipts (
 );
 
 CREATE TABLE IF NOT EXISTS accounts (
+    id bigserial primary key,
     block_number bigint,
     block_hash varchar(70),
     address varchar(45),
     fields jsonb,
-    UNIQUE(block_number, address)
+    UNIQUE(block_hash, address)
 );
 
 CREATE TABLE IF NOT EXISTS rewards (
+    id bigserial primary key,
     block_number bigint,
     block_hash varchar(70) UNIQUE,
     address varchar(45),
@@ -55,15 +57,17 @@ CREATE TABLE IF NOT EXISTS chain_splits (
     drop_length bigint,
     drop_block_hash varchar(70),
     add_length bigint,
-    add_block_hash varchar(70)
+    add_block_hash varchar(70),
+    node_id varchar(70)
 );
 
 CREATE TABLE IF NOT EXISTS reorgs (
     id bigserial primary key,
     block_number bigint,
-    block_hash varchar(70) UNIQUE,
+    block_hash varchar(70),
     header jsonb,
-    reinserted boolean
+    reinserted boolean,
+    node_id varchar(70)
 );
 
 

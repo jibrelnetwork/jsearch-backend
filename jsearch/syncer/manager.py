@@ -2,6 +2,7 @@ import asyncio
 import concurrent.futures
 import logging
 import time
+from functools import partial
 
 from jsearch import settings
 from jsearch.common.database import DatabaseError
@@ -39,6 +40,7 @@ class Manager:
         self._running = True
         asyncio.ensure_future(self.sequence_sync_loop())
         asyncio.ensure_future(self.reorg_loop())
+        # TODO: de we really need sync by events?
         # asyncio.ensure_future(self.listen_new_blocks(self.raw_db.conn))
         # asyncio.ensure_future(self.listen_reinsert(self.raw_db.conn))
         # asyncio.ensure_future(self.listen_reorg(self.raw_db.conn))
@@ -55,7 +57,7 @@ class Manager:
                 if len(blocks_to_sync) == 0:
                     await asyncio.sleep(self.sleep_on_no_blocks)
                     continue
-
+                func = partial(sync_block, b[0], b[1])
                 coros = [loop.run_in_executor(self.executor, sync_block, b[0], b[1]) for b in blocks_to_sync]
                 results = await asyncio.gather(*coros)
                 synced_blocks_cnt = sum(results)
@@ -177,7 +179,6 @@ class Manager:
 def sync_block(block_hash, block_number=None, main_db_dsn=None, raw_db_dsn=None):
     processor = SyncProcessor(main_db_dsn=main_db_dsn, raw_db_dsn=raw_db_dsn)
     return processor.sync_block(block_hash, block_number)
-    return processor.syngc_block(block_hash, block_number)
 
 
 def reorg_block(block_hash):
