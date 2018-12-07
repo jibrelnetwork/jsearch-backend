@@ -1,10 +1,7 @@
-import pytest
-
+from jsearch.common.tables import blocks_t
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.manager import Manager
 from jsearch.syncer.processor import SyncProcessor
-from jsearch.common.tables import *
-
 
 pytest_plugins = [
     'jsearch.tests.plugins.databases.main_db',
@@ -31,7 +28,6 @@ async def test_process_reorgs(raw_db_sample, db, raw_db_connection_string, db_co
 
     reorgs = raw_db_sample['reorgs']
     await manager.process_reorgs(reorgs)
-
 
     b1 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][2]['block_hash'])).fetchone()
     b2 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][3]['block_hash'])).fetchone()

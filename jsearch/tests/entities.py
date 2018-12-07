@@ -79,6 +79,11 @@ class TransactionFromDumpWrapper(ModelFromDumpWrapper):
     __table__ = "transactions"
 
 
+class AccountBaseFromDumpWrapper(ModelFromDumpWrapper):
+    model = Account
+    __table__ = 'accounts_base'
+
+
 class AccountStateFromDumpWrapper(ModelFromDumpWrapper):
     model = Account
     __table__ = 'accounts_state'

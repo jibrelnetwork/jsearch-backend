@@ -1,8 +1,5 @@
-import pytest
-
+from jsearch.common.tables import blocks_t, transactions_t, receipts_t, logs_t, accounts_base_t, accounts_state_t
 from jsearch.syncer.processor import SyncProcessor
-from jsearch.common.tables import *
-
 
 pytest_plugins = [
     'jsearch.tests.plugins.databases.main_db',
@@ -52,9 +49,9 @@ def test_sync_block(raw_db_sample, db, raw_db_connection_string, db_connection_s
     assert logs[1].is_forked is False
     assert logs[1].log_index == 1
 
-    assert accounts_base[0]['address'] == s['accounts_state'][0]['address'].lower()
-    assert accounts_state[0]['address'] == s['accounts_state'][0]['address'].lower()
-    assert accounts_state[0]['balance'] == int(s['accounts_state'][0]['fields']['balance'])
+    assert accounts_base[0]['address'] == s['accounts'][0]['address'].lower()
+    assert accounts_state[0]['address'] == s['accounts'][0]['address'].lower()
+    assert accounts_state[0]['balance'] == int(s['accounts'][0]['fields']['balance'])
     assert accounts_state[0].is_forked is False
 
     # TODO: extend test cases

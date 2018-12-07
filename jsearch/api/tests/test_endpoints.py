@@ -8,8 +8,8 @@ from jsearch.tests.entities import (
     TransactionFromDumpWrapper,
     BlockFromDumpWrapper,
     TokenTransferFromDumpWrapper,
-    ReceiptFromDumpWrapper
-)
+    ReceiptFromDumpWrapper,
+    AccountBaseFromDumpWrapper)
 from jsearch.tests.utils import pprint_returned_value
 
 pytest_plugins = [
@@ -112,14 +112,15 @@ async def test_get_account_404(cli):
 async def test_get_account(cli, main_db_data):
     resp = await cli.get('/accounts/' + main_db_data['accounts_state'][0]['address'])
     assert resp.status == 200
-    a = main_db_data['accounts_state'][-1]
-    assert await resp.json() == {'address': a['address'],
-                                 'balance': a['balance'],
-                                 'blockHash': a['block_hash'],
-                                 'blockNumber': a['block_number'],
-                                 'code': a['code'],
-                                 'codeHash': a['code_hash'],
-                                 'nonce': a['nonce']}
+    account_state = main_db_data['accounts_state'][-1]
+    account_base = main_db_data['accounts_base'][0]
+    assert await resp.json() == {'address': account_state['address'],
+                                 'balance': account_state['balance'],
+                                 'blockHash': account_state['block_hash'],
+                                 'blockNumber': account_state['block_number'],
+                                 'code': account_base['code'],
+                                 'codeHash': account_base['code_hash'],
+                                 'nonce': account_state['nonce']}
 
 
 async def test_get_account_transactions(cli, main_db_data):
@@ -545,7 +546,7 @@ async def test_get_token_ok(cli, main_db_data):
 async def test_get_account_token_transfers(cli, account_index, main_db_data, post_processing):
     # given
     dump = post_processing(main_db_data)
-    account: AccountFromDumpWrapper = AccountFromDumpWrapper.from_dump(
+    account: AccountBaseFromDumpWrapper = AccountBaseFromDumpWrapper.from_dump(
         dump=dump,
         index=account_index
     )
