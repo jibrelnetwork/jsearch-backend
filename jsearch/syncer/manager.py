@@ -145,7 +145,7 @@ class Manager:
                 logger.info('Newblock notification received: %s', msg.payload)
                 try:
                     block_hash = msg.payload
-                    loop.run_in_executor(self.executor, sync_block, block_hash)
+                    await loop.run_in_executor(self.executor, sync_block, block_hash)
                 except Exception:
                     logger.exception('Error on newblock listener')
 
@@ -158,7 +158,7 @@ class Manager:
                 logger.info('New Reorg notification received: %s', msg.payload)
                 try:
                     block_hash = msg.payload
-                    loop.run_in_executor(self.executor, reorg_block, block_hash)
+                    await loop.run_in_executor(self.executor, reorg_block, block_hash)
                 except Exception:
                     logger.exception('Error on newreorg listener')
 
@@ -171,7 +171,7 @@ class Manager:
                 logger.info('New Reinsert notification received: %s', msg.payload)
                 try:
                     block_hash = msg.payload
-                    loop.run_in_executor(self.executor, reinsert_block, block_hash)
+                    await loop.run_in_executor(self.executor, reinsert_block, block_hash)
                 except Exception:
                     logger.exception('Error on newreinsert listener')
 
