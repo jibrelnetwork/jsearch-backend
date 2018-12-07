@@ -2,7 +2,6 @@ import asyncio
 import concurrent.futures
 import logging
 import time
-from functools import partial
 
 from jsearch import settings
 from jsearch.common.database import DatabaseError
@@ -57,7 +56,6 @@ class Manager:
                 if len(blocks_to_sync) == 0:
                     await asyncio.sleep(self.sleep_on_no_blocks)
                     continue
-                func = partial(sync_block, b[0], b[1])
                 coros = [loop.run_in_executor(self.executor, sync_block, b[0], b[1]) for b in blocks_to_sync]
                 results = await asyncio.gather(*coros)
                 synced_blocks_cnt = sum(results)
