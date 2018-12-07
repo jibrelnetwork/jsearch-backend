@@ -14,7 +14,7 @@ from jsearch.common.integrations.contracts import get_contract
 from jsearch.common.operations import update_token_info
 from jsearch.common.processing.logs import EventTypes, TRANSFER_EVENT_INPUT_SIZE
 from jsearch.common.rpc import BatchHTTPProvider, decode_erc20_output_value
-from jsearch.typing import Log, Contract, Event, Abi
+from jsearch.typing import Log, Contract, EventArgs, Abi
 
 logger = logging.getLogger(__name__)
 
@@ -166,14 +166,18 @@ def get_event_inputs_from_abi(abi: Abi) -> List[Dict[str, Any]]:
     raise ValueError('No inputs')
 
 
-def process_erc20_transfer_event(event: Event, abi: Abi, token_decimals: int) -> Tuple[str, str, str]:
+def get_transfer_details_from_erc20_event_args(
+        event_args: EventArgs,
+        abi: Abi,
+        token_decimals: int
+) -> Tuple[str, str, str]:
     """
     Eject transfer details from event
     """
     event_inputs = get_event_inputs_from_abi(abi)
 
     args_keys = [interface_type['name'] for interface_type in event_inputs]
-    args_values = [event[key] for key in args_keys]
+    args_values = [event_args[key] for key in args_keys]
 
     from_address = args_values[0]
     to_address = args_values[1]
@@ -194,7 +198,9 @@ def process_log_transfer(log: Log, contract: Optional[Contract] = None):
             update_token_info(contract_address, abi)
 
         elif log.get('is_token_transfer'):
-            from_address, to_address, token_amount = process_erc20_transfer_event(event_args, abi, token_decimals)
+            from_address, to_address, token_amount = get_transfer_details_from_erc20_event_args(
+                event_args=event_args, abi=abi, token_decimals=token_decimals
+            )
             log.update({
                 'token_transfer_to': to_address,
                 'token_transfer_from': from_address,
