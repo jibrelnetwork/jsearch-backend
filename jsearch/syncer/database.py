@@ -19,7 +19,8 @@ from jsearch.common.tables import (
     logs_t,
     receipts_t,
     transactions_t,
-    uncles_t
+    uncles_t,
+    reorgs_t,
 )
 
 MAIN_DB_POOL_SIZE = 22
@@ -48,7 +49,7 @@ class DBWrapper:
 
     async def connect(self):
         self.conn = await aiopg.connect(
-            self.connection_string)
+            self.connection_string, cursor_factory=DictCursor)
 
     def disconnect(self):
         self.conn.close()
@@ -74,9 +75,16 @@ class RawDB(DBWrapper):
     """
 
     async def get_blocks_to_sync(self, start_block_num=0, end_block_num=None):
-        q = """SELECT block_number FROM headers WHERE block_number BETWEEN %s AND %s"""
+        q = """SELECT block_hash, block_number FROM headers WHERE block_number BETWEEN %s AND %s"""
         async with self.conn.cursor() as cur:
             await cur.execute(q, [start_block_num, end_block_num])
+            rows = await cur.fetchall()
+        return rows
+
+    async def get_reorgs_from(self, reorg_from_num, limit):
+        q = """SELECT * FROM reorgs where id > %s ORDER BY id LIMIT %s"""
+        async with self.conn.cursor() as cur:
+            await cur.execute(q, [reorg_from_num, limit])
             rows = await cur.fetchall()
         return rows
 
@@ -90,7 +98,7 @@ class RawDBSync(DBWrapperSync):
         self.conn.close()
 
     def get_header_by_hash(self, block_number):
-        q = """SELECT * FROM headers WHERE block_number=%s"""
+        q = """SELECT * FROM headers WHERE block_hash=%s"""
         with self.conn.cursor() as cur:
             cur.execute(q, [block_number])
             row = cur.fetchone()
@@ -103,31 +111,31 @@ class RawDBSync(DBWrapperSync):
             row = cur.fetchone()
         return row
 
-    def get_block_accounts(self, block_number):
-        q = """SELECT * FROM accounts WHERE block_number=%s"""
+    def get_block_accounts(self, block_hash):
+        q = """SELECT * FROM accounts WHERE block_hash=%s"""
         with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
+            cur.execute(q, [block_hash])
             rows = cur.fetchall()
         return rows
 
-    def get_block_body(self, block_number):
-        q = """SELECT * FROM bodies WHERE block_number=%s"""
+    def get_block_body(self, block_hash):
+        q = """SELECT * FROM bodies WHERE block_hash=%s"""
         with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
+            cur.execute(q, [block_hash])
             row = cur.fetchone()
         return row
 
-    def get_block_receipts(self, block_number):
-        q = """SELECT * FROM receipts WHERE block_number=%s"""
+    def get_block_receipts(self, block_hash):
+        q = """SELECT * FROM receipts WHERE block_hash=%s"""
         with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
+            cur.execute(q, [block_hash])
             row = cur.fetchone()
         return row
 
-    def get_reward(self, block_number):
-        q = """SELECT * FROM rewards WHERE block_number=%s"""
+    def get_reward(self, block_hash):
+        q = """SELECT * FROM rewards WHERE block_hash=%s"""
         with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
+            cur.execute(q, [block_hash])
             rows = cur.fetchall()
         if len(rows) > 1:
             for r in rows:
@@ -138,10 +146,10 @@ class RawDBSync(DBWrapperSync):
         else:
             return None
 
-    def get_internal_transactions(self, block_number):
-        q = """SELECT * FROM internal_transactions WHERE block_number=%s"""
+    def get_internal_transactions(self, block_hash):
+        q = """SELECT * FROM internal_transactions WHERE block_hash=%s"""
         with self.conn.cursor() as cur:
-            cur.execute(q, [block_number])
+            cur.execute(q, [block_hash])
             rows = cur.fetchall()
         return rows
 
@@ -180,6 +188,67 @@ class MainDB(DBWrapper):
             row = rows[0] if len(rows) > 0 else None
         return row['start'] - 1 if row else None
 
+    async def apply_reorg(self, reorg):
+        reorg = dict(reorg)
+
+        update_block_q = blocks_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(blocks_t.c.hash == reorg['block_hash']) \
+            .returning(blocks_t.c.hash)
+
+        update_txs_q = transactions_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(blocks_t.c.hash == reorg['block_hash'])
+
+        update_receipts_q = receipts_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(blocks_t.c.hash == reorg['block_hash'])
+
+        update_logs_q = logs_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(blocks_t.c.hash == reorg['block_hash'])
+
+        update_internal_transactions_q = internal_transactions_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(blocks_t.c.hash == reorg['block_hash'])
+
+        update_accounts_state_q = accounts_state_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(blocks_t.c.hash == reorg['block_hash'])
+
+        update_uncles_q = uncles_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(blocks_t.c.hash == reorg['block_hash'])
+
+        reorg.pop('header')
+        add_reorg_q = reorgs_t.insert().values(**reorg)
+        async with self.engine.acquire() as conn:
+            async with conn.begin() as tx:
+                res = await conn.execute(update_block_q)
+                rows = await res.fetchall()
+                if len(rows) == 0:
+                    # no updates, block si not synced - aborting reorg
+                    logger.debug('Aborting reorg for block %s %s', reorg['block_number'], reorg['block_hash'])
+                    await tx.rollback()
+                    return False
+                await conn.execute(update_txs_q)
+                await conn.execute(update_receipts_q)
+                await conn.execute(update_logs_q)
+                await conn.execute(update_internal_transactions_q)
+                await conn.execute(update_accounts_state_q)
+                await conn.execute(update_uncles_q)
+                await conn.execute(add_reorg_q)
+                logger.debug('Reorg applyed for block %s %s', reorg['block_number'], reorg['block_hash'])
+                return True
+
+    async def get_last_reorg(self):
+        q = """SELECT id FROM reorgs ORDER BY id DESC LIMIT 1"""
+        async with self.engine.acquire() as conn:
+            res = await conn.execute(q)
+            row = await res.fetchone()
+        last_reorg_num = row['id'] if row else 0
+        return last_reorg_num
+
 
 class MainDBSync(DBWrapperSync):
 
@@ -187,10 +256,10 @@ class MainDBSync(DBWrapperSync):
         engine = sync_create_engine(self.connection_string, poolclass=NullPool)
         self.conn = engine.connect()
 
-    def is_block_exist(self, block_number):
-        q = """SELECT number from blocks WHERE number=%s"""
-        row = self.conn.execute(q, [block_number]).fetchone()
-        return row['number'] == block_number if row else False
+    def is_block_exist(self, block_hash):
+        q = """SELECT hash from blocks WHERE hash=%s"""
+        row = self.conn.execute(q, [block_hash]).fetchone()
+        return row['number'] == block_hash if row else False
 
     def write_block_data(self, block_data, uncles_data, transactions_data, receipts_data,
                          logs_data, accounts_data, internal_txs_data):

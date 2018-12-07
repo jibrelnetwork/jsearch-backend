@@ -19,7 +19,7 @@ def db_dump_on_fuck_token_transfer_case(
         transfer_on_fuck_token_contract
 ):
     sync_blocks(
-        until_to=transfer_on_fuck_token_contract,
+        blocks=transfer_on_fuck_token_contract,
         main_db_dsn=db_connection_string,
         raw_db_dsn=raw_db_connection_string,
     )
