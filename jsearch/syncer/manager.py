@@ -110,19 +110,6 @@ class Manager:
         logger.info("Latest synced block num is %s, %s blocks to sync", latest_block_num, len(blocks))
         return blocks
 
-    async def get_blocks_to_sync(self):
-        latest_block_num = await self.main_db.get_latest_sequence_synced_block_number(blocks_range=self.sync_range)
-        if latest_block_num is None:
-            start_block_num = self.sync_range[0]
-        else:
-            start_block_num = latest_block_num + 1
-        end_block_num = start_block_num + self.chunk_size - 1
-        if self.sync_range[1]:
-            end_block_num = min(end_block_num, self.sync_range[1])
-        blocks = await self.raw_db.get_blocks_to_sync(start_block_num, end_block_num)
-        logger.info("Latest synced block num is %s, %s blocks to sync", latest_block_num, len(blocks))
-        return blocks
-
     async def get_new_reorgs(self):
         last_reorg_num = await self.main_db.get_last_reorg()
         new_reorgs = await self.raw_db.get_reorgs_from(last_reorg_num, REORGS_BATCH_SIZE)

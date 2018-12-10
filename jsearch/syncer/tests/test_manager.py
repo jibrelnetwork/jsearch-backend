@@ -1,10 +1,7 @@
-import pytest
-
+from jsearch.common.tables import blocks_t
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.manager import Manager
 from jsearch.syncer.processor import SyncProcessor
-from jsearch.common.tables import *
-
 
 pytest_plugins = [
     'jsearch.tests.plugins.databases.main_db',
@@ -31,7 +28,6 @@ async def test_process_reorgs(raw_db_sample, db, raw_db_connection_string, db_co
 
     reorgs = raw_db_sample['reorgs']
     await manager.process_reorgs(reorgs)
-
 
     b1 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][2]['block_hash'])).fetchone()
     b2 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][3]['block_hash'])).fetchone()
@@ -79,9 +75,9 @@ async def test_process_reorgs(raw_db_sample, db, raw_db_connection_string, db_co
     # assert logs[1].is_forked is False
     # assert logs[1].log_index == 1
     #
-    # assert accounts_base[0]['address'] == s['accounts'][0]['address'].lower()
-    # assert accounts_state[0]['address'] == s['accounts'][0]['address'].lower()
-    # assert accounts_state[0]['balance'] == int(s['accounts'][0]['fields']['balance'])
+    # assert accounts_base[0]['address'] == s['accounts_state'][0]['address'].lower()
+    # assert accounts_state[0]['address'] == s['accounts_state'][0]['address'].lower()
+    # assert accounts_state[0]['balance'] == int(s['accounts_state'][0]['fields']['balance'])
     # assert accounts_state[0].is_forked is False
 
     # TODO: extend test cases

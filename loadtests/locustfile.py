@@ -16,13 +16,13 @@ class UserBehavior(TaskSet):
         cur.execute('SELECT number, hash from blocks LIMIT 10000')
         keys['blocks'] = cur.fetchall()
         cur.execute('SELECT address from accounts LIMIT 10000')
-        keys['accounts'] = cur.fetchall()
+        keys['accounts_state'] = cur.fetchall()
         cur.execute('SELECT hash from transactions LIMIT 10000')
         keys['transactions'] = cur.fetchall()
         conn.close()
 
         blocks = len(keys['blocks'])
-        accounts = len(keys['accounts'])
+        accounts = len(keys['accounts_state'])
         txs = len(keys['transactions'])
 
         print(f'Keys loaded: B: {blocks}, A: {accounts}, Tx: {txs}')

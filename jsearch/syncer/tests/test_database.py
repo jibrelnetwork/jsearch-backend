@@ -18,8 +18,20 @@ def test_maindb_write_block_data(db, main_db_dump):
     transactions = for_block(d['transactions'])
     receipts = for_block(d['receipts'])
     logs = for_block(d['logs'])
-    accounts = for_block(d['accounts'])
     internal_txs = for_block(d['internal_transactions'])
+
+    accounts_states = for_block(d['accounts_state'])
+    accounts_bases = {item['address']: item for item in d['accounts_base']}
+
+    accounts = []
+    for state in accounts_states:
+        base = accounts_bases[state['address']]
+
+        account = {}
+        account.update(state)
+        account.update(base)
+
+        accounts.append(account)
 
     main_db.write_block_data(
         block_data=block,

@@ -1,8 +1,5 @@
-import pytest
-
+from jsearch.common.tables import blocks_t, transactions_t, receipts_t, logs_t, accounts_base_t, accounts_state_t
 from jsearch.syncer.processor import SyncProcessor
-from jsearch.common.tables import *
-
 
 pytest_plugins = [
     'jsearch.tests.plugins.databases.main_db',

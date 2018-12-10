@@ -1,9 +1,8 @@
 import sqlalchemy as sa
 import sqlalchemy.types as types
+from sqlalchemy import CheckConstraint
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import CheckConstraint
-
 
 Base = declarative_base()
 
@@ -63,7 +62,7 @@ class Uncle(Base):
     total_difficulty = sa.Column('total_difficulty', HexBigInteger)
     transactions_root = sa.Column('transactions_root', sa.String)
     reward = sa.Column('reward', postgresql.NUMERIC(32, 0))
-    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
+    is_forked = sa.Column('is_forked', sa.Boolean, default=False, index=True)
 
 
 class InternalTransaction(Base):
@@ -82,7 +81,7 @@ class InternalTransaction(Base):
     payload = sa.Column('payload', sa.String)
     status = sa.Column('status', sa.String)
     transaction_index = sa.Column('transaction_index', sa.Integer, primary_key=True)
-    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
+    is_forked = sa.Column('is_forked', sa.Boolean, default=False, index=True)
 
 
 class Transaction(Base):
@@ -105,7 +104,7 @@ class Transaction(Base):
     value = sa.Column('value', sa.String)
 
     contract_call_description = sa.Column('contract_call_description', postgresql.JSONB)
-    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
+    is_forked = sa.Column('is_forked', sa.Boolean, default=False, index=True)
 
 
 class Receipt(Base):
@@ -123,7 +122,7 @@ class Receipt(Base):
     root = sa.Column('root', sa.String)
     transaction_index = sa.Column('transaction_index', HexInteger, primary_key=True)
     status = sa.Column('status', HexInteger)
-    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
+    is_forked = sa.Column('is_forked', sa.Boolean, default=False, index=True)
 
 
 class Log(Base):
@@ -145,9 +144,10 @@ class Log(Base):
     token_transfer_from = sa.Column('token_transfer_from', sa.String, index=True)
     token_transfer_to = sa.Column('token_transfer_to', sa.String, index=True)
 
-    is_token_transfer = sa.Column('is_token_transfer', sa.Boolean, default=False)
+    is_token_transfer = sa.Column('is_token_transfer', sa.Boolean, index=True, default=False)
     is_processed = sa.Column('is_processed', sa.Boolean, index=True, default=False)
-    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
+    is_transfer_processed = sa.Column('is_transfer_processed', sa.Boolean, index=True, default=False)
+    is_forked = sa.Column('is_forked', sa.Boolean, default=False, index=True)
 
 
 class AccountState(Base):
@@ -159,7 +159,7 @@ class AccountState(Base):
     nonce = sa.Column('nonce', HexInteger)
     root = sa.Column('root', sa.String)
     balance = sa.Column('balance', postgresql.NUMERIC(32, 0))
-    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
+    is_forked = sa.Column('is_forked', sa.Boolean, default=False, index=True)
 
 
 class AccountBase(Base):
@@ -215,7 +215,7 @@ class Block(Base):
     static_reward = sa.Column('static_reward', postgresql.NUMERIC(32, 0))
     uncle_inclusion_reward = sa.Column('uncle_inclusion_reward', postgresql.NUMERIC(32, 0))
     tx_fees = sa.Column('tx_fees', postgresql.NUMERIC(32, 0))
-    is_forked = sa.Column('is_forked', sa.Boolean,  default=False, index=True)
+    is_forked = sa.Column('is_forked', sa.Boolean, default=False, index=True)
 
 
 class TokenHolder(Base):

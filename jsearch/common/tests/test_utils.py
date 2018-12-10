@@ -1,5 +1,3 @@
-
-
 from jsearch.common.contracts import cut_contract_metadata_hash
 
 

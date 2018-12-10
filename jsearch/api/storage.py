@@ -19,25 +19,45 @@ class Storage:
         """
         if tag.is_hash():
             query = """
-                SELECT * FROM accounts_state
+                SELECT block_number, block_hash, address, nonce, balance FROM accounts_state
                 WHERE address=$1
-                    AND block_number<=(SELECT number FROM blocks WHERE hash=$2) ORDER BY block_number LIMIT 1
+                    AND block_number<=(SELECT number FROM blocks WHERE hash=$2)
+                ORDER BY block_number LIMIT 1;
             """
         elif tag.is_number():
-            query = "SELECT * FROM accounts_state WHERE address=$1 AND block_number<=$2 ORDER BY block_number LIMIT 1"
+            query = """
+                SELECT block_number, block_hash, address, nonce, balance FROM accounts_state
+                WHERE address=$1 AND block_number<=$2
+                ORDER BY block_number LIMIT 1;
+            """
         else:
-            query = "SELECT * FROM accounts_state WHERE address=$1 ORDER BY block_number DESC LIMIT 1"
+            query = """
+                SELECT "block_number", "block_hash", "address", "nonce", "balance" FROM accounts_state
+                WHERE address=$1 ORDER BY block_number DESC LIMIT 1;
+            """
+
         async with self.pool.acquire() as conn:
             if tag.is_latest():
-                row = await conn.fetchrow(query, address)
+                state_row = await conn.fetchrow(query, address)
             else:
-                row = await conn.fetchrow(query, address, tag.value)
-            if row is None:
+                state_row = await conn.fetchrow(query, address, tag.value)
+
+            if state_row is None:
                 return None
-            row = dict(row)
-            del row['root']
-            del row['storage']
-            row['balance'] = int(row['balance'])
+
+            state_row = dict(state_row)
+            state_row['balance'] = int(state_row['balance'])
+
+            query = """
+                SELECT address, code, code_hash FROM accounts_base
+                WHERE address=$1 LIMIT 1;
+            """
+            base_row = dict(await conn.fetchrow(query, address))
+
+            row = {}
+            row.update(state_row)
+            row.update(base_row)
+
             return models.Account(**row)
 
     async def get_account_transactions(self, address, limit, offset):
@@ -59,11 +79,14 @@ class Storage:
         fields = models.Transaction.select_fields()
 
         if tag.is_hash():
-            query = f"SELECT {fields} FROM transactions WHERE block_hash=$1 ORDER BY transaction_index"
+            query = f"SELECT {fields} FROM transactions WHERE block_hash=$1 ORDER BY transaction_index;"
         elif tag.is_number():
-            query = f"SELECT {fields} FROM transactions WHERE block_number=$1 ORDER BY transaction_index"
+            query = f"SELECT {fields} FROM transactions WHERE block_number=$1 ORDER BY transaction_index;"
         else:
-            query = f"SELECT {fields} FROM transactions WHERE block_number=(SELECT max(number) FROM blocks) ORDER BY transaction_index"
+            query = f"""
+                SELECT {fields} FROM transactions
+                WHERE block_number=(SELECT max(number) FROM blocks) ORDER BY transaction_index;
+        """
 
         async with self.pool.acquire() as conn:
             if tag.is_latest():

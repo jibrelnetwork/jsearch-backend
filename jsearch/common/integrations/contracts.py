@@ -4,11 +4,12 @@ from typing import Dict, Any
 import requests
 
 from jsearch.settings import JSEARCH_CONTRACTS_API
+from jsearch.typing import Contract
 
 logger = logging.getLogger(__name__)
 
 
-def get_contract(address: str):
+def get_contract(address: str) -> Contract:
     """
     Get contract from internal service
     # Todo: think about retries.
