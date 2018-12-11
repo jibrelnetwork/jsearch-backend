@@ -1,10 +1,11 @@
-FROM jsearch/geth-fork
-
+FROM jsearch/geth-fork as geth_fork
+FROM jsearch/geth AS geth
 FROM jsearch/api
 
 ENV JSEARCH_MAIN_DB_TEST=postgres://postgres:posgres@test_db/jsearch_main_test
 
-COPY --chown=app:app --from=0 /geth /usr/local/bin/geth
+COPY --chown=app:app --from=geth_fork /geth /usr/local/bin/geth-fork
+COPY --chown=app:app --from=geth /geth /usr/local/bin/geth
 
 USER root
 COPY --chown=app:app requirements-test.txt /app/
