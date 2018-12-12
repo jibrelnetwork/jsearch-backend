@@ -69,7 +69,7 @@ class InternalTransaction(Base):
     __tablename__ = 'internal_transactions'
 
     block_number = sa.Column('block_number', HexInteger, index=True)
-    block_hash = sa.Column('block_hash', HexInteger, primary_key=True)
+    block_hash = sa.Column('block_hash', sa.String, primary_key=True)
     parent_tx_hash = sa.Column('parent_tx_hash', sa.String, primary_key=True)
     op = sa.Column('op', sa.String)
     call_depth = sa.Column('call_depth', HexInteger)
@@ -215,7 +215,7 @@ class Block(Base):
     static_reward = sa.Column('static_reward', postgresql.NUMERIC(32, 0))
     uncle_inclusion_reward = sa.Column('uncle_inclusion_reward', postgresql.NUMERIC(32, 0))
     tx_fees = sa.Column('tx_fees', postgresql.NUMERIC(32, 0))
-    is_forked = sa.Column('is_forked', sa.Boolean, default=False, index=True)
+    is_forked = sa.Column('is_forked', sa.Boolean, nullable=False, index=True, server_default='false')
 
 
 class TokenHolder(Base):
