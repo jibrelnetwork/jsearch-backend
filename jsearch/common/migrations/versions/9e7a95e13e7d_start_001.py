@@ -122,7 +122,6 @@ ALTER TABLE ONLY logs
 CREATE INDEX ix_logs_block_hash ON logs USING btree (block_hash);
 CREATE INDEX ix_logs_block_number ON logs USING btree (block_number);
 CREATE INDEX ix_logs_is_forked ON logs USING btree (is_forked);
-CREATE INDEX ix_logs_is_transfer_processed ON logs USING btree (is_transfer_processed);
 CREATE INDEX ix_logs_token_transfer_from ON logs USING btree (token_transfer_from);
 CREATE INDEX ix_logs_token_transfer_to ON logs USING btree (token_transfer_to);
 CREATE INDEX ix_logs_is_token_transfer_multicolumn ON logs 
