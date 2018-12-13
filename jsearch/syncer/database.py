@@ -296,7 +296,7 @@ class MainDBSync(DBWrapperSync):
     def is_block_exist(self, block_hash):
         q = """SELECT hash from blocks WHERE hash=%s"""
         row = self.conn.execute(q, [block_hash]).fetchone()
-        return row['number'] == block_hash if row else False
+        return row['hash'] == block_hash if row else False
 
     def write_block_data(self, block_data, uncles_data, transactions_data, receipts_data,
                          logs_data, accounts_data, internal_txs_data):
