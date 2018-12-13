@@ -45,14 +45,14 @@ class DBWrapper:
     def __init__(self, connection_string, **params):
         self.connection_string = connection_string
         self.params = params
-        self.conn = None
+        self.pool = None
 
     async def connect(self):
-        self.conn = await aiopg.connect(
+        self.pool = await aiopg.create_pool(
             self.connection_string, cursor_factory=DictCursor)
 
     def disconnect(self):
-        self.conn.close()
+        self.pool.close()
 
 
 class DBWrapperSync:
@@ -76,16 +76,41 @@ class RawDB(DBWrapper):
 
     async def get_blocks_to_sync(self, start_block_num=0, end_block_num=None):
         q = """SELECT block_hash, block_number FROM headers WHERE block_number BETWEEN %s AND %s"""
-        async with self.conn.cursor() as cur:
-            await cur.execute(q, [start_block_num, end_block_num])
-            rows = await cur.fetchall()
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [start_block_num, end_block_num])
+                rows = await cur.fetchall()
+                cur.close()
         return rows
+
+    async def get_missed_blocks(self, blocks_numbers):
+        if not blocks_numbers:
+            return []
+        q = """SELECT block_hash, block_number
+                FROM headers WHERE block_number IN ({})""".format(','.join('%s' for _ in blocks_numbers))
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, blocks_numbers)
+                rows = await cur.fetchall()
+                cur.close()
+        return rows
+
+    async def get_latest_available_block_number(self):
+        q = """SELECT max(block_number) as max_block from bodies"""
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q)
+                row = await cur.fetchone()
+                cur.close()
+        return row['max_block'] or None
 
     async def get_reorgs_from(self, reorg_from_num, limit):
         q = """SELECT * FROM reorgs where id > %s ORDER BY id LIMIT %s"""
-        async with self.conn.cursor() as cur:
-            await cur.execute(q, [reorg_from_num, limit])
-            rows = await cur.fetchall()
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [reorg_from_num, limit])
+                rows = await cur.fetchall()
+                cur.close()
         return rows
 
 
@@ -168,7 +193,7 @@ class MainDB(DBWrapper):
         self.engine.close()
         await self.engine.wait_closed()
 
-    async def get_latest_sequence_synced_block_number(self, blocks_range):
+    async def get_latest_synced_block_number(self, blocks_range):
         """
         Get latest block writed in main DB
         """
@@ -178,15 +203,27 @@ class MainDB(DBWrapper):
         else:
             condition = 'number BETWEEN %s AND %s'
             params = blocks_range
-        q = """SELECT l.number + 1 as start
-                FROM (SELECT * FROM blocks WHERE {cond}) as l
-                LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number
-                WHERE r.number IS NULL order by start""".format(cond=condition)
+
+        q = """SELECT max(number) as max_number
+                FROM blocks
+                WHERE is_forked=false AND {cond}""".format(cond=condition)
         async with self.engine.acquire() as conn:
             res = await conn.execute(q, params)
+            row = await res.fetchone()
+            return row['max_number']
+
+    async def get_missed_blocks_numbers(self, limit: int):
+        q = """SELECT l.number + 1 as start
+                FROM (SELECT * FROM blocks WHERE is_forked=false) as l
+                LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number
+                WHERE r.number IS NULL order by start limit %s"""
+        async with self.engine.acquire() as conn:
+            res = await conn.execute(q, limit)
             rows = await res.fetchall()
-            row = rows[0] if len(rows) > 0 else None
-        return row['start'] - 1 if row else None
+            if len(rows) < limit:
+                # here last num is not missed, just not synced, remove them
+                rows = rows[:-1]
+            return [r['start'] for r in rows]
 
     async def apply_reorg(self, reorg):
         reorg = dict(reorg)
@@ -246,8 +283,8 @@ class MainDB(DBWrapper):
         async with self.engine.acquire() as conn:
             res = await conn.execute(q)
             row = await res.fetchone()
-        last_reorg_num = row['id'] if row else 0
-        return last_reorg_num
+            last_reorg_num = row['id'] if row else 0
+            return last_reorg_num
 
 
 class MainDBSync(DBWrapperSync):
@@ -301,14 +338,17 @@ class MainDBSync(DBWrapperSync):
             return
         base_items = []
         state_items = []
+        address_set = set()
         for acc in accounts:
-            base_items.append({
-                'address': acc['address'],
-                'code': acc['code'],
-                'code_hash': acc['code_hash'],
-                'last_known_balance': acc['balance'],
-                'root': acc['root'],
-            })
+            if acc['address'] not in address_set:
+                address_set.add(acc['address'])
+                base_items.append({
+                    'address': acc['address'],
+                    'code': acc['code'],
+                    'code_hash': acc['code_hash'],
+                    'last_known_balance': acc['balance'],
+                    'root': acc['root'],
+                })
             state_items.append({
                 'block_number': acc['block_number'],
                 'block_hash': acc['block_hash'],
@@ -318,9 +358,7 @@ class MainDBSync(DBWrapperSync):
                 'balance': acc['balance'],
             })
 
-        base_insert = insert(accounts_base_t).on_conflict_do_nothing(
-            index_elements=['address']
-        )
+        base_insert = insert(accounts_base_t)
         self.conn.execute(base_insert, *base_items)
         self.conn.execute(accounts_state_t.insert(), *state_items)
 

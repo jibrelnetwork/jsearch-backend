@@ -1,7 +1,75 @@
 import os
 
 from jsearch.common import tables as t
-from jsearch.syncer.database import MainDBSync
+from jsearch.syncer.database import MainDBSync, MainDB
+
+
+async def test_main_db_get_last_synced_block_empty(db_connection_string):
+    main_db = MainDB(db_connection_string)
+    await main_db.connect()
+    res = await main_db.get_latest_synced_block_number([1, None])
+    assert res is None
+
+
+async def test_main_db_get_last_synced_block_no_miss(db, db_connection_string):
+    db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
+        (1, 'aa'),
+        (2, 'ab'),
+        (3, 'ac'),
+        (4, 'ad'),
+    ])
+    main_db = MainDB(db_connection_string)
+    await main_db.connect()
+    res = await main_db.get_latest_synced_block_number([1, None])
+    assert res == 4
+
+
+async def test_main_db_get_last_synced_block_has_miss(db, db_connection_string):
+    db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
+        (1, 'aa'),
+        (2, 'ab'),
+        (4, 'ad'),
+    ])
+    main_db = MainDB(db_connection_string)
+    await main_db.connect()
+    res = await main_db.get_latest_synced_block_number([1, None])
+    assert res == 4
+
+
+async def test_main_db_get_missed_blocks_empty(db, db_connection_string):
+    main_db = MainDB(db_connection_string)
+    await main_db.connect()
+    res = await main_db.get_missed_blocks_numbers(10)
+    assert res == []
+
+
+async def test_main_db_get_missed_blocks(db, db_connection_string):
+    db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
+        (1, 'aa'),
+        (2, 'ab'),
+        (4, 'ad'),
+        (5, 'ac'),
+        (7, 'ae'),
+    ])
+    main_db = MainDB(db_connection_string)
+    await main_db.connect()
+    res = await main_db.get_missed_blocks_numbers(10)
+    assert res == [3, 6]
+
+
+async def test_main_db_get_missed_blocks_limit2(db, db_connection_string):
+    db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
+        (1, 'aa'),
+        (2, 'ab'),
+        (4, 'ad'),
+        (5, 'ac'),
+        (7, 'ae'),
+        (9, 'af'),
+    ])
+    main_db = MainDB(db_connection_string)
+    await main_db.connect()
+    res = await main_db.get_missed_blocks_numbers(2)
+    assert res == [3, 6]
 
 
 def test_maindb_write_block_data(db, main_db_dump):
