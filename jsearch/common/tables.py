@@ -1,8 +1,6 @@
 import sqlalchemy as sa
 import sqlalchemy.types as types
-from sqlalchemy import CheckConstraint
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.ext.declarative import declarative_base
 
 
 class HexInteger(types.TypeDecorator):
@@ -37,8 +35,9 @@ class HexBigInteger(types.TypeDecorator):
 
 metadata = sa.MetaData()
 
-
-uncles_t = sa.Table('uncles', metadata,
+uncles_t = sa.Table(
+    'uncles',
+    metadata,
     sa.Column('hash', sa.String, primary_key=True),
     sa.Column('number', HexInteger, index=True),
     sa.Column('block_number', HexInteger, index=True),
@@ -63,8 +62,9 @@ uncles_t = sa.Table('uncles', metadata,
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
 )
 
-
-internal_transactions_t = sa.Table('internal_transactions', metadata,
+internal_transactions_t = sa.Table(
+    'internal_transactions',
+    metadata,
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, primary_key=True),
     sa.Column('parent_tx_hash', sa.String, primary_key=True),
@@ -81,8 +81,9 @@ internal_transactions_t = sa.Table('internal_transactions', metadata,
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
 )
 
-
-transactions_t = sa.Table('transactions', metadata,
+transactions_t = sa.Table(
+    'transactions',
+    metadata,
     sa.Column('hash', sa.String, index=True),
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, index=True, primary_key=True),
@@ -101,8 +102,9 @@ transactions_t = sa.Table('transactions', metadata,
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
 )
 
-
-receipts_t = sa.Table('receipts', metadata,
+receipts_t = sa.Table(
+    'receipts',
+    metadata,
     sa.Column('transaction_hash', sa.String, index=True),
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, primary_key=True),
@@ -118,7 +120,9 @@ receipts_t = sa.Table('receipts', metadata,
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
 )
 
-logs_t = sa.Table('logs', metadata,
+logs_t = sa.Table(
+    'logs',
+    metadata,
     sa.Column('transaction_hash', sa.String, primary_key=True),
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, index=True, primary_key=True),
@@ -141,7 +145,9 @@ logs_t = sa.Table('logs', metadata,
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
 )
 
-accounts_state_t = sa.Table('accounts_state', metadata,
+accounts_state_t = sa.Table(
+    'accounts_state',
+    metadata,
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, primary_key=True),
     sa.Column('address', sa.String, primary_key=True),
@@ -151,7 +157,9 @@ accounts_state_t = sa.Table('accounts_state', metadata,
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
 )
 
-accounts_base_t = sa.Table('accounts_base', metadata,
+accounts_base_t = sa.Table(
+    'accounts_base',
+    metadata,
     sa.Column('address', sa.String, primary_key=True),
     sa.Column('code', sa.String),
     sa.Column('code_hash', sa.String),
@@ -159,26 +167,9 @@ accounts_base_t = sa.Table('accounts_base', metadata,
     sa.Column('root', sa.String),
 )
 
-#
-# class MinedBlock(Base):,
-#     __tablename__ = 'mined_blocks'
-#
-#     block_number = sa.Column('block_number', HexInteger, primary_key=True)
-#     miner = sa.Column('miner', sa.String, primary_key=True)
-#     reward = sa.Column('value', sa.String)
-#     timestamp = sa.Column('timestamp', HexInteger)
-#
-#
-# class MinedUncle(Base):
-#     __tablename__ = 'mined_uncles'
-#
-#     block_number = sa.Column('block_number', HexInteger, primary_key=True)
-#     miner = sa.Column('miner', sa.String, primary_key=True)
-#     reward = sa.Column('value', sa.String)
-#     timestamp = sa.Column('timestamp', HexInteger)
-
-
-blocks_t = sa.Table('blocks', metadata,
+blocks_t = sa.Table(
+    'blocks',
+    metadata,
     sa.Column('number', HexInteger, index=True),
     sa.Column('hash', sa.String, primary_key=True),
     sa.Column('parent_hash', sa.String),
@@ -204,24 +195,22 @@ blocks_t = sa.Table('blocks', metadata,
     sa.Column('is_forked', sa.Boolean, nullable=False, index=True, server_default='false'),
 )
 
-
-token_holders_t = sa.Table('token_holders', metadata,
-    # __table_args__ = (CheckConstraint('balance >= 0',
-    #                                   name='check_balance_positive'),)
-
+token_holders_t = sa.Table(
+    'token_holders',
+    metadata,
     sa.Column('account_address', sa.String, primary_key=True),
     sa.Column('token_address', sa.String, primary_key=True),
     sa.Column('balance', postgresql.NUMERIC(32, 0), index=True),
 )
 
-
-reorgs_t = sa.Table('reorgs', metadata,
+reorgs_t = sa.Table(
+    'reorgs',
+    metadata,
     sa.Column('id', sa.BigInteger, primary_key=True),
     sa.Column('block_hash', sa.String),
     sa.Column('block_number', sa.Integer),
     sa.Column('reinserted', sa.Boolean),
 )
-
 
 TABLES = (
     blocks_t,

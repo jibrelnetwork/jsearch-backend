@@ -86,7 +86,8 @@ class RawDB(DBWrapper):
     async def get_missed_blocks(self, blocks_numbers):
         if not blocks_numbers:
             return []
-        q = """SELECT block_hash, block_number FROM headers WHERE block_number IN ({})""".format(','.join('%s' for _ in blocks_numbers))
+        q = """SELECT block_hash, block_number
+                FROM headers WHERE block_number IN ({})""".format(','.join('%s' for _ in blocks_numbers))
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(q, blocks_numbers)

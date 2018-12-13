@@ -1,12 +1,10 @@
 import os
 
-import pytest
-
 from jsearch.common import tables as t
 from jsearch.syncer.database import MainDBSync, MainDB
 
 
-async def test_main_db_get_last_synced_block_empty(db, db_connection_string):
+async def test_main_db_get_last_synced_block_empty(db_connection_string):
     main_db = MainDB(db_connection_string)
     await main_db.connect()
     res = await main_db.get_latest_synced_block_number([1, None])
@@ -57,6 +55,7 @@ async def test_main_db_get_missed_blocks(db, db_connection_string):
     await main_db.connect()
     res = await main_db.get_missed_blocks_numbers(10)
     assert res == [3, 6]
+
 
 async def test_main_db_get_missed_blocks_limit2(db, db_connection_string):
     db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
