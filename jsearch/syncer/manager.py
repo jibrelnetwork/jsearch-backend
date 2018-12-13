@@ -80,6 +80,7 @@ class Manager:
                 start_time = time.monotonic()
                 new_reorgs = await self.get_new_reorgs()
                 if len(new_reorgs) == 0:
+                    logger.info("No reorgs, sleeping")
                     await asyncio.sleep(self.sleep_on_no_blocks)
                     continue
 
@@ -98,20 +99,45 @@ class Manager:
                 self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
 
     async def get_blocks_to_sync(self):
-        latest_block_num = await self.main_db.get_latest_sequence_synced_block_number(blocks_range=self.sync_range)
-        if latest_block_num is None:
+        latest_synced_block_num = await self.main_db.get_latest_synced_block_number(blocks_range=self.sync_range)
+        latest_available_block_num = await self.raw_db.get_latest_available_block_number()
+
+        if latest_available_block_num - (latest_synced_block_num or 0) < self.chunk_size:
+            # syncer is almost reached the head of chain, can fetch missed blocks now
+            sync_mode = 'strict'
+            blocks = await self.get_blocks_to_sync_strict()
+            if len(blocks) < self.chunk_size:
+                extra_blocks = await self.raw_db.get_blocks_to_sync(latest_synced_block_num,
+                                                                    self.chunk_size - len(blocks))
+                blocks += extra_blocks
+        else:
+            # syncer is far from chain head, need more speed, will skip missed blocks
+            sync_mode = 'fast'
+            blocks = await self.get_blocks_to_sync_fast(latest_synced_block_num, self.chunk_size)
+
+        logger.info("Latest synced block num is %s, %s blocks to sync, sync mode: %s",
+                    latest_synced_block_num, len(blocks), sync_mode)
+        return blocks
+
+    async def get_blocks_to_sync_fast(self, latest_synced_block_num, chunk_size):
+        if latest_synced_block_num is None:
             start_block_num = self.sync_range[0]
         else:
-            start_block_num = latest_block_num + 1
-        end_block_num = start_block_num + self.chunk_size - 1
+            start_block_num = latest_synced_block_num + 1
+        end_block_num = start_block_num + chunk_size - 1
         if self.sync_range[1]:
             end_block_num = min(end_block_num, self.sync_range[1])
         blocks = await self.raw_db.get_blocks_to_sync(start_block_num, end_block_num)
-        logger.info("Latest synced block num is %s, %s blocks to sync", latest_block_num, len(blocks))
+        return blocks
+
+    async def get_blocks_to_sync_strict(self):
+        missed_blocks_nums = await self.main_db.get_missed_blocks_numbers(limit=self.chunk_size)
+        blocks = await self.raw_db.get_missed_blocks(missed_blocks_nums)
         return blocks
 
     async def get_new_reorgs(self):
         last_reorg_num = await self.main_db.get_last_reorg()
+        # last_reorg_num = 0
         new_reorgs = await self.raw_db.get_reorgs_from(last_reorg_num, REORGS_BATCH_SIZE)
         return new_reorgs
 
@@ -120,6 +146,7 @@ class Manager:
             success = await self.main_db.apply_reorg(reorg)
             if success is not True:
                 return
+            pass
 
     async def listen_new_blocks(self, conn):
         async with conn.cursor() as cur:
