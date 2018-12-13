@@ -271,54 +271,6 @@ class Balance(Model):
     }
 
 
-class Contract(Model):
-    swagger_types = {
-        'name': str,
-        'address': str,
-        'byte_code': str,
-        'source_code': str,
-        'abi': List[Any],
-        'compiler_version': str,
-        'optimization_enabled': Any,
-        'optimization_runs': int,
-        'constructor_args': List[Any],
-        'verified_at': str,
-        # 'token': str,
-    }
-
-    attribute_map = {
-        'name': 'name',
-        'address': 'address',
-        'byte_code': 'byteCode',
-        'source_code': 'sourceCode',
-        'abi': 'abi',
-        'compiler_version': 'compilerVersion',
-        'optimization_enabled': 'optimizationEnabled',
-        'optimization_runs': 'optimizationRuns',
-        'constructor_args': 'constructorArgs',
-        'verified_at': 'verified_at',
-        # 'token': 'token',
-    }
-
-
-class Token(Model):
-    swagger_types = {
-        'address': str,
-        'token_name': str,
-        'token_symbol': str,
-        'token_decimals': int,
-        'token_total_supply': Any,
-    }
-
-    attribute_map = {
-        'address': 'contractAddress',
-        'token_name': 'name',
-        'token_symbol': 'symbol',
-        'token_decimals': 'decimals',
-        'token_total_supply': 'totalSupply',
-    }
-
-
 class TokenTransfer(Model):
     swagger_types = {
         'transaction': str,
