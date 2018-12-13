@@ -1,5 +1,3 @@
-import os
-
 from jsearch.common import tables as t
 from jsearch.syncer.database import MainDBSync, MainDB
 
@@ -73,7 +71,7 @@ async def test_main_db_get_missed_blocks_limit2(db, db_connection_string):
 
 
 def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
-    main_db = MainDBSync()
+    main_db = MainDBSync(db_connection_string)
     main_db.connect()
     d = main_db_dump
     block = d['blocks'][2]
