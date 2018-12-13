@@ -72,8 +72,8 @@ async def test_main_db_get_missed_blocks_limit2(db, db_connection_string):
     assert res == [3, 6]
 
 
-def test_maindb_write_block_data(db, main_db_dump):
-    main_db = MainDBSync(os.environ['JSEARCH_MAIN_DB_TEST'])
+def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
+    main_db = MainDBSync()
     main_db.connect()
     d = main_db_dump
     block = d['blocks'][2]
@@ -160,3 +160,15 @@ def test_maindb_write_block_data(db, main_db_dump):
             'is_forked': False,
         },
     ]
+
+
+async def test_main_db_is_block_exist(db, db_connection_string):
+    db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
+        (1, 'aa'),
+    ])
+    main_db = MainDBSync(db_connection_string)
+    main_db.connect()
+    res = main_db.is_block_exist('aa')
+    assert res is True
+    res = main_db.is_block_exist('xx')
+    assert res is False

@@ -101,14 +101,14 @@ class Manager:
     async def get_blocks_to_sync(self):
         latest_synced_block_num = await self.main_db.get_latest_synced_block_number(blocks_range=self.sync_range)
         latest_available_block_num = await self.raw_db.get_latest_available_block_number()
-
         if latest_available_block_num - (latest_synced_block_num or 0) < self.chunk_size:
             # syncer is almost reached the head of chain, can fetch missed blocks now
             sync_mode = 'strict'
             blocks = await self.get_blocks_to_sync_strict()
             if len(blocks) < self.chunk_size:
-                extra_blocks = await self.raw_db.get_blocks_to_sync(latest_synced_block_num,
-                                                                    self.chunk_size - len(blocks))
+                start_num = latest_synced_block_num + 1
+                end_num = start_num + self.chunk_size - len(blocks)
+                extra_blocks = await self.raw_db.get_blocks_to_sync(start_num, end_num)
                 blocks += extra_blocks
         else:
             # syncer is far from chain head, need more speed, will skip missed blocks
@@ -137,7 +137,6 @@ class Manager:
 
     async def get_new_reorgs(self):
         last_reorg_num = await self.main_db.get_last_reorg()
-        # last_reorg_num = 0
         new_reorgs = await self.raw_db.get_reorgs_from(last_reorg_num, REORGS_BATCH_SIZE)
         return new_reorgs
 
