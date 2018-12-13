@@ -29,7 +29,7 @@ CREATE INDEX ix_accounts_base_address ON accounts_base USING btree (address);
 
 
 CREATE TABLE accounts_state (
-    block_number integer,
+    block_number integer NOT NULL,
     block_hash character varying NOT NULL,
     address character varying NOT NULL,
     nonce integer,
@@ -41,6 +41,7 @@ ALTER TABLE ONLY accounts_state
     ADD CONSTRAINT accounts_state_pkey PRIMARY KEY (block_hash, address);
 CREATE INDEX ix_accounts_state_block_number ON accounts_state USING btree (block_number);
 CREATE INDEX ix_accounts_state_is_forked ON accounts_state USING btree (is_forked);
+CREATE INDEX ix_accounts_state_address_block_number ON accounts_state USING btree (address, block_number);
 
 
 CREATE TABLE blocks (
