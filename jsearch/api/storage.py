@@ -1,4 +1,3 @@
-import json
 from typing import List
 
 from jsearch.api import models
@@ -261,59 +260,6 @@ class Storage:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, addresses)
             return [models.Balance(balance=int(r['balance']), address=r['address']) for r in rows]
-
-    async def get_verified_contracts(self, limit, offset, order):
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-
-        fields = models.Contract.select_fields()
-        query = f"SELECT {fields} FROM contracts ORDER BY verified_at {order} LIMIT $1 OFFSET $2"
-
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, limit, offset)
-            dicts = []
-            for r in rows:
-                d = dict(r)
-                d['abi'] = json.loads(r['abi'])
-                dicts.append(models.Contract(**d))
-            return dicts
-
-    async def get_verified_contract(self, address):
-        fields = models.Contract.select_fields()
-        query = f"SELECT {fields} FROM contracts WHERE address=$1"
-
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(query, address)
-            if row is None:
-                return None
-            row = dict(row)
-            row['abi'] = json.loads(row['abi'])
-            return models.Contract(**row)
-
-    async def get_tokens_list(self, limit, offset, order):
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-
-        fields = models.Token.select_fields()
-        query = f"""
-            SELECT {fields} FROM contracts
-            WHERE is_erc20_token is true
-            ORDER BY verified_at {order} LIMIT $1 OFFSET $2;
-        """
-
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, limit, offset)
-            rows = [dict(r) for r in rows]
-            return [models.Token(**row) for row in rows]
-
-    async def get_token(self, address):
-        fields = models.Token.select_fields()
-        query = f"SELECT {fields} FROM contracts WHERE address=$1;"
-
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(query, address)
-            if row is None:
-                return None
-            row = dict(row)
-            return models.Token(**row)
 
     async def _fetch_token_transfers(self, query: str, address: str, limit: int, offset: int) \
             -> List[TokenTransfer]:
