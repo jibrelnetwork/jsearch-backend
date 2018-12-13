@@ -1,7 +1,9 @@
 import json
 import logging
 import shutil
+from itertools import count
 from pathlib import Path
+from random import randint
 from subprocess import Popen, PIPE
 from typing import List, Optional
 
@@ -15,6 +17,11 @@ pytest_plugings = (
 )
 
 NODES_DIRECTORY = Path('/tmp/nodes')
+
+chain_id = randint(20000, 100000)
+
+node_counter = count()
+p2p_port_counter = count(start=30303)
 
 
 def execute(cmd: List[str], cwd: Optional[Path] = None, log_filename: str = 'logs.txt', wait: bool = False) -> Popen:
@@ -82,14 +89,13 @@ class KeyStore:
 
 @attr.s
 class Genesis:
-    chain_id: int = attr.ib(default=1)
     accounts: List[str] = attr.ib(factory=list)
 
     @property
     def description(self):
         return {
             "config": {
-                "chainId": self.chain_id,
+                "chainId": chain_id,
                 "homesteadBlock": 0,
                 "eip155Block": 0,
                 "eip158Block": 0,
@@ -111,39 +117,39 @@ class Genesis:
 
 @attr.s
 class Node:
-    chain_id: int = attr.ib(default=1)
-    node_id: int = attr.ib(default=1)
+    node_id: str = attr.ib(factory=lambda: str(next(node_counter)))
+
+    rpc_api: str = "eth"
+    rpc_addr: str = "localhost"
+    rpc_port: str = "8575"
+    rpc_corsdomain: str = "*"
+
+    p2p_port: str = attr.ib(factory=lambda: str(next(p2p_port_counter)))
 
     node_process: Optional[Popen] = None
     keystore: Optional[KeyStore] = None
     genesis: Optional[Genesis] = None
 
-    rpc_api: str = "admin,miner,db,eth,net,web3,personal,debug"
-    rpc_addr: str = "localhost"
-    rpc_port: str = "8575"
-    rpc_corsdomain: str = "*"
-
     @property
     def root(self) -> Path:
-        return NODES_DIRECTORY / str(self.chain_id)
+        return NODES_DIRECTORY / str(chain_id)
 
     @property
     def data_dir(self) -> Path:
-        node_data = self.root / "Data"
-        return node_data
+        return self.root / self.node_id / "Data"
 
     @property
     def url(self):
         return f"http://{self.rpc_addr}:{self.rpc_port}"
 
-    def clean(self):
-        if self.root.exists():
-            logging.info('Clean %s', self.root)
-            shutil.rmtree(path=str(self.root))
-
     def terminate(self):
         if self.node_process:
             self.node_process.kill()
+
+    def clean(self):
+        if self.data_dir.exists():
+            logging.info('Clean %s', self.root)
+            shutil.rmtree(path=str(self.data_dir))
 
     def init_chain(self):
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -151,7 +157,7 @@ class Node:
         self.keystore = KeyStore()
         self.keystore.save(directory=self.data_dir)
 
-        self.genesis = Genesis(chain_id=self.chain_id, accounts=self.keystore.addresses)
+        self.genesis = Genesis(accounts=self.keystore.addresses)
         genesis_path = self.genesis.save(directory=self.root)
 
         cmd = ["geth", "--datadir", self.data_dir, "init", genesis_path]
@@ -159,42 +165,88 @@ class Node:
         logging.info("Chain root: %s", self.root)
         logging.info("Command to init chain: %s", " ".join(map(str, cmd)))
 
-        execute(cmd=cmd, cwd=self.root, wait=True)
+        execute(cmd=cmd, cwd=self.root, wait=True, log_filename=f"{chain_id}_init_{self.node_id}.txt")
 
-    def run(self, connection_string):
-        cmd = [
-            "geth",
+    def run(self):
+        cmd = self.get_cmd()
+
+        logging.info("Geth command: %s", " ".join(map(str, cmd)))
+        logging.info("Current working directory: %s", self.root)
+
+        self.node_process = execute(cmd=cmd, cwd=self.root, log_filename=f"node_{self.node_id}_logs.txt")
+
+    @classmethod
+    def as_new_process(cls, *args, **kwargs):
+        node: Node = cls(*args, **kwargs)
+        node.clean()
+        node.init_chain()
+        node.run()
+
+        return node
+
+
+@attr.s
+class GethForkNode(Node):
+    extdb_dsn: str = attr.ib(default="")
+
+    rpc_api: str = "eth,net,admin"
+    rpc_port: str = "8580"
+
+    def get_cmd(self) -> List[str]:
+        return [
+            "geth-fork",
+            "--nodiscover",
             "--datadir", self.data_dir,
-            "--networkid", str(self.chain_id),
+            "--networkid", str(chain_id),
+            "--port", self.p2p_port,
             "--rpc",
             "--rpcapi", self.rpc_api,
             "--rpcaddr", self.rpc_addr,
             "--rpcport", self.rpc_port,
             "--syncmode", "full",
             "--cache", "4096",
-            "--extdb", connection_string,
+            "--extdb", self.extdb_dsn
         ]
 
-        logging.info("Geth command: %s", " ".join(map(str, cmd)))
-        logging.info("Current working directory: %s", self.root)
 
-        self.node_process = execute(cmd=cmd, cwd=self.root)
+@attr.s
+class GethNode(Node):
+    rpc_api: str = "admin,miner,db,eth,net,web3,personal,debug"
+    rpc_port: str = "8575"
 
-    @classmethod
-    def as_new_process(cls, connection_string):
-        node: Node = cls()
-        node.clean()
-        node.init_chain()
-        node.run(connection_string=connection_string)
-
-        return node
+    def get_cmd(self) -> List[str]:
+        return [
+            "geth",
+            "--nodiscover",
+            "--datadir", self.data_dir,
+            "--networkid", str(chain_id),
+            "--port", self.p2p_port,
+            "--rpc",
+            "--rpcapi", self.rpc_api,
+            "--rpcaddr", self.rpc_addr,
+            "--rpcport", self.rpc_port,
+            "--syncmode", "full",
+            "--cache", "4096",
+        ]
 
 
 @pytest.fixture(scope="session")
-def geth_node(raw_db_connection_string: str):
-    node = Node.as_new_process(connection_string=raw_db_connection_string)
+def geth_fork_node(raw_db_connection_string: str):
+    node = GethForkNode.as_new_process(extdb_dsn=raw_db_connection_string)
     yield node
     node.terminate()
+
+
+@pytest.fixture(scope="session")
+def geth_node():
+    node = GethNode.as_new_process()
+    yield node
+    node.terminate()
+
+
+@pytest.fixture(scope="session")
+def geth_fork_rpc(geth_fork_node: Node) -> str:
+    return geth_fork_node.url
 
 
 @pytest.fixture(scope="session")

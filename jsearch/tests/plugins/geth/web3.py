@@ -55,14 +55,27 @@ class Web3ClientWrapper:
         for i in range(0, attempts):
             try:
                 logging.info('Last block is %s', self.last_block_number)
+                return
             except ConnectionError:
                 logging.info("Still waiting node...")
                 time.sleep(waiting_interval)
 
 
 @pytest.fixture(scope="session")
-def w3(geth_rpc: str):
+def w3(geth_rpc: str, geth_fork_rpc: str):
     client = Web3ClientWrapper(url=geth_rpc)
     client.wait_node()
+
+    logging.info("[Web3] Geth node is up")
+
+    fork_client = Web3ClientWrapper(url=geth_fork_rpc)
+    fork_client.wait_node()
+
+    logging.info("[Web3] Geth fork node is up")
+
+    enode = client.client.admin.nodeInfo['enode']
+    fork_client.client.admin.addPeer(enode)
+
+    logging.info("[Web3] Nodes are linked")
 
     return client
