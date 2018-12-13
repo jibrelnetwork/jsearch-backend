@@ -11,3 +11,5 @@ JSEARCH_CELERY_BACKEND = os.getenv('JSEARCH_CELERY_BACKEND', 'redis://localhost:
 JSEARCH_CONTRACTS_API = os.getenv('JSEARCH_CONTRACTS_API', 'http://localhost:8100')
 JSEARCH_COMPILER_API = os.getenv('JSEARCH_COMPILER_API', 'http://localhost:8101')
 JSEARCH_SYNC_PARALLEL = int(os.getenv('JSEARCH_SYNC_PARALLEL', '10'))
+
+RAVEN_DSN = os.getenv('RAVEN_DSN')

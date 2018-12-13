@@ -1,19 +1,20 @@
+import asyncio
 import os
 
-import asyncio
 import asyncpg
+import sentry_sdk
 from aiohttp import web
 from aiohttp_swagger import setup_swagger
 
-
+from jsearch import settings
+from jsearch.api import handlers
 from jsearch.api.storage import Storage
 from jsearch.common.database import MainDB
-from jsearch.api import handlers
-from jsearch import settings
-
 
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
 swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
+
+sentry_sdk.init(settings.RAVEN_DSN)
 
 
 async def on_shutdown(app):
