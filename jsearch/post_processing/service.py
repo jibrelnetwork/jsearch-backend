@@ -7,8 +7,8 @@ from typing import Callable, List, Optional
 
 from jsearch import settings
 from jsearch.common.database import MainDBSync
-from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.erc20_transfer_logs import process_log_operations_bulk
+from jsearch.common.processing.logs import process_log_event
 from jsearch.typing import Log
 
 ACTION_LOG_EVENTS = 'events'
@@ -55,25 +55,19 @@ def post_processing(action: str,
                     query_limit: Optional[int] = None,
                     wait_new_result: bool = False,
                     dsn: str = settings.JSEARCH_MAIN_DB) -> None:
-    blocks = set()
-    total_logs = 0
-    total_blocks = 0
-    started_at = time.time()
-
     with MainDBSync(connection_string=dsn) as db:
         worker = get_worker(action)
         query = get_query(action, db)
 
         with ProcessPoolExecutor(max_workers=workers) as executor:
             while True:
+                blocks = set()
+                started_at = time.time()
                 logs = query(query_limit)
                 if not logs:
                     if wait_new_result:
                         logger.info("[PROCESSING] There are not logs to read... wait")
                         time.sleep(5)
-                        started_at = time.time()
-                        total_blocks = 0
-                        total_logs = 0
                         continue
                     else:
                         logger.info("[PROCESSING] There are not logs to read")
@@ -92,15 +86,12 @@ def post_processing(action: str,
                     for future in as_completed(tasks):
                         future.result()
 
-                iteration_finished_at = time.time()
-                common_time = iteration_finished_at - started_at
+                working_time = time.time() - started_at
 
                 blocks = {log['block_number'] for log in logs} - blocks
-                total_blocks += len(blocks)
-                avg_block_speed = total_blocks / common_time
+                avg_block_speed = len(blocks) / working_time
 
-                total_logs += len(logs)
-                avg_log_speed = total_logs / common_time
+                avg_log_speed = len(logs) / working_time
 
                 last_block = sorted(blocks)[0] if blocks else ""
                 logger.info("[PROCESSING] speed %0.2f blocks/second", avg_block_speed)

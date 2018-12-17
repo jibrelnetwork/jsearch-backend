@@ -15,6 +15,7 @@ from jsearch.common.operations import update_token_info
 from jsearch.common.processing.logs import EventTypes, TRANSFER_EVENT_INPUT_SIZE
 from jsearch.common.rpc import BatchHTTPProvider, decode_erc20_output_value
 from jsearch.typing import Log, Contract, EventArgs, Abi
+from jsearch.utils import suppress_exception
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class BalanceUpdate:
     decimals: Optional[int]
 
     __slots__ = (
+        'abi',
         'token_address',
         'account_address',
         'block',
@@ -35,10 +37,11 @@ class BalanceUpdate:
         'value'
     )
 
-    def __init__(self, token_address, account_address, block):
+    def __init__(self, token_address, account_address, block, abi):
         self.token_address = token_address
         self.account_address = account_address
         self.block = block
+        self.abi = abi
 
     def __hash__(self):
         return hash(self.key)
@@ -97,7 +100,7 @@ def fetch_erc20_token_decimal_bulk(updates: List[BalanceUpdate]) -> List[Balance
     calls_params = []
     for update in updates:
         tx = prepare_transaction(
-            abi=ERC20_ABI,
+            abi=update.abi,
             address=update.token_as_checksum,
             web3=w3,
             fn_identifier='decimals'
@@ -108,7 +111,11 @@ def fetch_erc20_token_decimal_bulk(updates: List[BalanceUpdate]) -> List[Balance
 
     for i, response in enumerate(responses):
         update = updates[i]
-        update.decimals = decode_erc20_output_value(data=HexBytes(response['result']), fn_identifier='decimals')
+        update.decimals = decode_erc20_output_value(
+            data=HexBytes(response['result']),
+            fn_identifier='decimals',
+            abi=update.abi,
+        )
 
     return updates
 
@@ -134,6 +141,7 @@ def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate
         update = updates[i]
         update.value = decode_erc20_output_value(
             data=HexBytes(response["result"]),
+            abi=update.abi,
             fn_identifier='balanceOf',
             args=(update.account_as_checksum,),
         )
@@ -186,11 +194,14 @@ def get_transfer_details_from_erc20_event_args(
     return from_address, to_address, token_amount
 
 
-def process_log_transfer(log: Log, contract: Optional[Contract] = None):
+@suppress_exception
+def process_log_transfer(log: Log, contract: Optional[Contract] = None) -> Tuple[Log, Abi]:
     event_args = log['event_args']
     contract: Optional[Contract] = contract or get_contract(log['address'])
+
+    abi = None
     if event_args and contract:
-        abi = contract['abi']
+        abi: Abi = contract['abi']
         token_decimals = contract['token_decimals']
 
         if token_decimals is None:
@@ -199,7 +210,7 @@ def process_log_transfer(log: Log, contract: Optional[Contract] = None):
 
         elif log.get('is_token_transfer'):
             from_address, to_address, token_amount = get_transfer_details_from_erc20_event_args(
-                event_args=event_args, abi=abi, token_decimals=token_decimals
+                event_args=event_args, abi=ERC20_ABI, token_decimals=token_decimals
             )
             log.update({
                 'token_transfer_to': to_address,
@@ -207,10 +218,10 @@ def process_log_transfer(log: Log, contract: Optional[Contract] = None):
                 'token_amount': token_amount,
             })
     log['is_transfer_processed'] = True
-    return log
+    return log, abi
 
 
-def logs_to_balance_updates(log: Log) -> Set[BalanceUpdate]:
+def logs_to_balance_updates(log: Log, abi: Abi) -> Set[BalanceUpdate]:
     updates = set()
     if log.get('token_transfer_to'):
         to_address = log['token_transfer_to']
@@ -220,11 +231,11 @@ def logs_to_balance_updates(log: Log) -> Set[BalanceUpdate]:
         token_address = log['address']
 
         if to_address != NULL_ADDRESS:
-            update = BalanceUpdate(token_address=token_address, account_address=to_address, block=block)
+            update = BalanceUpdate(token_address=token_address, account_address=to_address, block=block, abi=abi)
             updates.add(update)
 
         if from_address != NULL_ADDRESS:
-            update = BalanceUpdate(token_address=token_address, account_address=from_address, block=block)
+            update = BalanceUpdate(token_address=token_address, account_address=from_address, block=block, abi=abi)
             updates.add(update)
 
     return updates
@@ -239,8 +250,9 @@ def process_log_operations_bulk(
     logs = [process_log_transfer(log, contract) for log in logs]
 
     updates = set()
-    for log in logs:
-        updates |= logs_to_balance_updates(log)
+    for log, abi in logs:
+        if log:
+            updates |= logs_to_balance_updates(log, abi)
 
     updates = list(updates)
     for offset in range(0, len(updates), batch_size):
