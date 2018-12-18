@@ -12,6 +12,7 @@ from jsearch.tests.entities import (
     AccountBaseFromDumpWrapper)
 from jsearch.tests.utils import pprint_returned_value
 
+
 pytest_plugins = [
     'jsearch.tests.plugins.tools',
     'jsearch.tests.plugins.databases.main_db',
@@ -185,8 +186,44 @@ async def test_get_account_transactions(cli, main_db_data):
     }
 
 
+async def test_get_account_balances(cli, main_db_data):
+    a1 = main_db_data['accounts_base'][0]
+    a2 = main_db_data['accounts_base'][1]
+    resp = await cli.get('/accounts/balances?addresses={},{}'.format(a1['address'], a2['address']))
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == [{'address': a1['address'],
+                    'balance': main_db_data['accounts_state'][10]['balance']},
+                   {'address': a2['address'],
+                    'balance': main_db_data['accounts_state'][6]['balance']}]
+
+
 async def test_get_block_transactions(cli, main_db_data):
     resp = await cli.get('/blocks/' + main_db_data['blocks'][1]['hash'] + '/transactions')
+    assert resp.status == 200
+    res = await resp.json()
+    txs = main_db_data['transactions']
+    assert len(res) == 2
+    assert res[0] == {
+        'blockHash': txs[0]['block_hash'],
+        'blockNumber': txs[0]['block_number'],
+        'from': txs[0]['from'],
+        'gas': txs[0]['gas'],
+        'gasPrice': txs[0]['gas_price'],
+        'hash': txs[0]['hash'],
+        'input': txs[0]['input'],
+        'nonce': txs[0]['nonce'],
+        'r': txs[0]['r'],
+        's': txs[0]['s'],
+        'to': txs[0]['to'],
+        'transactionIndex': txs[0]['transaction_index'],
+        'v': txs[0]['v'],
+        'value': txs[0]['value'],
+    }
+
+
+async def test_get_block_transactions_by_number(cli, main_db_data):
+    resp = await cli.get('/blocks/{}/transactions'.format(main_db_data['blocks'][1]['number']))
     assert resp.status == 200
     res = await resp.json()
     txs = main_db_data['transactions']
@@ -564,3 +601,23 @@ def sort_token_transfers(transfers):
         transfers,
         key=lambda item: (item['blockHash'], item['transaction'], item['from'], item['to'], item['amount'])
     )
+
+
+async def test_account_get_mined_blocks(cli, main_db_data):
+    a1 = main_db_data['accounts_base'][0]
+    a2 = main_db_data['accounts_base'][1]
+
+    resp = await cli.get(f'/accounts/{a1["address"]}/mined_blocks')
+    assert resp.status == 200
+    res = await resp.json()
+    assert len(res) == len(main_db_data['blocks'])
+    resp = await cli.get(f'/accounts/{a2["address"]}/mined_blocks')
+    res = await resp.json()
+    assert len(res) == 0
+
+
+async def test_on_new_contracts_added(cli, mocker):
+    m = mocker.patch('jsearch.api.handlers.tasks.on_new_contracts_added_task')
+    resp = await cli.post('/_on_new_contracts_added', json={'address': 'abc', 'abi': 'ABI'})
+    assert resp.status == 200
+    m.delay.assert_called_with('abc', 'ABI')

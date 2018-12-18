@@ -89,30 +89,6 @@ class MainDB(DBWrapper):
         self.engine.close()
         await self.engine.wait_closed()
 
-    async def get_latest_sequence_synced_block_number(self, blocks_range):
-        """
-        Get latest block writed in main DB during sequence sync
-        """
-        if blocks_range[1] is None:
-            condition = 'number >= %s'
-            params = (blocks_range[0],)
-        else:
-            condition = 'number BETWEEN %s AND %s'
-            params = blocks_range
-
-        q = f"""
-            SELECT l.number + 1 as start
-                FROM (SELECT * FROM blocks WHERE {condition}) as l
-            LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number
-            WHERE r.number IS NULL order by start;
-        """
-
-        async with self.engine.acquire() as conn:
-            res = await conn.execute(q, params)
-            rows = await res.fetchall()
-            row = rows[0] if len(rows) > 0 else None
-        return row['start'] - 1 if row else None
-
     async def get_contact_creation_code(self, address):
         q = select([transactions_t.c.input]).select_from(
             transactions_t.join(receipts_t, and_(receipts_t.c.transaction_hash == transactions_t.c.hash,
@@ -132,11 +108,6 @@ class MainDBSync(DBWrapperSync):
 
     def disconnect(self):
         self.conn.close()
-
-    def update_logs(self, logs, conn=None):
-        conn = self.conn or conn
-        for record in logs:
-            self.update_log(record, conn)
 
     def update_log(self, record, conn=None):
         conn = self.conn or conn

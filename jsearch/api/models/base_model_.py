@@ -6,7 +6,6 @@ from decimal import Decimal
 
 import six
 
-from jsearch.api import util
 
 T = typing.TypeVar('T')
 
@@ -25,24 +24,6 @@ class Model(object):
             assert k in self.attribute_map, 'Invalid field "{}"'.format(k)
             # assert k in self.swagger_types, 'Invalid field "{}"'.format(k)
             setattr(self, k, v)
-
-    @classmethod
-    def from_dict(cls: typing.Type[T], dikt) -> T:
-        """Returns the dict as a model"""
-        return util.deserialize_model(dikt, cls)
-
-    @classmethod
-    def from_row(cls: typing.Type[T], row) -> T:
-        """Returns the dict as a model"""
-        row = dict(row)
-        dikt = {}
-        fields = json.loads(row.pop('fields'))
-        dikt.update(fields)
-        for k, v in row.items():
-            amap = cls().attribute_map
-            if k in amap:
-                dikt[amap[k]] = v
-        return cls.from_dict(dikt)
 
     def to_dict(self):
         """Returns the model properties as a dict
