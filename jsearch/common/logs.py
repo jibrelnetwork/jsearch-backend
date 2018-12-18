@@ -1,6 +1,12 @@
 import logging.config
 import sys
 
+import sentry_sdk
+
+from jsearch import settings
+
+sentry_sdk.init(settings.RAVEN_DSN)
+
 
 def configure(loglevel):
     logging.config.dictConfig({
