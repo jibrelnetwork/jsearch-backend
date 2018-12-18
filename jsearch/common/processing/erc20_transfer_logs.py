@@ -248,8 +248,7 @@ def process_log_operations_bulk(
         batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
 ) -> None:
     logs = [process_log_transfer(log, contract) for log in logs]
-    if not logs:
-        return None
+    logs = (log for log in logs if log)
 
     updates = set()
     for log, abi in logs:
@@ -257,9 +256,6 @@ def process_log_operations_bulk(
             updates |= logs_to_balance_updates(log, abi)
 
     updates = list(updates)
-    if not updates:
-        return None
-    
     for offset in range(0, len(updates), batch_size):
         chunk = updates[offset:offset + batch_size]
 
