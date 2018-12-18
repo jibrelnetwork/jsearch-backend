@@ -178,9 +178,10 @@ class MainDBSync(DBWrapperSync):
     def get_logs_to_process_operations(self, limit=1000):
         unprocessed_blocks_query = select(
             columns=[logs_t.c.block_number],
-            whereclause=and_(logs_t.c.is_processed == true(),
-                             logs_t.c.is_token_transfer == true(),
-                             logs_t.c.is_transfer_processed == false()),
+            whereclause=and_(
+                logs_t.c.is_token_transfer == true(),
+                logs_t.c.is_transfer_processed == false()
+            ),
             distinct=True
         ) \
             .order_by(logs_t.c.block_number.desc()) \
@@ -190,9 +191,9 @@ class MainDBSync(DBWrapperSync):
         query = select(
             columns=[logs_t],
             whereclause=and_(
-                logs_t.c.block_number.in_(unprocessed_blocks),
                 logs_t.c.is_token_transfer == true(),
                 logs_t.c.is_transfer_processed == false(),
+                logs_t.c.block_number.in_(unprocessed_blocks),
             )
         ) \
             .order_by(logs_t.c.block_number.desc()) \
