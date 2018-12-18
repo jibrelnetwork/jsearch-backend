@@ -1,6 +1,6 @@
 FROM jsearch/geth-fork as geth_fork
 FROM jsearch/geth AS geth
-FROM jsearch/api
+FROM jsearch/backend
 
 ENV JSEARCH_MAIN_DB_TEST=postgres://postgres:posgres@test_db/jsearch_main_test
 

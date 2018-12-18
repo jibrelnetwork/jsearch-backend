@@ -57,7 +57,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: jsearch/api
+    image: jsearch/backend
     container_name: jsearch_celery_worker
     env_file:
     - config/test_stage.env
