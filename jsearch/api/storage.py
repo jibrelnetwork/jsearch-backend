@@ -21,20 +21,19 @@ class Storage:
                 SELECT block_number, block_hash, address, nonce, balance FROM accounts_state
                 WHERE address=$1
                     AND block_number<=(SELECT number FROM blocks WHERE hash=$2)
-                ORDER BY block_number LIMIT 1;
+                ORDER BY block_number DESC LIMIT 1;
             """
         elif tag.is_number():
             query = """
                 SELECT block_number, block_hash, address, nonce, balance FROM accounts_state
                 WHERE address=$1 AND block_number<=$2
-                ORDER BY block_number LIMIT 1;
+                ORDER BY block_number DESC LIMIT 1;
             """
         else:
             query = """
                 SELECT "block_number", "block_hash", "address", "nonce", "balance" FROM accounts_state
                 WHERE address=$1 ORDER BY block_number DESC LIMIT 1;
             """
-
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 state_row = await conn.fetchrow(query, address)

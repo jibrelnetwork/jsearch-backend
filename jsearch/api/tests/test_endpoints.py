@@ -123,6 +123,40 @@ async def test_get_account(cli, main_db_data):
                                  'nonce': account_state['nonce']}
 
 
+async def test_get_account_block_number(cli, main_db_data):
+    resp = await cli.get('/accounts/{}?tag={}'.format(
+        main_db_data['accounts_state'][0]['address'],
+        4,
+    ))
+    assert resp.status == 200
+    account_state = main_db_data['accounts_state'][8]
+    account_base = main_db_data['accounts_base'][0]
+    assert await resp.json() == {'address': account_state['address'],
+                                 'balance': account_state['balance'],
+                                 'blockHash': account_state['block_hash'],
+                                 'blockNumber': account_state['block_number'],
+                                 'code': account_base['code'],
+                                 'codeHash': account_base['code_hash'],
+                                 'nonce': account_state['nonce']}
+
+
+async def test_get_account_block_hash(cli, main_db_data):
+    resp = await cli.get('/accounts/{}?tag={}'.format(
+        main_db_data['accounts_state'][0]['address'],
+        main_db_data['blocks'][3]['hash'],
+    ))
+    assert resp.status == 200
+    account_state = main_db_data['accounts_state'][8]
+    account_base = main_db_data['accounts_base'][0]
+    assert await resp.json() == {'address': account_state['address'],
+                                 'balance': account_state['balance'],
+                                 'blockHash': account_state['block_hash'],
+                                 'blockNumber': account_state['block_number'],
+                                 'code': account_base['code'],
+                                 'codeHash': account_base['code_hash'],
+                                 'nonce': account_state['nonce']}
+
+
 async def test_get_account_transactions(cli, main_db_data):
     resp = await cli.get('/accounts/' + main_db_data['accounts_state'][0]['address'] + '/transactions')
     assert resp.status == 200
