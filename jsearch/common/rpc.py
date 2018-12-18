@@ -9,13 +9,12 @@ from web3.utils.abi import get_abi_output_types, map_abi_data
 from web3.utils.contracts import find_matching_fn_abi
 from web3.utils.normalizers import BASE_RETURN_NORMALIZERS
 
-from jsearch.common.contracts import ERC20_ABI
 from jsearch.utils import suppress_exception
 
 
 @suppress_exception
-def decode_erc20_output_value(data, fn_identifier, args=None, kwargs=None):
-    function_abi = find_matching_fn_abi(ERC20_ABI, fn_identifier, args, kwargs)
+def decode_erc20_output_value(data, fn_identifier, abi, args=None, kwargs=None):
+    function_abi = find_matching_fn_abi(abi, fn_identifier, args, kwargs)
     output_types = get_abi_output_types(function_abi)
 
     try:
