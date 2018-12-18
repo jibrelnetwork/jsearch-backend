@@ -223,16 +223,6 @@ async def get_uncle(request):
     return web.json_response(uncle.to_dict())
 
 
-async def call_web3_method(request):
-    payload = await request.text()
-    proxy_url = request.app['node_proxy_url']
-    async with aiohttp.ClientSession() as session:
-        async with session.post(proxy_url, data=payload) as resp:
-            resp.status
-            data = await resp.json()
-            return web.json_response(data, status=resp.status)
-
-
 async def verify_contract(request):
     """
     address
