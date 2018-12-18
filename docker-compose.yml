@@ -13,7 +13,7 @@ services:
     container_name: jsearch_api
     restart: always
     env_file:
-    - config/dev.env
+    - config/test_stage.env
     ports:
     - 8000:8000
     volumes:
@@ -33,7 +33,7 @@ services:
     image: jsearch/backend
     entrypoint: jsearch-syncer
     env_file:
-    - config/dev.env
+    - config/test_stage.env
     container_name: jsearch_syncer
 
   post_processing:
@@ -48,7 +48,7 @@ services:
     image: jsearch/backend
     entrypoint: jsearch-post-processing
     env_file:
-    - config/dev.env
+    - config/test_stage.env
     container_name: jsearch_post_processing
 
   celery_worker:
@@ -59,36 +59,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: jsearch/api
+    image: jsearch/backend
     container_name: jsearch_celery_worker
     env_file:
-    - config/dev.env
+    - config/test_stage.env
     restart: always
     command: celeryworker
-
-  tests:
-    depends_on:
-    - test_db
-    - test_raw_db
-    - redis
-    build:
-      context: .
-      dockerfile: ./docker/tests/Dockerfile
-    tmpfs:
-    - /tmp
-    - /home/root/.ethash
-    volumes:
-    - ./:/app
-    networks:
-    - default
-    - jsearch-contracts_default
-    image: jsearch/tests
-    container_name: jsearch_tests
-    environment:
-    - JSEARCH_MAIN_DB_TEST=postgres://postgres:postgres@test_db/jsearch_main_test
-    - JSEARCH_MAIN_DB=postgres://postgres:postgres@test_db/jsearch_main_test
-    env_file:
-    - config/dev.env
 
   raw_db:
     #    image: postgres:11.0-alpine
@@ -113,23 +89,6 @@ services:
     - POSTGRES_PASSWORD=postgres
     - POSTGRES_DB=jsearch_main
 
-  test_db:
-    image: postgres:9.6-alpine
-    #    image: postgres:11.0-alpine
-    container_name: jsearch_test_db
-    environment:
-    - POSTGRES_USER=postgres
-    - POSTGRES_PASSWORD=postgres
-    - POSTGRES_DB=jsearch_main_test
-
-  test_raw_db:
-    image: postgres:9.6-alpine
-    container_name: jsearch_test_raw_db
-    environment:
-    - POSTGRES_USER=postgres
-    - POSTGRES_PASSWORD=postgres
-    - POSTGRES_DB=jsearch_raw
-
   redis:
     image: redis:5.0-alpine
 
@@ -137,6 +96,3 @@ volumes:
   raw_db:
   main_db:
 
-networks:
-  jsearch-contracts_default:
-    external: True
