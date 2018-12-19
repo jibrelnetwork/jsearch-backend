@@ -16,6 +16,8 @@ services:
     - config/test_stage.env
     ports:
     - 8000:8000
+    volumes:
+    - ./:/app
 
   syncer:
     depends_on:

@@ -21,20 +21,19 @@ class Storage:
                 SELECT block_number, block_hash, address, nonce, balance FROM accounts_state
                 WHERE address=$1
                     AND block_number<=(SELECT number FROM blocks WHERE hash=$2)
-                ORDER BY block_number LIMIT 1;
+                ORDER BY block_number DESC LIMIT 1;
             """
         elif tag.is_number():
             query = """
                 SELECT block_number, block_hash, address, nonce, balance FROM accounts_state
                 WHERE address=$1 AND block_number<=$2
-                ORDER BY block_number LIMIT 1;
+                ORDER BY block_number DESC LIMIT 1;
             """
         else:
             query = """
                 SELECT "block_number", "block_hash", "address", "nonce", "balance" FROM accounts_state
                 WHERE address=$1 ORDER BY block_number DESC LIMIT 1;
             """
-
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 state_row = await conn.fetchrow(query, address)
@@ -151,7 +150,9 @@ class Storage:
             rows = [dict(r) for r in rows]
             for r in rows:
                 del r['is_sequence_sync']
-
+                del r['is_forked']
+                r['transactions'] = None
+                r['uncles'] = None
                 r['static_reward'] = int(r['static_reward'])
                 r['uncle_inclusion_reward'] = int(r['uncle_inclusion_reward'])
                 r['tx_fees'] = int(r['tx_fees'])
@@ -253,13 +254,15 @@ class Storage:
             return [models.Log(**r) for r in rows]
 
     async def get_accounts_balances(self, addresses):
-        query = """SELECT a.address, a.balance FROM accounts a
-                    INNER JOIN (SELECT address, max(block_number) bn FROM accounts
+        query = """SELECT a.address, a.balance FROM accounts_state a
+                    INNER JOIN (SELECT address, max(block_number) bn FROM accounts_state
                                  WHERE address = any($1::text[]) GROUP BY address) gn
                     ON a.address=gn.address AND a.block_number=gn.bn;"""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, addresses)
-            return [models.Balance(balance=int(r['balance']), address=r['address']) for r in rows]
+            addr_map = {r['address']: r for r in rows}
+            return [models.Balance(balance=int(addr_map[a]['balance']), address=addr_map[a]['address'])
+                    for a in addresses]
 
     async def _fetch_token_transfers(self, query: str, address: str, limit: int, offset: int) \
             -> List[TokenTransfer]:

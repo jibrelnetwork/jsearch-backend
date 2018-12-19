@@ -265,7 +265,6 @@ ERC20_ABI_SIMPLE = [
 
 
 def _fix_string_args(args, types):
-    # print('FSA', args, types)
     fixed = []
     for i, arg in enumerate(args):
         t = types[i]
@@ -358,26 +357,6 @@ def simplify_abi(abi):
             s['outputs'] = [fix_uint(v['type']) for v in item['outputs']]
         abi_simple.append(s)
     return abi_simple
-
-
-def collect_types():
-    from jsearch.common.tables import contracts_t
-    from sqlalchemy.sql import select
-    from sqlalchemy import create_engine
-
-    engine = create_engine('postgresql://dbuser@localhost/jsearch_main')
-    conn = engine.connect()
-    types = set()
-    s = select([contracts_t])
-    rows = conn.execute(s)
-
-    for row in rows:
-        abi = row['abi']
-        for t in abi:
-            if t['type'] in ('function', 'event'):
-                for i in t['inputs']:
-                    types.add(i['type'])
-    return types
 
 
 def cut_contract_metadata_hash(byte_code):
