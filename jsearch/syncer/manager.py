@@ -39,10 +39,6 @@ class Manager:
         self._running = True
         asyncio.ensure_future(self.sequence_sync_loop())
         asyncio.ensure_future(self.reorg_loop())
-        # TODO: de we really need sync by events?
-        # asyncio.ensure_future(self.listen_new_blocks(self.raw_db.conn))
-        # asyncio.ensure_future(self.listen_reinsert(self.raw_db.conn))
-        # asyncio.ensure_future(self.listen_reorg(self.raw_db.conn))
 
     def stop(self):
         self._running = False
@@ -147,54 +143,7 @@ class Manager:
                 return
             pass
 
-    async def listen_new_blocks(self, conn):
-        async with conn.cursor() as cur:
-            await cur.execute("LISTEN newblock")
-            logger.info("Starting Listen newblock channel")
-            while self._running is True:
-                msg = await conn.notifies.get()
-                logger.info('Newblock notification received: %s', msg.payload)
-                try:
-                    block_hash = msg.payload
-                    await loop.run_in_executor(self.executor, sync_block, block_hash)
-                except Exception:
-                    logger.exception('Error on newblock listener')
-
-    async def listen_reorg(self, conn):
-        async with conn.cursor() as cur:
-            await cur.execute("LISTEN newreorg")
-            logger.info("Starting Listen newreorg channel")
-            while self._running is True:
-                msg = await conn.notifies.get()
-                logger.info('New Reorg notification received: %s', msg.payload)
-                try:
-                    block_hash = msg.payload
-                    await loop.run_in_executor(self.executor, reorg_block, block_hash)
-                except Exception:
-                    logger.exception('Error on newreorg listener')
-
-    async def listen_reinsert(self, conn):
-        async with conn.cursor() as cur:
-            await cur.execute("LISTEN newreinsert")
-            logger.info("Starting Listen newreinsert channel")
-            while self._running is True:
-                msg = await conn.notifies.get()
-                logger.info('New Reinsert notification received: %s', msg.payload)
-                try:
-                    block_hash = msg.payload
-                    await loop.run_in_executor(self.executor, reinsert_block, block_hash)
-                except Exception:
-                    logger.exception('Error on newreinsert listener')
-
 
 def sync_block(block_hash, block_number=None, main_db_dsn=None, raw_db_dsn=None):
     processor = SyncProcessor(main_db_dsn=main_db_dsn, raw_db_dsn=raw_db_dsn)
     return processor.sync_block(block_hash, block_number)
-
-
-def reorg_block(block_hash):
-    logger.info('Reorg block %s', block_hash)
-
-
-def reinsert_block(block_hash):
-    logger.info('ReInsert block %s', block_hash)

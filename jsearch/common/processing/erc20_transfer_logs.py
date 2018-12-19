@@ -259,7 +259,7 @@ def process_log_operations_bulk(
     updates = list(updates)
     if not updates:
         return None
-    
+
     for offset in range(0, len(updates), batch_size):
         chunk = updates[offset:offset + batch_size]
 

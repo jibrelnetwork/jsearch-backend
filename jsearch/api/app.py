@@ -54,7 +54,6 @@ async def make_app():
     app.router.add_route('GET', '/uncles', handlers.get_uncles)
     app.router.add_route('GET', '/uncles/{tag}', handlers.get_uncle)
 
-    app.router.add_route('POST', '/web3', handlers.call_web3_method)
     app.router.add_route('POST', '/verify_contract', handlers.verify_contract)
 
     app.router.add_route('GET', '/tokens/{address}/transfers', handlers.get_token_transfers)
