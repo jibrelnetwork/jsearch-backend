@@ -8,7 +8,6 @@ from jsearch.common.contracts import is_erc20_compatible
 from jsearch.api.helpers import get_tag, validate_params
 
 
-
 async def get_account(request):
     """
     Get account by adress
