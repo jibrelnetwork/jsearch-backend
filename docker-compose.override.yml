@@ -1,0 +1,62 @@
+version: '3.2'
+
+services:
+  api:
+    env_file:
+    - config/test_stage.env
+    - config/dev.env
+
+  syncer:
+    env_file:
+    - config/test_stage.env
+    - config/dev.env
+
+  post_processing:
+    env_file:
+    - config/test_stage.env
+    - config/dev.env
+
+  tests:
+    depends_on:
+    - test_db
+    - test_raw_db
+    - redis
+    build:
+      context: .
+      dockerfile: ./docker/tests/Dockerfile
+    tmpfs:
+    - /tmp
+    - /home/root/.ethash
+    volumes:
+    - ./:/app
+    networks:
+    - default
+    - jsearch-contracts_default
+    image: jsearch/tests
+    container_name: jsearch_tests
+    environment:
+    - JSEARCH_MAIN_DB_TEST=postgres://postgres:postgres@test_db/jsearch_main_test
+    - JSEARCH_MAIN_DB=postgres://postgres:postgres@test_db/jsearch_main_test
+    env_file:
+    - config/test_stage.env
+    - config/dev.env
+
+  test_db:
+    image: postgres:9.6-alpine
+    container_name: jsearch_test_db
+    environment:
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=postgres
+    - POSTGRES_DB=jsearch_main_test
+
+  test_raw_db:
+    image: postgres:9.6-alpine
+    container_name: jsearch_test_raw_db
+    environment:
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=postgres
+    - POSTGRES_DB=jsearch_raw
+
+networks:
+  jsearch-contracts_default:
+    external: True

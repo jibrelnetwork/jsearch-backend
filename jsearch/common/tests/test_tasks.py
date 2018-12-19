@@ -1,31 +1,26 @@
-from unittest import mock
+from unittest.mock import ANY, call
 
-import pytest
-from sqlalchemy import select
-
-from jsearch.common import tasks
-from jsearch.common import tables as t
+from jsearch.common.tasks import on_new_contracts_added_task
 
 
-@mock.patch('jsearch.common.tasks.Web3')
-def test_update_contract_info(W3, db, contracts, main_db_data):
-    address = main_db_data['accounts'][2]['address']
-    m = W3().eth.contract()
-    m.functions.name().call.return_value = 'xToken'
-    m.functions.symbol().call.return_value = 'XTK'
-    m.functions.decimals().call.return_value = 3
-    m.functions.totalSupply().call.return_value = 300
+def test_on_new_contracts_added_task(mocker, db):
+    update_token_mock = mocker.patch(
+        'jsearch.common.operations.update_token_info')
+    process_transfer_mock = mocker.patch(
+        'jsearch.common.processing.transactions.process_token_transfers_for_transaction')
 
-    tasks.update_token_info(address)
+    db.execute('INSERT INTO transactions (block_number, block_hash,  hash, transaction_index, "from", "to")'
+               'VALUES (%s, %s, %s, %s, %s, %s)', [
+                   (1, 'b1', 'a', 1, '0x1', '0x2'),
+                   (2, 'b2', 'b', 1, '0x2', '0x3'),
+                   (2, 'b2', 'c', 2, '0x3', '0x4'),
+                   (2, 'b2', 'd', 3, '0x5', '0x3'),
+               ])
+    on_new_contracts_added_task('0x3', 'ABI')
 
-    q = select([t.contracts_t]).where(t.contracts_t.c.address == address)
-    rows = db.execute(q).fetchall()
-
-    assert rows[0].token_name == 'xToken'
-    assert rows[0].token_symbol == 'XTK'
-    assert rows[0].token_decimals == 3
-    assert rows[0].token_total_supply == 300
-
-
-def test_process_new_verified_contract_transactions():
-    pass
+    update_token_mock.assert_called_with('0x3', 'ABI')
+    assert process_transfer_mock.call_count == 2
+    process_transfer_mock.asert_has_calls([
+        call(ANY, 'b'),
+        call(ANY, 'd'),
+    ])

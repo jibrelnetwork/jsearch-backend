@@ -1,14 +1,9 @@
-
 from typing import List, Dict, Any
 
 from jsearch.api.models.base_model_ import Model
 
 
-
-
-
 class Log(Model):
-
     swagger_types = {
         'address': str,
         'block_hash': str,
@@ -34,10 +29,7 @@ class Log(Model):
     }
 
 
-
-
 class Account(Model):
-
     swagger_types = {
         'block_number': int,
         'block_hash': str,
@@ -59,10 +51,7 @@ class Account(Model):
     }
 
 
-
-
 class Transaction(Model):
-
     swagger_types = {
         'block_hash': str,
         'block_number': int,
@@ -98,10 +87,7 @@ class Transaction(Model):
     }
 
 
-
-
 class Block(Model):
-
     swagger_types = {
         'difficulty': int,
         'extra_data': str,
@@ -155,10 +141,7 @@ class Block(Model):
     }
 
 
-
-
 class Uncle(Model):
-
     swagger_types = {
         'difficulty': int,
         'extra_data': str,
@@ -206,10 +189,7 @@ class Uncle(Model):
     }
 
 
-
-
 class Receipt(Model):
-
     swagger_types = {
         'block_hash': str,
         'block_number': int,
@@ -243,10 +223,7 @@ class Receipt(Model):
     }
 
 
-
-
 class Reward(Model):
-
     swagger_types = {
         'address': str,
         'amount': int,
@@ -258,10 +235,7 @@ class Reward(Model):
     }
 
 
-
-
 class Web3Call(Model):
-
     swagger_types = {
         'method': str,
         'arguments': List[Any],
@@ -273,10 +247,7 @@ class Web3Call(Model):
     }
 
 
-
-
 class Web3CallResponse(Model):
-
     swagger_types = {
         'status': str,
         'result': Any,
@@ -288,10 +259,7 @@ class Web3CallResponse(Model):
     }
 
 
-
-
 class Balance(Model):
-
     swagger_types = {
         'balance': int,
         'address': str,
@@ -303,64 +271,7 @@ class Balance(Model):
     }
 
 
-
-
-class Contract(Model):
-
-    swagger_types = {
-        'name': str,
-        'address': str,
-        'byte_code': str,
-        'source_code': str,
-        'abi': List[Any],
-        'compiler_version': str,
-        'optimization_enabled': Any,
-        'optimization_runs': int,
-        'constructor_args': List[Any],
-        'verified_at': str,
-        # 'token': str,
-    }
-
-    attribute_map = {
-        'name': 'name',
-        'address': 'address',
-        'byte_code': 'byteCode',
-        'source_code': 'sourceCode',
-        'abi': 'abi',
-        'compiler_version': 'compilerVersion',
-        'optimization_enabled': 'optimizationEnabled',
-        'optimization_runs': 'optimizationRuns',
-        'constructor_args': 'constructorArgs',
-        'verified_at': 'verified_at',
-        # 'token': 'token',
-    }
-
-
-
-
-class Token(Model):
-
-    swagger_types = {
-        'address': str,
-        'token_name': str,
-        'token_symbol': str,
-        'token_decimals': int,
-        'token_total_supply': Any,
-    }
-
-    attribute_map = {
-        'address': 'contractAddress',
-        'token_name': 'name',
-        'token_symbol': 'symbol',
-        'token_decimals': 'decimals',
-        'token_total_supply': 'totalSupply',
-    }
-
-
-
-
 class TokenTransfer(Model):
-
     swagger_types = {
         'transaction': str,
         'from': str,
@@ -377,4 +288,13 @@ class TokenTransfer(Model):
         'block_hash': 'blockHash'
     }
 
-
+    @classmethod
+    def from_log_record(cls, log):
+        data: Dict[str, Any] = {
+            'transaction': log['transaction_hash'],
+            'from': log['token_transfer_from'],
+            'to': log['token_transfer_to'],
+            'amount': log['token_amount'],
+            'block_hash': log['block_hash']
+        }
+        return cls(**data)

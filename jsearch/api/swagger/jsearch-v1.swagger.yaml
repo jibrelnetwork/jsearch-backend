@@ -465,26 +465,6 @@ paths:
               $ref: '#/definitions/TokenTransfer'
         400:
           description: bad input parameter
-
-  /web3:
-    post:
-      operationId: web3ApiMethodCall
-      description: |
-        call Web3 API method
-      produces:
-      - application/json
-      parameters:
-        - in: body
-          name: call
-          schema:
-            $ref: '#/definitions/Web3Call'
-      responses:
-        200:
-          description: method call response
-          schema:
-            $ref: '#/definitions/Web3CallResponse'
-        400:
-          description: bad input parameter
       
 definitions:
 
@@ -889,4 +869,4 @@ schemes:
  - http
 
 
-basePath: /brjiza/js1/1.0.0
+basePath: /

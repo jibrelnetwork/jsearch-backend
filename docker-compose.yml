@@ -1,0 +1,98 @@
+version: '3.2'
+
+services:
+  api:
+    depends_on:
+    - raw_db
+    - main_db
+    - celery_worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jsearch/backend
+    container_name: jsearch_api
+    restart: always
+    env_file:
+    - config/test_stage.env
+    ports:
+    - 8000:8000
+    volumes:
+    - ./:/app
+
+  syncer:
+    depends_on:
+    - raw_db
+    - main_db
+    - celery_worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+    - default
+    - jsearch-contracts_default
+    image: jsearch/backend
+    entrypoint: jsearch-syncer
+    env_file:
+    - config/test_stage.env
+    container_name: jsearch_syncer
+
+  post_processing:
+    depends_on:
+    - main_db
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+    - default
+    - jsearch-contracts_default
+    image: jsearch/backend
+    entrypoint: jsearch-post-processing
+    env_file:
+    - config/test_stage.env
+    container_name: jsearch_post_processing
+
+  celery_worker:
+    depends_on:
+    - redis
+    - raw_db
+    - main_db
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jsearch/backend
+    container_name: jsearch_celery_worker
+    env_file:
+    - config/test_stage.env
+    restart: always
+    command: celeryworker
+
+  raw_db:
+    #    image: postgres:11.0-alpine
+    image: postgres:9.6-alpine
+    container_name: jsearch_raw_db
+    volumes:
+    - raw_db:/var/lib/postgresql/data
+    - ./backups:/backups
+    environment:
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=postgres
+    - POSTGRES_DB=jsearch_raw
+
+  main_db:
+    #    image: postgres:11.0-alpine
+    image: postgres:9.6-alpine
+    container_name: jsearch_main_db
+    volumes:
+    - main_db:/var/lib/postgresql/data
+    environment:
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=postgres
+    - POSTGRES_DB=jsearch_main
+
+  redis:
+    image: redis:5.0-alpine
+
+volumes:
+  raw_db:
+  main_db:
+

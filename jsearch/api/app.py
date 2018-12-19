@@ -1,19 +1,20 @@
+import asyncio
 import os
 
-import asyncio
 import asyncpg
+import sentry_sdk
 from aiohttp import web
 from aiohttp_swagger import setup_swagger
 
-
+from jsearch import settings
+from jsearch.api import handlers
 from jsearch.api.storage import Storage
 from jsearch.common.database import MainDB
-from jsearch.api import handlers
-from jsearch import settings
-
 
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
 swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
+
+sentry_sdk.init(settings.RAVEN_DSN)
 
 
 async def on_shutdown(app):
@@ -53,17 +54,13 @@ async def make_app():
     app.router.add_route('GET', '/uncles', handlers.get_uncles)
     app.router.add_route('GET', '/uncles/{tag}', handlers.get_uncle)
 
-    app.router.add_route('POST', '/web3', handlers.call_web3_method)
     app.router.add_route('POST', '/verify_contract', handlers.verify_contract)
 
-    app.router.add_route('GET', '/verified_contracts', handlers.get_verified_contracts_list)
-    app.router.add_route('GET', '/verified_contracts/{address}', handlers.get_verified_contract)
-    app.router.add_route('GET', '/tokens', handlers.get_tokens_list)
-    app.router.add_route('GET', '/tokens/{address}', handlers.get_token)
     app.router.add_route('GET', '/tokens/{address}/transfers', handlers.get_token_transfers)
 
-    app.router.add_static('/apidoc', swagger_ui_path)
+    app.router.add_route('POST', '/_on_new_contracts_added', handlers.on_new_contracts_added)
 
+    app.router.add_static('/apidoc', swagger_ui_path)
     setup_swagger(app, swagger_from_file=swagger_file)
     return app
 

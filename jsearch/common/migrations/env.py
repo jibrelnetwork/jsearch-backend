@@ -1,11 +1,13 @@
 from __future__ import with_statement
-from alembic import context
-from sqlalchemy import engine_from_config, pool
-from logging.config import fileConfig
+
 import sys
 from os.path import abspath, dirname
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool
+
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
-import tables as models
+from jsearch.common import tables as models  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -19,7 +21,8 @@ config = context.config
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = models.Base.metadata
+target_metadata = models.metadata
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -67,6 +70,7 @@ def run_migrations_online():
 
         with context.begin_transaction():
             context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()

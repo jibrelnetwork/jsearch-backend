@@ -1,91 +1,11 @@
-import asyncio
-
 import aiohttp
 from aiohttp import web
 
-
-from jsearch.api.tasks import compile_contract_task
-from jsearch.common.tasks import process_new_verified_contract_transactions
+from jsearch import settings
+from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
-
-
-DEFAULT_LIMIT = 20
-MAX_LIMIT = 20
-DEFAULT_OFFSET = 0
-DEFAULT_ORDER = 'desc'
-
-
-class Tag:
-    """
-    Block tag, can be block number, block hash or 'latest' lable
-    """
-    LATEST = 'latest'
-    NUMBER = 'number'
-    HASH = 'hash'
-
-    __types = [LATEST, NUMBER, HASH]
-
-    def __init__(self, type_, value):
-        assert type_ in self.__types, 'Invalid tag type: {}'.format(type_)
-        self.type = type_
-        self.value = value
-
-    def is_number(self):
-        return self.type == self.NUMBER
-
-    def is_hash(self):
-        return self.type == self.HASH
-
-    def is_latest(self):
-        return self.type == self.LATEST
-
-
-def get_tag(request):
-    tag_value = request.match_info.get('tag') or request.query.get('tag', Tag.LATEST)
-    if tag_value.isdigit():
-        value = int(tag_value)
-        type_ = Tag.NUMBER
-    elif tag_value == Tag.LATEST:
-        value = tag_value
-        type_ = Tag.LATEST
-    else:
-        value = tag_value
-        type_ = Tag.HASH
-    return Tag(type_, value)
-
-
-def validate_params(request):
-    params = {}
-    errors = {}
-
-    limit = request.query.get('limit')
-    if limit and limit.isdigit():
-        params['limit'] = int(limit)
-    elif limit and not limit.isdigit():
-        errors['limit'] = 'Limit value should be valid integer, got "{}"'.format(limit)
-    else:
-        params['limit'] = DEFAULT_LIMIT
-
-    offset = request.query.get('offset')
-    if offset and offset.isdigit():
-        params['offset'] = int(offset)
-    elif offset and not offset.isdigit():
-        errors['offset'] = 'Limit value should be valid integer, got "{}"'.format(offset)
-    else:
-        params['offset'] = DEFAULT_OFFSET
-
-    order = request.query.get('order', '').lower()
-    if order and order in ['asc', 'desc']:
-        params['order'] = order
-    elif order:
-        errors['order'] = 'Order value should be one of "asc", "desc", got "{}"'.format(order)
-    else:
-        params['order'] = DEFAULT_ORDER
-
-    if errors:
-        raise web.HTTPBadRequest(errors)
-    return params
+from jsearch.api.helpers import get_tag, validate_params
 
 
 async def get_account(request):
@@ -227,16 +147,6 @@ async def get_uncle(request):
     return web.json_response(uncle.to_dict())
 
 
-async def call_web3_method(request):
-    payload = await request.text()
-    proxy_url = request.app['node_proxy_url']
-    async with aiohttp.ClientSession() as session:
-        async with session.post(proxy_url, data=payload) as resp:
-            resp.status
-            data = await resp.json()
-            return web.json_response(data, status=resp.status)
-
-
 async def verify_contract(request):
     """
     address
@@ -253,18 +163,10 @@ async def verify_contract(request):
 
     contract_creation_code = await request.app['main_db'].get_contact_creation_code(address)
 
-    async_res = compile_contract_task.delay(**input_data)
+    async with aiohttp.request('POST', settings.JSEARCH_COMPILER_API + '/v1/compile', json=input_data) as resp:
+        res = await resp.json()
 
-    while not async_res.ready():
-        await asyncio.sleep(0.5)
-
-    if async_res.successful():
-        res = async_res.result
-    else:
-        raise async_res.result
     byte_code = res['bin']
-    # import pprint; pprint.pprint(res)
-
     byte_code, _ = cut_contract_metadata_hash(byte_code)
     bc_byte_code, mhash = cut_contract_metadata_hash(contract_creation_code)
 
@@ -274,7 +176,7 @@ async def verify_contract(request):
             is_erc20_token = True
         else:
             is_erc20_token = False
-        await request.app['main_db'].save_verified_contract(
+        contract_data = dict(
             address=address,
             contract_creation_code=contract_creation_code,
             mhash=mhash,
@@ -283,57 +185,47 @@ async def verify_contract(request):
             is_erc20_token=is_erc20_token,
             **input_data
         )
-
-        if is_erc20_token:
-            process_new_verified_contract_transactions.delay(address)
+        async with aiohttp.request('POST', settings.JSEARCH_CONTRACTS_API + '/v1/contracts',
+                                   json=contract_data) as resp:
+            res = await resp.json()
     else:
         verification_passed = False
     return web.json_response({'verification_passed': verification_passed})
 
 
-async def get_verified_contracts_list(request):
-    storage = request.app['storage']
-    params = validate_params(request)
-    contracts = await storage.get_verified_contracts(params['limit'], params['offset'], params['order'])
-    return web.json_response([c.to_dict() for c in contracts])
-
-
-async def get_verified_contract(request):
-    storage = request.app['storage']
-    address = request.match_info['address']
-    contract = await storage.get_verified_contract(address)
-    if contract is None:
-        return web.json_response(status=404)
-    return web.json_response(contract.to_dict())
-
-
-async def get_tokens_list(request):
-    storage = request.app['storage']
-    params = validate_params(request)
-    contracts = await storage.get_tokens_list(params['limit'], params['offset'], params['order'])
-    return web.json_response([c.to_dict() for c in contracts])
-
-
-async def get_token(request):
-    storage = request.app['storage']
-    address = request.match_info['address']
-    token = await storage.get_token(address)
-    if token is None:
-        return web.json_response(status=404)
-    return web.json_response(token.to_dict())
-
-
 async def get_token_transfers(request):
+    # todo: need to add validation. i'm worried about max size of limit
     storage = request.app['storage']
     params = validate_params(request)
     contract_address = request.match_info['address']
-    transfers = await storage.get_tokens_transfers(contract_address, params['limit'], params['offset'], params['order'])
-    return web.json_response([t.to_dict() for t in transfers])
+
+    transfers = await storage.get_tokens_transfers(
+        address=contract_address,
+        limit=params['limit'],
+        offset=params['offset'],
+        order=params['order']
+    )
+    return web.json_response([transfer.to_dict() for transfer in transfers])
 
 
 async def get_account_token_transfers(request):
+    # todo: need to add validation. I'm worried about max size of limit
     storage = request.app['storage']
     params = validate_params(request)
     account_address = request.match_info['address']
-    transfers = await storage.get_account_tokens_transfers(account_address  , params['limit'], params['offset'], params['order'])
-    return web.json_response([t.to_dict() for t in transfers])
+
+    transfers = await storage.get_account_tokens_transfers(
+        address=account_address,
+        limit=params['limit'],
+        offset=params['offset'],
+        order=params['order']
+    )
+    return web.json_response([transfer.to_dict() for transfer in transfers])
+
+
+async def on_new_contracts_added(request):
+    data = await request.json()
+    address = data['address']
+    abi = data.get('abi')
+    tasks.on_new_contracts_added_task.delay(address, abi)
+    return web.json_response()

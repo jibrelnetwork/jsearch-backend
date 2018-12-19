@@ -1,0 +1,70 @@
+import json
+import logging
+import subprocess
+from concurrent import futures
+from functools import partial
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from sqlalchemy import create_engine
+
+log = logging.getLogger(__name__)
+
+
+def get_dump(connection_string):
+    with TemporaryDirectory() as tmp_dir:
+        dump_file = Path(tmp_dir) / "dump.json"
+        cmd = ["python", "manage.py", "json_dump", "-db", connection_string, "-out", dump_file]
+        process = subprocess.Popen(
+            args=cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        try:
+            outs, errs = process.communicate(timeout=120)
+        except subprocess.TimeoutExpired:
+            outs, errs = process.communicate()
+
+        log.info("STDOUT: %s", outs)
+        log.info("STDERR: %s", errs)
+
+        if process.returncode != 0:
+            raise RuntimeError('Process was exited with return code: %s', process.returncode)
+
+        dump = dump_file.read_text()
+        return json.loads(dump)
+
+
+def sync_blocks(blocks, start_from=0, main_db_dsn="", raw_db_dsn=""):
+    from jsearch.syncer.manager import sync_block
+    with futures.ThreadPoolExecutor(max_workers=10) as executor:
+        for block_hash in blocks:
+            func = partial(
+                sync_block,
+                block_hash=block_hash,
+                main_db_dsn=main_db_dsn,
+                raw_db_dsn=raw_db_dsn
+            )
+            func()
+            executor.submit(func)
+
+
+def add_test_contract(connection_string, address, fuck_token):
+    from jsearch.common.tables import contracts_t
+
+    engine = create_engine(connection_string)
+    conn = engine.connect()
+    query = contracts_t.insert().values(address=address, **fuck_token.as_db_record())
+    conn.execute(query)
+
+
+def pprint_returned_value(func):
+    def _wrapper(*args, **kwargs):
+        from pprint import pprint
+        result = func(*args, **kwargs)
+        pprint(result)
+        return result
+
+    return _wrapper

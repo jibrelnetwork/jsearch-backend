@@ -1,7 +1,5 @@
-
-import re
 import os
-
+import re
 
 FILE_TPL = """
 from typing import List, Dict, Any
@@ -11,7 +9,6 @@ from jsearch.api.models.base_model_ import Model
 
 {classes}
 """
-
 
 CLASS_TPL = """
 
@@ -28,7 +25,6 @@ class {name}(Model):
 
 """
 
-
 """
 'Reward': {'properties': {'address': {'example': '0x47071214d1ef76eeb26e9ac3ec6cc965ab8eb75b',
    'format': 'address',
@@ -36,6 +32,7 @@ class {name}(Model):
   'amount': {'example': 500000000000000, 'type': 'integer'}}},
 
 """
+
 
 def generate(swagger_scheme):
     """
@@ -94,6 +91,7 @@ def cc_to_underscore(name):
 if __name__ == '__main__':
     import yaml
     import sys
+
     swagger_file = open(sys.argv[1], 'r')
     print('Processing Swagger file', swagger_file)
 

@@ -1,23 +1,20 @@
 import binascii
-import os
 import logging
-import time
 import re
 
-from solc import compile_source, install_solc
 from ethereum.abi import (
     decode_abi,
     normalize_name as normalize_abi_method_name,
     method_id as get_abi_method_id,
-    ContractTranslator)
+    ContractTranslator
+)
 from ethereum.utils import encode_int, zpad, decode_hex
 
+from jsearch.typing import Abi_ERC20
 
 logger = logging.getLogger(__name__)
 
-
 NULL_ADDRESS = '0x0000000000000000000000000000000000000000'
-
 
 ERC20_METHODS_IDS = {
     'approve': '0x095ea7b3',
@@ -34,8 +31,7 @@ ERC20_METHODS_IDS = {
 
 }
 
-
-ERC20_ABI = [
+ERC20_ABI: Abi_ERC20 = [
     {
         "constant": True,
         "inputs": [],
@@ -258,7 +254,6 @@ ERC20_ABI = [
     }
 ]
 
-
 ERC20_ABI_SIMPLE = [
     {'type': 'function', 'name': 'transfer', 'inputs': ['address', 'uint']},
     {'type': 'function', 'name': 'balanceOf', 'inputs': ['address'], 'outputs': ['uint']},
@@ -270,7 +265,6 @@ ERC20_ABI_SIMPLE = [
 
 
 def _fix_string_args(args, types):
-    # print('FSA', args, types)
     fixed = []
     for i, arg in enumerate(args):
         t = types[i]
@@ -282,11 +276,14 @@ def _fix_string_args(args, types):
 def _fix_arg(arg, typ, decoder=None):
     if not decoder:
         if typ == 'string' and isinstance(arg, bytes):
-            def decoder(a): return a.decode().replace('\x00', '')
+            def decoder(a):
+                return a.decode().replace('\x00', '')
         elif typ.startswith('byte'):
-            def decoder(a): return binascii.hexlify(a).decode()  # FIXME! handle bytes properly
+            def decoder(a):
+                return binascii.hexlify(a).decode()  # FIXME! handle bytes properly
         else:
-            def decoder(a): return a
+            def decoder(a):
+                return a
 
     if isinstance(arg, list):
         return [_fix_arg(a, typ, decoder) for a in arg]
@@ -307,7 +304,7 @@ def decode_contract_call(contract_abi: list, call_data: str):
             try:
                 args = decode_abi(arg_types, call_data_bin[4:])
                 args = _fix_string_args(args, arg_types)
-            except AssertionError as e:
+            except AssertionError:
                 continue
             return {'function': method_name, 'args': args}
 
@@ -343,7 +340,6 @@ def is_erc20_compatible(abi):
 
 
 def simplify_abi(abi):
-    
     def fix_uint(typ):
         if typ.startswith('uint'):
             return 'uint'
@@ -357,85 +353,15 @@ def simplify_abi(abi):
         s['name'] = item['name']
         s['type'] = item['type']
         s['inputs'] = [fix_uint(v['type']) for v in item['inputs']]
-        if 'outputs' in item and item['name'] != 'transfer':  #  dont check outputs for transfer
+        if 'outputs' in item and item['name'] != 'transfer':  # dont check outputs for transfer
             s['outputs'] = [fix_uint(v['type']) for v in item['outputs']]
         abi_simple.append(s)
     return abi_simple
 
 
-def collect_types():
-    from jsearch.common.tables import contracts_t
-    from sqlalchemy.sql import select
-    from sqlalchemy import create_engine
-    import json
-
-    engine = create_engine('postgresql://dbuser@localhost/jsearch_main')
-    conn = engine.connect()
-    types = set()
-    s = select([contracts_t])
-    rows = conn.execute(s)
-
-    for row in rows:
-        abi = row['abi']
-        for t in abi:
-            if t['type'] in ('function', 'event'):
-                for i in t['inputs']:
-                    types.add(i['type'])
-    return types
-
-
-def compile_contract(source, contract_name, compiler_version,
-                     optimization_enambled, optimizer_runs):
-    solc_bin = get_solc_bin_path(compiler_version)
-    try:
-        res = compile_source(source, output_values=['abi', 'bin', 'metadata'], solc_binary=solc_bin,
-                             optimize=optimization_enambled, optimize_runs=optimizer_runs)
-    except:
-        logger.exception('Compilation error')
-        raise RuntimeError('Compilation failed')
-    try:
-        contract_res = res['<stdin>:{}'.format(contract_name)]
-    except KeyError:
-        contract_res = res[contract_name]
-    return contract_res
-
-
-def get_solc_bin_path(compiler_version):
-    commit = compiler_version.split('.')[-1]
-    return os.path.expanduser('~/.py-solc/{}/bin/solc'.format(commit))
-
-
-INSTALL_HARD_LIMIT = 60 * 15
-
-
-def wait_install_solc(identifier):
-    guard_path = '/tmp/solc_install_guard_{}'.format(identifier)
-    start_time = time.time()
-
-    if os.path.exists(guard_path):
-        logger.debug('Solc install guard %s exists, wait installation finish', identifier)
-        while os.path.exists(guard_path):
-            time.sleep(5)
-            if time.time() - start_time > INSTALL_HARD_LIMIT:
-                logger.debug('Solc %s install wait aborted', identifier)
-                return False
-        logger.debug('Solc install guard %s removed, installation done', identifier)
-        return True
-
-    with open(guard_path, 'a'):
-        pass
-    logger.debug('Installing solc, version %s', identifier)
-    try:
-        install_solc(identifier)
-    finally:
-        os.unlink(guard_path)
-    logger.debug('Solc installed, version %s, time %s', identifier, time.time() - start_time)
-    return True
-
-
 def cut_contract_metadata_hash(byte_code):
     """
-    https://github.com/ethereum/solidity/blob/c9bdbcf470f4ca7f8d2d71f1be180274f534888d/libsolidity/interface/CompilerStack.cpp#L699
+    https://github.com/ethereum/solidity/blob/c9bdbcf470f4ca7f8d2d71f1be180274f534888d/libsolidity/interface/CompilerStack.cpp#L699  # noqa: E501
 
     bytes cborEncodedHash =
         // CBOR-encoding of the key "bzzr0"
@@ -454,7 +380,7 @@ def cut_contract_metadata_hash(byte_code):
             bytes{0xa2} +
             cborEncodedHash +
             bytes{0x6c, 'e', 'x', 'p', 'e', 'r', 'i', 'm', 'e', 'n', 't', 'a', 'l', 0xf5};
-    solAssert(cborEncodedMetadata.size() <= 0xffff, "Metadata too large");
+    solAssert(cborEncodedMetadata.size() <= 0xffff, "Met:306adata too large");
     """
 
     cbor_hash = '65627a7a72305820(.*)'

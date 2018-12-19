@@ -1,5 +1,7 @@
 aiohttp==3.1.2
 aiohttp-swagger==1.0.5
+aiopg==0.14.0
+async-lru==1.0.1
 alembic==0.9.9
 asyncpg==0.15.0
 asyncpgsa==0.22.0
@@ -9,13 +11,12 @@ eth-utils==1.0.3
 ethereum==2.3.1
 raven==6.6.0
 redis==2.10.6
-Scrapy==1.5.0
-scrapy-proxies==0.4
-scrapy-sentry==0.8.0
+requests==2.18.4
 SQLAlchemy==1.2.6
 web3==4.2.1
-psycopg2==2.7.4
+psycopg2-binary==2.7.5
 gunicorn==19.7.1
 rlp==0.6.0
--e git+ssh://git@github.com/jibrelnetwork/py-solc.git@feature/jsearch-compilers#egg=py-solc
-
+eth-abi==1.1.1
+Click==7.0
+sentry-sdk==0.6.2

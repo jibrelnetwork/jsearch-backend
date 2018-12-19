@@ -5,8 +5,6 @@ from jsearch import settings
 
 
 task_queues = {
-    'jsearch.esparser.tasks.run_contract_spider': 'scrapy',
-    'jsearch.common.tasks.install_solc': 'solc',
     '*': 'default'
 }
 

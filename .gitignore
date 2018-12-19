@@ -46,6 +46,7 @@ coverage.xml
 .hypothesis/
 venv/
 .python-version
+.pytest_cache
 
 # Translations
 *.mo
@@ -66,3 +67,10 @@ target/
 # misc
 
 .DS_Store
+
+# IDE
+.idea
+.vscode
+
+# Application artifacts
+.ethash

@@ -1,25 +1,20 @@
 import asyncio
-import logging
+import os
 
 import configargparse
 
+from jsearch.common import logs
 from .service import Service
-
-logger = logging.getLogger(__name__)
 
 
 def run():
-    p = configargparse.ArgParser(description='jSearch DBs sync service.',
-                                 default_config_files=['/etc/jsearch-syncer.conf'])
-    p.add('--log-level', help='log level', default='INFO')
+    p = configargparse.ArgParser(description='jSearch DBs sync service.')
+    p.add('--log-level', help='log level', default=os.getenv('LOG_LEVEL', 'INFO'))
+    p.add('--sync-range', help='blocks range to sync', default=None)
 
     options = p.parse_args()
 
-    logging.basicConfig(
-        format='%(asctime)-15s %(levelname)-8s %(name)s: %(message)s',
-        level=options.log_level
-    )
-
+    logs.configure(options.log_level)
     service = Service(options)
     service.run()
 
