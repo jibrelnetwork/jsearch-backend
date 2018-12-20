@@ -1,20 +1,17 @@
 import logging
 import re
-from typing import Dict
 
-import aiopg
 import psycopg2
 from aiopg import sa
-from aiopg.sa import create_engine as async_create_engine, Engine as AsyncEngine
 from psycopg2.extras import DictCursor
 from sqlalchemy import and_, false, or_, create_engine as sync_create_engine, true
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.engine.base import Connection, Engine as SyncEngine
+from sqlalchemy.engine.base import Engine as SyncEngine
 from sqlalchemy.pool import NullPool
 from sqlalchemy.sql import select
 
 from jsearch import settings
-from jsearch.common.tables import transactions_t, receipts_t, logs_t, token_holders_t
+from jsearch.common.tables import transactions_t, logs_t, token_holders_t
 from jsearch.common.utils import as_dicts
 
 MAIN_DB_POOL_SIZE = 22
@@ -32,24 +29,6 @@ class ConnectionError(DatabaseError):
     """
     Any problem with database connection
     """
-
-
-class DBWrapper:
-    connection_string: str
-    params: Dict[any, any]
-    conn: Connection
-
-    def __init__(self, connection_string, **params):
-        self.connection_string = connection_string
-        self.params = params
-        self.conn = None
-
-    async def connect(self):
-        self.conn = await aiopg.connect(
-            self.connection_string)
-
-    def disconnect(self):
-        self.conn.close()
 
 
 class DBWrapperSync:
@@ -74,29 +53,6 @@ class DBWrapperSync:
 
         if exc_type:
             return False
-
-
-class MainDB(DBWrapper):
-    """
-    jSearch Main db wrapper
-    """
-    engine: AsyncEngine
-
-    async def connect(self):
-        self.engine = await async_create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
-
-    async def disconnect(self):
-        self.engine.close()
-        await self.engine.wait_closed()
-
-    async def get_contact_creation_code(self, address):
-        q = select([transactions_t.c.input]).select_from(
-            transactions_t.join(receipts_t, and_(receipts_t.c.transaction_hash == transactions_t.c.hash,
-                                                 receipts_t.c.contract_address == address)))
-        async with self.engine.acquire() as conn:
-            res = await conn.execute(q)
-            row = await res.fetchone()
-        return row['input']
 
 
 class MainDBSync(DBWrapperSync):
@@ -187,31 +143,6 @@ class MainDBSync(DBWrapperSync):
         self.conn.execute(do_update_query)
 
 
-first_cap_re = re.compile('(.)([A-Z][a-z]+)')
-all_cap_re = re.compile('([a-z0-9])([A-Z])')
-
-
-def case_convert(name):
-    s1 = first_cap_re.sub(r'\1_\2', name)
-    return all_cap_re.sub(r'\1_\2', s1).lower()
-
-
-def dict_keys_case_convert(d):
-    return {case_convert(k): v for k, v in d.items()}
-
-
 def get_main_db():
     db = MainDBSync(settings.JSEARCH_MAIN_DB)
     return db
-
-
-def get_engine():
-    db = sa.create_engine(settings.JSEARCH_MAIN_DB)
-    db.connect()
-    return db
-
-
-def hex_vals_to_int(d, keys):
-    for k in keys:
-        d[k] = int(d[k], 16)
-    return d

@@ -1,5 +1,4 @@
 import logging
-import re
 
 import aiopg
 import psycopg2
@@ -366,20 +365,3 @@ class MainDBSync(DBWrapperSync):
         if internal_transactions:
             self.conn.execute(internal_transactions_t.insert(), *internal_transactions)
 
-
-first_cap_re = re.compile('(.)([A-Z][a-z]+)')
-all_cap_re = re.compile('([a-z0-9])([A-Z])')
-
-
-def case_convert(name):
-    s1 = first_cap_re.sub(r'\1_\2', name)
-    return all_cap_re.sub(r'\1_\2', s1).lower()
-
-
-def dict_keys_case_convert(d):
-    return {case_convert(k): v for k, v in d.items()}
-
-
-def hex_vals_to_int(d, keys):
-    for k in keys:
-        d[k] = int(d[k], 16)
