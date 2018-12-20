@@ -26,24 +26,11 @@ parameters:
     description: Account address
     type: string
     format: address
-  blockNumber:
-    name: blockNumber
-    in: path
-    required: true
-    description: block number
-    type: integer
-  blockHash:
-    name: blockHash
-    in: path
-    required: true
-    description: block hash
-    type: string
-    format: hash
   tag:
     name: tag
     in: path
     required: true
-    description: block hash or number
+    description: block hash, block number or "latest" keyword
     type: string
   txhash:
     name: txhash
@@ -66,9 +53,11 @@ parameters:
   order:
     name: order
     in: query
-    description: Query offset
-    type: integer
-    default: 0
+    description: Items ordering direction
+    schema:
+      type: string
+      enum: [asc, desc]
+    default: asc
     
 paths:
 
@@ -273,26 +262,6 @@ paths:
             type: array
             items:
               $ref: '#/definitions/Uncle'
-        400:
-          description: bad input parameter
-          
-            
-  /blocks/{tag}/rewards:
-    get:
-      operationId: getBlockAndUnclesRewards
-      description: |
-        Get block and uncle inclusion rewards for specific block
-      produces:
-      - application/json
-      parameters:
-      - $ref: '#/parameters/tag'
-      responses:
-        200:
-          description: rewards for specific block
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Reward'
         400:
           description: bad input parameter
           
@@ -779,29 +748,6 @@ definitions:
       transactionIndex:
         type: integer
         example: 2
-        
-  Reward:
-    properties:
-      address:
-        type: string
-        format: address
-        example: "0x47071214d1ef76eeb26e9ac3ec6cc965ab8eb75b"
-      amount:
-        type: integer
-        example: 500000000000000
-  Web3Call:
-    properties:
-      method:
-        type: string
-      arguments:
-        type: array
-        
-  Web3CallResponse:
-    properties:
-      status:
-        type: string
-      result:
-        type: object
         
   Balance:
     properties:

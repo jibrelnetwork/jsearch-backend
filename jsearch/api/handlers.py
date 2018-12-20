@@ -161,7 +161,7 @@ async def verify_contract(request):
     constructor_args = input_data.pop('constructor_args') or ''
     address = input_data.pop('address')
 
-    contract_creation_code = await request.app['main_db'].get_contact_creation_code(address)
+    contract_creation_code = await request.app['storage'].get_contact_creation_code(address)
 
     async with aiohttp.request('POST', settings.JSEARCH_COMPILER_API + '/v1/compile', json=input_data) as resp:
         res = await resp.json()

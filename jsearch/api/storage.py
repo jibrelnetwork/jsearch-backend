@@ -301,3 +301,14 @@ class Storage:
             ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3;
         """
         return await self._fetch_token_transfers(query, address, limit, offset)
+
+    async def get_contact_creation_code(self, address: str) -> str:
+        query = """
+        SELECT input FROM transactions t
+          INNER JOIN receipts r
+           ON t.hash = r.transaction_hash
+           AND r.contract_address = $1
+        """
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(query, address)
+        return row['input']
