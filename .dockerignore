@@ -72,3 +72,4 @@ docker/docker-compose.prod.yml
 # Application artifacts
 ./backups
 ./.ethash
+./Makefile
