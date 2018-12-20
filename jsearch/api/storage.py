@@ -304,10 +304,10 @@ class Storage:
 
     async def get_contact_creation_code(self, address: str) -> str:
         query = """
-        SELECT input FROM transactions t 
-          INNER JOIN receipts r 
+        SELECT input FROM transactions t
+          INNER JOIN receipts r
            ON t.hash = r.transaction_hash
-           AND r.contract_address = $1 
+           AND r.contract_address = $1
         """
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, address)

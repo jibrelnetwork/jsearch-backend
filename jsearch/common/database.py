@@ -1,8 +1,6 @@
 import logging
-import re
 
 import psycopg2
-from aiopg import sa
 from psycopg2.extras import DictCursor
 from sqlalchemy import and_, false, or_, create_engine as sync_create_engine, true
 from sqlalchemy.dialects.postgresql import insert

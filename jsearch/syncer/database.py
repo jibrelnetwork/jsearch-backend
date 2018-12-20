@@ -364,4 +364,3 @@ class MainDBSync(DBWrapperSync):
     def insert_internal_transactions(self, internal_transactions):
         if internal_transactions:
             self.conn.execute(internal_transactions_t.insert(), *internal_transactions)
-
