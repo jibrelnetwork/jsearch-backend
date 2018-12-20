@@ -2,6 +2,8 @@ import logging
 from typing import List, Optional
 from typing import Tuple, Dict, Any, Set
 
+import backoff
+import requests
 from hexbytes import HexBytes
 from web3 import Web3
 from web3.utils.contracts import prepare_transaction
@@ -93,6 +95,7 @@ def get_request_provider():
     return BatchHTTPProvider(settings.ETH_NODE_URL)
 
 
+@backoff.on_exception(backoff.fibo, max_tries=10, exception=requests.RequestException)
 def fetch_erc20_token_decimal_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
     request_provider = get_request_provider()
     w3 = Web3(request_provider)
@@ -120,6 +123,7 @@ def fetch_erc20_token_decimal_bulk(updates: List[BalanceUpdate]) -> List[Balance
     return updates
 
 
+@backoff.on_exception(backoff.fibo, max_tries=10, exception=requests.RequestException)
 def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
     request_provider = get_request_provider()
     w3 = Web3(request_provider)
@@ -248,8 +252,7 @@ def process_log_operations_bulk(
         batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
 ) -> None:
     logs = [process_log_transfer(log, contract) for log in logs]
-    if not logs:
-        return None
+    logs = (log for log in logs if log)
 
     updates = set()
     for log, abi in logs:
@@ -257,9 +260,6 @@ def process_log_operations_bulk(
             updates |= logs_to_balance_updates(log, abi)
 
     updates = list(updates)
-    if not updates:
-        return None
-
     for offset in range(0, len(updates), batch_size):
         chunk = updates[offset:offset + batch_size]
 

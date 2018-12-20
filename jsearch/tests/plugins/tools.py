@@ -25,7 +25,6 @@ def post_processing(db_connection_string, mocker):
         contracts: Dict[str, Dict[str, Any]] = {contract['address']: contract for contract in dump.get('contracts')}
 
         def get_contract(address: str):
-            print(address)
             return contracts.get(address)
 
         mocker.patch('jsearch.common.processing.erc20_transfer_logs.get_contract', get_contract)
