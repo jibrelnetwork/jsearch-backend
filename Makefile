@@ -13,6 +13,17 @@ build_tests:
 	docker-compose build api
 	docker-compose build tests
 
+lint:
+	docker-compose run --rm --entrypoint flake8 tests
+
+test:
+	docker-compose run --rm --entrypoint pytest tests 
+
+validate:
+	make build_tests
+	make lint
+	make test
+
 main_db_shell:
 	docker-compose exec -u postgres main_db psql jsearch_main
 
