@@ -60,7 +60,7 @@ async def make_app():
 
     app.router.add_route('POST', '/_on_new_contracts_added', handlers.on_new_contracts_added)
 
-    app.router.add_static('/apidoc', swagger_ui_path)
+    app.router.add_static('/docs', swagger_ui_path)
     setup_swagger(app, swagger_from_file=swagger_file)
     return app
 
