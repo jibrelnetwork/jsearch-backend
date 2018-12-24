@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/sh -e
 
 RUNMODE="${1:-app}"
 
@@ -8,7 +8,7 @@ echo "Starting jsearch-backend service, mode: '${RUNMODE}', version: `cat /app/v
 
 if [ "${RUNMODE}" = "app" ]; then
     python manage.py upgrade head
-    gunicorn --bind 0.0.0.0:8000 jsearch.api.app:make_app --worker-class aiohttp.worker.GunicornWebWorker
+    gunicorn -c gunicorn-conf.py jsearch.api.app:make_app
 elif [ "${RUNMODE}" = "syncer" ]; then
     jsearch-syncer
 elif [ "${RUNMODE}" = "celerybeat" ]; then
