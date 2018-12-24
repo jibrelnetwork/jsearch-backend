@@ -128,7 +128,11 @@ class Manager:
 
     async def get_blocks_to_sync_strict(self):
         missed_blocks_nums = await self.main_db.get_missed_blocks_numbers(limit=self.chunk_size)
-        blocks = await self.raw_db.get_missed_blocks(missed_blocks_nums)
+        if not missed_blocks_nums:
+            return []
+        first_missed = missed_blocks_nums[0]
+        blocks_to_fetch = list(range(first_missed, first_missed + self.chunk_size // 2))
+        blocks = await self.raw_db.get_missed_blocks(blocks_to_fetch)
         return blocks
 
     async def get_new_reorgs(self):
