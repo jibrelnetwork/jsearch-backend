@@ -32,7 +32,7 @@ class UserBehavior(TaskSet):
     # app.router.add_route('GET', '/accounts/balances', handlers.get_accounts_balances)
     @task(1)
     def get_accounts_balances(self):
-        addresses = ','.join(random.choices(keys['accounts']), k=5)
+        addresses = ','.join([r[0] for r in random.choices(keys['accounts'], k=5)])
         self.client.get(f"/accounts/balances?addresses={addresses}", catch_response=False, name="/account/balances")
 
     # app.router.add_route('GET', '/accounts/{address}', handlers.get_account)
@@ -45,7 +45,9 @@ class UserBehavior(TaskSet):
     @task(1)
     def get_account_transactions(self):
         address = ','.join(random.choice(keys['accounts']))
-        self.client.get(f"/accounts/{address}/transactions", catch_response=False)
+        self.client.get(f"/accounts/{address}/transactions",
+                        catch_response=False,
+                        name='/accounts/{address}/transactions')
 
     # app.router.add_route('GET', '/accounts/{address}/mined_blocks', handlers.get_account_mined_blocks)
     # app.router.add_route('GET', '/accounts/{address}/mined_uncles', handlers.get_account_mined_uncles)
@@ -54,7 +56,9 @@ class UserBehavior(TaskSet):
     @task(1)
     def get_account_token_transfers(self):
         address = ','.join(random.choice(keys['accounts']))
-        self.client.get(f"/accounts/{address}/token_transfers", catch_response=False)
+        self.client.get(f"/accounts/{address}/token_transfers",
+                        catch_response=False,
+                        name='/accounts/{}/token_transfers')
 
     # app.router.add_route('GET', '/blocks', handlers.get_blocks)
     @task(1)
@@ -116,7 +120,7 @@ class UserBehavior(TaskSet):
 
     # app.router.add_route('GET', '/tokens/{address}/transfers', handlers.get_token_transfers)
     @task(1)
-    def get_account(self):
+    def get_token_transfers(self):
         address = ','.join(random.choice(keys['accounts']))
         self.client.get(f"/tokens/{address}/transfers", catch_response=False, name="/tokens/{address}/transfers")
 
