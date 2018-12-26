@@ -129,6 +129,15 @@ class MainDBSync(DBWrapperSync):
         q = select([transactions_t]).where(transactions_t.c.to == address)
         return self.conn.execute(q).fetchall()
 
+    def reset_processing_on_logs(self, contract_address):
+        """
+        Activate pipeline:
+            - jsearch-post-processing events (decode events)
+            - jsearch-post-processing operations (apply update of balance token holders)
+        """
+        query = f"UPDATE logs SET is_processed = false WHERE address = '{contract_address}';"
+        self.conn.execute(query)
+
     def update_token_holder_balance(self, token_address, account_address, balance):
         insert_query = insert(token_holders_t).values(
             token_address=token_address,

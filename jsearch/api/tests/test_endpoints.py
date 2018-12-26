@@ -620,4 +620,4 @@ async def test_on_new_contracts_added(cli, mocker):
     m = mocker.patch('jsearch.api.handlers.tasks.on_new_contracts_added_task')
     resp = await cli.post('/_on_new_contracts_added', json={'address': 'abc', 'abi': 'ABI'})
     assert resp.status == 200
-    m.delay.assert_called_with('abc', 'ABI')
+    m.delay.assert_called_with('abc')
