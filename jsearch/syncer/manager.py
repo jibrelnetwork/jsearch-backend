@@ -84,6 +84,7 @@ class Manager:
 
                 proc_time = time.monotonic() - start_time
                 logger.info("%s reorgs processed on %0.2fs", len(new_reorgs), proc_time)
+                await asyncio.sleep(0.1)
             except DatabaseError:
                 logger.exception("Database Error accured:")
                 await asyncio.sleep(self.sleep_on_db_error)
@@ -144,6 +145,8 @@ class Manager:
         for reorg in reorgs:
             success = await self.main_db.apply_reorg(reorg)
             if success is not True:
+                # reorg block is not synced, try to sync it now
+                loop.run_in_executor(self.executor, sync_block, reorg['block_hash'], reorg['block_number'])
                 return
             pass
 
