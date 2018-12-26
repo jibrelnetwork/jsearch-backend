@@ -96,7 +96,9 @@ def post_processing(action: str,
 
                 avg_log_speed = len(logs) / working_time
 
-                last_block = sorted(blocks)[0] if blocks else ""
+                max_block = max(blocks) if blocks else None
+                min_block = min(blocks) if blocks else None
+
                 logger.info("[PROCESSING] speed %0.2f blocks/second", avg_block_speed)
                 logger.info("[PROCESSING] speed %0.2f logs/second", avg_log_speed)
-                logger.info("[PROCESSING] last block %s", last_block)
+                logger.info("[PROCESSING] block range %s - %s", min_block, max_block)
