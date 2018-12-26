@@ -2,7 +2,7 @@ import logging
 
 import psycopg2
 from psycopg2.extras import DictCursor
-from sqlalchemy import and_, false, or_, create_engine as sync_create_engine, true
+from sqlalchemy import and_, false, create_engine as sync_create_engine, true
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine.base import Engine as SyncEngine
 from sqlalchemy.pool import NullPool
@@ -68,6 +68,7 @@ class MainDBSync(DBWrapperSync):
 
         query = logs_t.update(). \
             where(and_(logs_t.c.transaction_hash == record['transaction_hash'],
+                       logs_t.c.block_hash == record['block_hash'],
                        logs_t.c.log_index == record['log_index'])). \
             values(**record)
         conn.execute(query)
@@ -80,38 +81,38 @@ class MainDBSync(DBWrapperSync):
     @as_dicts
     def get_logs_to_process_events(self, limit=1000):
         unprocessed_blocks_query = select(
-            columns=[logs_t.c.block_number],
+            columns=[logs_t.c.is_processed, logs_t.c.block_number],
             whereclause=logs_t.c.is_processed == false(),
-            distinct=True
         ) \
-            .order_by(logs_t.c.block_number.desc()) \
+            .order_by(logs_t.c.is_processed.asc(), logs_t.c.block_number.asc()) \
             .limit(limit)
-        unprocessed_blocks = [row[0] for row in self.conn.execute(unprocessed_blocks_query).fetchall()]
+        unprocessed_blocks = {row[1] for row in self.conn.execute(unprocessed_blocks_query).fetchall()}
 
         query = select(
             columns=[logs_t],
             whereclause=and_(
-                or_(logs_t.c.is_processed == false(), logs_t.c.is_processed == false()),
+                logs_t.c.is_processed == false(),
                 logs_t.c.block_number.in_(unprocessed_blocks)
             )
         ) \
-            .order_by(logs_t.c.block_number.desc()) \
+            .order_by(logs_t.c.block_number.asc()) \
             .limit(limit)
         return self.conn.execute(query).fetchall()
 
     @as_dicts
     def get_logs_to_process_operations(self, limit=1000):
         unprocessed_blocks_query = select(
-            columns=[logs_t.c.block_number],
+            columns=[logs_t.c.is_token_transfer, logs_t.c.is_transfer_processed, logs_t.c.block_number],
             whereclause=and_(
                 logs_t.c.is_token_transfer == true(),
                 logs_t.c.is_transfer_processed == false()
             ),
-            distinct=True
         ) \
-            .order_by(logs_t.c.block_number.desc()) \
+            .order_by(logs_t.c.is_token_transfer.asc(),
+                      logs_t.c.is_transfer_processed.asc(),
+                      logs_t.c.block_number.asc()) \
             .limit(limit)
-        unprocessed_blocks = [row[0] for row in self.conn.execute(unprocessed_blocks_query).fetchall()]
+        unprocessed_blocks = {row[2] for row in self.conn.execute(unprocessed_blocks_query).fetchall()}
 
         query = select(
             columns=[logs_t],
@@ -121,7 +122,7 @@ class MainDBSync(DBWrapperSync):
                 logs_t.c.block_number.in_(unprocessed_blocks),
             )
         ) \
-            .order_by(logs_t.c.block_number.desc()) \
+            .order_by(logs_t.c.block_number.asc()) \
             .limit(limit)
         return self.conn.execute(query).fetchall()
 

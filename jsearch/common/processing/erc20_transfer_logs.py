@@ -64,20 +64,22 @@ class BalanceUpdate:
         return Web3.toChecksumAddress(self.account_address)
 
     @property
-    def is_failed(self):
-        return self.decimals is None or self.value is None
+    def is_valid(self):
+        return self.decimals is not None and self.value is not None and self.balance is not None
 
     @property
     def balance(self):
-        if not self.is_failed:
+        try:
             return self.value / 10 ** self.decimals
+        except Exception as e:
+            logger.warning(e)
 
     @property
     def key(self):
         return self.token_address, self.account_address
 
     def apply(self, db):
-        if not self.is_failed:
+        if self.is_valid:
             db.update_token_holder_balance(self.token_address, self.account_address, self.value)
             logger.info(
                 'Token balance updated for token %s account %s block %s value %s',
