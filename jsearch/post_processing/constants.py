@@ -1,0 +1,2 @@
+ACTION_LOG_EVENTS = 'events'
+ACTION_LOG_OPERATIONS = 'operations'
