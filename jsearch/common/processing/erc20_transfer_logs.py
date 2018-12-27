@@ -13,10 +13,9 @@ from jsearch.common.contracts import ERC20_ABI
 from jsearch.common.contracts import NULL_ADDRESS
 from jsearch.common.database import MainDBSync
 from jsearch.common.integrations.contracts import get_contract
-from jsearch.common.operations import update_token_info
 from jsearch.common.processing.logs import EventTypes, TRANSFER_EVENT_INPUT_SIZE
 from jsearch.common.rpc import BatchHTTPProvider, decode_erc20_output_value
-from jsearch.typing import Log, Contract, EventArgs, Abi
+from jsearch.typing import Log, EventArgs, Abi
 from jsearch.utils import suppress_exception
 
 logger = logging.getLogger(__name__)
@@ -201,9 +200,9 @@ def get_transfer_details_from_erc20_event_args(
 
 
 @suppress_exception
-def process_log_transfer(log: Log, contract: Optional[Contract] = None) -> Tuple[Log, Abi]:
+def process_log_transfer(log: Log) -> Tuple[Log, Abi]:
     event_args = log['event_args']
-    contract: Optional[Contract] = contract or get_contract(log['address'])
+    contract = get_contract(address=log['address'])
 
     abi = None
     if event_args and contract:
@@ -211,8 +210,7 @@ def process_log_transfer(log: Log, contract: Optional[Contract] = None) -> Tuple
         token_decimals = contract['token_decimals']
 
         if token_decimals is None:
-            contract_address = contract['address']
-            update_token_info(contract_address, abi)
+            logger.info('[PROCESSING] Contract %s has not decimals.', contract['address'])
 
         elif log.get('is_token_transfer'):
             from_address, to_address, token_amount = get_transfer_details_from_erc20_event_args(
@@ -250,10 +248,9 @@ def logs_to_balance_updates(log: Log, abi: Abi) -> Set[BalanceUpdate]:
 def process_log_operations_bulk(
         db: MainDBSync,
         logs: List[Log],
-        contract: Optional[Contract] = None,
         batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
 ) -> None:
-    logs = [process_log_transfer(log, contract) for log in logs]
+    logs = [process_log_transfer(log) for log in logs]
     logs = (log for log in logs if log)
 
     updates = set()

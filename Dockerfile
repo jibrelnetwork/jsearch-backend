@@ -9,6 +9,7 @@ ENV LOG_LEVEL=INFO \
     JSEARCH_CELERY_BACKEND="redis://redis/1" \
     JSEARCH_CONTRACT_API="http://contracts" \
     JSEARCH_COMPILER_API="http://compiler" \
+    JSEARCH_API_ENABLE_RESET_LOGS_PROCESSING="1" \
     ENH_NODE_URL="https://main-node.jwallet.network"
 
 

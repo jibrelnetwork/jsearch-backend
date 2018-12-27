@@ -226,6 +226,6 @@ async def get_account_token_transfers(request):
 async def on_new_contracts_added(request):
     data = await request.json()
     address = data['address']
-    abi = data.get('abi')
-    tasks.on_new_contracts_added_task.delay(address, abi)
+    if settings.ENABLE_RESET_POST_PROCESSING:
+        tasks.on_new_contracts_added_task.delay(address)
     return web.json_response()
