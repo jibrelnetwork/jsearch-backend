@@ -210,6 +210,7 @@ reorgs_t = sa.Table(
     sa.Column('block_hash', sa.String),
     sa.Column('block_number', sa.Integer),
     sa.Column('reinserted', sa.Boolean),
+    sa.Column('node_id', sa.String),
 )
 
 TABLES = (
