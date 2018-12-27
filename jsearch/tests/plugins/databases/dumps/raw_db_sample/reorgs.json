@@ -4,20 +4,23 @@
     "block_number": 6000003,
     "block_hash": "0xac4c102e019b042ffe58ae40ed546d1721408985f8f38a6e332c1dd85531f000",
     "header": {},
-    "reinserted": false
+    "reinserted": false,
+    "node_id": "a"
   },
     {
     "id": 2,
     "block_number": 6000005,
     "block_hash": "0x43fe51b771bede814e59f9e3b204ba470f193d66e907827a642c9f243a0c2115",
     "header": {},
-    "reinserted": true
+    "reinserted": true,
+    "node_id": "a"
   },
     {
     "id": 3,
     "block_number": 6000005,
     "block_hash": "0x43fe51b771bede814e59f9e3b204ba470f193d66e907827a642c9f243a0c2000",
     "header": {},
-    "reinserted": false
+    "reinserted": false,
+    "node_id": "a"
   }
 ]
