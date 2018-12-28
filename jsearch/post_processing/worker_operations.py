@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from functools import partial
 from typing import Optional
 
 from jsearch import settings
@@ -33,7 +34,15 @@ async def post_processing_operations(
                     logger.info("[PROCESSING] There are not logs to read")
                     break
 
-            logs = await process_log_operations_bulk(db, logs, workers)
+            tasks = []
+            chunk_size = int(len(logs) / (workers - 1)) or 1
+            for offset in range(0, len(logs), chunk_size):
+                chunk = logs[offset: offset + chunk_size]
+
+                task = process_log_operations_bulk(db, chunk, workers)
+                tasks.append(task)
+
+            await asyncio.gather(*tasks)
 
             update_log = add_semaphore(func=db.update_log, value=workers)
             await asyncio.gather(*[update_log(log) for log in logs])

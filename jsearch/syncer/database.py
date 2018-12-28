@@ -1,10 +1,11 @@
 import logging
+from typing import List
 
 import aiopg
 import psycopg2
 from aiopg.sa import create_engine as async_create_engine
 from psycopg2.extras import DictCursor
-from sqlalchemy import create_engine as sync_create_engine
+from sqlalchemy import create_engine as sync_create_engine, and_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine.base import Engine as SyncEngine
 from sqlalchemy.pool import NullPool
@@ -21,6 +22,7 @@ from jsearch.common.tables import (
     uncles_t,
     reorgs_t,
 )
+from jsearch.typing import Log
 
 MAIN_DB_POOL_SIZE = 22
 
@@ -185,6 +187,15 @@ class MainDB(DBWrapper):
 
     engine: SyncEngine
 
+    async def __aenter__(self):
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.disconnect()
+        if any((exc_type, exc_val, exc_tb)):
+            return False
+
     async def connect(self):
         self.engine = await async_create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
 
@@ -284,6 +295,93 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             last_reorg_num = row['id'] if row else 0
             return last_reorg_num
+
+    async def update_log(self, record):
+        query = logs_t.update(). \
+            where(and_(logs_t.c.transaction_hash == record['transaction_hash'],
+                       logs_t.c.block_hash == record['block_hash'],
+                       logs_t.c.log_index == record['log_index'])). \
+            values(**record)
+        async with self.engine.acquire() as conn:
+            return await conn.execute(query)
+
+    async def get_logs_to_process_operations(self, limit: int) -> List[Log]:
+        query = f"""
+            SELECT
+               is_token_transfer,
+               is_transfer_processed,
+               block_number 
+            FROM
+               logs 
+            WHERE
+               is_token_transfer = true 
+               and is_transfer_processed = false 
+            ORDER BY
+               is_token_transfer,
+               is_transfer_processed,
+               block_number LIMIT {limit};
+        """
+        async with self.engine.acquire() as conn:
+            unprocessed_blocks = {row['block_number'] for row in await conn.execute(query)}
+            unprocessed_blocks = ', '.join(map(str, unprocessed_blocks))
+
+        if not unprocessed_blocks:
+            return []
+
+        query = f"""
+            SELECT
+                address,
+                block_hash,
+                block_number,
+                data,
+                event_args,
+                event_type,
+                is_forked,
+                is_processed,
+                is_token_transfer,
+                is_transfer_processed,
+                log_index,
+                removed,
+                token_amount,
+                token_transfer_from,
+                token_transfer_to,
+                topics,
+                transaction_hash,
+                transaction_index 
+            FROM
+               logs 
+            WHERE
+               is_token_transfer = true 
+               AND is_transfer_processed = false 
+               AND block_number in ({unprocessed_blocks})
+            ORDER BY
+               is_token_transfer,
+               is_transfer_processed,
+               block_number LIMIT {limit};
+        """
+        async with self.engine.acquire() as conn:
+            return [dict(row) for row in await conn.execute(query)]
+
+    async def update_token_holder_balance(self, token_address, account_address, balance):
+        """
+        INSERT INTO token_holders (account_address, token_address, balance) VALUES
+        (%(account_address)s, %(token_address)s, %(balance)s)
+        ON CONFLICT (token_address, account_address) DO UPDATE SET balance = %(param_1)s
+        """
+        async with self.engine.acquire() as conn:
+            query = f"""
+            INSERT INTO
+               token_holders (token_address, account_address, balance) 
+            VALUES
+               (
+                  '{token_address}', '{account_address}', '{balance}'
+               )
+               ON CONFLICT (token_address, account_address) DO 
+               UPDATE
+               SET
+                  balance = {balance};
+            """
+            await conn.execute(query)
 
 
 class MainDBSync(DBWrapperSync):

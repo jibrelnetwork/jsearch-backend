@@ -1,22 +1,22 @@
+import asyncio
 import logging
-from typing import List, Optional
+from itertools import chain
+from typing import List, Optional, Generator
 from typing import Tuple, Dict, Any, Set
 
 import backoff
 import requests
-from hexbytes import HexBytes
 from web3 import Web3
-from web3.utils.contracts import prepare_transaction
 
 from jsearch import settings
 from jsearch.common.contracts import ERC20_ABI
 from jsearch.common.contracts import NULL_ADDRESS
-from jsearch.common.database import MainDBSync
-from jsearch.common.integrations.contracts import get_contract
+from jsearch.common.integrations.contracts import async_get_contract
 from jsearch.common.processing.logs import EventTypes, TRANSFER_EVENT_INPUT_SIZE
-from jsearch.common.rpc import BatchHTTPProvider, decode_erc20_output_value
+from jsearch.common.rpc import ContractCall, eth_contract_call
+from jsearch.syncer.database import MainDB
 from jsearch.typing import Log, EventArgs, Abi
-from jsearch.utils import suppress_exception
+from jsearch.utils import add_semaphore, async_suppress_exception
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,7 @@ class BalanceUpdate:
         self.account_address = account_address
         self.block = block
         self.abi = abi
+        self.value = None
 
     def __hash__(self):
         return hash(self.key)
@@ -69,18 +70,22 @@ class BalanceUpdate:
 
     @property
     def balance(self):
-        try:
-            return self.value / 10 ** self.decimals
-        except Exception as e:
-            logger.warning(e)
+        if self.value is not None:
+            try:
+                return self.value / 10 ** self.decimals
+            except Exception:
+                logging.warning(
+                    '[JSON RPC] Invalid balance %s for token %s for address %s',
+                    self.balance, self.token_address, self.account_address,
+                )
 
     @property
     def key(self):
         return self.token_address, self.account_address
 
-    def apply(self, db):
+    async def apply(self, db: MainDB):
         if self.is_valid:
-            db.update_token_holder_balance(self.token_address, self.account_address, self.value)
+            await db.update_token_holder_balance(self.token_address, self.account_address, self.value)
             logger.info(
                 'Token balance updated for token %s account %s block %s value %s',
                 self.token_address, self.account_address, self.block, self.balance
@@ -92,65 +97,29 @@ class BalanceUpdate:
             )
 
 
-def get_request_provider():
-    return BatchHTTPProvider(settings.ETH_NODE_URL)
-
-
 @backoff.on_exception(backoff.fibo, max_tries=10, exception=requests.RequestException)
-def fetch_erc20_token_decimal_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
-    request_provider = get_request_provider()
-    w3 = Web3(request_provider)
-
-    calls_params = []
-    for update in updates:
-        tx = prepare_transaction(
-            abi=update.abi,
-            address=update.token_as_checksum,
-            web3=w3,
-            fn_identifier='decimals'
-        )
-        calls_params.append([tx, "latest"])
-
-    responses = request_provider.make_request('eth_call', params=calls_params)
-
-    for i, response in enumerate(responses):
-        update = updates[i]
-        update.decimals = decode_erc20_output_value(
-            data=HexBytes(response['result']),
-            fn_identifier='decimals',
-            abi=update.abi,
-        )
-
+async def fetch_erc20_token_decimal_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
+    calls = [ContractCall(abi=update.abi, address=update.token_as_checksum, method='decimals') for update in updates]
+    calls_results = await eth_contract_call(calls=calls)
+    for result, update in zip(calls_results, updates):
+        update.decimals = result
     return updates
 
 
 @backoff.on_exception(backoff.fibo, max_tries=10, exception=requests.RequestException)
-def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
-    request_provider = get_request_provider()
-    w3 = Web3(request_provider)
-
-    calls_params = []
+async def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
+    calls = []
     for update in updates:
-        tx = prepare_transaction(
-            abi=ERC20_ABI,
-            address=update.token_as_checksum,
-            web3=w3,
-            fn_identifier='balanceOf',
-            fn_args=(update.account_as_checksum,)
-        )
-        calls_params.append([tx, "latest"])
-
-    responses = request_provider.make_request('eth_call', params=calls_params)
-
-    for i, response in enumerate(responses):
-        update = updates[i]
-        update.value = decode_erc20_output_value(
-            data=HexBytes(response["result"]),
+        call = ContractCall(
             abi=update.abi,
-            fn_identifier='balanceOf',
-            args=(update.account_as_checksum,),
+            address=update.token_as_checksum,
+            method='balanceOf',
+            args=[update.account_as_checksum]
         )
-
+        calls.append(call)
+    calls_results = await eth_contract_call(calls=calls)
+    for result, update in zip(calls_results, updates):
+        update.value = result
     return updates
 
 
@@ -199,10 +168,10 @@ def get_transfer_details_from_erc20_event_args(
     return from_address, to_address, token_amount
 
 
-@suppress_exception
-def process_log_transfer(log: Log) -> Tuple[Log, Abi]:
+@async_suppress_exception
+async def process_log_transfer(log: Log) -> Tuple[Log, Abi]:
     event_args = log['event_args']
-    contract = get_contract(address=log['address'])
+    contract = await async_get_contract(address=log['address'])
 
     abi = None
     if event_args and contract:
@@ -210,7 +179,7 @@ def process_log_transfer(log: Log) -> Tuple[Log, Abi]:
         token_decimals = contract['token_decimals']
 
         if token_decimals is None:
-            logger.info('[PROCESSING] Contract %s has not decimals.', contract['address'])
+            logger.info('[TASK] Contract %s has not decimals.', contract['address'])
 
         elif log.get('is_token_transfer'):
             from_address, to_address, token_amount = get_transfer_details_from_erc20_event_args(
@@ -245,25 +214,40 @@ def logs_to_balance_updates(log: Log, abi: Abi) -> Set[BalanceUpdate]:
     return updates
 
 
-def process_log_operations_bulk(
-        db: MainDBSync,
-        logs: List[Log],
-        batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
-) -> None:
-    logs = [process_log_transfer(log) for log in logs]
-    logs = (log for log in logs if log)
-
-    updates = set()
-    for log, abi in logs:
-        if log:
-            updates |= logs_to_balance_updates(log, abi)
-
+def split(updates: List[BalanceUpdate], batch_size):
     updates = list(updates)
     for offset in range(0, len(updates), batch_size):
-        chunk = updates[offset:offset + batch_size]
+        yield updates[offset:offset + batch_size]
 
-        chunk = fetch_erc20_token_decimal_bulk(chunk)
-        chunk = fetch_erc20_balance_bulk(chunk)
 
-        for update in chunk:
-            update.apply(db)
+async def gather(
+        execute,
+        handler,
+        chunks: Generator[List[BalanceUpdate], None, None]
+) -> List[BalanceUpdate]:
+    tasks = [execute(handler, chunk) for chunk in chunks]
+    chunks = await asyncio.gather(*tasks)
+    return list(chain(*chunks))
+
+
+async def process_log_operations_bulk(
+        db: MainDB,
+        logs: List[Log],
+        workers_count: int,
+        batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
+) -> List[Log]:
+    worker = add_semaphore(process_log_transfer, value=workers_count)
+
+    logs_with_abi = await asyncio.gather(*[worker(log) for log in logs])
+    logs_with_abi = [log for log in logs_with_abi if log is not None]
+
+    updates = set()
+    for log, abi in logs_with_abi:
+        updates |= logs_to_balance_updates(log, abi)
+
+    update_chunks = split(updates, batch_size)
+    update_chunks = await asyncio.gather(*[fetch_erc20_token_decimal_bulk(chunk) for chunk in update_chunks])
+    update_chunks = await asyncio.gather(*[fetch_erc20_balance_bulk(chunk) for chunk in update_chunks])
+
+    await asyncio.gather(*[update.apply(db) for update in chain(*update_chunks)])
+    return [log for log, abi in logs_with_abi]

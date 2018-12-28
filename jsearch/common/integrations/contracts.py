@@ -2,6 +2,7 @@ import logging
 from typing import Dict, Any
 
 import requests
+from aiohttp import request
 
 from jsearch.settings import JSEARCH_CONTRACTS_API
 from jsearch.typing import Contract
@@ -23,6 +24,15 @@ def get_contract(address: str) -> Contract:
         return response.json()
 
     logger.debug('Miss Contract %s: %s', address, response.status_code)
+
+
+async def async_get_contract(address: str) -> Contract:
+    async with request('GET', url=f"{JSEARCH_CONTRACTS_API}/v1/contracts/{address}") as response:
+        if response.status == 200:
+            logger.debug('Got Contract %s: %s', address, response.status)
+            return await response.json()
+
+    logger.debug('Miss Contract %s: %s', address, response.status)
 
 
 def patch_contract(address: str, data: Dict[str, Any]):

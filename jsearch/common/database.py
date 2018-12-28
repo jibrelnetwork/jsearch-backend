@@ -2,7 +2,7 @@ import logging
 
 import psycopg2
 from psycopg2.extras import DictCursor
-from sqlalchemy import and_, false, create_engine as sync_create_engine, true
+from sqlalchemy import and_, false, create_engine as sync_create_engine
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine.base import Engine as SyncEngine
 from sqlalchemy.pool import NullPool
@@ -99,33 +99,6 @@ class MainDBSync(DBWrapperSync):
             .limit(limit)
         return self.conn.execute(query).fetchall()
 
-    @as_dicts
-    def get_logs_to_process_operations(self, limit=1000):
-        unprocessed_blocks_query = select(
-            columns=[logs_t.c.is_token_transfer, logs_t.c.is_transfer_processed, logs_t.c.block_number],
-            whereclause=and_(
-                logs_t.c.is_token_transfer == true(),
-                logs_t.c.is_transfer_processed == false()
-            ),
-        ) \
-            .order_by(logs_t.c.is_token_transfer.asc(),
-                      logs_t.c.is_transfer_processed.asc(),
-                      logs_t.c.block_number.asc()) \
-            .limit(limit)
-        unprocessed_blocks = {row[2] for row in self.conn.execute(unprocessed_blocks_query).fetchall()}
-
-        query = select(
-            columns=[logs_t],
-            whereclause=and_(
-                logs_t.c.is_token_transfer == true(),
-                logs_t.c.is_transfer_processed == false(),
-                logs_t.c.block_number.in_(unprocessed_blocks),
-            )
-        ) \
-            .order_by(logs_t.c.block_number.asc()) \
-            .limit(limit)
-        return self.conn.execute(query).fetchall()
-
     def get_contract_transactions(self, address):
         q = select([transactions_t]).where(transactions_t.c.to == address)
         return self.conn.execute(q).fetchall()
@@ -143,7 +116,8 @@ class MainDBSync(DBWrapperSync):
         insert_query = insert(token_holders_t).values(
             token_address=token_address,
             account_address=account_address,
-            balance=balance)
+            balance=balance
+        )
         do_update_query = insert_query.on_conflict_do_update(
             index_elements=['token_address', 'account_address'],
             set_=dict(balance=balance)
