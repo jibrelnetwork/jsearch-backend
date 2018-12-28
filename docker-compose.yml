@@ -13,7 +13,7 @@ services:
     container_name: jsearch_api
     restart: always
     env_file:
-    - config/test_stage.env
+    - config/dev.env
     ports:
     - 8000:8000
     volumes:
@@ -33,7 +33,7 @@ services:
     image: jsearch/backend
     entrypoint: jsearch-syncer
     env_file:
-    - config/test_stage.env
+    - config/dev.env
     container_name: jsearch_syncer
 
   post_processing:
@@ -48,7 +48,7 @@ services:
     image: jsearch/backend
     entrypoint: jsearch-post-processing
     env_file:
-    - config/test_stage.env
+    - config/dev.env
     container_name: jsearch_post_processing
 
   celery_worker:
@@ -62,7 +62,7 @@ services:
     image: jsearch/backend
     container_name: jsearch_celery_worker
     env_file:
-    - config/test_stage.env
+    - config/dev.env
     restart: always
     command: celeryworker
 

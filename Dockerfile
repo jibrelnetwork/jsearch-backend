@@ -1,7 +1,7 @@
 FROM python:3.6
 
 ENV LOG_LEVEL=INFO \
-    RAVEN_DSN=https://977ba0afcd6248fe841038f7f7fb898c@sentry.io/1245469 \
+    RAVEN_DSN="" \
     JSEARCH_SYNC_PARALLEL="10" \
     JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_main" \
     JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw" \
