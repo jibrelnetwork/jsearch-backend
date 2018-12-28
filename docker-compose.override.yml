@@ -1,21 +1,6 @@
 version: '3.2'
 
 services:
-  api:
-    env_file:
-    - config/test_stage.env
-    - config/dev.env
-
-  syncer:
-    env_file:
-    - config/test_stage.env
-    - config/dev.env
-
-  post_processing:
-    env_file:
-    - config/test_stage.env
-    - config/dev.env
-
   tests:
     depends_on:
     - test_db
