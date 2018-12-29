@@ -38,6 +38,7 @@ async def make_app():
     app.router.add_route('GET', '/accounts/{address}/mined_blocks', handlers.get_account_mined_blocks)
     app.router.add_route('GET', '/accounts/{address}/mined_uncles', handlers.get_account_mined_uncles)
     app.router.add_route('GET', '/accounts/{address}/token_transfers', handlers.get_account_token_transfers)
+    app.router.add_route('GET', '/accounts/{address}/token_balance/{token_address}', handlers.get_account_token_balance)
 
     app.router.add_route('GET', '/blocks', handlers.get_blocks)
     app.router.add_route('GET', '/blocks/{tag}', handlers.get_block)
@@ -53,6 +54,7 @@ async def make_app():
     app.router.add_route('POST', '/verify_contract', handlers.verify_contract)
 
     app.router.add_route('GET', '/tokens/{address}/transfers', handlers.get_token_transfers)
+    app.router.add_route('GET', '/tokens/{address}/holders', handlers.get_token_holders)
 
     app.router.add_route('POST', '/_on_new_contracts_added', handlers.on_new_contracts_added)
 

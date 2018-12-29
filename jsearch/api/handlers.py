@@ -223,6 +223,34 @@ async def get_account_token_transfers(request):
     return web.json_response([transfer.to_dict() for transfer in transfers])
 
 
+async def get_token_holders(request):
+    storage = request.app['storage']
+    params = validate_params(request)
+    token_address = request.match_info['address']
+
+    holders = await storage.get_tokens_holders(
+        address=token_address,
+        limit=params['limit'],
+        offset=params['offset'],
+        order=params['order']
+    )
+    return web.json_response([holder.to_dict() for holder in holders])
+
+
+async def get_account_token_balance(request):
+    storage = request.app['storage']
+    token_address = request.match_info['token_address']
+    account_address = request.match_info['address']
+
+    holder = await storage.get_account_token_balance(
+        account_address=account_address,
+        token_address=token_address,
+    )
+    if holder is None:
+        return web.json_response(status=404)
+    return web.json_response(holder.to_dict())
+
+
 async def on_new_contracts_added(request):
     data = await request.json()
     address = data['address']

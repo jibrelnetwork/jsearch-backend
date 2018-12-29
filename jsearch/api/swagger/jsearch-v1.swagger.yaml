@@ -434,6 +434,28 @@ paths:
               $ref: '#/definitions/TokenTransfer'
         400:
           description: bad input parameter
+
+  /tokens/{address}/holders:
+    get:
+      operationId: getTokenHolders
+      description: |
+        Get token holders list for specific token
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
+      responses:
+        200:
+          description: token holders list
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TokenHolder'
+        400:
+          description: bad input parameter
       
 definitions:
 
@@ -809,6 +831,17 @@ definitions:
         type: string
         format: address
       amount:
+        type: integer
+
+  TokenHolder:
+    properties:
+      accountAddress:
+        type: string
+        format: address
+      tokenAddress:
+        type: string
+        format: address
+      balance:
         type: integer
       
 schemes:

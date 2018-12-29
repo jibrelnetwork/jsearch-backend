@@ -12,7 +12,6 @@ from jsearch.tests.entities import (
     AccountBaseFromDumpWrapper)
 from jsearch.tests.utils import pprint_returned_value
 
-
 pytest_plugins = [
     'jsearch.tests.plugins.tools',
     'jsearch.tests.plugins.databases.main_db',
@@ -621,3 +620,43 @@ async def test_on_new_contracts_added(cli, mocker):
     resp = await cli.post('/_on_new_contracts_added', json={'address': 'abc', 'abi': 'ABI'})
     assert resp.status == 200
     m.delay.assert_called_with('abc')
+
+
+async def test_get_token_holders(cli, main_db_data):
+    resp = await cli.get(f'/tokens/t1/holders')
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == [{'accountAddress': 'a3', 'balance': 3000, 'tokenAddress': 't1'},
+                   {'accountAddress': 'a2', 'balance': 2000, 'tokenAddress': 't1'},
+                   {'accountAddress': 'a1', 'balance': 1000, 'tokenAddress': 't1'}]
+
+    resp = await cli.get(f'/tokens/t1/holders?order=asc')
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == [{'accountAddress': 'a1', 'balance': 1000, 'tokenAddress': 't1'},
+                   {'accountAddress': 'a2', 'balance': 2000, 'tokenAddress': 't1'},
+                   {'accountAddress': 'a3', 'balance': 3000, 'tokenAddress': 't1'}]
+
+    resp = await cli.get(f'/tokens/t3/holders?order=asc&limit=2&offset=1')
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == [{'accountAddress': 'a3', 'balance': 5000, 'tokenAddress': 't3'},
+                   {'accountAddress': 'a4', 'balance': 6000, 'tokenAddress': 't3'}]
+
+
+async def test_get_account_token_balance(cli, main_db_data):
+    resp = await cli.get(f'/accounts/a1/token_balance/t1')
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == {'accountAddress': 'a1', 'balance': 1000, 'tokenAddress': 't1'}
+
+    resp = await cli.get(f'/accounts/a3/token_balance/t3')
+    assert resp.status == 200
+    res = await resp.json()
+    assert res == {'accountAddress': 'a3', 'balance': 5000, 'tokenAddress': 't3'}
+
+    resp = await cli.get(f'/accounts/a3/token_balance/tX')
+    assert resp.status == 404
+
+    resp = await cli.get(f'/accounts/aX/token_balance/t1')
+    assert resp.status == 404
