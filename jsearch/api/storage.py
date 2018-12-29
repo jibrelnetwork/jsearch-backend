@@ -283,8 +283,8 @@ class Storage:
                 token_transfer_from,
                 token_transfer_to
             FROM logs
-            WHERE is_token_transfer is true AND address = $1
-            ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3;
+            WHERE address = $1 AND is_token_transfer = true
+            ORDER BY block_number {order} LIMIT $2 OFFSET $3;
         """
         return await self._fetch_token_transfers(query, address, limit, offset)
 
@@ -312,3 +312,27 @@ class Storage:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, address)
         return row['input']
+
+    async def get_tokens_holders(self, address: str, limit: int, offset: int, order: str) \
+            -> List[models.TokenHolder]:
+        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+        query = f"""
+        SELECT account_address, token_address, balance
+        FROM token_holders
+        WHERE token_address=$1
+        ORDER BY balance {order} LIMIT $2 OFFSET $3;
+        """
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, address, limit, offset)
+            return [models.TokenHolder(**r) for r in rows]
+
+    async def get_account_token_balance(self, account_address: str, token_address: str) \
+            -> List[models.TokenHolder]:
+        query = """
+        SELECT account_address, token_address, balance
+        FROM token_holders
+        WHERE account_address=$1 AND token_address=$2
+        """
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(query, account_address, token_address)
+            return models.TokenHolder(**row) if row else None

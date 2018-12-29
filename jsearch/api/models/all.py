@@ -298,3 +298,17 @@ class TokenTransfer(Model):
             'block_hash': log['block_hash']
         }
         return cls(**data)
+
+
+class TokenHolder(Model):
+    swagger_types = {
+        'account_address': str,
+        'token_address': str,
+        'balance': int,
+    }
+
+    attribute_map = {
+        'account_address': 'accountAddress',
+        'token_address': 'tokenAddress',
+        'balance': 'balance',
+    }

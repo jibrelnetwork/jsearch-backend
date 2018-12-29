@@ -8,8 +8,7 @@ from jsearch.api.models.all import (
     TokenTransfer,
     Transaction,
     Uncle,
-    Web3Call,
-    Web3CallResponse,
+    TokenHolder,
 )
 
 __ALL__ = (
@@ -22,6 +21,5 @@ __ALL__ = (
     TokenTransfer,
     Transaction,
     Uncle,
-    Web3Call,
-    Web3CallResponse,
+    TokenHolder,
 )
