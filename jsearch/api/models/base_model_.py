@@ -18,6 +18,9 @@ class Model(object):
     # value is json key in definition.
     attribute_map = {}
 
+    # integer fields that will be converted to hex for representation
+    int_to_hex = set()
+
     def __init__(self, **fields):
         for k, v in fields.items():
             assert k in self.attribute_map, 'Invalid field "{}"'.format(k)
@@ -53,6 +56,8 @@ class Model(object):
                 result[nattr] = int(value)
             else:
                 result[nattr] = value
+            if nattr in self.int_to_hex and isinstance(result[nattr], int):
+                result[nattr] = hex(result[nattr])
 
         return result
 

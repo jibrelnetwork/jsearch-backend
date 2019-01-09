@@ -600,14 +600,17 @@ definitions:
         type: string
        example: ["0xe0591f521db8d59f0362ad7bb946ecf98fd2d5eaf0a24b6fce378a00db6389d7"]
       staticReward:
-        type: integer
-        example: 5000000000000000000
+        type: string
+        format: hex
+        example: 0x4563918244f40000
       uncleInclusionReward:
-        type: integer
-        example: 156250000000000000
+        type: string
+        format: hex
+        example: 0x0
       txFees:
-        type: integer
-        example: 52569880000000000
+        type: string
+        format: hex
+        example: 0x2563918244f40000
 
   Uncle:
     properties:
@@ -680,8 +683,9 @@ definitions:
        type: integer
        example: 19190
       reward:
-        type: integer
-        example: 3750000000000000000
+        type: string
+        format: hex
+        example: 0x2563918244f40000
       
   
   Receipt:
@@ -774,7 +778,9 @@ definitions:
   Balance:
     properties:
       balance:
-        type: integer
+        type: string
+        format: hex
+        example: 0x2563918244f40000
       address:
         type: string
         format: address
@@ -831,7 +837,7 @@ definitions:
         type: string
         format: address
       amount:
-        type: integer
+        type: float
 
   TokenHolder:
     properties:
@@ -842,7 +848,7 @@ definitions:
         type: string
         format: address
       balance:
-        type: integer
+        type: float
       
 schemes:
  - http
