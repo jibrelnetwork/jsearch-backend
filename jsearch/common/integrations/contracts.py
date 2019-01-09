@@ -2,6 +2,7 @@ import logging
 
 import backoff
 import requests
+from cachetools import TTLCache, cached
 
 from jsearch.settings import JSEARCH_CONTRACTS_API
 from jsearch.typing import Contract
@@ -9,6 +10,7 @@ from jsearch.typing import Contract
 logger = logging.getLogger(__name__)
 
 
+@cached(cache=TTLCache(maxsize=1000, ttl=60 * 5))
 @backoff.on_exception(backoff.fibo, max_tries=10, exception=requests.RequestException)
 def get_contract(address: str) -> Contract:
     """
