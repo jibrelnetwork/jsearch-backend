@@ -81,7 +81,7 @@ class BalanceUpdate:
 
     def apply(self, db):
         if self.is_valid:
-            db.update_token_holder_balance(self.token_address, self.account_address, self.value)
+            db.update_token_holder_balance(self.token_address, self.account_address, self.balance)
             logger.info(
                 'Token balance updated for token %s account %s block %s value %s',
                 self.token_address, self.account_address, self.block, self.balance
@@ -214,7 +214,6 @@ def process_log_operations_bulk(
         batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
 ) -> None:
     logs = [process_log_transfer(log) for log in logs]
-    logs = (log for log in logs if log)
 
     updates = set()
     for log, abi in logs:

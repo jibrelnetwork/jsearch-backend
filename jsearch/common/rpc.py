@@ -163,6 +163,13 @@ def eth_call_batch_request(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return data
 
 
+def eth_call(call: ContractCall) -> Any:
+    data = [call.encode()]
+    response = eth_call_batch_request(data)
+    results = {result["id"]: HexBytes(result["result"]) for result in response}
+    return call.decode(results[call.pk])
+
+
 def eth_call_batch(calls: ContractCalls) -> List[Any]:
     data = [call.encode() for call in calls]
     response = eth_call_batch_request(data)

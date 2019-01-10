@@ -6,3 +6,4 @@ Abi_ERC20 = NewType('Abi_ERC20', Abi)
 Log = Dict[str, Any]
 EventArgs = Dict[str, Any]
 Contract = Dict[str, Any]
+Token = Dict[str, Any]
