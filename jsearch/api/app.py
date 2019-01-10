@@ -9,7 +9,7 @@ from aiohttp_swagger import setup_swagger
 from jsearch import settings
 from jsearch.api import handlers
 from jsearch.api.storage import Storage
-from jsearch.common.database import MainDB
+
 
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
 swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
@@ -19,7 +19,6 @@ sentry_sdk.init(settings.RAVEN_DSN)
 
 async def on_shutdown(app):
     await app['db_pool'].close()
-    await app['main_db'].disconnect()
 
 
 async def make_app():
@@ -30,11 +29,8 @@ async def make_app():
     app.on_shutdown.append(on_shutdown)
     # Create a database connection pool
     app['db_pool'] = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
-
     app['storage'] = Storage(app['db_pool'])
-    app['main_db'] = MainDB(settings.JSEARCH_MAIN_DB)
-    await app['main_db'].connect()
-    app['node_proxy_url'] = settings.ETH_NODE_URL
+
     # Configure service routes
     app.router.add_route('GET', '/accounts/balances', handlers.get_accounts_balances)
     app.router.add_route('GET', '/accounts/{address}', handlers.get_account)
@@ -42,6 +38,7 @@ async def make_app():
     app.router.add_route('GET', '/accounts/{address}/mined_blocks', handlers.get_account_mined_blocks)
     app.router.add_route('GET', '/accounts/{address}/mined_uncles', handlers.get_account_mined_uncles)
     app.router.add_route('GET', '/accounts/{address}/token_transfers', handlers.get_account_token_transfers)
+    app.router.add_route('GET', '/accounts/{address}/token_balance/{token_address}', handlers.get_account_token_balance)
 
     app.router.add_route('GET', '/blocks', handlers.get_blocks)
     app.router.add_route('GET', '/blocks/{tag}', handlers.get_block)
@@ -57,10 +54,11 @@ async def make_app():
     app.router.add_route('POST', '/verify_contract', handlers.verify_contract)
 
     app.router.add_route('GET', '/tokens/{address}/transfers', handlers.get_token_transfers)
+    app.router.add_route('GET', '/tokens/{address}/holders', handlers.get_token_holders)
 
     app.router.add_route('POST', '/_on_new_contracts_added', handlers.on_new_contracts_added)
 
-    app.router.add_static('/apidoc', swagger_ui_path)
+    app.router.add_static('/docs', swagger_ui_path)
     setup_swagger(app, swagger_from_file=swagger_file)
     return app
 

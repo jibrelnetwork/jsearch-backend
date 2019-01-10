@@ -26,24 +26,11 @@ parameters:
     description: Account address
     type: string
     format: address
-  blockNumber:
-    name: blockNumber
-    in: path
-    required: true
-    description: block number
-    type: integer
-  blockHash:
-    name: blockHash
-    in: path
-    required: true
-    description: block hash
-    type: string
-    format: hash
   tag:
     name: tag
     in: path
     required: true
-    description: block hash or number
+    description: block hash, block number or "latest" keyword
     type: string
   txhash:
     name: txhash
@@ -66,9 +53,11 @@ parameters:
   order:
     name: order
     in: query
-    description: Query offset
-    type: integer
-    default: 0
+    description: Items ordering direction
+    schema:
+      type: string
+      enum: [asc, desc]
+    default: asc
     
 paths:
 
@@ -276,26 +265,6 @@ paths:
         400:
           description: bad input parameter
           
-            
-  /blocks/{tag}/rewards:
-    get:
-      operationId: getBlockAndUnclesRewards
-      description: |
-        Get block and uncle inclusion rewards for specific block
-      produces:
-      - application/json
-      parameters:
-      - $ref: '#/parameters/tag'
-      responses:
-        200:
-          description: rewards for specific block
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Reward'
-        400:
-          description: bad input parameter
-          
   /transactions/{txhash}:
     get:
       operationId: getTransaction
@@ -465,6 +434,28 @@ paths:
               $ref: '#/definitions/TokenTransfer'
         400:
           description: bad input parameter
+
+  /tokens/{address}/holders:
+    get:
+      operationId: getTokenHolders
+      description: |
+        Get token holders list for specific token
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
+      responses:
+        200:
+          description: token holders list
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TokenHolder'
+        400:
+          description: bad input parameter
       
 definitions:
 
@@ -609,14 +600,17 @@ definitions:
         type: string
        example: ["0xe0591f521db8d59f0362ad7bb946ecf98fd2d5eaf0a24b6fce378a00db6389d7"]
       staticReward:
-        type: integer
-        example: 5000000000000000000
+        type: string
+        format: hex
+        example: 0x4563918244f40000
       uncleInclusionReward:
-        type: integer
-        example: 156250000000000000
+        type: string
+        format: hex
+        example: 0x0
       txFees:
-        type: integer
-        example: 52569880000000000
+        type: string
+        format: hex
+        example: 0x2563918244f40000
 
   Uncle:
     properties:
@@ -689,8 +683,9 @@ definitions:
        type: integer
        example: 19190
       reward:
-        type: integer
-        example: 3750000000000000000
+        type: string
+        format: hex
+        example: 0x2563918244f40000
       
   
   Receipt:
@@ -780,33 +775,12 @@ definitions:
         type: integer
         example: 2
         
-  Reward:
-    properties:
-      address:
-        type: string
-        format: address
-        example: "0x47071214d1ef76eeb26e9ac3ec6cc965ab8eb75b"
-      amount:
-        type: integer
-        example: 500000000000000
-  Web3Call:
-    properties:
-      method:
-        type: string
-      arguments:
-        type: array
-        
-  Web3CallResponse:
-    properties:
-      status:
-        type: string
-      result:
-        type: object
-        
   Balance:
     properties:
       balance:
-        type: integer
+        type: string
+        format: hex
+        example: 0x2563918244f40000
       address:
         type: string
         format: address
@@ -863,7 +837,18 @@ definitions:
         type: string
         format: address
       amount:
-        type: integer
+        type: float
+
+  TokenHolder:
+    properties:
+      accountAddress:
+        type: string
+        format: address
+      tokenAddress:
+        type: string
+        format: address
+      balance:
+        type: float
       
 schemes:
  - http

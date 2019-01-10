@@ -65,8 +65,8 @@ class Manage(object):
         parser.add_argument('-m', action='store', help=argparse.SUPPRESS)
 
         args = parser.parse_args(sys.argv[2:])
-        print('Running alembic revision --autogenerate -m "{}". db: {}'.format(args.m, args.db))
-        alembic.revision(args.db, args.m, True)
+        print(f'Running alembic revision --autogenerate -m "{args.m}"')
+        alembic.revision(args.db or os.getenv('JSEARCH_MAIN_DB'), args.m, True)
 
     def upgrade(self):
         parser = argparse.ArgumentParser(
@@ -82,8 +82,7 @@ class Manage(object):
         parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
 
         args = parser.parse_args(sys.argv[2:])
-        print(args)
-        print('Running alembic upgrade {}. db: {}'.format(args.revision, args.db or os.getenv('JSEARCH_MAIN_DB')))
+        print(f'Running alembic upgrade {args.revision}')
         alembic.upgrade(args.db or os.getenv('JSEARCH_MAIN_DB'), args.revision)
 
     def downgrade(self):
@@ -100,9 +99,8 @@ class Manage(object):
         parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
 
         args = parser.parse_args(sys.argv[2:])
-        print(args)
-        print('Running alembic downgrade {}. db: {}'.format(args.revision, args.db))
-        alembic.downgrade(args.db, args.revision)
+        print(f'Running alembic downgrade {args.revision}.')
+        alembic.downgrade(args.db or os.getenv('JSEARCH_MAIN_DB'), args.revision)
 
     def json_dump(self):
         parser = argparse.ArgumentParser(usage=f"usage {self.script_name} [-h]")
@@ -110,9 +108,8 @@ class Manage(object):
         parser.add_argument('-out', action='store', default=None, help=argparse.SUPPRESS)
 
         args = parser.parse_args(sys.argv[2:])
-        print(args)
-        print('Running json_dump. db: {}'.format(args.db))
-        alembic.json_dump(args.db, args.out)
+        print('Running json_dump')
+        alembic.json_dump(args.db or os.getenv('JSEARCH_MAIN_DB'), args.out)
 
     def add_test_contract(self):
         from jsearch.tests.utils import add_test_contract
@@ -123,8 +120,7 @@ class Manage(object):
         parser.add_argument('-address', action='store', help=argparse.SUPPRESS)
 
         args = parser.parse_args(sys.argv[2:])
-        print(args)
-        print('Running add_test_contract. db: {}'.format(args.db))
+        print('Running add_test_contract')
 
         add_test_contract(args.db, args.address, FuckTokenSource.load())
 

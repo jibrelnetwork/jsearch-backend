@@ -50,6 +50,8 @@ class Account(Model):
         'balance': 'balance',
     }
 
+    int_to_hex = {'balance'}
+
 
 class Transaction(Model):
     swagger_types = {
@@ -140,6 +142,8 @@ class Block(Model):
         'tx_fees': 'txFees',
     }
 
+    int_to_hex = {'staticReward', 'uncleInclusionReward', 'txFees'}
+
 
 class Uncle(Model):
     swagger_types = {
@@ -188,6 +192,8 @@ class Uncle(Model):
         'reward': 'reward',
     }
 
+    int_to_hex = {'reward'}
+
 
 class Receipt(Model):
     swagger_types = {
@@ -234,29 +240,7 @@ class Reward(Model):
         'amount': 'amount',
     }
 
-
-class Web3Call(Model):
-    swagger_types = {
-        'method': str,
-        'arguments': List[Any],
-    }
-
-    attribute_map = {
-        'method': 'method',
-        'arguments': 'arguments',
-    }
-
-
-class Web3CallResponse(Model):
-    swagger_types = {
-        'status': str,
-        'result': Any,
-    }
-
-    attribute_map = {
-        'status': 'status',
-        'result': 'result',
-    }
+    int_to_hex = {'amount'}
 
 
 class Balance(Model):
@@ -270,6 +254,8 @@ class Balance(Model):
         'address': 'address',
     }
 
+    int_to_hex = {'balance'}
+
 
 class TokenTransfer(Model):
     swagger_types = {
@@ -277,7 +263,7 @@ class TokenTransfer(Model):
         'from': str,
         'block_hash': str,
         'to': str,
-        'amount': int,
+        'amount': float,
     }
 
     attribute_map = {
@@ -298,3 +284,17 @@ class TokenTransfer(Model):
             'block_hash': log['block_hash']
         }
         return cls(**data)
+
+
+class TokenHolder(Model):
+    swagger_types = {
+        'account_address': str,
+        'token_address': str,
+        'balance': float,
+    }
+
+    attribute_map = {
+        'account_address': 'accountAddress',
+        'token_address': 'tokenAddress',
+        'balance': 'balance',
+    }

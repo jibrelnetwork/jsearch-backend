@@ -10,6 +10,7 @@ from jsearch.common.database import MainDBSync
 from jsearch.common.processing.erc20_transfer_logs import process_log_operations_bulk
 from jsearch.common.processing.logs import process_log_event
 from jsearch.typing import Log
+from jsearch.utils import suppress_exception
 
 ACTION_LOG_EVENTS = 'events'
 ACTION_LOG_OPERATIONS = 'operations'
@@ -20,6 +21,7 @@ Worker = Callable[[List[Log], Optional[str]], None]
 Query = Callable[[int], List[Log]]
 
 
+@suppress_exception
 def log_event_processing_worker(logs: List[Log], dsn: str = settings.JSEARCH_MAIN_DB):
     with MainDBSync(connection_string=dsn) as db:
         for log in logs:
@@ -27,6 +29,7 @@ def log_event_processing_worker(logs: List[Log], dsn: str = settings.JSEARCH_MAI
             db.update_log(record=log)
 
 
+@suppress_exception
 def log_operations_processing_worker(logs: List[Log], dsn: str = settings.JSEARCH_MAIN_DB):
     with MainDBSync(connection_string=dsn) as db:
         process_log_operations_bulk(db, logs)
@@ -93,7 +96,9 @@ def post_processing(action: str,
 
                 avg_log_speed = len(logs) / working_time
 
-                last_block = sorted(blocks)[0] if blocks else ""
+                max_block = max(blocks) if blocks else None
+                min_block = min(blocks) if blocks else None
+
                 logger.info("[PROCESSING] speed %0.2f blocks/second", avg_block_speed)
                 logger.info("[PROCESSING] speed %0.2f logs/second", avg_log_speed)
-                logger.info("[PROCESSING] last block %s", last_block)
+                logger.info("[PROCESSING] block range %s - %s", min_block, max_block)

@@ -80,10 +80,11 @@ class Manager:
                     await asyncio.sleep(self.sleep_on_no_blocks)
                     continue
 
-                await self.process_reorgs(new_reorgs)
+                processed_reorgs_num = await self.process_reorgs(new_reorgs)
 
                 proc_time = time.monotonic() - start_time
-                logger.info("%s reorgs processed on %0.2fs", len(new_reorgs), proc_time)
+                logger.info("%s reorgs processed on %0.2fs", processed_reorgs_num, proc_time)
+                await asyncio.sleep(0.1)
             except DatabaseError:
                 logger.exception("Database Error accured:")
                 await asyncio.sleep(self.sleep_on_db_error)
@@ -128,7 +129,11 @@ class Manager:
 
     async def get_blocks_to_sync_strict(self):
         missed_blocks_nums = await self.main_db.get_missed_blocks_numbers(limit=self.chunk_size)
-        blocks = await self.raw_db.get_missed_blocks(missed_blocks_nums)
+        if not missed_blocks_nums:
+            return []
+        first_missed = missed_blocks_nums[0]
+        blocks_to_fetch = list(range(first_missed, first_missed + self.chunk_size // 2))
+        blocks = await self.raw_db.get_missed_blocks(blocks_to_fetch)
         return blocks
 
     async def get_new_reorgs(self):
@@ -137,11 +142,16 @@ class Manager:
         return new_reorgs
 
     async def process_reorgs(self, reorgs):
+        c = 0
         for reorg in reorgs:
             success = await self.main_db.apply_reorg(reorg)
             if success is not True:
-                return
-            pass
+                # reorg block is not synced, try to sync it now
+                logger.debug('Reorg: try to sync missed block %s %s', reorg['block_hash'], reorg['block_number'])
+                await loop.run_in_executor(self.executor, sync_block, reorg['block_hash'], reorg['block_number'])
+                return c
+            c += 1
+        return c
 
 
 def sync_block(block_hash, block_number=None, main_db_dsn=None, raw_db_dsn=None):

@@ -1,26 +1,25 @@
-from unittest.mock import ANY, call
-
+from jsearch.common.database import MainDBSync
 from jsearch.common.tasks import on_new_contracts_added_task
 
 
-def test_on_new_contracts_added_task(mocker, db):
-    update_token_mock = mocker.patch(
-        'jsearch.common.operations.update_token_info')
-    process_transfer_mock = mocker.patch(
-        'jsearch.common.processing.transactions.process_token_transfers_for_transaction')
+def test_reset_logs_after_on_new_contracts_added_task(db, db_connection_string):
+    # given We have some processed logs
+    db.execute(
+        'INSERT INTO logs ("transaction_hash", "block_number", "block_hash", "log_index", "address", "is_processed") '
+        'VALUES (%s, %s, %s, %s, %s, %s)',
+        [
+            ('sd', 1, 'hash_1', 2, '0x3', True),
+            ('sw', 1, 'hash_1', 3, '0x3', True),
+            ('xw', 2, 'hash_2', 1, '0x4', True),
+            ('we', 2, 'hash_2', 2, '0x4', True),
+        ]
+    )
 
-    db.execute('INSERT INTO transactions (block_number, block_hash,  hash, transaction_index, "from", "to")'
-               'VALUES (%s, %s, %s, %s, %s, %s)', [
-                   (1, 'b1', 'a', 1, '0x1', '0x2'),
-                   (2, 'b2', 'b', 1, '0x2', '0x3'),
-                   (2, 'b2', 'c', 2, '0x3', '0x4'),
-                   (2, 'b2', 'd', 3, '0x5', '0x3'),
-               ])
-    on_new_contracts_added_task('0x3', 'ABI')
+    # when We run task
+    on_new_contracts_added_task('0x3')
 
-    update_token_mock.assert_called_with('0x3', 'ABI')
-    assert process_transfer_mock.call_count == 2
-    process_transfer_mock.asert_has_calls([
-        call(ANY, 'b'),
-        call(ANY, 'd'),
-    ])
+    # then We expected what logs what only half logs with same address will be reset
+    with MainDBSync(db_connection_string) as main_db:
+        logs = main_db.get_logs_to_process_events()
+
+    assert sorted(log['address'] for log in logs) == ['0x3', '0x3']

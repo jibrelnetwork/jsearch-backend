@@ -1,5 +1,4 @@
 import logging
-import re
 
 import aiopg
 import psycopg2
@@ -235,27 +234,27 @@ class MainDB(DBWrapper):
 
         update_txs_q = transactions_t.update() \
             .values(is_forked=not reorg['reinserted']) \
-            .where(blocks_t.c.hash == reorg['block_hash'])
+            .where(transactions_t.c.block_hash == reorg['block_hash'])
 
         update_receipts_q = receipts_t.update() \
             .values(is_forked=not reorg['reinserted']) \
-            .where(blocks_t.c.hash == reorg['block_hash'])
+            .where(receipts_t.c.block_hash == reorg['block_hash'])
 
         update_logs_q = logs_t.update() \
             .values(is_forked=not reorg['reinserted']) \
-            .where(blocks_t.c.hash == reorg['block_hash'])
+            .where(logs_t.c.block_hash == reorg['block_hash'])
 
         update_internal_transactions_q = internal_transactions_t.update() \
             .values(is_forked=not reorg['reinserted']) \
-            .where(blocks_t.c.hash == reorg['block_hash'])
+            .where(internal_transactions_t.c.block_hash == reorg['block_hash'])
 
         update_accounts_state_q = accounts_state_t.update() \
             .values(is_forked=not reorg['reinserted']) \
-            .where(blocks_t.c.hash == reorg['block_hash'])
+            .where(accounts_state_t.c.block_hash == reorg['block_hash'])
 
         update_uncles_q = uncles_t.update() \
             .values(is_forked=not reorg['reinserted']) \
-            .where(blocks_t.c.hash == reorg['block_hash'])
+            .where(uncles_t.c.block_hash == reorg['block_hash'])
 
         reorg.pop('header')
         add_reorg_q = reorgs_t.insert().values(**reorg)
@@ -264,7 +263,7 @@ class MainDB(DBWrapper):
                 res = await conn.execute(update_block_q)
                 rows = await res.fetchall()
                 if len(rows) == 0:
-                    # no updates, block si not synced - aborting reorg
+                    # no updates, block is not synced - aborting reorg
                     logger.debug('Aborting reorg for block %s %s', reorg['block_number'], reorg['block_hash'])
                     await tx.rollback()
                     return False
@@ -365,21 +364,3 @@ class MainDBSync(DBWrapperSync):
     def insert_internal_transactions(self, internal_transactions):
         if internal_transactions:
             self.conn.execute(internal_transactions_t.insert(), *internal_transactions)
-
-
-first_cap_re = re.compile('(.)([A-Z][a-z]+)')
-all_cap_re = re.compile('([a-z0-9])([A-Z])')
-
-
-def case_convert(name):
-    s1 = first_cap_re.sub(r'\1_\2', name)
-    return all_cap_re.sub(r'\1_\2', s1).lower()
-
-
-def dict_keys_case_convert(d):
-    return {case_convert(k): v for k, v in d.items()}
-
-
-def hex_vals_to_int(d, keys):
-    for k in keys:
-        d[k] = int(d[k], 16)

@@ -1,7 +1,8 @@
 import logging
-from typing import Dict, Any
 
+import backoff
 import requests
+from cachetools import TTLCache, cached
 
 from jsearch.settings import JSEARCH_CONTRACTS_API
 from jsearch.typing import Contract
@@ -9,6 +10,8 @@ from jsearch.typing import Contract
 logger = logging.getLogger(__name__)
 
 
+@cached(cache=TTLCache(maxsize=1000, ttl=60 * 5))
+@backoff.on_exception(backoff.fibo, max_tries=10, exception=requests.RequestException)
 def get_contract(address: str) -> Contract:
     """
     Get contract from internal service
@@ -23,12 +26,3 @@ def get_contract(address: str) -> Contract:
         return response.json()
 
     logger.debug('Miss Contract %s: %s', address, response.status_code)
-
-
-def patch_contract(address: str, data: Dict[str, Any]):
-    url = f'{JSEARCH_CONTRACTS_API}/v1/contracts/{address}'
-    resp = requests.patch(url, json=data)
-    if resp.status_code == 204:
-        logger.info('Token info updated for address %s', address)
-    else:
-        logger.error('Token info update error for address %s: %s', address, resp.status_code)
