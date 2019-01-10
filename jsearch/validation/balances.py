@@ -79,6 +79,6 @@ async def check_token_holder_balances(token: Token) -> None:
                     logging.debug(f"{address}: {original_balance} == {balance}")
 
         if offset:
-            print(f"[PROGRESS] %0.2fs", offset / total_records * 100)
+            print(f"[PROGRESS] {round(offset / total_records * 100, 2)}")
 
-    print(f"[STATISTICS] %s total records with %s errors", total_records, errors)
+    print(f"[STATISTICS] {total_records} total records with {errors} errors")
