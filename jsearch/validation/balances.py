@@ -58,11 +58,8 @@ async def check_token_holder_balances(token: Token) -> None:
     token_call = partial(ContractCall, abi=token_abi, address=token_address)
 
     get_balance = partial(token_call, method='balanceOf')
-    get_decimals = partial(token_call, method='decimals')
-
-    decimals = eth_call(call=get_decimals())
-
     errors = 0
+
     total_records = await get_total_holders_count(pool=db_pool, token_address=token['address'])
     for offset in range(0, total_records, 1000):
         holders = await storage.get_tokens_holders(address=token['address'], offset=offset, limit=1000, order='asc')
@@ -82,6 +79,6 @@ async def check_token_holder_balances(token: Token) -> None:
                     logging.debug(f"{address}: {original_balance} == {balance}")
 
         if offset:
-            print(f"[PROGRESS] %0.2f", total_records / offset)
+            print(f"[PROGRESS] %0.2fs", offset / total_records * 100)
 
     print(f"[STATISTICS] %s total records with %s errors", total_records, errors)
