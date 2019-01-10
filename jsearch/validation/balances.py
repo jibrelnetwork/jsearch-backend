@@ -75,17 +75,13 @@ async def check_token_holder_balances(token: Token) -> None:
                 address = item['accountAddress']
                 balance = item['balance']
 
-                current_value = apply_decimals(balance, decimals)
-                if current_value is None:
-                    logging.error(f"{address}: {balance} to {decimals} decimals raises error")
-
-                if original_balance != current_value:
+                if original_balance != balance:
                     errors += 1
-                    logging.error(f"{address}: {original_balance} != {current_value}")
+                    logging.error(f"{address}: {original_balance} != {balance}")
                 else:
-                    logging.debug(f"{address}: {original_balance} == {current_value}")
+                    logging.debug(f"{address}: {original_balance} == {balance}")
 
         if offset:
-            logging.info(f"[PROGRESS] %0.2f", total_records)
+            print(f"[PROGRESS] %0.2f", total_records / offset)
 
-    logging.info(f"[STATISTICS] %s total records with %s errors", total_records, errors)
+    print(f"[STATISTICS] %s total records with %s errors", total_records, errors)
