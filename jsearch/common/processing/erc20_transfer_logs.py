@@ -81,7 +81,7 @@ class BalanceUpdate:
 
     def apply(self, db):
         if self.is_valid:
-            db.update_token_holder_balance(self.token_address, self.account_address, self.balance)
+            db.update_token_holder_balance(self.token_address, self.account_address, self.value)
             logger.info(
                 'Token balance updated for token %s account %s block %s value %s',
                 self.token_address, self.account_address, self.block, self.balance
