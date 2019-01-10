@@ -23,7 +23,6 @@ services:
     - JSEARCH_MAIN_DB_TEST=postgres://postgres:postgres@test_db/jsearch_main_test
     - JSEARCH_MAIN_DB=postgres://postgres:postgres@test_db/jsearch_main_test
     env_file:
-    - config/test_stage.env
     - config/dev.env
 
   test_db:
