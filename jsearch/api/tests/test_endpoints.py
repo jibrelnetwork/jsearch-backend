@@ -66,9 +66,9 @@ async def test_get_block_by_hash(cli, main_db_data):
         'totalDifficulty': b['total_difficulty'],
         'transactions': [],
         'transactionsRoot': b['transactions_root'],
-        'staticReward': b['static_reward'],
-        'txFees': b['tx_fees'],
-        'uncleInclusionReward': b['uncle_inclusion_reward'],
+        'staticReward': hex(b['static_reward']),
+        'txFees': hex(b['tx_fees']),
+        'uncleInclusionReward': hex(b['uncle_inclusion_reward']),
         'uncles': None
     }
 
@@ -97,9 +97,9 @@ async def test_get_block_latest(cli, main_db_data):
         'totalDifficulty': b['total_difficulty'],
         'transactions': [main_db_data['transactions'][-1]['hash']],
         'transactionsRoot': b['transactions_root'],
-        'staticReward': b['static_reward'],
-        'txFees': b['tx_fees'],
-        'uncleInclusionReward': b['uncle_inclusion_reward'],
+        'staticReward': hex(b['static_reward']),
+        'txFees': hex(b['tx_fees']),
+        'uncleInclusionReward': hex(b['uncle_inclusion_reward']),
         'uncles': None
     }
 
@@ -115,7 +115,7 @@ async def test_get_account(cli, main_db_data):
     account_state = main_db_data['accounts_state'][-1]
     account_base = main_db_data['accounts_base'][0]
     assert await resp.json() == {'address': account_state['address'],
-                                 'balance': account_state['balance'],
+                                 'balance': hex(account_state['balance']),
                                  'blockHash': account_state['block_hash'],
                                  'blockNumber': account_state['block_number'],
                                  'code': account_base['code'],
@@ -132,7 +132,7 @@ async def test_get_account_block_number(cli, main_db_data):
     account_state = main_db_data['accounts_state'][8]
     account_base = main_db_data['accounts_base'][0]
     assert await resp.json() == {'address': account_state['address'],
-                                 'balance': account_state['balance'],
+                                 'balance': hex(account_state['balance']),
                                  'blockHash': account_state['block_hash'],
                                  'blockNumber': account_state['block_number'],
                                  'code': account_base['code'],
@@ -149,7 +149,7 @@ async def test_get_account_block_hash(cli, main_db_data):
     account_state = main_db_data['accounts_state'][8]
     account_base = main_db_data['accounts_base'][0]
     assert await resp.json() == {'address': account_state['address'],
-                                 'balance': account_state['balance'],
+                                 'balance': hex(account_state['balance']),
                                  'blockHash': account_state['block_hash'],
                                  'blockNumber': account_state['block_number'],
                                  'code': account_base['code'],
@@ -192,9 +192,9 @@ async def test_get_account_balances(cli, main_db_data):
     assert resp.status == 200
     res = await resp.json()
     assert res == [{'address': a1['address'],
-                    'balance': main_db_data['accounts_state'][10]['balance']},
+                    'balance': hex(main_db_data['accounts_state'][10]['balance'])},
                    {'address': a2['address'],
-                    'balance': main_db_data['accounts_state'][6]['balance']}]
+                    'balance': hex(main_db_data['accounts_state'][6]['balance'])}]
 
 
 async def test_get_block_transactions(cli, main_db_data):
@@ -269,7 +269,7 @@ async def test_get_block_uncles(cli, main_db_data):
             'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
             'timestamp': 1438270332,
             'totalDifficulty': None,
-            'reward': 3750000000000000000,
+            'reward': hex(3750000000000000000),
             'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
         }
     ]
@@ -385,7 +385,7 @@ async def test_get_uncles(cli, main_db_data):
          'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
          'timestamp': 1438270505,
          'totalDifficulty': None,
-         'reward': 3750000000000000000,
+         'reward': hex(3750000000000000000),
          'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'},
         {'blockNumber': main_db_data['blocks'][1]['number'],
          'difficulty': 17578564779,
@@ -405,7 +405,7 @@ async def test_get_uncles(cli, main_db_data):
          'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
          'timestamp': 1438270332,
          'totalDifficulty': None,
-         'reward': 3750000000000000000,
+         'reward': hex(3750000000000000000),
          'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}
     ]
 
@@ -459,7 +459,7 @@ async def test_get_uncle_by_hash(cli, main_db_data):
         'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
         'timestamp': 1438270505,
         'totalDifficulty': None,
-        'reward': 3750000000000000000,
+        'reward': hex(3750000000000000000),
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
     }
 
@@ -487,7 +487,7 @@ async def test_get_uncle_by_number(cli, main_db_data):
         'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
         'timestamp': 1438270505,
         'totalDifficulty': None,
-        'reward': 3750000000000000000,
+        'reward': hex(3750000000000000000),
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
     }
 
