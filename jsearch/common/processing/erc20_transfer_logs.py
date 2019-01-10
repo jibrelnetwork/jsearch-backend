@@ -2,11 +2,7 @@ import logging
 from typing import List, Optional
 from typing import Tuple, Dict, Any, Set
 
-import backoff
-import requests
-from hexbytes import HexBytes
 from web3 import Web3
-from web3.utils.contracts import prepare_transaction
 
 from jsearch import settings
 from jsearch.common.contracts import ERC20_ABI
@@ -14,7 +10,7 @@ from jsearch.common.contracts import NULL_ADDRESS
 from jsearch.common.database import MainDBSync
 from jsearch.common.integrations.contracts import get_contract
 from jsearch.common.processing.logs import EventTypes, TRANSFER_EVENT_INPUT_SIZE
-from jsearch.common.rpc import BatchHTTPProvider, decode_erc20_output_value
+from jsearch.common.rpc import ContractCall, eth_call_batch
 from jsearch.typing import Log, EventArgs, Abi
 from jsearch.utils import suppress_exception
 
@@ -43,6 +39,7 @@ class BalanceUpdate:
         self.account_address = account_address
         self.block = block
         self.abi = abi
+        self.value = None
 
     def __hash__(self):
         return hash(self.key)
@@ -69,10 +66,14 @@ class BalanceUpdate:
 
     @property
     def balance(self):
-        try:
-            return self.value / 10 ** self.decimals
-        except Exception as e:
-            logger.warning(e)
+        if self.value is not None:
+            try:
+                return self.value / 10 ** self.decimals
+            except Exception:
+                logging.warning(
+                    '[JSON RPC] Invalid balance %s for token %s for address %s',
+                    self.balance, self.token_address, self.account_address,
+                )
 
     @property
     def key(self):
@@ -92,65 +93,27 @@ class BalanceUpdate:
             )
 
 
-def get_request_provider():
-    return BatchHTTPProvider(settings.ETH_NODE_URL)
-
-
-@backoff.on_exception(backoff.fibo, max_tries=10, exception=requests.RequestException)
 def fetch_erc20_token_decimal_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
-    request_provider = get_request_provider()
-    w3 = Web3(request_provider)
-
-    calls_params = []
-    for update in updates:
-        tx = prepare_transaction(
-            abi=update.abi,
-            address=update.token_as_checksum,
-            web3=w3,
-            fn_identifier='decimals'
-        )
-        calls_params.append([tx, "latest"])
-
-    responses = request_provider.make_request('eth_call', params=calls_params)
-
-    for i, response in enumerate(responses):
-        update = updates[i]
-        update.decimals = decode_erc20_output_value(
-            data=HexBytes(response['result']),
-            fn_identifier='decimals',
-            abi=update.abi,
-        )
-
+    calls = [ContractCall(abi=update.abi, address=update.token_as_checksum, method='decimals') for update in updates]
+    calls_results = eth_call_batch(calls=calls)
+    for result, update in zip(calls_results, updates):
+        update.decimals = result
     return updates
 
 
-@backoff.on_exception(backoff.fibo, max_tries=10, exception=requests.RequestException)
 def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
-    request_provider = get_request_provider()
-    w3 = Web3(request_provider)
-
-    calls_params = []
+    calls = []
     for update in updates:
-        tx = prepare_transaction(
-            abi=ERC20_ABI,
-            address=update.token_as_checksum,
-            web3=w3,
-            fn_identifier='balanceOf',
-            fn_args=(update.account_as_checksum,)
-        )
-        calls_params.append([tx, "latest"])
-
-    responses = request_provider.make_request('eth_call', params=calls_params)
-
-    for i, response in enumerate(responses):
-        update = updates[i]
-        update.value = decode_erc20_output_value(
-            data=HexBytes(response["result"]),
+        call = ContractCall(
             abi=update.abi,
-            fn_identifier='balanceOf',
-            args=(update.account_as_checksum,),
+            address=update.token_as_checksum,
+            method='balanceOf',
+            args=[update.account_as_checksum]
         )
-
+        calls.append(call)
+    calls_results = eth_call_batch(calls=calls)
+    for result, update in zip(calls_results, updates):
+        update.value = result
     return updates
 
 
@@ -210,7 +173,7 @@ def process_log_transfer(log: Log) -> Tuple[Log, Abi]:
         token_decimals = contract['token_decimals']
 
         if token_decimals is None:
-            logger.info('[PROCESSING] Contract %s has not decimals.', contract['address'])
+            logger.info('[TASK] Contract %s has not decimals.', contract['address'])
 
         elif log.get('is_token_transfer'):
             from_address, to_address, token_amount = get_transfer_details_from_erc20_event_args(
