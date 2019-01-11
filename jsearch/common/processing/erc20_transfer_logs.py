@@ -1,4 +1,5 @@
 import logging
+from itertools import count
 from typing import List, Optional
 from typing import Tuple, Dict, Any, Set
 
@@ -83,7 +84,16 @@ class BalanceUpdate:
 
 
 def fetch_erc20_token_decimal_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
-    calls = [ContractCall(abi=update.abi, address=update.token_as_checksum, method='decimals') for update in updates]
+    calls = []
+    counter = count()
+    for update in updates:
+        call = ContractCall(
+            pk=next(counter),
+            abi=update.abi,
+            address=update.token_as_checksum,
+            method='decimals'
+        )
+        calls.append(call)
     calls_results = eth_call_batch(calls=calls)
     for result, update in zip(calls_results, updates):
         update.decimals = result
@@ -92,8 +102,10 @@ def fetch_erc20_token_decimal_bulk(updates: List[BalanceUpdate]) -> List[Balance
 
 def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
     calls = []
+    counter = count()
     for update in updates:
         call = ContractCall(
+            pk=next(counter),
             abi=update.abi,
             address=update.token_as_checksum,
             method='balanceOf',

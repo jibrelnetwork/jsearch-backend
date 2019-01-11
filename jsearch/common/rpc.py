@@ -2,7 +2,8 @@ import logging
 from functools import partial
 from itertools import count
 from pprint import pformat
-from typing import Any, Dict, List
+from random import randint
+from typing import Any, Dict, List, Optional
 
 import backoff
 import requests
@@ -21,8 +22,6 @@ from jsearch import settings
 from jsearch.typing import Abi
 
 log = logging.getLogger(__name__)
-
-counter = count()
 
 post = partial(request, 'POST')
 
@@ -99,9 +98,9 @@ class ContractCall:
         'block',
     )
 
-    def __init__(self, abi: Abi, address: str, method: str,
+    def __init__(self, abi: Abi, address: str, method: str, pk: Optional[int],
                  args: Any = None, kwargs: Any = None, block: str = 'latest'):
-        self.pk = next(counter)
+        self.pk = pk or randint(0, 100)
         self.abi = abi
         self.address = address
         self.method = method

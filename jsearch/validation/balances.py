@@ -1,6 +1,7 @@
 import logging
 from contextlib import suppress
 from functools import partial
+from itertools import count
 
 import asyncpg
 from web3 import Web3
@@ -12,6 +13,9 @@ from jsearch.typing import Token
 from jsearch.utils import split
 
 logger = logging.getLogger(__name__)
+
+QUERY_SIZE = 1000
+BATCH_REQUEST_SIZE = 50
 
 
 def apply_decimals(value, decimals):
@@ -56,16 +60,26 @@ async def check_token_holder_balances(token: Token) -> None:
     token_address = Web3.toChecksumAddress(token['address'])
 
     token_call = partial(ContractCall, abi=token_abi, address=token_address)
-
     get_balance = partial(token_call, method='balanceOf')
+
     errors = 0
 
     total_records = await get_total_holders_count(pool=db_pool, token_address=token['address'])
-    for offset in range(0, total_records, 1000):
-        holders = await storage.get_tokens_holders(address=token['address'], offset=offset, limit=1000, order='asc')
+    for offset in range(0, total_records, QUERY_SIZE):
+        holders = await storage.get_tokens_holders(
+            address=token['address'],
+            offset=offset,
+            limit=QUERY_SIZE,
+            order='asc'
+        )
         holders = [holder.to_dict() for holder in holders]
-        for chunk in split(holders, size=50):
-            calls = [get_balance(args=[Web3.toChecksumAddress(item['accountAddress'])]) for item in chunk]
+
+        for chunk in split(holders, size=BATCH_REQUEST_SIZE):
+            counter = count()
+
+            accounts = [item['accountAddress'] for item in chunk]
+            calls = [get_balance(pk=next(counter), args=[account]) for account in accounts]
+
             balances = eth_call_batch(calls=calls)
 
             for original_balance, item in zip(balances, chunk):
