@@ -20,7 +20,7 @@ def apply_decimals(value, decimals):
 
 
 async def get_total_holders_count(pool, token_address: str) -> int:
-    query = "SELECT count(balance) as count FROM token_holders WHERE token_address = $1"
+    query = "SELECT count(*) as count FROM token_holders WHERE token_address = $1"
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow(query, token_address)
