@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Set, Union
+from typing import List, Set, Union
 
 import backoff
 import requests
