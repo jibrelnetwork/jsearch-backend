@@ -77,7 +77,7 @@ async def check_token_holder_balances(token: Token) -> None:
         for chunk in split(holders, size=BATCH_REQUEST_SIZE):
             counter = count()
 
-            accounts = [item['accountAddress'] for item in chunk]
+            accounts = [Web3.toChecksumAddress(item['accountAddress']) for item in chunk]
             calls = [get_balance(pk=next(counter), args=[account]) for account in accounts]
 
             balances = eth_call_batch(calls=calls)
