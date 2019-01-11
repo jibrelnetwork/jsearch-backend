@@ -8,10 +8,10 @@ from jsearch import settings
 from jsearch.common.contracts import ERC20_ABI
 from jsearch.common.contracts import NULL_ADDRESS
 from jsearch.common.database import MainDBSync
-from jsearch.common.integrations.contracts import get_contract
+from jsearch.common.integrations.contracts import get_contracts
 from jsearch.common.processing.logs import EventTypes, TRANSFER_EVENT_INPUT_SIZE
 from jsearch.common.rpc import ContractCall, eth_call_batch
-from jsearch.typing import Log, EventArgs, Abi
+from jsearch.typing import Log, EventArgs, Abi, Contract
 from jsearch.utils import suppress_exception
 
 logger = logging.getLogger(__name__)
@@ -152,10 +152,8 @@ def get_transfer_details_from_erc20_event_args(
 
 
 @suppress_exception
-def process_log_transfer(log: Log) -> Tuple[Log, Abi]:
+def process_log_transfer(log: Log, contract: Optional[Contract]) -> Tuple[Log, Abi]:
     event_args = log['event_args']
-    contract = get_contract(address=log['address'])
-
     abi = None
     if event_args and contract:
         abi: Abi = contract['abi']
@@ -202,7 +200,8 @@ def process_log_operations_bulk(
         logs: List[Log],
         batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
 ) -> None:
-    logs = [process_log_transfer(log) for log in logs]
+    contracts = get_contracts(addresses={log['address'] for log in logs})
+    logs = [process_log_transfer(log, contracts.get(log['address'])) for log in logs]
 
     updates = set()
     for log, abi in logs:
