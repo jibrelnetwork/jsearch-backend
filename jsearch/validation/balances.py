@@ -7,7 +7,7 @@ from web3 import Web3
 
 from jsearch import settings
 from jsearch.api.storage import Storage
-from jsearch.common.rpc import ContractCall, eth_call, eth_call_batch
+from jsearch.common.rpc import ContractCall, eth_call_batch
 from jsearch.typing import Token
 from jsearch.utils import split
 
@@ -74,9 +74,9 @@ async def check_token_holder_balances(token: Token) -> None:
 
                 if original_balance != balance:
                     errors += 1
-                    logging.error(f"{address}: {original_balance} != {balance}")
+                    print(f"{address}: {original_balance} != {balance}")
                 else:
-                    logging.debug(f"{address}: {original_balance} == {balance}")
+                    logging.debug(f"%s: %s == %s", address, original_balance, balance)
 
         if offset:
             print(f"[PROGRESS] {round(offset / total_records * 100, 2)}")
