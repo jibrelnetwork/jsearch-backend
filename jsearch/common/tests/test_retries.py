@@ -20,25 +20,17 @@ def connect_timeout_on_geth_node():
 
 
 @pytest.mark.usefixtures('connect_timeout_on_geth_node')
-def test_retries_when_fetch_decimals_from_eth_node(mocker, ether_address_generator):
+def test_retries_when_fetch_decimals_from_eth_node(mocker, main_db_data):
     # given
-    from jsearch.common.contracts import ERC20_ABI
-    from jsearch.common.processing.erc20_transfer_logs import BalanceUpdate, fetch_erc20_token_decimal_bulk
+    from jsearch.common.processing.erc20_transfer_logs import fetch_erc20_token_decimal_bulk
 
     mocker.patch('time.sleep')
     post_mock = mocker.patch('requests.post', side_effect=requests.post)
 
-    update = BalanceUpdate(
-        account_address=next(ether_address_generator),
-        token_address=next(ether_address_generator),
-        block=random.randint(1, 6800000),
-        abi=ERC20_ABI
-    )
-    updates = [update]
-
+    contracts = main_db_data['contracts']
     # when
     with pytest.raises(requests.exceptions.ConnectTimeout):
-        fetch_erc20_token_decimal_bulk(updates=updates)
+        fetch_erc20_token_decimal_bulk(contracts)
 
     # then
     assert post_mock.call_count == 10
@@ -58,7 +50,8 @@ def test_retries_when_fetch_balances_from_eth_node(mocker, ether_address_generat
         account_address=next(ether_address_generator),
         token_address=next(ether_address_generator),
         block=random.randint(1, 6800000),
-        abi=ERC20_ABI
+        abi=ERC20_ABI,
+        decimals=2,
     )
     updates = [update]
 

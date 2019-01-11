@@ -72,7 +72,7 @@ class BalanceUpdate:
 
     def apply(self, db):
         if self.is_valid:
-            db.update_token_holder_balance(self.token_address, self.account_address, self.value)
+            db.update_token_holder_balance(self.token_address, self.account_address, self.value, self.decimals)
             logger.info(
                 'Token balance updated for token %s account %s block %s value %s',
                 self.token_address, self.account_address, self.block, self.value
@@ -220,7 +220,7 @@ def process_log_operations_bulk(
     logs = [process_log_transfer(log, contracts.get(log['address'])) for log in logs]
 
     updates = set()
-    for log, abi in logs:
+    for log in logs:
         if log:
             contract = contracts.get(log['address'])
             if contract:
@@ -228,6 +228,7 @@ def process_log_operations_bulk(
                 decimals = contract.get('decimals')
                 updates |= logs_to_balance_updates(log, abi, decimals)
 
+    updates = list(updates)
     for chunk in split(updates, batch_size):
         chunk = fetch_erc20_balance_bulk(chunk)
 
