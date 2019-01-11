@@ -6,7 +6,7 @@ import requests
 from cachetools import TTLCache, cached
 
 from jsearch.settings import JSEARCH_CONTRACTS_API
-from jsearch.typing import Contract
+from jsearch.typing import Contract, Contracts
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +29,13 @@ def get_contract(address: str) -> Contract:
 
 
 @backoff.on_exception(backoff.fibo, max_tries=10, exception=requests.RequestException)
-def get_contracts(addresses: Union[List[str], Set[str]]) -> Dict[str, Contract]:
+def get_contracts(addresses: Union[List[str], Set[str]]) -> Contracts:
     addresses_str = ','.join(addresses)
     url = f"{JSEARCH_CONTRACTS_API}/v1/contracts/getmany?addresses={addresses_str}"
 
     response = requests.get(url)
     if response.status_code == 200:
         logger.debug('Got Contract %s: count %s', response.status_code, len(addresses))
-        data = response.json()
-        return {contract['address']: contract for contract in data}
+        return response.json()
 
     logger.debug('Miss Contract %s: count %s', response.status_code, len(addresses))

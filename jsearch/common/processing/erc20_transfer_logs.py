@@ -12,8 +12,8 @@ from jsearch.common.database import MainDBSync
 from jsearch.common.integrations.contracts import get_contracts
 from jsearch.common.processing.logs import EventTypes, TRANSFER_EVENT_INPUT_SIZE
 from jsearch.common.rpc import ContractCall, eth_call_batch
-from jsearch.typing import Log, EventArgs, Abi, Contract
-from jsearch.utils import suppress_exception
+from jsearch.typing import Log, EventArgs, Abi, Contract, Contracts, Logs
+from jsearch.utils import suppress_exception, split
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +35,13 @@ class BalanceUpdate:
         'value'
     )
 
-    def __init__(self, token_address, account_address, block, abi):
+    def __init__(self, token_address, account_address, block, abi, decimals):
         self.token_address = token_address
         self.account_address = account_address
         self.block = block
         self.abi = abi
         self.value = None
+        self.decimals = decimals
 
     def __hash__(self):
         return hash(self.key)
@@ -83,21 +84,23 @@ class BalanceUpdate:
             )
 
 
-def fetch_erc20_token_decimal_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
+def fetch_erc20_token_decimal_bulk(contracts: Contracts) -> Contracts:
     calls = []
     counter = count()
-    for update in updates:
+    for contract in contracts:
         call = ContractCall(
             pk=next(counter),
-            abi=update.abi,
-            address=update.token_as_checksum,
+            abi=contract['abi'],
+            address=contract['address'],
             method='decimals'
         )
         calls.append(call)
+
     calls_results = eth_call_batch(calls=calls)
-    for result, update in zip(calls_results, updates):
-        update.decimals = result
-    return updates
+    for result, contract in zip(calls_results, contracts):
+        contract['decimals'] = result
+
+    return contracts
 
 
 def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
@@ -164,11 +167,9 @@ def get_transfer_details_from_erc20_event_args(
 
 
 @suppress_exception
-def process_log_transfer(log: Log, contract: Optional[Contract]) -> Tuple[Log, Abi]:
+def process_log_transfer(log: Log, contract: Optional[Contract]) -> Log:
     event_args = log['event_args']
-    abi = None
     if event_args and contract:
-        abi: Abi = contract['abi']
         token_decimals = contract['token_decimals']
 
         if token_decimals is None:
@@ -184,10 +185,10 @@ def process_log_transfer(log: Log, contract: Optional[Contract]) -> Tuple[Log, A
                 'token_amount': token_amount,
             })
     log['is_transfer_processed'] = True
-    return log, abi
+    return log
 
 
-def logs_to_balance_updates(log: Log, abi: Abi) -> Set[BalanceUpdate]:
+def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpdate]:
     updates = set()
     if log.get('token_transfer_to'):
         to_address = log['token_transfer_to']
@@ -197,11 +198,11 @@ def logs_to_balance_updates(log: Log, abi: Abi) -> Set[BalanceUpdate]:
         token_address = log['address']
 
         if to_address != NULL_ADDRESS:
-            update = BalanceUpdate(token_address=token_address, account_address=to_address, block=block, abi=abi)
+            update = BalanceUpdate(token_address, to_address, block, abi, decimals)
             updates.add(update)
 
         if from_address != NULL_ADDRESS:
-            update = BalanceUpdate(token_address=token_address, account_address=from_address, block=block, abi=abi)
+            update = BalanceUpdate(token_address, from_address, block, abi, decimals)
             updates.add(update)
 
     return updates
@@ -211,21 +212,26 @@ def process_log_operations_bulk(
         db: MainDBSync,
         logs: List[Log],
         batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
-) -> None:
+) -> Logs:
     contracts = get_contracts(addresses={log['address'] for log in logs})
+    contracts = fetch_erc20_token_decimal_bulk(contracts)
+    contracts = {contract['address']: contract for contract in contracts}
+
     logs = [process_log_transfer(log, contracts.get(log['address'])) for log in logs]
 
     updates = set()
     for log, abi in logs:
         if log:
-            updates |= logs_to_balance_updates(log, abi)
+            contract = contracts.get(log['address'])
+            if contract:
+                abi = contract.get('abi')
+                decimals = contract.get('decimals')
+                updates |= logs_to_balance_updates(log, abi, decimals)
 
-    updates = list(updates)
-    for offset in range(0, len(updates), batch_size):
-        chunk = updates[offset:offset + batch_size]
-
-        chunk = fetch_erc20_token_decimal_bulk(chunk)
+    for chunk in split(updates, batch_size):
         chunk = fetch_erc20_balance_bulk(chunk)
 
         for update in chunk:
             update.apply(db)
+
+    return logs

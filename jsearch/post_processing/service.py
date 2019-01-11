@@ -32,7 +32,7 @@ def log_event_processing_worker(logs: List[Log], dsn: str = settings.JSEARCH_MAI
 @suppress_exception
 def log_operations_processing_worker(logs: List[Log], dsn: str = settings.JSEARCH_MAIN_DB):
     with MainDBSync(connection_string=dsn) as db:
-        process_log_operations_bulk(db, logs)
+        logs = process_log_operations_bulk(db, logs)
         for log in logs:
             db.update_log(record=log)
 
