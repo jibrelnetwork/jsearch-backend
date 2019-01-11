@@ -50,7 +50,7 @@ class BalanceUpdate:
         return self.key == other.key
 
     def __repr__(self):
-        return f"<Balance update> {self.token_address}, {self.account_address} -> {self.balance}"
+        return f"<Balance update> {self.token_address}, {self.account_address} -> {self.value}"
 
     @property
     def token_as_checksum(self):
@@ -62,18 +62,7 @@ class BalanceUpdate:
 
     @property
     def is_valid(self):
-        return self.decimals is not None and self.value is not None and self.balance is not None
-
-    @property
-    def balance(self):
-        if self.value is not None:
-            try:
-                return self.value / 10 ** self.decimals
-            except Exception:
-                logging.warning(
-                    '[JSON RPC] Invalid balance %s for token %s for address %s',
-                    self.balance, self.token_address, self.account_address,
-                )
+        return isinstance(self.value, int)
 
     @property
     def key(self):
@@ -84,7 +73,7 @@ class BalanceUpdate:
             db.update_token_holder_balance(self.token_address, self.account_address, self.value)
             logger.info(
                 'Token balance updated for token %s account %s block %s value %s',
-                self.token_address, self.account_address, self.block, self.balance
+                self.token_address, self.account_address, self.block, self.value
             )
         else:
             logger.error(
