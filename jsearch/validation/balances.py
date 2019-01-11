@@ -80,7 +80,8 @@ async def check_token_holder_balances(token: Token) -> None:
             accounts = [Web3.toChecksumAddress(item['accountAddress']) for item in chunk]
             calls = [get_balance(pk=next(counter), args=[account]) for account in accounts]
 
-            balances = eth_call_batch(calls=calls)
+            results = eth_call_batch(calls=calls)
+            balances = [results.get(call.pk) for call in calls]
 
             for original_balance, item in zip(balances, chunk):
                 address = item['accountAddress']

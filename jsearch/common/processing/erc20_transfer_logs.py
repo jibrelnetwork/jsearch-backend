@@ -92,13 +92,14 @@ def fetch_erc20_token_decimal_bulk(contracts: Contracts) -> Contracts:
             pk=next(counter),
             abi=contract['abi'],
             address=contract['address'],
-            method='decimals'
+            method='decimals',
+            silent=True
         )
         calls.append(call)
 
     calls_results = eth_call_batch(calls=calls)
-    for result, contract in zip(calls_results, contracts):
-        contract['decimals'] = result
+    for call, contract in zip(calls, contracts):
+        contract['decimals'] = calls_results.get(call.pk)
 
     return contracts
 
@@ -112,12 +113,13 @@ def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate
             abi=update.abi,
             address=update.token_as_checksum,
             method='balanceOf',
-            args=[update.account_as_checksum]
+            args=[update.account_as_checksum],
+            silent=True
         )
         calls.append(call)
     calls_results = eth_call_batch(calls=calls)
-    for result, update in zip(calls_results, updates):
-        update.value = result
+    for call, update in zip(calls, updates):
+        update.value = calls_results.get(call.pk)
     return updates
 
 

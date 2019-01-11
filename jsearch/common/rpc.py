@@ -1,12 +1,12 @@
 import logging
 from functools import partial
-from itertools import count
 from pprint import pformat
 from random import randint
 from typing import Any, Dict, List, Optional
 
 import backoff
 import requests
+import web3
 from aiohttp import request
 from eth_abi import decode_abi
 from eth_abi import encode_abi as eth_abi_encode_abi
@@ -96,41 +96,48 @@ class ContractCall:
         'args',
         'kwargs',
         'block',
+        'silent'
     )
 
-    def __init__(self, abi: Abi, address: str, method: str, pk: Optional[int],
-                 args: Any = None, kwargs: Any = None, block: str = 'latest'):
-        self.pk = pk or randint(0, 100)
+    def __init__(self, abi: Abi, address: str, method: str, pk: Optional[int] = None,
+                 args: Any = None, kwargs: Any = None, block: str = 'latest', silent: bool = False):
+        self.pk = pk is None or randint(0, 100)
         self.abi = abi
         self.address = address
         self.method = method
         self.args = args
         self.kwargs = kwargs
         self.block = block
+        self.silent = silent
 
     def encode(self) -> Dict[str, Any]:
-        fn_abi, fn_selector, fn_arguments = get_function_info(
-            abi=self.abi,
-            fn_name=self.method,
-            args=self.args,
-            kwargs=self.kwargs
-        )
-        data = HexBytes(fn_selector)
-        if fn_arguments:
-            data += encode_abi(abi=fn_abi, arguments=fn_arguments)
-        data = to_hex(data)
-        return {
-            "jsonrpc": "2.0",
-            "method": 'eth_call',
-            "params": [
-                {
-                    "to": self.address,
-                    "data": data
-                },
-                self.block
-            ],
-            "id": self.pk,
-        }
+        try:
+            fn_abi, fn_selector, fn_arguments = get_function_info(
+                abi=self.abi,
+                fn_name=self.method,
+                args=self.args,
+                kwargs=self.kwargs
+            )
+            data = HexBytes(fn_selector)
+            if fn_arguments:
+                data += encode_abi(abi=fn_abi, arguments=fn_arguments)
+            data = to_hex(data)
+            return {
+                "jsonrpc": "2.0",
+                "method": 'eth_call',
+                "params": [
+                    {
+                        "to": self.address,
+                        "data": data
+                    },
+                    self.block
+                ],
+                "id": self.pk,
+            }
+        except web3.exceptions.ValidationError:
+            if not self.silent:
+                raise
+            logging.error('[JSON RPC] Contract %s does not contain method %s', self.address, self.method)
 
     def decode(self, value) -> Any:
         try:
@@ -143,6 +150,10 @@ class ContractCall:
             )
         except BadFunctionCallOutput:
             logging.error('[JSON RPC] Contract %s was destroyed and cannot by read at last block', self.address)
+        except web3.exceptions.ValidationError:
+            if not self.silent:
+                raise
+            logging.error('[JSON RPC] Contract %s does not contain method %s', self.address, self.method)
 
 
 ContractCalls = List[ContractCall]
@@ -169,8 +180,11 @@ def eth_call(call: ContractCall) -> Any:
     return call.decode(results[call.pk])
 
 
-def eth_call_batch(calls: ContractCalls) -> List[Any]:
+def eth_call_batch(calls: ContractCalls) -> Dict[str, Any]:
     data = [call.encode() for call in calls]
+    data = [item for item in data if item]
+
     response = eth_call_batch_request(data)
     results = {result["id"]: HexBytes(result["result"]) for result in response}
-    return [call.decode(results[call.pk]) for call in calls]
+
+    return {call.pk: call.decode(results[call.pk]) for call in calls if call.pk in results}
