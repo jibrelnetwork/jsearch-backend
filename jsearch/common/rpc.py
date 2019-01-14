@@ -101,7 +101,7 @@ class ContractCall:
 
     def __init__(self, abi: Abi, address: str, method: str, pk: Optional[int] = None,
                  args: Any = None, kwargs: Any = None, block: str = 'latest', silent: bool = False):
-        self.pk = pk is None or randint(0, 100)
+        self.pk = pk if pk is not None else randint(1, 100)
         self.abi = abi
         self.address = address
         self.method = method
