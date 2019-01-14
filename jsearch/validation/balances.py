@@ -107,7 +107,7 @@ async def check_token_holder_balances(token: Token, rewrite_invalide_values=Fals
                     if rewrite_invalide_values:
                         update = update_token_holder_balance(
                             pool=db_pool,
-                            token_address=token_address_checksum,
+                            token_address=token_address,
                             account_address=address,
                             balance=original_balance,
                             decimals=token_decimals
