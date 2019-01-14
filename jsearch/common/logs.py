@@ -8,7 +8,7 @@ from jsearch import settings
 sentry_sdk.init(settings.RAVEN_DSN)
 
 
-def configure(loglevel):
+def configure(log_level):
     config = {
         'version': 1,
         'disable_existing_loggers': False,
@@ -27,20 +27,21 @@ def configure(loglevel):
         },
         'loggers': {
             'post_processing': {
-                'level': loglevel,
+                'level': log_level,
                 'handlers': ['console'],
             },
             'syncer': {
-                'level': loglevel,
+                'level': log_level,
                 'handlers': ['console'],
             },
             '': {
-                'level': loglevel,
+                'level': log_level,
                 'handlers': ['console']
             }
         }
     }
-    if loglevel == 'DEBUG':
+    if log_level == 'DEBUG':
         config['loggers']['sqlalchemy.engine'] = {'level': logging.INFO, 'handlers': ['console']}
-
+    from pprint import pprint
+    pprint(config)
     logging.config.dictConfig(config)
