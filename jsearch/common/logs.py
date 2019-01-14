@@ -11,7 +11,7 @@ sentry_sdk.init(settings.RAVEN_DSN)
 def configure(log_level):
     config = {
         'version': 1,
-        'disable_existing_loggers': True,
+        'disable_existing_loggers': False,
         'formatters': {
             'default': {
                 'class': 'logging.Formatter',
@@ -41,7 +41,7 @@ def configure(log_level):
         }
     }
     if log_level == 'DEBUG':
-        config['loggers']['sqlalchemy.engine'] = {'level': logging.INFO, 'handlers': ['console']}
+        config['loggers']['sqlalchemy.engine'] = {'level': 'DEBUG', 'handlers': ['console']}
     from pprint import pprint
     pprint(config)
     logging.config.dictConfig(config)
