@@ -30,6 +30,10 @@ def configure(log_level):
                 'level': log_level,
                 'handlers': ['console'],
             },
+            'sqlalchemy.engine': {
+                'level': log_level,
+                'handlers': ['console']
+            },
             'syncer': {
                 'level': log_level,
                 'handlers': ['console'],
@@ -40,8 +44,8 @@ def configure(log_level):
             }
         }
     }
-    if log_level == 'DEBUG':
-        config['loggers']['sqlalchemy.engine'] = {'level': logging.INFO, 'handlers': ['console']}
+    # if log_level == 'DEBUG':
+    #     config['loggers']['sqlalchemy.engine'] = {'level': logging.INFO, 'handlers': ['console']}
     from pprint import pprint
     pprint(config)
     logging.config.dictConfig(config)
