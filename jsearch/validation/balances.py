@@ -64,9 +64,10 @@ async def check_token_holder_balances(token: Token, rewrite_invalide_values=Fals
     storage = Storage(pool=db_pool)
 
     token_abi = token['abi']
-    token_address = Web3.toChecksumAddress(token['address'])
+    token_address = token['address']
+    token_address_checksum = Web3.toChecksumAddress(token_address)
 
-    token_call = partial(ContractCall, abi=token_abi, address=token_address)
+    token_call = partial(ContractCall, abi=token_abi, address=token_address_checksum)
 
     get_balance = partial(token_call, method='balanceOf')
     get_decimals = partial(token_call, method='decimals')
@@ -95,17 +96,18 @@ async def check_token_holder_balances(token: Token, rewrite_invalide_values=Fals
             balances = [results.get(call.pk) for call in calls]
 
             updates = list()
-            for original_balance, item in zip(balances, chunk):
-                address = item['accountAddress']
-                balance = item['balance']
+            for original_balance, token_holder in zip(balances, chunk):
+                address = token_holder['accountAddress']
+                balance = token_holder['balance']
 
                 if original_balance != balance:
-                    print(f"{address}: {original_balance} != {balance}")
                     errors += 1
+                    print(f"{address}: {original_balance} != {balance}")
+
                     if rewrite_invalide_values:
                         update = update_token_holder_balance(
                             pool=db_pool,
-                            token_address=token_address,
+                            token_address=token_address_checksum,
                             account_address=address,
                             balance=balance,
                             decimals=token_decimals
