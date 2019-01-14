@@ -215,7 +215,7 @@ def process_log_operations_bulk(
         logs: List[Log],
         batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
 ) -> Logs:
-    contracts = get_contracts(addresses={log['address'] for log in logs})
+    contracts = get_contracts(addresses={log['address'] for log in logs}) or []
     contracts = chain(*(fetch_erc20_token_decimal_bulk(chunk) for chunk in split(contracts, 50)))
     contracts = {contract['address']: contract for contract in contracts}
 
