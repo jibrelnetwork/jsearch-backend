@@ -40,10 +40,4 @@ def configure(log_level):
             }
         }
     }
-    if log_level == 'DEBUG':
-        config['loggers'].update({
-            'sqlalchemy.engine': {'level': 'DEBUG', 'handlers': ['console']},
-            'aiopg': {'level': 'DEBUG', 'handlers': ['console']}
-        })
-
-        logging.config.dictConfig(config)
+    logging.config.dictConfig(config)
