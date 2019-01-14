@@ -102,14 +102,16 @@ async def check_token_holder_balances(token: Token, rewrite_invalide_values=Fals
 
                 if original_balance != balance:
                     print(f"{address}: {original_balance} != {balance}")
-                    update = update_token_holder_balance(
-                        pool=db_pool,
-                        token_address=token_address,
-                        account_address=address,
-                        balance=balance,
-                        decimals=token_decimals
-                    )
-                    updates.append(update)
+                    errors += 1
+                    if rewrite_invalide_values:
+                        update = update_token_holder_balance(
+                            pool=db_pool,
+                            token_address=token_address,
+                            account_address=address,
+                            balance=balance,
+                            decimals=token_decimals
+                        )
+                        updates.append(update)
                 else:
                     logging.debug(f"%s: %s == %s", address, original_balance, balance)
 
