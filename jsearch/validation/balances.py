@@ -115,7 +115,7 @@ async def check_token_holder_balances(token: Token, rewrite_invalide_values=Fals
                     logging.debug(f"%s: %s == %s", address, original_balance, balance)
 
             if rewrite_invalide_values:
-                asyncio.gather(*updates)
+                await asyncio.gather(*updates)
 
         if offset:
             print(f"[PROGRESS] {round(offset / total_records * 100, 2)}")
