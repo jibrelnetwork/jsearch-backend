@@ -10,14 +10,13 @@ from jsearch.validation.balances import check_token_holder_balances, show_statis
 
 logger = logging.getLogger(__name__)
 
-VALIDATE_BALANCES = 'balances'
-
 
 @click.command()
 @click.argument('token')
 @click.option('--check-balances', is_flag=True)
+@click.option('--rewrite', is_flag=True)
 @click.option('--log-level', default='INFO', help="Log level")
-def check(token, check_balances, log_level):
+def check(token, check_balances, rewrite, log_level):
     logs.configure(log_level)
     loop = asyncio.get_event_loop()
 
@@ -25,7 +24,7 @@ def check(token, check_balances, log_level):
     if token:
         loop.run_until_complete(show_statistics(token))
         if check_balances:
-            loop.run_until_complete(check_token_holder_balances(token))
+            loop.run_until_complete(check_token_holder_balances(token=token, rewrite_invalide_values=rewrite))
     else:
         logger.info('Token was not found')
 
