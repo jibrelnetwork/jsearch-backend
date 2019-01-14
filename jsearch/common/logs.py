@@ -40,8 +40,6 @@ def configure(log_level):
             }
         }
     }
-    if log_level == 'DEBUG':
-        config['loggers']['sqlalchemy.engine'] = {'level': 'DEBUG', 'handlers': ['console']}
-    from pprint import pprint
-    pprint(config)
     logging.config.dictConfig(config)
+    if log_level == 'DEBUG':
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
