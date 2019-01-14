@@ -1,5 +1,5 @@
 import logging
-from itertools import count
+from itertools import count, chain
 from typing import List, Optional
 from typing import Tuple, Dict, Any, Set
 
@@ -216,7 +216,7 @@ def process_log_operations_bulk(
         batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
 ) -> Logs:
     contracts = get_contracts(addresses={log['address'] for log in logs})
-    contracts = fetch_erc20_token_decimal_bulk(contracts)
+    contracts = chain(*(fetch_erc20_token_decimal_bulk(chunk) for chunk in split(contracts, 50)))
     contracts = {contract['address']: contract for contract in contracts}
 
     logs = [process_log_transfer(log, contracts.get(log['address'])) for log in logs]
