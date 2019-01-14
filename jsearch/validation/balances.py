@@ -46,7 +46,7 @@ async def update_token_holder_balance(pool: Pool, token_address: str,
         WHERE account_address = $1 and token_address = $2;
     """
     async with pool.acquire() as conn:
-            await conn.execute(query, account_address, token_address, balance, decimals)
+        await conn.execute(query, account_address, token_address, balance, decimals)
 
 
 async def show_statistics(token):

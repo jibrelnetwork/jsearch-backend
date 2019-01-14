@@ -9,7 +9,7 @@ sentry_sdk.init(settings.RAVEN_DSN)
 
 
 def configure(loglevel):
-    logging.config.dictConfig({
+    config = {
         'version': 1,
         'disable_existing_loggers': False,
         'formatters': {
@@ -39,4 +39,8 @@ def configure(loglevel):
                 'handlers': ['console']
             }
         }
-    })
+    }
+    if loglevel == 'DEBUG':
+        config['loggers']['sqlalchemy.engine'] = {'level': logging.INFO, 'handlers': ['console']}
+
+    logging.config.dictConfig(config)
