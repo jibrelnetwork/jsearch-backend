@@ -24,7 +24,7 @@ QUERY_SIZE = 1000
 BATCH_REQUEST_SIZE = 50
 
 
-async def show_statistics(token: TokenProxy):
+async def show_statistics(token: TokenProxy) -> None:
     db_pool = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
 
     holders_count = await get_total_positive_holders_count(pool=db_pool, token_address=token.address)
@@ -39,6 +39,19 @@ async def show_statistics(token: TokenProxy):
     print(f"[STATISTICS] Total token transactions {txs_count}")
 
     print(f"[STATISTICS] Balances sum {balances_sum}. Token total supply {token.total_supply}")
+
+
+async def show_top_holders(token: TokenProxy) -> None:
+    db_pool = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
+    storage = Storage(pool=db_pool)
+
+    holders = await storage.get_tokens_holders(address=token.address, offset=0, limit=10, order='desc')
+    holders = (holder.to_dict() for holder in holders)
+    for holder in holders:
+        address = holder["accountAddress"]
+        balance = holder["balance"]
+        decimals = holder["decimals"]
+        print(f"[{address}] {balance} {decimals}")
 
 
 async def check_token_holder_balances(token: TokenProxy, rewrite_invalide_values=False) -> None:
