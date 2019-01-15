@@ -46,7 +46,7 @@ async def update_token_holder_balance(pool: Pool,
 async def get_balances_sum(pool: Pool, token_address: str) -> int:
     query = """
         SELECT sum(balance) as totalSupply
-        FROM logs
+        FROM token_holders 
         WHERE token_address = $1
     """
     async with pool.acquire() as conn:
