@@ -50,5 +50,5 @@ async def get_balances_sum(pool: Pool, token_address: str) -> int:
         WHERE token_address = $1
     """
     async with pool.acquire() as conn:
-        row = await conn.execute(query, token_address)
+        row = await conn.fetchrow(query, token_address)
     return row['total_supply']
