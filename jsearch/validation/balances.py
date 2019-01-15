@@ -4,7 +4,6 @@ from functools import partial
 from itertools import count
 
 import asyncpg
-from asyncpg.pool import Pool
 from web3 import Web3
 
 from jsearch import settings
@@ -12,41 +11,16 @@ from jsearch.api.storage import Storage
 from jsearch.common.rpc import ContractCall, eth_call_batch, eth_call
 from jsearch.typing import Token
 from jsearch.utils import split
+from jsearch.validation.queries import (
+    get_total_transactions_count,
+    get_total_holders_count,
+    update_token_holder_balance
+)
 
 logger = logging.getLogger(__name__)
 
 QUERY_SIZE = 1000
 BATCH_REQUEST_SIZE = 50
-
-
-async def get_total_holders_count(pool, token_address: str) -> int:
-    query = "SELECT count(*) as count FROM token_holders WHERE token_address = $1"
-
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(query, token_address)
-    return row['count']
-
-
-async def get_total_transactions_count(pool, token_address: str) -> int:
-    query = f"""
-        SELECT count(*)
-        FROM logs
-        WHERE address = $1 AND is_token_transfer = true
-    """
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(query, token_address)
-    return row['count']
-
-
-async def update_token_holder_balance(pool: Pool, token_address: str,
-                                      account_address: str, balance: int, decimals: int) -> None:
-    query = f"""
-        UPDATE token_holders 
-        SET balance = $3, decimals = $4
-        WHERE account_address = $1 and token_address = $2;
-    """
-    async with pool.acquire() as conn:
-        await conn.execute(query, account_address, token_address, balance, decimals)
 
 
 async def show_statistics(token):
