@@ -56,7 +56,7 @@ async def check_token_holder_balances(token: TokenProxy, rewrite_invalide_values
             counter = count()
 
             accounts = [Web3.toChecksumAddress(item['accountAddress']) for item in chunk]
-            calls = [token.get_balance(pk=next(counter), args=[account]) for account in accounts]
+            calls = [token.get_balance_call(pk=next(counter), args=[account]) for account in accounts]
 
             results = eth_call_batch(calls=calls)
             balances = [results.get(call.pk) for call in calls]

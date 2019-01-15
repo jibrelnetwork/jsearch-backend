@@ -4,7 +4,7 @@ from typing import List
 from funcy import cached_property
 from web3 import Web3
 
-from jsearch.common.rpc import ContractCall
+from jsearch.common.rpc import ContractCall, eth_call
 
 
 class TokenProxy:
@@ -18,11 +18,11 @@ class TokenProxy:
 
     @cached_property
     def decimals(self):
-        return self.call(method='decimals')
+        return eth_call(self.call(method='decimals'))
 
     @cached_property
     def total_supply(self):
-        return self.call(method='totalSupply')
+        return eth_call(self.call(method='totalSupply'))
 
-    def get_balance(self, pk: int, args: List[str]):
+    def get_balance_call(self, pk: int, args: List[str]):
         return self.call(method='balanceOf', pk=pk, args=args)
