@@ -1,11 +1,12 @@
 import logging
+from typing import List, Set, Union
 
 import backoff
 import requests
 from cachetools import TTLCache, cached
 
 from jsearch.settings import JSEARCH_CONTRACTS_API
-from jsearch.typing import Contract
+from jsearch.typing import Contract, Contracts
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,6 @@ logger = logging.getLogger(__name__)
 def get_contract(address: str) -> Contract:
     """
     Get contract from internal service
-    # Todo: think about retries.
 
     Args:
         address: contract address in blockchain
@@ -26,3 +26,16 @@ def get_contract(address: str) -> Contract:
         return response.json()
 
     logger.debug('Miss Contract %s: %s', address, response.status_code)
+
+
+@backoff.on_exception(backoff.fibo, max_tries=10, exception=requests.RequestException)
+def get_contracts(addresses: Union[List[str], Set[str]]) -> Contracts:
+    addresses_str = ','.join(addresses)
+    url = f"{JSEARCH_CONTRACTS_API}/v1/contracts/getmany?addresses={addresses_str}"
+
+    response = requests.get(url)
+    if response.status_code == 200:
+        logger.debug('Got Contract %s: count %s', response.status_code, len(addresses))
+        return response.json()
+
+    logger.debug('Miss Contract %s: count %s', response.status_code, len(addresses))

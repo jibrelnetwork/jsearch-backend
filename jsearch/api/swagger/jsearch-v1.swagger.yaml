@@ -848,8 +848,10 @@ definitions:
         type: string
         format: address
       balance:
-        type: float
-      
+        type: integer
+      decimals:
+        type: integer
+
 schemes:
  - http
 
