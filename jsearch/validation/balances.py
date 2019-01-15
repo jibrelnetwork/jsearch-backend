@@ -63,7 +63,7 @@ async def check_token_holder_balances(token: TokenProxy, rewrite_invalide_values
     errors = 0
 
     total_records = await get_total_holders_count(pool=db_pool, token_address=token.address)
-    print(f"Address {' ' * 36 }| Actual value { ' ' * 17 } | Value in database ")
+    print(f"Address{' ' * 36 }| Actual value { ' ' * 17 } | Value in database ")
     for offset in range(0, total_records, QUERY_SIZE):
         holders = await storage.get_tokens_holders(address=token.address, offset=offset, limit=QUERY_SIZE, order='asc')
         holders = [holder.to_dict() for holder in holders]
