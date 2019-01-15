@@ -10,11 +10,14 @@ setup(
     description='JSearch backend services',
     packages=[
         'jsearch',
+        'jsearch.api',
+        'jsearch.api.models',
         'jsearch.common',
         'jsearch.common.integrations',
         'jsearch.common.processing',
         'jsearch.syncer',
         'jsearch.post_processing',
+        'jsearch.validation',
     ],
     zip_safe=False,
     platforms='any',
@@ -24,6 +27,7 @@ setup(
         'console_scripts': [
             'jsearch-syncer = jsearch.syncer.main:run',
             'jsearch-post-processing = jsearch.post_processing.main:run',
+            'jsearch-check = jsearch.validation.__main__:check',
         ]
     }
 )
