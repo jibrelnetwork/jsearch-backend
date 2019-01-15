@@ -1,4 +1,5 @@
-hexbytes
+funcy=1.11
+hexbytes=0.1.0
 aiohttp-swagger==1.0.5
 aiohttp==3.1.2
 aiopg==0.14.0

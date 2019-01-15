@@ -7,6 +7,7 @@ import click
 from jsearch.common import logs
 from jsearch.common.integrations.contracts import get_contract
 from jsearch.validation.balances import check_token_holder_balances, show_statistics
+from jsearch.validation.proxy import TokenProxy
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,8 @@ def check(token, check_balances, rewrite, log_level):
 
     token = get_contract(token)
     if token:
-        loop.run_until_complete(show_statistics(token))
+        token_proxy = TokenProxy(abi=token['abi'], address=token['address'])
+        loop.run_until_complete(show_statistics(token_proxy))
         if check_balances:
             loop.run_until_complete(check_token_holder_balances(token=token, rewrite_invalide_values=rewrite))
     else:

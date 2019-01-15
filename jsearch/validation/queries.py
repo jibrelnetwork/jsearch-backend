@@ -9,6 +9,14 @@ async def get_total_holders_count(pool: Pool, token_address: str) -> int:
     return row['count']
 
 
+async def get_total_positive_holders_count(pool: Pool, token_address: str) -> int:
+    query = "SELECT count(*) as count FROM token_holders WHERE token_address = $1 AND balance > 0"
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(query, token_address)
+    return row['count']
+
+
 async def get_total_transactions_count(pool: Pool, token_address: str) -> int:
     query = """
         SELECT count(*)
@@ -33,3 +41,14 @@ async def update_token_holder_balance(pool: Pool,
     """
     async with pool.acquire() as conn:
         await conn.execute(query, account_address, token_address, balance, decimals)
+
+
+async def get_balances_sum(pool: Pool, token_address: str) -> int:
+    query = """
+        SELECT sum(balance) as totalSupply
+        FROM logs
+        WHERE token_address = $1
+    """
+    async with pool.acquire() as conn:
+        row = await conn.execute(query, token_address)
+    return row['totalSupply']
