@@ -100,7 +100,7 @@ async def check_token_holder_balances(token: TokenProxy, rewrite_invalide_values
                 await asyncio.gather(*updates)
 
         if offset:
-            progress = offset / total_records * 100
-            print(f"[PROGRESS] {progress:2.2}")
+            progress = offset / total_records * 100.0
+            print(f"[PROGRESS] {progress:2.2f}")
 
     print(f"[STATISTICS] {total_records} total records with {errors} errors")
