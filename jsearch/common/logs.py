@@ -8,8 +8,8 @@ from jsearch import settings
 sentry_sdk.init(settings.RAVEN_DSN)
 
 
-def configure(loglevel):
-    logging.config.dictConfig({
+def configure(log_level):
+    config = {
         'version': 1,
         'disable_existing_loggers': False,
         'formatters': {
@@ -27,16 +27,17 @@ def configure(loglevel):
         },
         'loggers': {
             'post_processing': {
-                'level': loglevel,
+                'level': log_level,
                 'handlers': ['console'],
             },
             'syncer': {
-                'level': loglevel,
+                'level': log_level,
                 'handlers': ['console'],
             },
             '': {
-                'level': loglevel,
+                'level': log_level,
                 'handlers': ['console']
             }
         }
-    })
+    }
+    logging.config.dictConfig(config)

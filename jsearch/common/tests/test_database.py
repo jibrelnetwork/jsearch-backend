@@ -41,12 +41,14 @@ def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocke
         {
             'token_address': token_address,
             'account_address': main_db_data['accounts_state'][0]['address'],
-            'balance': Decimal(100)
+            'balance': Decimal(100),
+            'decimals': 2,
         },
         {
             'token_address': token_address,
             'account_address': main_db_data['accounts_state'][1]['address'],
-            'balance': Decimal(100)
+            'balance': Decimal(100),
+            'decimals': 2
         },
     ], key=sort_token_holders_key)
 

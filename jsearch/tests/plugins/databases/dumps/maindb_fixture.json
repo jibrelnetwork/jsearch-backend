@@ -811,14 +811,14 @@
   ],
   "uncles": [],
   "token_holders": [
-    {"account_address":  "a1", "token_address": "t1", "balance":  1000},
-    {"account_address":  "a1", "token_address": "t2", "balance":  2000},
-    {"account_address":  "a1", "token_address": "t3", "balance":  3000},
-    {"account_address":  "a2", "token_address": "t1", "balance":  2000},
-    {"account_address":  "a2", "token_address": "t2", "balance":  1000},
-    {"account_address":  "a3", "token_address": "t1", "balance":  3000},
-    {"account_address":  "a3", "token_address": "t3", "balance":  5000},
-    {"account_address":  "a4", "token_address": "t3", "balance":  6000},
-    {"account_address":  "a5", "token_address": "t3", "balance":  7000}
+    {"account_address":  "a1", "token_address": "t1", "decimals": 2, "balance":  1000},
+    {"account_address":  "a1", "token_address": "t2", "decimals": 2, "balance":  2000},
+    {"account_address":  "a1", "token_address": "t3", "decimals": 2,  "balance":  3000},
+    {"account_address":  "a2", "token_address": "t1", "decimals": 2,  "balance":  2000},
+    {"account_address":  "a2", "token_address": "t2", "decimals": 2,  "balance":  1000},
+    {"account_address":  "a3", "token_address": "t1", "decimals": 2,  "balance":  3000},
+    {"account_address":  "a3", "token_address": "t3", "decimals": 2,  "balance":  5000},
+    {"account_address":  "a4", "token_address": "t3", "decimals": 2,  "balance":  6000},
+    {"account_address":  "a5", "token_address": "t3", "decimals": 2,  "balance":  7000}
   ]
 }

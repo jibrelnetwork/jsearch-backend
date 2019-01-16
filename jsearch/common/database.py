@@ -1,5 +1,6 @@
 import logging
 
+import backoff
 import psycopg2
 from psycopg2.extras import DictCursor
 from sqlalchemy import and_, false, create_engine as sync_create_engine, true
@@ -63,6 +64,7 @@ class MainDBSync(DBWrapperSync):
     def disconnect(self):
         self.conn.close()
 
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
     def update_log(self, record, conn=None):
         conn = self.conn or conn
 
@@ -74,11 +76,13 @@ class MainDBSync(DBWrapperSync):
         conn.execute(query)
 
     @as_dicts
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
     def get_transaction_logs(self, tx_hash):
         q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
         return self.conn.execute(q).fetchall()
 
     @as_dicts
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
     def get_logs_to_process_events(self, limit=1000):
         unprocessed_blocks_query = select(
             columns=[logs_t.c.is_processed, logs_t.c.block_number],
@@ -139,14 +143,16 @@ class MainDBSync(DBWrapperSync):
         query = f"UPDATE logs SET is_processed = false WHERE address = '{contract_address}';"
         self.conn.execute(query)
 
-    def update_token_holder_balance(self, token_address, account_address, balance):
+    def update_token_holder_balance(self, token_address, account_address, balance, decimals):
         insert_query = insert(token_holders_t).values(
             token_address=token_address,
             account_address=account_address,
-            balance=balance)
+            balance=balance,
+            decimals=decimals
+        )
         do_update_query = insert_query.on_conflict_do_update(
             index_elements=['token_address', 'account_address'],
-            set_=dict(balance=balance)
+            set_=dict(balance=balance, decimals=decimals)
         )
         self.conn.execute(do_update_query)
 
