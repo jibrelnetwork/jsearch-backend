@@ -10,7 +10,7 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.sql import select
 
 from jsearch import settings
-from jsearch.common.tables import transactions_t, logs_t, token_holders_t
+from jsearch.common.tables import transactions_t, logs_t, token_holders_t, token_transfers_t
 from jsearch.common.utils import as_dicts
 
 MAIN_DB_POOL_SIZE = 22
@@ -74,6 +74,13 @@ class MainDBSync(DBWrapperSync):
                        logs_t.c.log_index == record['log_index'])). \
             values(**record)
         conn.execute(query)
+
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    def insert_transfers(self, records, conn=None):
+        conn = self.conn or conn
+        query = token_transfers_t.insert()
+        if records:
+            conn.execute(query, records)
 
     @as_dicts
     @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)

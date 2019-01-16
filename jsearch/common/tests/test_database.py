@@ -26,7 +26,7 @@ def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocke
     assert log['is_token_transfer'] is True
     assert log['token_transfer_to'] == main_db_data['accounts_state'][1]['address']
     assert log['token_transfer_from'] == main_db_data['accounts_state'][0]['address']
-    assert log['token_amount'] == 10
+    assert log['token_amount'] == Decimal(1000)
     assert log['event_type'] == 'Transfer'
     assert log['event_args'] == {
         'to': main_db_data['accounts_state'][1]['address'],
