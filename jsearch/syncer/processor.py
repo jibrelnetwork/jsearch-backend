@@ -39,12 +39,16 @@ class SyncProcessor:
         if receipts is None:
             logger.debug("Block #%s not ready: no receipts", block_hash)
             return False
+        reward = self.raw_db.get_reward(block_hash)
+        if reward is None:
+            logger.debug("Block #%s not ready: no reward", block_hash)
+            return False
 
         header = self.raw_db.get_header_by_hash(block_hash)
         body = self.raw_db.get_block_body(block_hash)
         accounts = self.raw_db.get_block_accounts(block_hash)
-        reward = self.raw_db.get_reward(block_hash)
         internal_transactions = self.raw_db.get_internal_transactions(block_hash)
+        self.raw_db.disconnect()
 
         self.write_block(header=header, body=body, accounts=accounts,
                          receipts=receipts, reward=reward,
@@ -53,7 +57,6 @@ class SyncProcessor:
         sync_time = time.monotonic() - start_time
         logger.debug("Block %s #%s synced on %ss", block_hash, block_number, sync_time)
         self.main_db.disconnect()
-        self.raw_db.disconnect()
         return True
 
     def write_block(self, header, body, reward, receipts, accounts, internal_transactions):
