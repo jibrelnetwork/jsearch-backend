@@ -17,3 +17,7 @@ def suppress_exception(func):
             )
 
     return wrapper
+
+
+def split(iterable, size):
+    return [iterable[i:i + size] for i in range(0, len(iterable), size)]
