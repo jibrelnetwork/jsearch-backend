@@ -317,7 +317,7 @@ class Storage:
             -> List[models.TokenHolder]:
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
         query = f"""
-        SELECT account_address, token_address, balance
+        SELECT account_address, token_address, balance, decimals
         FROM token_holders
         WHERE token_address=$1
         ORDER BY balance {order} LIMIT $2 OFFSET $3;
@@ -329,7 +329,7 @@ class Storage:
     async def get_account_token_balance(self, account_address: str, token_address: str) \
             -> List[models.TokenHolder]:
         query = """
-        SELECT account_address, token_address, balance
+        SELECT account_address, token_address, balance, decimals
         FROM token_holders
         WHERE account_address=$1 AND token_address=$2
         """

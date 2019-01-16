@@ -291,10 +291,12 @@ class TokenHolder(Model):
         'account_address': str,
         'token_address': str,
         'balance': float,
+        'decimals': int
     }
 
     attribute_map = {
         'account_address': 'accountAddress',
         'token_address': 'tokenAddress',
         'balance': 'balance',
+        'decimals': 'decimals'
     }

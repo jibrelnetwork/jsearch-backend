@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import pytest
 
@@ -14,7 +14,7 @@ def post_processing(db_connection_string, mocker):
     mocker.patch('time.sleep')
     mocker.patch(
         'jsearch.common.processing.erc20_transfer_logs.fetch_erc20_token_decimal_bulk',
-        lambda updates: [setattr(update, 'decimals', 2) for update in updates] and updates
+        lambda contracts: [contract.update(decimals=2) for contract in contracts] and contracts
     )
     mocker.patch(
         'jsearch.common.processing.erc20_transfer_logs.fetch_erc20_balance_bulk',
@@ -24,10 +24,10 @@ def post_processing(db_connection_string, mocker):
     def _wrapper(dump):
         contracts: Dict[str, Dict[str, Any]] = {contract['address']: contract for contract in dump.get('contracts')}
 
-        def get_contract(address: str):
-            return contracts.get(address)
+        def get_contract(addresses: List[str]):
+            return [contracts.get(address) for address in addresses]
 
-        mocker.patch('jsearch.common.processing.erc20_transfer_logs.get_contract', get_contract)
+        mocker.patch('jsearch.common.processing.erc20_transfer_logs.get_contracts', get_contract)
 
         from jsearch.post_processing.service import post_processing, ACTION_LOG_OPERATIONS, ACTION_LOG_EVENTS
 
