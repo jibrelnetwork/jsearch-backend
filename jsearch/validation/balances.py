@@ -63,7 +63,7 @@ async def show_top_holders(token: TokenProxy, limit: Optional = None) -> None:
             decimals = holder["decimals"] or "-"
 
             percent = round(balance / token.total_supply * 100.0, 2)
-            print(f"{address} - {balance:<30}  {percent:<4.2f:<4} % {decimals:<4}")
+            print(f"{address} - {balance:<30}  {percent:<4.2f} % {decimals:<4}")
 
 
 async def check_token_holder_balances(token: TokenProxy, rewrite_invalide_values=False) -> None:

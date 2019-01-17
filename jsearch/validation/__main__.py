@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 @click.option('--show-holders', is_flag=True)
 @click.option('--show-stats', is_flag=True)
 @click.option('--rewrite', is_flag=True)
-@click.option('--limit')
+@click.option('--limit', type=int)
 @click.option('--log-level', default='INFO', help="Log level")
 def check(token, check_balances, rewrite, show_holders, show_stats, limit, log_level):
     logs.configure(log_level)
