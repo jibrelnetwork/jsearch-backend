@@ -1,19 +1,17 @@
 import logging
 from itertools import count, chain
+from typing import Dict, Set
 from typing import List, Optional
-from typing import Tuple, Dict, Any, Set
 
 from web3 import Web3
 
 from jsearch import settings
-from jsearch.common.contracts import ERC20_ABI
 from jsearch.common.contracts import NULL_ADDRESS
 from jsearch.common.database import MainDBSync
 from jsearch.common.integrations.contracts import get_contracts
-from jsearch.common.processing.logs import EventTypes, TRANSFER_EVENT_INPUT_SIZE
 from jsearch.common.rpc import ContractCall, eth_call_batch
-from jsearch.typing import Log, EventArgs, Abi, Contract, Contracts, Logs
-from jsearch.utils import suppress_exception, split
+from jsearch.typing import Log, Abi, Contract, Contracts, Logs, Transfers, Block
+from jsearch.utils import split
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +77,9 @@ class BalanceUpdate:
             )
         else:
             logger.error(
-                'Error when trying to update token holder balance for token %s account %s block %s',
-                self.token_address, self.account_address, self.block
+                'Error when trying to update token holder balance: '
+                'token %s account %s block %s balance %s decimals %s',
+                self.token_address, self.account_address, self.block, self.value, self.decimals
             )
 
 
@@ -123,73 +122,6 @@ def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate
     return updates
 
 
-def get_event_inputs_from_abi(abi: Abi) -> List[Dict[str, Any]]:
-    """
-    Args:
-        abi: contract abi
-
-    Returns:
-        only event inputs
-
-    Notes:
-        some contracts (for example 0xaae81c0194d6459f320b70ca0cedf88e11a242ce) may have
-        several Transfer events with different signatures,
-        so we try to find ERS20 copilent event (with 3 args)
-
-    """
-    for interface in abi:
-        is_it_event_input = interface['type'] == 'event'
-        is_it_event_input = is_it_event_input and interface.get('name') == EventTypes.TRANSFER
-        is_it_event_input = is_it_event_input and len(interface['inputs']) == TRANSFER_EVENT_INPUT_SIZE
-
-        if is_it_event_input:
-            return interface['inputs']
-
-    raise ValueError('No inputs')
-
-
-def get_transfer_details_from_erc20_event_args(
-        event_args: EventArgs,
-        abi: Abi,
-        token_decimals: int
-) -> Tuple[str, str, str]:
-    """
-    Eject transfer details from event
-    """
-    event_inputs = get_event_inputs_from_abi(abi)
-
-    args_keys = [interface_type['name'] for interface_type in event_inputs]
-    args_values = [event_args[key] for key in args_keys]
-
-    from_address = args_values[0]
-    to_address = args_values[1]
-    token_amount = args_values[2] / (10 ** token_decimals)
-
-    return from_address, to_address, token_amount
-
-
-@suppress_exception
-def process_log_transfer(log: Log, contract: Optional[Contract]) -> Log:
-    event_args = log['event_args']
-    if event_args and contract:
-        token_decimals = contract['token_decimals']
-
-        if token_decimals is None:
-            logger.info('[TASK] Contract %s has not decimals.', contract['address'])
-
-        elif log.get('is_token_transfer'):
-            from_address, to_address, token_amount = get_transfer_details_from_erc20_event_args(
-                event_args=event_args, abi=ERC20_ABI, token_decimals=token_decimals
-            )
-            log.update({
-                'token_transfer_to': to_address,
-                'token_transfer_from': from_address,
-                'token_amount': token_amount,
-            })
-    log['is_transfer_processed'] = True
-    return log
-
-
 def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpdate]:
     updates = set()
     if log.get('token_transfer_to'):
@@ -210,25 +142,31 @@ def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpd
     return updates
 
 
+def fetch_contracts(logs: Logs) -> Dict[str, Contract]:
+    contracts = get_contracts(addresses={log['address'] for log in logs}) or []
+    contracts = chain(*(fetch_erc20_token_decimal_bulk(chunk) for chunk in split(contracts, 50)))
+    return {contract['address']: contract for contract in contracts}
+
+
+def fetch_blocks(db: MainDBSync, logs: Logs) -> {str: Block}:
+    hashes = [log['block_hash'] for log in logs]
+    blocks = db.get_blocks(hashes=hashes)
+    return {block['hash']: block for block in blocks}
+
+
 def process_log_operations_bulk(
         db: MainDBSync,
         logs: List[Log],
+        contracts: Dict[str, Contract],
         batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
 ) -> Logs:
-    contracts = get_contracts(addresses={log['address'] for log in logs}) or []
-    contracts = chain(*(fetch_erc20_token_decimal_bulk(chunk) for chunk in split(contracts, 50)))
-    contracts = {contract['address']: contract for contract in contracts}
-
-    logs = [process_log_transfer(log, contracts.get(log['address'])) for log in logs]
-
     updates = set()
     for log in logs:
-        if log:
-            contract = contracts.get(log['address'])
-            if contract:
-                abi = contract.get('abi')
-                decimals = contract.get('decimals')
-                updates |= logs_to_balance_updates(log, abi, decimals)
+        contract = contracts.get(log['address'])
+        if log and contract:
+            abi = contract.get('abi')
+            decimals = contract.get('decimals')
+            updates |= logs_to_balance_updates(log, abi, decimals)
 
     updates = list(updates)
     for chunk in split(updates, batch_size):
@@ -238,3 +176,34 @@ def process_log_operations_bulk(
             update.apply(db)
 
     return logs
+
+
+def log_to_transfers(log: Log, block: Block, contract: Contract) -> Transfers:
+    transfer_body = {
+        'block_hash': log['block_hash'],
+        'block_number': log['block_number'],
+        'from_address': log['token_transfer_from'],
+        'log_index': log['log_index'],
+        'timestamp': block['timestamp'],
+        'to_address': log['token_transfer_to'],
+        'token_address': log['address'],
+        'token_decimals': contract['decimals'],
+        'token_name': contract['token_name'],
+        'token_symbol': contract['token_symbol'],
+        'token_value': log['token_amount'],
+        'transaction_hash': log['transaction_hash']
+    }
+    return [
+        {'address': log['token_transfer_to'], **transfer_body},
+        {'address': log['token_transfer_from'], **transfer_body}
+    ]
+
+
+def logs_to_transfers(logs: Logs, blocks: Dict[str, Block], contracts: Dict[str, Contract]) -> Transfers:
+    transfers = []
+    for log in logs:
+        contract = contracts.get(log['address'])
+        block = blocks.get(log['block_hash'])
+        if block and log and contract and log.get('is_token_transfer'):
+            transfers.extend(log_to_transfers(log, block, contract))
+    return transfers

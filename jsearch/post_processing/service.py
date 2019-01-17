@@ -7,7 +7,11 @@ from typing import Callable, List, Optional
 
 from jsearch import settings
 from jsearch.common.database import MainDBSync
-from jsearch.common.processing.erc20_transfer_logs import process_log_operations_bulk
+from jsearch.common.processing.erc20_transfer_logs import (
+    fetch_contracts,
+    logs_to_transfers,
+    process_log_operations_bulk,
+    fetch_blocks)
 from jsearch.common.processing.logs import process_log_event
 from jsearch.typing import Log
 
@@ -29,8 +33,15 @@ def log_event_processing_worker(logs: List[Log], dsn: str = settings.JSEARCH_MAI
 
 def log_operations_processing_worker(logs: List[Log], dsn: str = settings.JSEARCH_MAIN_DB):
     with MainDBSync(connection_string=dsn) as db:
-        logs = process_log_operations_bulk(db, logs)
+        contracts = fetch_contracts(logs)
+        logs = process_log_operations_bulk(db, logs, contracts)
+
+        blocks = fetch_blocks(db, logs)
+        transfers = logs_to_transfers(logs, blocks, contracts)
+
+        db.insert_transfers(transfers)
         for log in logs:
+            log['is_transfer_processed'] = True
             db.update_log(record=log)
 
 
