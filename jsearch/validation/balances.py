@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from itertools import count
+from typing import Optional
 
 import asyncpg
 from web3 import Web3
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 QUERY_SIZE = 1000
 BATCH_REQUEST_SIZE = 50
+HOLDERS_PAGE_SIZE = 100
 
 
 async def show_statistics(token: TokenProxy) -> None:
@@ -41,19 +43,27 @@ async def show_statistics(token: TokenProxy) -> None:
     print(f"[STATISTICS] Balances sum {balances_sum}. Token total supply {token.total_supply}")
 
 
-async def show_top_holders(token: TokenProxy) -> None:
+async def show_top_holders(token: TokenProxy, limit: Optional = None) -> None:
     db_pool = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
     storage = Storage(pool=db_pool)
 
-    holders = await storage.get_tokens_holders(address=token.address, offset=0, limit=10, order='desc')
-    holders = (holder.to_dict() for holder in holders)
-    for holder in holders:
-        address = holder["accountAddress"]
-        balance = holder["balance"]
-        decimals = holder["decimals"] or "-"
+    total = limit or await get_total_holders_count(pool=db_pool, token_address=token.address)
+    for chunk in range(0, total, HOLDERS_PAGE_SIZE):
+        holders = await storage.get_tokens_holders(
+            address=token.address,
+            offset=chunk,
+            limit=chunk + HOLDERS_PAGE_SIZE,
+            order='desc'
+        )
 
-        percent = round(balance / token.total_supply * 100.0, 2)
-        print(f"{address} - {balance:<30}  {percent:2.2f}% {decimals}")
+        holders = (holder.to_dict() for holder in holders)
+        for holder in holders:
+            address = holder["accountAddress"]
+            balance = holder["balance"]
+            decimals = holder["decimals"] or "-"
+
+            percent = round(balance / token.total_supply * 100.0, 2)
+            print(f"{address} - {balance:<30}  {percent:<4.2f:<4} % {decimals:<4}")
 
 
 async def check_token_holder_balances(token: TokenProxy, rewrite_invalide_values=False) -> None:
