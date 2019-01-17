@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 import backoff
 import psycopg2
@@ -10,7 +11,7 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.sql import select
 
 from jsearch import settings
-from jsearch.common.tables import transactions_t, logs_t, token_holders_t, token_transfers_t
+from jsearch.common.tables import transactions_t, logs_t, token_holders_t, token_transfers_t, blocks_t
 from jsearch.common.utils import as_dicts
 
 MAIN_DB_POOL_SIZE = 22
@@ -63,6 +64,19 @@ class MainDBSync(DBWrapperSync):
 
     def disconnect(self):
         self.conn.close()
+
+    @as_dicts
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    def get_blocks(self, hashes, offset: Optional[int] = None, limit: Optional[int] = None):
+        query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
+
+        if limit:
+            query = query.limit(limit)
+
+        if offset:
+            query = query.offset(offset)
+
+        return self.conn.execute(query)
 
     @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
     def update_log(self, record, conn=None):

@@ -26,4 +26,4 @@ def upgrade():
 
 
 def downgrade():
-    op.execute(DOWN_SQL)
+   op.execute(DOWN_SQL)

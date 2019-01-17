@@ -10,7 +10,7 @@ from jsearch.common.contracts import NULL_ADDRESS
 from jsearch.common.database import MainDBSync
 from jsearch.common.integrations.contracts import get_contracts
 from jsearch.common.rpc import ContractCall, eth_call_batch
-from jsearch.typing import Log, Abi, Contract, Contracts, Logs, Transfers
+from jsearch.typing import Log, Abi, Contract, Contracts, Logs, Transfers, Block
 from jsearch.utils import split
 
 logger = logging.getLogger(__name__)
@@ -148,6 +148,12 @@ def fetch_contracts(logs: Logs) -> Dict[str, Contract]:
     return {contract['address']: contract for contract in contracts}
 
 
+def fetch_blocks(db: MainDBSync, logs: Logs) -> {str: Block}:
+    hashes = [log['block_hash'] for log in logs]
+    blocks = db.get_blocks(hashes=hashes)
+    return {block['hash']: block for block in blocks}
+
+
 def process_log_operations_bulk(
         db: MainDBSync,
         logs: List[Log],
@@ -172,13 +178,13 @@ def process_log_operations_bulk(
     return logs
 
 
-def log_to_transfers(log: Log, contract: Contract) -> Transfers:
+def log_to_transfers(log: Log, block: Block, contract: Contract) -> Transfers:
     transfer_body = {
         'block_hash': log['block_hash'],
         'block_number': log['block_number'],
         'from_address': log['token_transfer_from'],
         'log_index': log['log_index'],
-        # 'timestamp': log['timestamp'],
+        'timestamp': block['timestamp'],
         'to_address': log['token_transfer_to'],
         'token_address': log['address'],
         'token_decimals': contract['decimals'],
@@ -193,10 +199,11 @@ def log_to_transfers(log: Log, contract: Contract) -> Transfers:
     ]
 
 
-def logs_to_transfers(logs: Logs, contracts: Dict[str, Contract]) -> Transfers:
+def logs_to_transfers(logs: Logs, blocks: Dict[str, Block], contracts: Dict[str, Contract]) -> Transfers:
     transfers = []
     for log in logs:
         contract = contracts.get(log['address'])
-        if log and contract and log.get('is_token_transfer'):
-            transfers.extend(log_to_transfers(log, contract))
+        block = blocks.get(log['block_hash'])
+        if block and log and contract and log.get('is_token_transfer'):
+            transfers.extend(log_to_transfers(log, block, contract))
     return transfers

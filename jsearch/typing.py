@@ -6,6 +6,9 @@ Abi_ERC20 = NewType('Abi_ERC20', Abi)
 Log = Dict[str, Any]
 Logs = List[Log]
 
+Block = Dict[str, Any]
+Blocks = List[Block]
+
 Transfer = Dict[str, Any]
 Transfers = List[Transfer]
 
