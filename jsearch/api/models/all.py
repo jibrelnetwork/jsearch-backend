@@ -259,31 +259,28 @@ class Balance(Model):
 
 class TokenTransfer(Model):
     swagger_types = {
-        'transaction': str,
-        'from': str,
-        'block_hash': str,
-        'to': str,
-        'amount': float,
+        "transaction_hash": str,
+        "timestamp": int,
+        "from_address": str,
+        "to_address": str,
+        "token_address": str,
+        "token_value": float,
+        "token_decimals": int,
+        "token_name": str,
+        "token_symbol": str,
     }
 
     attribute_map = {
-        'transaction': 'transaction',
-        'from': 'from',
-        'to': 'to',
-        'amount': 'amount',
-        'block_hash': 'blockHash'
+        "transaction_hash": "transactionHash",
+        "timestamp": "timestamp",
+        "from_address": "from",
+        "to_address": "to",
+        "token_address": "tokenAddress",
+        "token_value": "amount",
+        "token_decimals": "tokenDecimals",
+        "token_name": "tokenName",
+        "token_symbol": "tokenSymbol",
     }
-
-    @classmethod
-    def from_log_record(cls, log):
-        data: Dict[str, Any] = {
-            'transaction': log['transaction_hash'],
-            'from': log['token_transfer_from'],
-            'to': log['token_transfer_to'],
-            'amount': log['token_amount'],
-            'block_hash': log['block_hash']
-        }
-        return cls(**data)
 
 
 class TokenHolder(Model):
