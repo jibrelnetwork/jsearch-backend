@@ -13,9 +13,10 @@ async def iterate_holders(pool: Pool, token_address: str) -> AsyncGenerator[Dict
         ORDER BY balance desc;
     """
 
-    async with pool.acquire() as conn:
-        async for record in conn.cursor(query, token_address):
-            yield dict(record)
+    async with pool.acquire() as connection:
+        async with connection.transaction():
+            async for record in connection.cursor(query, token_address):
+                yield dict(record)
 
 
 async def get_total_holders_count(pool: Pool, token_address: str) -> int:
