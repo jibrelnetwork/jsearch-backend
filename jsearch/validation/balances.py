@@ -49,7 +49,7 @@ async def show_top_holders(token: TokenProxy, limit: Optional = None) -> None:
     print(f"Address{' ' * 36 }| Actual value { ' ' * 17 } | Percent | Decimals")
 
     async for holder in iterate_holders(db_pool, token_address=token.address):
-        address = holder["accountAddress"]
+        address = holder["account_address"]
         balance = holder["balance"]
         decimals = holder["decimals"] or "-"
 
