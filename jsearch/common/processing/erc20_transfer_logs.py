@@ -191,7 +191,8 @@ def log_to_transfers(log: Log, block: Block, contract: Contract) -> Transfers:
         'token_name': contract['token_name'],
         'token_symbol': contract['token_symbol'],
         'token_value': log['token_amount'],
-        'transaction_hash': log['transaction_hash']
+        'transaction_hash': log['transaction_hash'],
+        'transaction_index': log['transaction_index']
     }
     return [
         {'address': log['token_transfer_to'], **transfer_body},
