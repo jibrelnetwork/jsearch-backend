@@ -1,4 +1,21 @@
+from typing import AsyncGenerator, Dict, Any
+
 from asyncpg.pool import Pool
+
+
+async def iterate_holders(pool: Pool, token_address: str) -> AsyncGenerator[Dict[str, Any], None]:
+    query = """
+        SELECT account_address, 
+               token_address, 
+               balance, 
+               decimals
+        FROM token_holders WHERE token_address = $1
+        ORDER BY balance desc;
+    """
+
+    async with pool.acquire() as conn:
+        async for record in conn.cursor(query, token_address):
+            yield dict(record)
 
 
 async def get_total_holders_count(pool: Pool, token_address: str) -> int:
@@ -36,7 +53,7 @@ async def update_token_holder_balance(pool: Pool,
                                       decimals: int) -> None:
     query = """
         UPDATE token_holders
-        SET balance = $3, decimals = $
+        SET balance = $3, decimals = $4
         WHERE account_address = $1 and token_address = $2;
     """
     async with pool.acquire() as conn:
