@@ -52,10 +52,9 @@ async def show_holders(token: TokenProxy, limit: Optional = None) -> None:
     counter = count()
     async for holder in await iterate_holders(db_pool, token_address=token.address):
         address = holder["account_address"]
-        balance = holder["balance"]
+        balance = int(holder["balance"])
         decimals = holder["decimals"] or "-"
 
-        from pdb import set_trace; set_trace()
         percent = round(balance / token.total_supply * 100, 2)
         print(f"{address} | {balance:<30} | {percent:<4.2f} % | {decimals:<4}")
 
@@ -86,7 +85,7 @@ async def check_token_holder_chunk(db_pool: Pool,
                                    rewrite_invalid_values: bool = False) -> int:
     request_counter = count()
 
-    accounts = [Web3.toChecksumAddress(item['accountAddress']) for item in chunk]
+    accounts = [Web3.toChecksumAddress(item['account_address']) for item in chunk]
     calls = [token.get_balance_call(pk=next(request_counter), args=[account]) for account in accounts]
 
     results = eth_call_batch(calls=calls)
@@ -96,7 +95,7 @@ async def check_token_holder_chunk(db_pool: Pool,
     errors = 0
     for original_balance, token_holder in zip(balances, chunk):
         address = token_holder['account_address']
-        balance = token_holder['balance']
+        balance = int(token_holder['balance'])
 
         if original_balance != balance:
             errors += 1
