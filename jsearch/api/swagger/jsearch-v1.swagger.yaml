@@ -827,13 +827,24 @@ definitions:
   
   TokenTransfer:
     properties:
-      transaction:
+      timestamp:
+        type: integer
+      transactionHash:
         type: string
         format: hex
       from:
         type: string
         format: address
       to:
+        type: string
+        format: address
+      tokenDecimals:
+        type: integer
+      tokenSymbol:
+        type: string
+      tokenName:
+        type: string
+      tokenAddress:
         type: string
         format: address
       amount:
