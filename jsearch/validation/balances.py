@@ -55,6 +55,7 @@ async def show_holders(token: TokenProxy, limit: Optional = None) -> None:
         balance = holder["balance"]
         decimals = holder["decimals"] or "-"
 
+        from pdb import set_trace; set_trace()
         percent = round(balance / token.total_supply * 100, 2)
         print(f"{address} | {balance:<30} | {percent:<4.2f} % | {decimals:<4}")
 
@@ -94,7 +95,7 @@ async def check_token_holder_chunk(db_pool: Pool,
     updates = list()
     errors = 0
     for original_balance, token_holder in zip(balances, chunk):
-        address = token_holder['accountAddress']
+        address = token_holder['account_address']
         balance = token_holder['balance']
 
         if original_balance != balance:
