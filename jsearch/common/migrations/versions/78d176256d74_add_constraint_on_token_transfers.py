@@ -17,7 +17,7 @@ UP_SQL = """
 ALTER TABLE ONLY token_transfers ADD CONSTRAINT token_transfers_unique 
     UNIQUE (block_hash, transaction_hash, address);
 """
-DOWN_SQL = "DROP INDEX token_transfers_unique"
+DOWN_SQL = "ALTER TABLE ONLY token_transfers DROP CONSTRAINT token_transfers_unique;"
 
 
 def upgrade():

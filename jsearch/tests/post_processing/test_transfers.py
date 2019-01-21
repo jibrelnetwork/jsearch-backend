@@ -2,7 +2,7 @@ from decimal import Decimal
 
 
 def test_log_to_transfer():
-    from jsearch.common.processing.erc20_balances import log_to_transfers
+    from jsearch.common.processing.erc20_transfers import log_to_transfers
     log = {
         'address': '0x7cbc8ee27ffdba230dd316160ea01d565f17aacb',
         'block_hash': '0xa6c837fb9d5495872238e141e3b4a4d71dc34218a09d3b7eee2beebdad02d7b7',
@@ -110,7 +110,7 @@ def test_log_to_transfer():
 
 
 def test_logs_to_transfer():
-    from jsearch.common.processing.erc20_balances import logs_to_transfers
+    from jsearch.common.processing.erc20_transfers import logs_to_transfers
     logs = [
         {
             'address': '0x7cbc8ee27ffdba230dd316160ea01d565f17aacb',

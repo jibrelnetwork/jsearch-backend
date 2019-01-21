@@ -92,7 +92,7 @@ class MainDBSync(DBWrapperSync):
     @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
     def insert_transfers(self, records):
         for record in records:
-            insert_query = token_transfers_t.insert().on_conflict_do_update(
+            insert_query = insert(token_transfers_t).values(record).on_conflict_do_update(
                 index_elements=['block_hash', 'transaction_hash', 'address'],
                 set_={
                     'block_number': record['block_number'],
@@ -104,7 +104,7 @@ class MainDBSync(DBWrapperSync):
                     'token_decimals': record['token_decimals'],
                     'token_name': record['token_name'],
                     'token_symbol': record['token_symbol'],
-                    'token_value': record['token_amount'],
+                    'token_value': record['token_value'],
                 }
             )
             self.conn.execute(insert_query)
