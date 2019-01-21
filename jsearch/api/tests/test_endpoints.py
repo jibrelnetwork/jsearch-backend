@@ -1,4 +1,3 @@
-from typing import List
 from unittest import mock
 
 import pytest
@@ -6,11 +5,7 @@ from asynctest import CoroutineMock
 
 from jsearch.tests.entities import (
     TransactionFromDumpWrapper,
-    BlockFromDumpWrapper,
-    TokenTransferFromDumpWrapper,
-    ReceiptFromDumpWrapper,
-    AccountBaseFromDumpWrapper)
-from jsearch.tests.utils import pprint_returned_value
+    BlockFromDumpWrapper)
 
 pytest_plugins = [
     'jsearch.tests.plugins.tools',

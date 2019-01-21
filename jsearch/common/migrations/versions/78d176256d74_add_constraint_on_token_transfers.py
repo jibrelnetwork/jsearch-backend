@@ -15,7 +15,7 @@ depends_on = None
 
 UP_SQL = """
 ALTER TABLE ONLY token_transfers ADD CONSTRAINT token_transfers_unique 
-    UNIQUE (block_hash, transaction_hash, address, from_address, to_address, token_address);
+    UNIQUE (transaction_hash, transaction_index, address);
 """
 DOWN_SQL = "ALTER TABLE ONLY token_transfers DROP CONSTRAINT token_transfers_unique;"
 

@@ -882,7 +882,7 @@
       "token_name": "A Token",
       "token_symbol": "TKN",
       "is_forked": false,
-      "transaction_index": 30
+      "transaction_index": 31
     },
     {
       "address": "a2",
@@ -899,7 +899,7 @@
       "token_name": "A Token",
       "token_symbol": "TKN",
       "is_forked": false,
-      "transaction_index": 30
+      "transaction_index": 31
     },
 
     {
@@ -917,7 +917,7 @@
       "token_name": "A Token 2",
       "token_symbol": "TKN2",
       "is_forked": false,
-      "transaction_index": 30
+      "transaction_index": 32
     },
         {
       "address": "a2",
@@ -934,7 +934,7 @@
       "token_name": "A Token 2",
       "token_symbol": "TKN2",
       "is_forked": false,
-      "transaction_index": 30
+      "transaction_index": 32
     },
 
     {
@@ -952,7 +952,7 @@
       "token_name": "A Token",
       "token_symbol": "TKN",
       "is_forked": false,
-      "transaction_index": 30
+      "transaction_index": 33
     },
     {
       "address": "a3",
@@ -969,7 +969,7 @@
       "token_name": "A Token",
       "token_symbol": "TKN",
       "is_forked": false,
-      "transaction_index": 30
+      "transaction_index": 33
     },
 
     {
@@ -987,7 +987,7 @@
       "token_name": "A Token",
       "token_symbol": "TKN",
       "is_forked": true,
-      "transaction_index": 30
+      "transaction_index": 34
     },    {
       "address": "a3",
       "transaction_hash": "t1",
@@ -1003,7 +1003,7 @@
       "token_name": "A Token",
       "token_symbol": "TKN",
       "is_forked": true,
-      "transaction_index": 30
+      "transaction_index": 34
     },
 
 
@@ -1022,7 +1022,7 @@
       "token_name": "A Token 2",
       "token_symbol": "TKN2",
       "is_forked": false,
-      "transaction_index": 30
+      "transaction_index": 35
     },
         {
       "address": "a3",
@@ -1039,7 +1039,7 @@
       "token_name": "A Token 2",
       "token_symbol": "TKN2",
       "is_forked": false,
-      "transaction_index": 30
+      "transaction_index": 35
     }
   ]
 }
