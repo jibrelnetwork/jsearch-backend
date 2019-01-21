@@ -22,7 +22,7 @@ def connect_timeout_on_geth_node():
 @pytest.mark.usefixtures('connect_timeout_on_geth_node')
 def test_retries_when_fetch_decimals_from_eth_node(mocker, main_db_data):
     # given
-    from jsearch.common.processing.erc20_transfer_logs import fetch_erc20_token_decimal_bulk
+    from jsearch.common.processing.erc20_balances import fetch_erc20_token_decimal_bulk
 
     mocker.patch('time.sleep')
     post_mock = mocker.patch('requests.post', side_effect=requests.post)
@@ -41,7 +41,7 @@ def test_retries_when_fetch_balances_from_eth_node(mocker, ether_address_generat
     # given
     import requests
     from jsearch.common.contracts import ERC20_ABI
-    from jsearch.common.processing.erc20_transfer_logs import BalanceUpdate, fetch_erc20_balance_bulk
+    from jsearch.common.processing.erc20_balances import BalanceUpdate, fetch_erc20_balance_bulk
 
     mocker.patch('time.sleep')
     post_mock = mocker.patch('requests.post', side_effect=requests.post)
