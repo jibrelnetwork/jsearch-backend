@@ -12,9 +12,9 @@ async def iterate_query(pool: Pool, query: str, *args: Any, **kwargs: Any) -> As
 
 async def iterate_holders(pool: Pool, token_address: str) -> AsyncGenerator[Dict[str, Any], None]:
     query = """
-        SELECT account_address, 
-               token_address, 
-               balance, 
+        SELECT account_address,
+               token_address,
+               balance,
                decimals
         FROM token_holders WHERE token_address = $1
         ORDER BY balance desc;
@@ -25,7 +25,7 @@ async def iterate_holders(pool: Pool, token_address: str) -> AsyncGenerator[Dict
 async def iterate_transfers(pool: Pool, token_address: str) -> AsyncGenerator[Dict[str, Any], None]:
     query = """
         SELECT block_number,
-               block_hash, 
+               block_hash,
                transaction_hash,
                token_amount,
                token_transfer_from,
