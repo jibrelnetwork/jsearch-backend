@@ -12,12 +12,12 @@ def log_to_transfers(log: Log, block: Block, contract: Contract) -> Transfers:
         'block_number': log['block_number'],
         'from_address': log['token_transfer_from'],
         'log_index': log['log_index'],
-        'timestamp': block['timestamp'],
+        'timestamp': block and block['timestamp'],
         'to_address': log['token_transfer_to'],
         'token_address': log['address'],
-        'token_decimals': contract['decimals'],
-        'token_name': contract['token_name'],
-        'token_symbol': contract['token_symbol'],
+        'token_decimals': contract and contract['decimals'],
+        'token_name': contract and contract['token_name'],
+        'token_symbol': contract and contract['token_symbol'],
         'token_value': log['token_amount'],
         'transaction_hash': log['transaction_hash']
     }
@@ -30,8 +30,10 @@ def log_to_transfers(log: Log, block: Block, contract: Contract) -> Transfers:
 def logs_to_transfers(logs: Logs, blocks: Dict[str, Block], contracts: Dict[str, Contract]) -> Transfers:
     transfers = []
     for log in logs:
-        contract = contracts.get(log['address'])
-        block = blocks.get(log['block_hash'])
-        if block and log and contract and log.get('is_token_transfer'):
-            transfers.extend(log_to_transfers(log, block, contract))
+        if log and log.get('is_token_transfer'):
+            block = blocks.get(log['block_hash'])
+            contract = contracts.get(log['address'])
+
+            log_transfers = log_to_transfers(log, block, contract)
+            transfers.extend(log_transfers)
     return transfers
