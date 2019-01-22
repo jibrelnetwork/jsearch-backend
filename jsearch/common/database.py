@@ -95,13 +95,13 @@ class MainDBSync(DBWrapperSync):
             insert_query = insert(token_transfers_t).values(record).on_conflict_do_update(
                 index_elements=[
                     'transaction_hash',
-                    'transaction_index',
+                    'log_index',
                     'address',
                 ],
                 set_={
                     'block_number': record['block_number'],
                     'block_hash': record['block_hash'],
-                    'log_index': record['log_index'],
+                    'transaction_index': record['transaction_index'],
                     'timestamp': record['timestamp'],
                     'from_address': record['from_address'],
                     'to_address': record['to_address'],
