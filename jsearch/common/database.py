@@ -90,11 +90,29 @@ class MainDBSync(DBWrapperSync):
         conn.execute(query)
 
     @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
-    def insert_transfers(self, records, conn=None):
-        conn = self.conn or conn
-        query = token_transfers_t.insert()
-        if records:
-            conn.execute(query, records)
+    def insert_transfers(self, records):
+        for record in records:
+            insert_query = insert(token_transfers_t).values(record).on_conflict_do_update(
+                index_elements=[
+                    'transaction_hash',
+                    'log_index',
+                    'address',
+                ],
+                set_={
+                    'block_number': record['block_number'],
+                    'block_hash': record['block_hash'],
+                    'transaction_index': record['transaction_index'],
+                    'timestamp': record['timestamp'],
+                    'from_address': record['from_address'],
+                    'to_address': record['to_address'],
+                    'token_address': record['token_address'],
+                    'token_decimals': record['token_decimals'],
+                    'token_name': record['token_name'],
+                    'token_symbol': record['token_symbol'],
+                    'token_value': record['token_value'],
+                }
+            )
+            self.conn.execute(insert_query)
 
     @as_dicts
     @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)

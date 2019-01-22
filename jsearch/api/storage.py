@@ -264,8 +264,6 @@ class Storage:
             return [models.Balance(balance=int(addr_map[a]['balance']), address=addr_map[a]['address'])
                     for a in addresses]
 
-
-
     async def _fetch_token_transfers(self, query: str, address: str, limit: int, offset: int) \
             -> List[TokenTransfer]:
         async with self.pool.acquire() as conn:
