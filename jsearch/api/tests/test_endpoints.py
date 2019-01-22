@@ -42,6 +42,23 @@ async def test_get_block_by_number(cli, main_db_data):
     assert await resp.json() == block.as_dict()
 
 
+async def test_get_block_by_number_no_forked(cli, db):
+    # given
+    db.execute('INSERT INTO blocks (number, hash, is_forked, static_reward, uncle_inclusion_reward, tx_fees)'
+               'values (%s, %s, %s, %s, %s, %s)', [
+        (1, 'aa', False, 0, 0, 0),
+        (2, 'ab', False, 0, 0, 0),
+        (2, 'ax', True, 0, 0, 0),
+        (3, 'ac', False, 0, 0, 0),
+    ])
+    # then
+    resp = await cli.get('/blocks/2')
+    assert resp.status == 200
+    b = await resp.json()
+    assert b['hash'] == 'ab'
+    assert b['number'] == 2
+
+
 async def test_get_block_by_hash(cli, main_db_data):
     resp = await cli.get('/blocks/' + main_db_data['blocks'][0]['hash'])
     assert resp.status == 200
