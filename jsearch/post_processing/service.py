@@ -7,11 +7,12 @@ from typing import Callable, List, Optional
 
 from jsearch import settings
 from jsearch.common.database import MainDBSync
-from jsearch.common.processing.erc20_transfer_logs import (
+from jsearch.common.processing.erc20_transfers import logs_to_transfers
+from jsearch.common.processing.erc20_balances import (
+    fetch_blocks,
     fetch_contracts,
-    logs_to_transfers,
     process_log_operations_bulk,
-    fetch_blocks)
+)
 from jsearch.common.processing.logs import process_log_event
 from jsearch.typing import Log
 

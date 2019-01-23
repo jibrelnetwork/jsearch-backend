@@ -82,11 +82,11 @@ def process_log_event(log: Log) -> Log:
         event_args = log['event_args']
 
         if event_type == EventTypes.TRANSFER and len(event_args) == TRANSFER_EVENT_INPUT_SIZE:
-            log['is_token_transfer'] = True
             from_address, to_address, token_amount = get_transfer_details_from_erc20_event_args(
                 event_args=event_args, abi=ERC20_ABI
             )
             log.update({
+                'is_token_transfer': True,
                 'token_transfer_to': to_address,
                 'token_transfer_from': from_address,
                 'token_amount': token_amount,
@@ -98,5 +98,6 @@ def process_log_event(log: Log) -> Log:
             'event_type': None,
             'event_args': None,
         })
+
     log['is_processed'] = True
     return log
