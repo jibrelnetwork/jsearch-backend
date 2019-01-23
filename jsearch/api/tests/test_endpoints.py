@@ -1,3 +1,4 @@
+from typing import List
 from unittest import mock
 
 import pytest
@@ -5,7 +6,9 @@ from asynctest import CoroutineMock
 
 from jsearch.tests.entities import (
     TransactionFromDumpWrapper,
-    BlockFromDumpWrapper)
+    BlockFromDumpWrapper,
+)
+
 
 pytest_plugins = [
     'jsearch.tests.plugins.tools',
@@ -37,21 +40,35 @@ async def test_get_block_by_number(cli, main_db_data):
     assert await resp.json() == block.as_dict()
 
 
-async def test_get_block_by_number_no_forked(cli, db):
+async def test_get_block_by_number_no_forked_404(cli, db):
     # given
     db.execute('INSERT INTO blocks (number, hash, is_forked, static_reward, uncle_inclusion_reward, tx_fees)'
                'values (%s, %s, %s, %s, %s, %s)', [
-        (1, 'aa', False, 0, 0, 0),
-        (2, 'ab', False, 0, 0, 0),
-        (2, 'ax', True, 0, 0, 0),
-        (3, 'ac', False, 0, 0, 0),
-    ])
+                   (1, 'aa', False, 0, 0, 0),
+                   (2, 'ab', False, 0, 0, 0),
+                   (2, 'ax', True, 0, 0, 0),
+                   (3, 'ac', False, 0, 0, 0),
+               ])
     # then
     resp = await cli.get('/blocks/2')
     assert resp.status == 200
     b = await resp.json()
     assert b['hash'] == 'ab'
     assert b['number'] == 2
+
+
+async def test_get_block_by_hash_forked(cli, db):
+    # given
+    db.execute('INSERT INTO blocks (number, hash, is_forked, static_reward, uncle_inclusion_reward, tx_fees)'
+               'values (%s, %s, %s, %s, %s, %s)', [
+                   (1, 'aa', False, 0, 0, 0),
+                   (2, 'ab', False, 0, 0, 0),
+                   (2, 'ax', True, 0, 0, 0),
+                   (3, 'ac', False, 0, 0, 0),
+               ])
+    # then
+    resp = await cli.get('/blocks/ax')
+    assert resp.status == 404
 
 
 async def test_get_block_by_hash(cli, main_db_data):
@@ -231,6 +248,34 @@ async def test_get_block_transactions(cli, main_db_data):
         'v': txs[0]['v'],
         'value': txs[0]['value'],
     }
+
+
+async def test_get_block_transactions_forked(cli, db):
+    # given
+    db.execute('INSERT INTO transactions (block_number, block_hash, hash, is_forked, transaction_index)'
+               'values (%s, %s, %s, %s, %s)', [
+                   (1, 'aa', 'tx1', False, 1),
+                   (2, 'ab', 'tx2', False, 1),
+                   (2, 'ax', 'tx3', True, 1),
+                   (3, 'ac', 'tx3', False, 1),
+               ])
+    # then
+    resp = await cli.get('/blocks/2/transactions')
+    assert resp.status == 200
+    txs = await resp.json()
+    assert len(txs) == 1
+    assert txs[0]['hash'] == 'tx2'
+
+    resp = await cli.get('/blocks/ab/transactions')
+    assert resp.status == 200
+    txs = await resp.json()
+    assert len(txs) == 1
+    assert txs[0]['hash'] == 'tx2'
+
+    resp = await cli.get('/blocks/ax/transactions')
+    assert resp.status == 200
+    txs = await resp.json()
+    assert len(txs) == 0
 
 
 async def test_get_block_transactions_by_number(cli, main_db_data):

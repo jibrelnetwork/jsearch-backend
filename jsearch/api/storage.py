@@ -77,13 +77,15 @@ class Storage:
         fields = models.Transaction.select_fields()
 
         if tag.is_hash():
-            query = f"SELECT {fields} FROM transactions WHERE block_hash=$1 ORDER BY transaction_index;"
+            query = f"SELECT {fields} FROM transactions WHERE block_hash=$1 AND is_forked=false " \
+                        f"ORDER BY transaction_index;"
         elif tag.is_number():
-            query = f"SELECT {fields} FROM transactions WHERE block_number=$1 ORDER BY transaction_index;"
+            query = f"SELECT {fields} FROM transactions WHERE block_number=$1 AND is_forked=false " \
+                        f"ORDER BY transaction_index;"
         else:
             query = f"""
                 SELECT {fields} FROM transactions
-                WHERE block_number=(SELECT max(number) FROM blocks) ORDER BY transaction_index;
+                WHERE block_number=(SELECT max(number) FROM blocks) AND is_forked=false ORDER BY transaction_index;
         """
 
         async with self.pool.acquire() as conn:
@@ -97,7 +99,7 @@ class Storage:
     async def get_block(self, tag):
 
         if tag.is_hash():
-            query = "SELECT * FROM blocks WHERE hash=$1"
+            query = "SELECT * FROM blocks WHERE hash=$1 AND is_forked=false"
         elif tag.is_number():
             query = "SELECT * FROM blocks WHERE number=$1 AND is_forked=false"
         else:
