@@ -219,6 +219,7 @@ token_transfers_t = sa.Table(
     metadata,
     sa.Column('address', sa.String),
     sa.Column('transaction_hash', sa.String),
+    sa.Column('transaction_index', sa.Integer),
     sa.Column('log_index', sa.Integer),
     sa.Column('block_number', sa.Integer),
     sa.Column('block_hash', sa.String),

@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List
 
 from jsearch.api.models.base_model_ import Model
 
