@@ -1,0 +1,1322 @@
+diff --git a/jsearch/api/models/all.py b/jsearch/api/models/all.py
+index e9964cd..6cdc3b9 100644
+--- a/jsearch/api/models/all.py
++++ b/jsearch/api/models/all.py
+@@ -259,29 +259,32 @@ class Balance(Model):
+ 
+ class TokenTransfer(Model):
+     swagger_types = {
+-        "transaction_hash": str,
+-        "timestamp": int,
+-        "from_address": str,
+-        "to_address": str,
+-        "token_address": str,
+-        "token_value": float,
+-        "token_decimals": int,
+-        "token_name": str,
+-        "token_symbol": str,
++        'transaction': str,
++        'from': str,
++        'block_hash': str,
++        'to': str,
++        'amount': float,
+     }
+ 
+     attribute_map = {
+-        "transaction_hash": "transactionHash",
+-        "timestamp": "timestamp",
+-        "from_address": "from",
+-        "to_address": "to",
+-        "token_address": "tokenAddress",
+-        "token_value": "amount",
+-        "token_decimals": "tokenDecimals",
+-        "token_name": "tokenName",
+-        "token_symbol": "tokenSymbol",
++        'transaction': 'transaction',
++        'from': 'from',
++        'to': 'to',
++        'amount': 'amount',
++        'block_hash': 'blockHash'
+     }
+ 
++    @classmethod
++    def from_log_record(cls, log):
++        data: Dict[str, Any] = {
++            'transaction': log['transaction_hash'],
++            'from': log['token_transfer_from'],
++            'to': log['token_transfer_to'],
++            'amount': log['token_amount'],
++            'block_hash': log['block_hash']
++        }
++        return cls(**data)
++
+ 
+ class TokenHolder(Model):
+     swagger_types = {
+diff --git a/jsearch/api/storage.py b/jsearch/api/storage.py
+index fb277ad..3b5cc60 100644
+--- a/jsearch/api/storage.py
++++ b/jsearch/api/storage.py
+@@ -264,64 +264,41 @@ class Storage:
+             return [models.Balance(balance=int(addr_map[a]['balance']), address=addr_map[a]['address'])
+                     for a in addresses]
+ 
+-
+-
+     async def _fetch_token_transfers(self, query: str, address: str, limit: int, offset: int) \
+             -> List[TokenTransfer]:
+         async with self.pool.acquire() as conn:
+             rows = await conn.fetch(query, address, limit, offset)
+-            transfers: List[models.TokenTransfer] = []
++            tokens: List[models.TokenTransfer] = []
+             for row in rows:
+-                row = dict(row)
+-                del row['transaction_index']
+-                del row['log_index']
+-                del row['block_number']
+-                del row['block_hash']
+-                transfers.append(models.TokenTransfer(**row))
+-            return transfers
++                tokens.append(models.TokenTransfer.from_log_record(log=row))
++            return tokens
+ 
+     async def get_tokens_transfers(self, address: str, limit: int, offset: int, order: str) \
+             -> List[models.TokenTransfer]:
+         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+         query = f"""
+-            SELECT DISTINCT transaction_hash,
+-                    transaction_index,
+-                    log_index,
+-                    block_number,
+-                    block_hash,
+-                    timestamp,
+-                    from_address,
+-                    to_address,
+-                    token_address,
+-                    token_value,
+-                    token_decimals,
+-                    token_name,
+-                    token_symbol
+-            FROM token_transfers
+-            WHERE token_address = $1 AND is_forked = false
+-            ORDER BY block_number {order}, transaction_index {order}, log_index {order} LIMIT $2 OFFSET $3;
++            SELECT block_hash,
++                transaction_hash,
++                token_amount,
++                token_transfer_from,
++                token_transfer_to
++            FROM logs
++            WHERE address = $1 AND is_token_transfer = true
++            ORDER BY block_number {order} LIMIT $2 OFFSET $3;
+         """
+         return await self._fetch_token_transfers(query, address, limit, offset)
+ 
+     async def get_account_tokens_transfers(self, address, limit, offset, order):
+         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+         query = f"""
+-            SELECT transaction_hash,
+-                    transaction_index,
+-                    log_index,
+-                    block_number,
+-                    block_hash,
+-                    timestamp,
+-                    from_address,
+-                    to_address,
+-                    token_address,
+-                    token_value,
+-                    token_decimals,
+-                    token_name,
+-                    token_symbol
+-            FROM token_transfers
+-            WHERE address = $1 AND is_forked = false
+-            ORDER BY block_number {order}, transaction_index {order}, log_index {order} LIMIT $2 OFFSET $3;
++            SELECT block_hash,
++                transaction_hash,
++                token_transfer_from,
++                token_transfer_to,
++                token_amount
++            FROM logs
++            WHERE is_token_transfer is true AND token_transfer_from=$1 OR token_transfer_to=$1
++            ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3;
+         """
+         return await self._fetch_token_transfers(query, address, limit, offset)
+ 
+diff --git a/jsearch/api/swagger/jsearch-v1.swagger.yaml b/jsearch/api/swagger/jsearch-v1.swagger.yaml
+index 7319e5f..df543bb 100644
+--- a/jsearch/api/swagger/jsearch-v1.swagger.yaml
++++ b/jsearch/api/swagger/jsearch-v1.swagger.yaml
+@@ -827,9 +827,7 @@ definitions:
+   
+   TokenTransfer:
+     properties:
+-      timestamp:
+-        type: integer
+-      transactionHash:
++      transaction:
+         type: string
+         format: hex
+       from:
+@@ -838,15 +836,6 @@ definitions:
+       to:
+         type: string
+         format: address
+-      tokenDecimals:
+-        type: integer
+-      tokenSymbol:
+-        type: string
+-      tokenName:
+-        type: string
+-      tokenAddress:
+-        type: string
+-        format: address
+       amount:
+         type: float
+ 
+diff --git a/jsearch/api/tests/test_endpoints.py b/jsearch/api/tests/test_endpoints.py
+index 8ea8690..f1e11f0 100644
+--- a/jsearch/api/tests/test_endpoints.py
++++ b/jsearch/api/tests/test_endpoints.py
+@@ -542,133 +542,64 @@ async def test_verify_contract_ok(db, cli, main_db_data, here, fuck_token):
+     )
+ 
+ 
+-_token_1_transfers = [{'from': 'a1',
+-                       'timestamp': 1529159847,
+-                       'to': 'a3',
+-                       'tokenAddress': 'c1',
+-                       'tokenDecimals': 2,
+-                       'tokenName': 'A Token',
+-                       'tokenSymbol': 'TKN',
+-                       'amount': 300,
+-                       'transactionHash': 't1'},
+-                      {'from': 'a2',
+-                       'timestamp': 1529159847,
+-                       'to': 'a1',
+-                       'tokenAddress': 'c1',
+-                       'tokenDecimals': 2,
+-                       'tokenName': 'A Token',
+-                       'tokenSymbol': 'TKN',
+-                       'amount': 100,
+-                       'transactionHash': 't1'}]
++@pytest.mark.parametrize("account_index", [0, 1, 2])
++async def test_get_account_token_transfers(cli, account_index, main_db_data, post_processing):
++    # given
++    dump = post_processing(main_db_data)
++    account: AccountBaseFromDumpWrapper = AccountBaseFromDumpWrapper.from_dump(
++        dump=dump,
++        index=account_index
++    )
++    token_transfers: List[TokenTransferFromDumpWrapper] = TokenTransferFromDumpWrapper.from_dump(
++        dump=dump,
++        filters={
++            'token_transfer_to': account.entity.address,
++            'token_transfer_from': account.entity.address
++        },
++        strict=False,
++        bulk=True
++    )
++    # when
++    resp = await cli.get(f'/accounts/{account.entity.address}/token_transfers')
+ 
+-
+-async def test_get_token_transfers(cli, main_db_data):
+-    resp = await cli.get(f'/tokens/c1/transfers')
+-    assert resp.status == 200
+-    assert await resp.json() == _token_1_transfers[:]
+-
+-
+-async def test_get_token_transfers_asc(cli, main_db_data):
+-    resp = await cli.get(f'/tokens/c1/transfers?order=asc')
+-    assert resp.status == 200
+-    assert await resp.json() == _token_1_transfers[::-1]
+-
+-
+-async def test_get_token_transfers_limit(cli, main_db_data):
+-    resp = await cli.get(f'/tokens/c1/transfers?limit=1')
+-    assert resp.status == 200
+-    assert await resp.json() == _token_1_transfers[:1]
+-
+-
+-async def test_get_token_transfers_offset(cli, main_db_data):
+-    resp = await cli.get(f'/tokens/c1/transfers?offset=1')
+-    assert resp.status == 200
+-    assert await resp.json() == _token_1_transfers[1:]
+-
+-
+-_account_1_transfers = [{'from': 'a3',
+-                         'timestamp': 1529159847,
+-                         'to': 'a1',
+-                         'tokenAddress': 'c2',
+-                         'tokenDecimals': 2,
+-                         'tokenName': 'A Token 2',
+-                         'tokenSymbol': 'TKN2',
+-                         'amount': 500,
+-                         'transactionHash': 't2'},
+-                        {'from': 'a1',
+-                         'timestamp': 1529159847,
+-                         'to': 'a3',
+-                         'tokenAddress': 'c1',
+-                         'tokenDecimals': 2,
+-                         'tokenName': 'A Token',
+-                         'tokenSymbol': 'TKN',
+-                         'amount': 300,
+-                         'transactionHash': 't1'},
+-                        {'from': 'a2',
+-                         'timestamp': 1529159847,
+-                         'to': 'a1',
+-                         'tokenAddress': 'c2',
+-                         'tokenDecimals': 2,
+-                         'tokenName': 'A Token 2',
+-                         'tokenSymbol': 'TKN2',
+-                         'amount': 200,
+-                         'transactionHash': 't1'},
+-                        {'from': 'a2',
+-                         'timestamp': 1529159847,
+-                         'to': 'a1',
+-                         'tokenAddress': 'c1',
+-                         'tokenDecimals': 2,
+-                         'tokenName': 'A Token',
+-                         'tokenSymbol': 'TKN',
+-                         'amount': 100,
+-                         'transactionHash': 't1'}]
+-
+-
+-async def test_get_account_token_transfers(cli, main_db_data):
+-    resp = await cli.get(f'/accounts/a1/token_transfers')
+-    assert resp.status == 200
+-    assert await resp.json() == _account_1_transfers[:]
+-
+-
+-async def test_get_account_token_transfers_asc(cli, main_db_data):
+-    resp = await cli.get(f'/accounts/a1/token_transfers?order=asc')
+-    assert resp.status == 200
+-    assert await resp.json() == _account_1_transfers[::-1]
+-
+-
+-async def test_get_account_token_transfers_limit(cli, main_db_data):
+-    resp = await cli.get(f'/accounts/a1/token_transfers?limit=1')
+-    assert resp.status == 200
+-    assert await resp.json() == _account_1_transfers[:1]
+-
+-
+-async def test_get_account_token_transfers_offset(cli, main_db_data):
+-    resp = await cli.get(f'/accounts/a1/token_transfers?offset=1')
+-    assert resp.status == 200
+-    assert await resp.json() == _account_1_transfers[1:]
+-
+-
+-async def test_get_account_token_transfers_a2(cli, main_db_data):
+-    resp = await cli.get(f'/accounts/a2/token_transfers')
++    # then
+     assert resp.status == 200
+-    assert await resp.json() == [{'from': 'a2',
+-                                  'timestamp': 1529159847,
+-                                  'to': 'a1',
+-                                  'tokenAddress': 'c2',
+-                                  'tokenDecimals': 2,
+-                                  'tokenName': 'A Token 2',
+-                                  'tokenSymbol': 'TKN2',
+-                                  'amount': 200,
+-                                  'transactionHash': 't1'},
+-                                 {'from': 'a2',
+-                                  'timestamp': 1529159847,
+-                                  'to': 'a1',
+-                                  'tokenAddress': 'c1',
+-                                  'tokenDecimals': 2,
+-                                  'tokenName': 'A Token',
+-                                  'tokenSymbol': 'TKN',
+-                                  'amount': 100,
+-                                  'transactionHash': 't1'}]
++    assert sort_token_transfers(await resp.json()) == sort_token_transfers(
++        [transfer.as_dict() for transfer in token_transfers]
++    )
++
++
++async def test_get_token_transfers(cli, main_db_data, post_processing):
++    # given
++    dump = post_processing(main_db_data)
++    receipt: ReceiptFromDumpWrapper = ReceiptFromDumpWrapper.from_dump(
++        dump=dump,
++        index=0
++    )
++    token_transfers: List[TokenTransferFromDumpWrapper] = TokenTransferFromDumpWrapper.from_dump(
++        dump=dump,
++        filters={
++            'address': receipt.entity.contract_address,
++            'is_token_transfer': True,
++        },
++        bulk=True
++    )
++    # when
++    resp = await cli.get(f'/tokens/{receipt.entity.contract_address}/transfers')
++
++    # then
++    assert resp.status == 200
++    assert sort_token_transfers(await resp.json()) == sort_token_transfers(
++        [transfer.as_dict() for transfer in token_transfers]
++    )
++
++
++@pprint_returned_value
++def sort_token_transfers(transfers):
++    return sorted(
++        transfers,
++        key=lambda item: (item['blockHash'], item['transaction'], item['from'], item['to'], item['amount'])
++    )
+ 
+ 
+ async def test_account_get_mined_blocks(cli, main_db_data):
+diff --git a/jsearch/common/database.py b/jsearch/common/database.py
+index f43ffe4..e376b13 100644
+--- a/jsearch/common/database.py
++++ b/jsearch/common/database.py
+@@ -90,11 +90,24 @@ class MainDBSync(DBWrapperSync):
+         conn.execute(query)
+ 
+     @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+-    def insert_transfers(self, records, conn=None):
+-        conn = self.conn or conn
+-        query = token_transfers_t.insert()
+-        if records:
+-            conn.execute(query, records)
++    def insert_transfers(self, records):
++        for record in records:
++            insert_query = insert(token_transfers_t).values(record).on_conflict_do_update(
++                index_elements=['block_hash', 'transaction_hash', 'address'],
++                set_={
++                    'block_number': record['block_number'],
++                    'from_address': record['from_address'],
++                    'log_index': record['log_index'],
++                    'timestamp': record['timestamp'],
++                    'to_address': record['to_address'],
++                    'token_address': record['token_address'],
++                    'token_decimals': record['token_decimals'],
++                    'token_name': record['token_name'],
++                    'token_symbol': record['token_symbol'],
++                    'token_value': record['token_value'],
++                }
++            )
++            self.conn.execute(insert_query)
+ 
+     @as_dicts
+     @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+diff --git a/jsearch/common/migrations/versions/4377c859182d_token_transfers_transaction_index_column_007.py b/jsearch/common/migrations/versions/4377c859182d_token_transfers_transaction_index_column_007.py
+deleted file mode 100644
+index defb10c..0000000
+--- a/jsearch/common/migrations/versions/4377c859182d_token_transfers_transaction_index_column_007.py
++++ /dev/null
+@@ -1,40 +0,0 @@
+-"""token_transfers_transaction_index_column
+-
+-Revision ID: 4377c859182d
+-Revises: d44ee9b43f8d
+-Create Date: 2019-01-17 12:43:40.333265
+-
+-"""
+-from alembic import op
+-import sqlalchemy as sa
+-from jsearch.common import tables
+-
+-
+-# revision identifiers, used by Alembic.
+-revision = '4377c859182d'
+-down_revision = 'd44ee9b43f8d'
+-branch_labels = None
+-depends_on = None
+-
+-UP_SQL = """
+-
+-            DROP INDEX ix_token_transfers_address_block_number_log_index;
+-            DROP INDEX ix_token_transfers_token_address_block_number_log_index;
+-            
+-            ALTER TABLE token_transfers ADD COLUMN transaction_index integer;
+-            
+-            CREATE INDEX ix_token_transfers_address_block_number_log_index ON token_transfers(address, block_number, transaction_index, log_index);
+-            CREATE INDEX ix_token_transfers_token_address_block_number_log_index ON token_transfers(token_address, block_number, transaction_index, log_index);
+-            """
+-DOWN_SQL = """
+-            DROP INDEX ix_token_transfers_address_block_number_log_index;
+-            DROP INDEX ix_token_transfers_block_hash;
+-            """
+-
+-
+-def upgrade():
+-    op.execute(UP_SQL)
+-
+-
+-def downgrade():
+-    op.execute(DOWN_SQL)
+\ No newline at end of file
+diff --git a/jsearch/common/migrations/versions/78d176256d74_add_constraint_on_token_transfers.py b/jsearch/common/migrations/versions/78d176256d74_add_constraint_on_token_transfers.py
+new file mode 100644
+index 0000000..96796c1
+--- /dev/null
++++ b/jsearch/common/migrations/versions/78d176256d74_add_constraint_on_token_transfers.py
+@@ -0,0 +1,28 @@
++"""empty message
++
++Revision ID: 78d176256d74
++Revises: d44ee9b43f8d
++Create Date: 2019-01-21 10:28:06.952792
++
++"""
++from alembic import op
++
++# revision identifiers, used by Alembic.
++revision = '78d176256d74'
++down_revision = 'd44ee9b43f8d'
++branch_labels = None
++depends_on = None
++
++UP_SQL = """
++ALTER TABLE ONLY token_transfers ADD CONSTRAINT token_transfers_unique 
++    UNIQUE (block_hash, transaction_hash, address);
++"""
++DOWN_SQL = "ALTER TABLE ONLY token_transfers DROP CONSTRAINT token_transfers_unique;"
++
++
++def upgrade():
++    op.execute(UP_SQL)
++
++
++def downgrade():
++    op.execute(DOWN_SQL)
+diff --git a/jsearch/common/processing/erc20_transfer_logs.py b/jsearch/common/processing/erc20_balances.py
+similarity index 80%
+rename from jsearch/common/processing/erc20_transfer_logs.py
+rename to jsearch/common/processing/erc20_balances.py
+index 67b05da..471de5b 100644
+--- a/jsearch/common/processing/erc20_transfer_logs.py
++++ b/jsearch/common/processing/erc20_balances.py
+@@ -10,7 +10,7 @@ from jsearch.common.contracts import NULL_ADDRESS
+ from jsearch.common.database import MainDBSync
+ from jsearch.common.integrations.contracts import get_contracts
+ from jsearch.common.rpc import ContractCall, eth_call_batch
+-from jsearch.typing import Log, Abi, Contract, Contracts, Logs, Transfers, Block
++from jsearch.typing import Log, Abi, Contract, Contracts, Logs, Block
+ from jsearch.utils import split
+ 
+ logger = logging.getLogger(__name__)
+@@ -176,35 +176,3 @@ def process_log_operations_bulk(
+             update.apply(db)
+ 
+     return logs
+-
+-
+-def log_to_transfers(log: Log, block: Block, contract: Contract) -> Transfers:
+-    transfer_body = {
+-        'block_hash': log['block_hash'],
+-        'block_number': log['block_number'],
+-        'from_address': log['token_transfer_from'],
+-        'log_index': log['log_index'],
+-        'timestamp': block['timestamp'],
+-        'to_address': log['token_transfer_to'],
+-        'token_address': log['address'],
+-        'token_decimals': contract['decimals'],
+-        'token_name': contract['token_name'],
+-        'token_symbol': contract['token_symbol'],
+-        'token_value': log['token_amount'],
+-        'transaction_hash': log['transaction_hash'],
+-        'transaction_index': log['transaction_index']
+-    }
+-    return [
+-        {'address': log['token_transfer_to'], **transfer_body},
+-        {'address': log['token_transfer_from'], **transfer_body}
+-    ]
+-
+-
+-def logs_to_transfers(logs: Logs, blocks: Dict[str, Block], contracts: Dict[str, Contract]) -> Transfers:
+-    transfers = []
+-    for log in logs:
+-        contract = contracts.get(log['address'])
+-        block = blocks.get(log['block_hash'])
+-        if block and log and contract and log.get('is_token_transfer'):
+-            transfers.extend(log_to_transfers(log, block, contract))
+-    return transfers
+diff --git a/jsearch/common/processing/erc20_transfers.py b/jsearch/common/processing/erc20_transfers.py
+new file mode 100644
+index 0000000..f13e489
+--- /dev/null
++++ b/jsearch/common/processing/erc20_transfers.py
+@@ -0,0 +1,39 @@
++import logging
++from typing import Dict
++
++from jsearch.typing import Log, Contract, Logs, Transfers, Block
++
++logger = logging.getLogger(__name__)
++
++
++def log_to_transfers(log: Log, block: Block, contract: Contract) -> Transfers:
++    transfer_body = {
++        'block_hash': log['block_hash'],
++        'block_number': log['block_number'],
++        'from_address': log['token_transfer_from'],
++        'log_index': log['log_index'],
++        'timestamp': block and block['timestamp'],
++        'to_address': log['token_transfer_to'],
++        'token_address': log['address'],
++        'token_decimals': contract and contract['decimals'],
++        'token_name': contract and contract['token_name'],
++        'token_symbol': contract and contract['token_symbol'],
++        'token_value': log['token_amount'],
++        'transaction_hash': log['transaction_hash']
++    }
++    return [
++        {'address': log['token_transfer_to'], **transfer_body},
++        {'address': log['token_transfer_from'], **transfer_body}
++    ]
++
++
++def logs_to_transfers(logs: Logs, blocks: Dict[str, Block], contracts: Dict[str, Contract]) -> Transfers:
++    transfers = []
++    for log in logs:
++        if log and log.get('is_token_transfer'):
++            block = blocks.get(log['block_hash'])
++            contract = contracts.get(log['address'])
++
++            log_transfers = log_to_transfers(log, block, contract)
++            transfers.extend(log_transfers)
++    return transfers
+diff --git a/jsearch/common/processing/logs.py b/jsearch/common/processing/logs.py
+index fc4b1fb..94eb914 100644
+--- a/jsearch/common/processing/logs.py
++++ b/jsearch/common/processing/logs.py
+@@ -82,11 +82,11 @@ def process_log_event(log: Log) -> Log:
+         event_args = log['event_args']
+ 
+         if event_type == EventTypes.TRANSFER and len(event_args) == TRANSFER_EVENT_INPUT_SIZE:
+-            log['is_token_transfer'] = True
+             from_address, to_address, token_amount = get_transfer_details_from_erc20_event_args(
+                 event_args=event_args, abi=ERC20_ABI
+             )
+             log.update({
++                'is_token_transfer': True,
+                 'token_transfer_to': to_address,
+                 'token_transfer_from': from_address,
+                 'token_amount': token_amount,
+@@ -98,5 +98,6 @@ def process_log_event(log: Log) -> Log:
+             'event_type': None,
+             'event_args': None,
+         })
++
+     log['is_processed'] = True
+     return log
+diff --git a/jsearch/common/tests/test_retries.py b/jsearch/common/tests/test_retries.py
+index a49e0f4..c3bfb22 100644
+--- a/jsearch/common/tests/test_retries.py
++++ b/jsearch/common/tests/test_retries.py
+@@ -22,7 +22,7 @@ def connect_timeout_on_geth_node():
+ @pytest.mark.usefixtures('connect_timeout_on_geth_node')
+ def test_retries_when_fetch_decimals_from_eth_node(mocker, main_db_data):
+     # given
+-    from jsearch.common.processing.erc20_transfer_logs import fetch_erc20_token_decimal_bulk
++    from jsearch.common.processing.erc20_balances import fetch_erc20_token_decimal_bulk
+ 
+     mocker.patch('time.sleep')
+     post_mock = mocker.patch('requests.post', side_effect=requests.post)
+@@ -41,7 +41,7 @@ def test_retries_when_fetch_balances_from_eth_node(mocker, ether_address_generat
+     # given
+     import requests
+     from jsearch.common.contracts import ERC20_ABI
+-    from jsearch.common.processing.erc20_transfer_logs import BalanceUpdate, fetch_erc20_balance_bulk
++    from jsearch.common.processing.erc20_balances import BalanceUpdate, fetch_erc20_balance_bulk
+ 
+     mocker.patch('time.sleep')
+     post_mock = mocker.patch('requests.post', side_effect=requests.post)
+diff --git a/jsearch/post_processing/service.py b/jsearch/post_processing/service.py
+index bdf97f6..778f436 100644
+--- a/jsearch/post_processing/service.py
++++ b/jsearch/post_processing/service.py
+@@ -7,11 +7,12 @@ from typing import Callable, List, Optional
+ 
+ from jsearch import settings
+ from jsearch.common.database import MainDBSync
+-from jsearch.common.processing.erc20_transfer_logs import (
++from jsearch.common.processing.erc20_transfers import logs_to_transfers
++from jsearch.common.processing.erc20_balances import (
++    fetch_blocks,
+     fetch_contracts,
+-    logs_to_transfers,
+     process_log_operations_bulk,
+-    fetch_blocks)
++)
+ from jsearch.common.processing.logs import process_log_event
+ from jsearch.typing import Log
+ 
+diff --git a/jsearch/tests/plugins/databases/dumps/maindb_fixture.json b/jsearch/tests/plugins/databases/dumps/maindb_fixture.json
+index 9a2392a..1424879 100644
+--- a/jsearch/tests/plugins/databases/dumps/maindb_fixture.json
++++ b/jsearch/tests/plugins/databases/dumps/maindb_fixture.json
+@@ -811,235 +811,14 @@
+   ],
+   "uncles": [],
+   "token_holders": [
+-    {
+-      "account_address": "a1",
+-      "token_address": "t1",
+-      "decimals": 2,
+-      "balance": 1000
+-    },
+-    {
+-      "account_address": "a1",
+-      "token_address": "t2",
+-      "decimals": 2,
+-      "balance": 2000
+-    },
+-    {
+-      "account_address": "a1",
+-      "token_address": "t3",
+-      "decimals": 2,
+-      "balance": 3000
+-    },
+-    {
+-      "account_address": "a2",
+-      "token_address": "t1",
+-      "decimals": 2,
+-      "balance": 2000
+-    },
+-    {
+-      "account_address": "a2",
+-      "token_address": "t2",
+-      "decimals": 2,
+-      "balance": 1000
+-    },
+-    {
+-      "account_address": "a3",
+-      "token_address": "t1",
+-      "decimals": 2,
+-      "balance": 3000
+-    },
+-    {
+-      "account_address": "a3",
+-      "token_address": "t3",
+-      "decimals": 2,
+-      "balance": 5000
+-    },
+-    {
+-      "account_address": "a4",
+-      "token_address": "t3",
+-      "decimals": 2,
+-      "balance": 6000
+-    },
+-    {
+-      "account_address": "a5",
+-      "token_address": "t3",
+-      "decimals": 2,
+-      "balance": 7000
+-    }
+-  ],
+-  "token_transfers": [
+-    {
+-      "address": "a1",
+-      "transaction_hash": "t1",
+-      "log_index": 10,
+-      "block_number": 6700502,
+-      "block_hash": "b1",
+-      "timestamp": 1529159847,
+-      "from_address": "a2",
+-      "to_address": "a1",
+-      "token_address": "c1",
+-      "token_value": 100.0,
+-      "token_decimals": 2,
+-      "token_name": "A Token",
+-      "token_symbol": "TKN",
+-      "is_forked": false,
+-      "transaction_index": 30
+-    },
+-    {
+-      "address": "a2",
+-      "transaction_hash": "t1",
+-      "log_index": 10,
+-      "block_number": 6700502,
+-      "block_hash": "b1",
+-      "timestamp": 1529159847,
+-      "from_address": "a2",
+-      "to_address": "a1",
+-      "token_address": "c1",
+-      "token_value": 100.0,
+-      "token_decimals": 2,
+-      "token_name": "A Token",
+-      "token_symbol": "TKN",
+-      "is_forked": false,
+-      "transaction_index": 30
+-    },
+-
+-    {
+-      "address": "a1",
+-      "transaction_hash": "t1",
+-      "log_index": 11,
+-      "block_number": 6700502,
+-      "block_hash": "b1",
+-      "timestamp": 1529159847,
+-      "from_address": "a2",
+-      "to_address": "a1",
+-      "token_address": "c2",
+-      "token_value": 200.0,
+-      "token_decimals": 2,
+-      "token_name": "A Token 2",
+-      "token_symbol": "TKN2",
+-      "is_forked": false,
+-      "transaction_index": 30
+-    },
+-        {
+-      "address": "a2",
+-      "transaction_hash": "t1",
+-      "log_index": 11,
+-      "block_number": 6700502,
+-      "block_hash": "b1",
+-      "timestamp": 1529159847,
+-      "from_address": "a2",
+-      "to_address": "a1",
+-      "token_address": "c2",
+-      "token_value": 200.0,
+-      "token_decimals": 2,
+-      "token_name": "A Token 2",
+-      "token_symbol": "TKN2",
+-      "is_forked": false,
+-      "transaction_index": 30
+-    },
+-
+-    {
+-      "address": "a1",
+-      "transaction_hash": "t1",
+-      "log_index": 12,
+-      "block_number": 6700502,
+-      "block_hash": "b1",
+-      "timestamp": 1529159847,
+-      "from_address": "a1",
+-      "to_address": "a3",
+-      "token_address": "c1",
+-      "token_value": 300.0,
+-      "token_decimals": 2,
+-      "token_name": "A Token",
+-      "token_symbol": "TKN",
+-      "is_forked": false,
+-      "transaction_index": 30
+-    },
+-    {
+-      "address": "a3",
+-      "transaction_hash": "t1",
+-      "log_index": 12,
+-      "block_number": 6700502,
+-      "block_hash": "b1",
+-      "timestamp": 1529159847,
+-      "from_address": "a1",
+-      "to_address": "a3",
+-      "token_address": "c1",
+-      "token_value": 300.0,
+-      "token_decimals": 2,
+-      "token_name": "A Token",
+-      "token_symbol": "TKN",
+-      "is_forked": false,
+-      "transaction_index": 30
+-    },
+-
+-    {
+-      "address": "a1",
+-      "transaction_hash": "t1",
+-      "log_index": 13,
+-      "block_number": 6700502,
+-      "block_hash": "b0",
+-      "timestamp": 1529159847,
+-      "from_address": "a1",
+-      "to_address": "a3",
+-      "token_address": "c1",
+-      "token_value": 400.0,
+-      "token_decimals": 2,
+-      "token_name": "A Token",
+-      "token_symbol": "TKN",
+-      "is_forked": true,
+-      "transaction_index": 30
+-    },    {
+-      "address": "a3",
+-      "transaction_hash": "t1",
+-      "log_index": 13,
+-      "block_number": 6700502,
+-      "block_hash": "b0",
+-      "timestamp": 1529159847,
+-      "from_address": "a1",
+-      "to_address": "a3",
+-      "token_address": "c1",
+-      "token_value": 400.0,
+-      "token_decimals": 2,
+-      "token_name": "A Token",
+-      "token_symbol": "TKN",
+-      "is_forked": true,
+-      "transaction_index": 30
+-    },
+-
+-
+-    {
+-      "address": "a1",
+-      "transaction_hash": "t2",
+-      "log_index": 14,
+-      "block_number": 6700503,
+-      "block_hash": "b2",
+-      "timestamp": 1529159847,
+-      "from_address": "a3",
+-      "to_address": "a1",
+-      "token_address": "c2",
+-      "token_value": 500.0,
+-      "token_decimals": 2,
+-      "token_name": "A Token 2",
+-      "token_symbol": "TKN2",
+-      "is_forked": false,
+-      "transaction_index": 30
+-    },
+-        {
+-      "address": "a3",
+-      "transaction_hash": "t2",
+-      "log_index": 14,
+-      "block_number": 6700503,
+-      "block_hash": "b2",
+-      "timestamp": 1529159847,
+-      "from_address": "a3",
+-      "to_address": "a1",
+-      "token_address": "c2",
+-      "token_value": 500.0,
+-      "token_decimals": 2,
+-      "token_name": "A Token 2",
+-      "token_symbol": "TKN2",
+-      "is_forked": false,
+-      "transaction_index": 30
+-    }
++    {"account_address":  "a1", "token_address": "t1", "decimals": 2, "balance":  1000},
++    {"account_address":  "a1", "token_address": "t2", "decimals": 2, "balance":  2000},
++    {"account_address":  "a1", "token_address": "t3", "decimals": 2,  "balance":  3000},
++    {"account_address":  "a2", "token_address": "t1", "decimals": 2,  "balance":  2000},
++    {"account_address":  "a2", "token_address": "t2", "decimals": 2,  "balance":  1000},
++    {"account_address":  "a3", "token_address": "t1", "decimals": 2,  "balance":  3000},
++    {"account_address":  "a3", "token_address": "t3", "decimals": 2,  "balance":  5000},
++    {"account_address":  "a4", "token_address": "t3", "decimals": 2,  "balance":  6000},
++    {"account_address":  "a5", "token_address": "t3", "decimals": 2,  "balance":  7000}
+   ]
+ }
+diff --git a/jsearch/tests/plugins/tools.py b/jsearch/tests/plugins/tools.py
+index 6e74db9..a305068 100644
+--- a/jsearch/tests/plugins/tools.py
++++ b/jsearch/tests/plugins/tools.py
+@@ -13,11 +13,11 @@ pytest_plugins = (
+ def post_processing(db_connection_string, mocker):
+     mocker.patch('time.sleep')
+     mocker.patch(
+-        'jsearch.common.processing.erc20_transfer_logs.fetch_erc20_token_decimal_bulk',
++        'jsearch.common.processing.erc20_balances.fetch_erc20_token_decimal_bulk',
+         lambda contracts: [contract.update(decimals=2) for contract in contracts] and contracts
+     )
+     mocker.patch(
+-        'jsearch.common.processing.erc20_transfer_logs.fetch_erc20_balance_bulk',
++        'jsearch.common.processing.erc20_balances.fetch_erc20_balance_bulk',
+         lambda updates: [setattr(update, 'value', 100) for update in updates] and updates
+     )
+ 
+@@ -27,7 +27,7 @@ def post_processing(db_connection_string, mocker):
+         def get_contract(addresses: List[str]):
+             return [contracts.get(address) for address in addresses]
+ 
+-        mocker.patch('jsearch.common.processing.erc20_transfer_logs.get_contracts', get_contract)
++        mocker.patch('jsearch.common.processing.erc20_balances.get_contracts', get_contract)
+ 
+         from jsearch.post_processing.service import post_processing, ACTION_LOG_OPERATIONS, ACTION_LOG_EVENTS
+ 
+diff --git a/jsearch/tests/post_processing/test_transfers.py b/jsearch/tests/post_processing/test_transfers.py
+index 9ce293e..4d4ff3f 100644
+--- a/jsearch/tests/post_processing/test_transfers.py
++++ b/jsearch/tests/post_processing/test_transfers.py
+@@ -2,7 +2,7 @@ from decimal import Decimal
+ 
+ 
+ def test_log_to_transfer():
+-    from jsearch.common.processing.erc20_transfer_logs import log_to_transfers
++    from jsearch.common.processing.erc20_transfers import log_to_transfers
+     log = {
+         'address': '0x7cbc8ee27ffdba230dd316160ea01d565f17aacb',
+         'block_hash': '0xa6c837fb9d5495872238e141e3b4a4d71dc34218a09d3b7eee2beebdad02d7b7',
+@@ -89,8 +89,7 @@ def test_log_to_transfer():
+             'token_name': 'Integrated Capital Token',
+             'token_symbol': 'ICAP',
+             'token_value': Decimal('228000000000000000000'),
+-            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
+-            'transaction_index': 114
++            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1'
+         },
+         {
+             'address': '0xfac652fb819674245a96c264f0a79e9157533347',
+@@ -105,14 +104,13 @@ def test_log_to_transfer():
+             'token_name': 'Integrated Capital Token',
+             'token_symbol': 'ICAP',
+             'token_value': Decimal('228000000000000000000'),
+-            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
+-            'transaction_index': 114
++            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1'
+         }
+     ]
+ 
+ 
+ def test_logs_to_transfer():
+-    from jsearch.common.processing.erc20_transfer_logs import logs_to_transfers
++    from jsearch.common.processing.erc20_transfers import logs_to_transfers
+     logs = [
+         {
+             'address': '0x7cbc8ee27ffdba230dd316160ea01d565f17aacb',
+@@ -233,8 +231,7 @@ def test_logs_to_transfer():
+             'token_name': 'Integrated Capital Token',
+             'token_symbol': 'ICAP',
+             'token_value': Decimal('228000000000000000000'),
+-            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
+-            'transaction_index': 114
++            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1'
+         },
+         {
+             'address': '0xfac652fb819674245a96c264f0a79e9157533347',
+@@ -249,8 +246,7 @@ def test_logs_to_transfer():
+             'token_name': 'Integrated Capital Token',
+             'token_symbol': 'ICAP',
+             'token_value': Decimal('228000000000000000000'),
+-            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
+-            'transaction_index': 114
++            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1'
+         },
+         {
+             'address': '0x35047d681920f66e4ad32c6d6c2a7091fa15a209',
+@@ -265,8 +261,7 @@ def test_logs_to_transfer():
+             'token_name': 'Integrated Capital Token',
+             'token_symbol': 'ICAP',
+             'token_value': Decimal('2234000000000000000000'),
+-            'transaction_hash': '0x90bfe01af4b1f7959b03dcb9b41a78525d481697fcce27fea4af767d57d37451',
+-            'transaction_index': 129
++            'transaction_hash': '0x90bfe01af4b1f7959b03dcb9b41a78525d481697fcce27fea4af767d57d37451'
+         },
+         {
+             'address': '0x85429f986a5cc38f90de7b4ffa44d570eef04066',
+@@ -281,8 +276,7 @@ def test_logs_to_transfer():
+             'token_name': 'Integrated Capital Token',
+             'token_symbol': 'ICAP',
+             'token_value': Decimal('2234000000000000000000'),
+-            'transaction_hash': '0x90bfe01af4b1f7959b03dcb9b41a78525d481697fcce27fea4af767d57d37451',
+-            'transaction_index': 129
++            'transaction_hash': '0x90bfe01af4b1f7959b03dcb9b41a78525d481697fcce27fea4af767d57d37451'
+         }]
+ 
+ 
+@@ -305,8 +299,7 @@ def test_insert_transfers_to_db(db, db_connection_string, mocker):
+             'token_name': 'Integrated Capital Token',
+             'token_symbol': 'ICAP',
+             'token_value': Decimal('228.0'),
+-            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
+-            'transaction_index': 114
++            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1'
+         },
+         {
+             'address': '0xfac652fb819674245a96c264f0a79e9157533347',
+@@ -321,8 +314,7 @@ def test_insert_transfers_to_db(db, db_connection_string, mocker):
+             'token_name': 'Integrated Capital Token',
+             'token_symbol': 'ICAP',
+             'token_value': Decimal('228.0'),
+-            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
+-            'transaction_index': 114
++            'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1'
+         }
+     ]
+ 
+diff --git a/jsearch/validation/__main__.py b/jsearch/validation/__main__.py
+index cbcfb40..5e04280 100644
+--- a/jsearch/validation/__main__.py
++++ b/jsearch/validation/__main__.py
+@@ -6,7 +6,12 @@ import click
+ 
+ from jsearch.common import logs
+ from jsearch.common.integrations.contracts import get_contract
+-from jsearch.validation.balances import check_token_holder_balances, show_statistics, show_top_holders
++from jsearch.validation.balances import (
++    check_token_holder_balances,
++    show_holders as print_holders,
++    show_stats as print_stats,
++    show_transfers as print_transfers
++)
+ from jsearch.validation.proxy import TokenProxy
+ 
+ logger = logging.getLogger(__name__)
+@@ -16,22 +21,29 @@ logger = logging.getLogger(__name__)
+ @click.argument('token')
+ @click.option('--check-balances', is_flag=True)
+ @click.option('--show-holders', is_flag=True)
++@click.option('--show-stats', is_flag=True)
++@click.option('--show-transfers', is_flag=True)
+ @click.option('--rewrite', is_flag=True)
++@click.option('--limit', type=int)
+ @click.option('--log-level', default='INFO', help="Log level")
+-def check(token, check_balances, rewrite, show_holders, log_level):
++def check(token, check_balances, rewrite, show_holders, show_stats, show_transfers, limit, log_level):
+     logs.configure(log_level)
+     loop = asyncio.get_event_loop()
+ 
+     token = get_contract(token)
+     if token:
+         token_proxy = TokenProxy(abi=token['abi'], address=token['address'])
+-        loop.run_until_complete(show_statistics(token_proxy))
++        if show_stats:
++            loop.run_until_complete(print_stats(token_proxy))
+ 
+         if check_balances:
+-            loop.run_until_complete(check_token_holder_balances(token=token_proxy, rewrite_invalide_values=rewrite))
++            loop.run_until_complete(check_token_holder_balances(token=token_proxy, rewrite_invalid_values=rewrite))
+ 
+         if show_holders:
+-            loop.run_until_complete(show_top_holders(token=token_proxy))
++            loop.run_until_complete(print_holders(token=token_proxy, limit=limit))
++
++        if show_transfers:
++            loop.run_until_complete(print_transfers(token=token_proxy, limit=limit))
+     else:
+         logger.info('Token was not found')
+ 
+diff --git a/jsearch/validation/balances.py b/jsearch/validation/balances.py
+index 6920196..d247441 100644
+--- a/jsearch/validation/balances.py
++++ b/jsearch/validation/balances.py
+@@ -1,30 +1,33 @@
+ import asyncio
+ import logging
+ from itertools import count
++from typing import Optional, List, Any, Dict
+ 
+ import asyncpg
++from asyncpg.pool import Pool
+ from web3 import Web3
+ 
+ from jsearch import settings
+-from jsearch.api.storage import Storage
+ from jsearch.common.rpc import eth_call_batch
+-from jsearch.utils import split
+ from jsearch.validation.proxy import TokenProxy
+ from jsearch.validation.queries import (
+-    get_total_transactions_count,
++    get_balances_sum,
+     get_total_holders_count,
+-    update_token_holder_balance,
+     get_total_positive_holders_count,
+-    get_balances_sum
++    get_total_transactions_count,
++    iterate_holders,
++    iterate_transfers,
++    update_token_holder_balance,
+ )
+ 
+ logger = logging.getLogger(__name__)
+ 
+ QUERY_SIZE = 1000
+ BATCH_REQUEST_SIZE = 50
++HOLDERS_PAGE_SIZE = 100
+ 
+ 
+-async def show_statistics(token: TokenProxy) -> None:
++async def show_stats(token: TokenProxy) -> None:
+     db_pool = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
+ 
+     holders_count = await get_total_positive_holders_count(pool=db_pool, token_address=token.address)
+@@ -41,66 +44,98 @@ async def show_statistics(token: TokenProxy) -> None:
+     print(f"[STATISTICS] Balances sum {balances_sum}. Token total supply {token.total_supply}")
+ 
+ 
+-async def show_top_holders(token: TokenProxy) -> None:
++async def show_holders(token: TokenProxy, limit: Optional = None) -> None:
+     db_pool = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
+-    storage = Storage(pool=db_pool)
+ 
+-    holders = await storage.get_tokens_holders(address=token.address, offset=0, limit=10, order='desc')
+-    holders = (holder.to_dict() for holder in holders)
+-    for holder in holders:
+-        address = holder["accountAddress"]
+-        balance = holder["balance"]
++    print(f"Address{' ' * 36 }| Actual value { ' ' * 17 } | Percent | Decimals")
++
++    counter = count()
++    async for holder in await iterate_holders(db_pool, token_address=token.address):
++        address = holder["account_address"]
++        balance = int(holder["balance"])
+         decimals = holder["decimals"] or "-"
+ 
+-        percent = round(balance / token.total_supply * 100.0, 2)
+-        print(f"{address} - {balance:<30}  {percent:2.2f}% {decimals}")
++        percent = round(balance / token.total_supply * 100, 2)
++        print(f"{address} | {balance:<30} | {percent:<4.2f} % | {decimals:<4}")
++
++        if limit and next(counter) > limit:
++            break
+ 
+ 
+-async def check_token_holder_balances(token: TokenProxy, rewrite_invalide_values=False) -> None:
++async def show_transfers(token: TokenProxy, limit: Optional = None) -> None:
+     db_pool = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
+-    storage = Storage(pool=db_pool)
+ 
++    counter = count()
++    async for transfer in await iterate_transfers(db_pool, token_address=token.address):
++        block_number = transfer['block_number']
++        tx_hash = transfer['transaction_hash']
++        from_ = transfer['token_transfer_from']
++        to_ = transfer['token_transfer_to']
++        value = transfer['token_amount']
++
++        print(f"{block_number:<7} | {tx_hash}.. | {from_} | {to_} | {value:<30}")
++
++        if limit and next(counter) > limit:
++            break
++
++
++async def check_token_holder_chunk(db_pool: Pool,
++                                   token: TokenProxy,
++                                   chunk: List[Dict[str, Any]],
++                                   rewrite_invalid_values: bool = False) -> int:
++    request_counter = count()
++
++    accounts = [Web3.toChecksumAddress(item['account_address']) for item in chunk]
++    calls = [token.get_balance_call(pk=next(request_counter), args=[account]) for account in accounts]
++
++    results = eth_call_batch(calls=calls)
++    balances = [results.get(call.pk) for call in calls]
++
++    updates = list()
+     errors = 0
++    for original_balance, token_holder in zip(balances, chunk):
++        address = token_holder['account_address']
++        balance = int(token_holder['balance'])
++
++        if original_balance != balance:
++            errors += 1
++            print(f"{address} | {original_balance:<30} | {balance:<30}")
++
++            if rewrite_invalid_values:
++                update = update_token_holder_balance(
++                    pool=db_pool,
++                    token_address=token.address,
++                    account_address=address,
++                    balance=original_balance,
++                    decimals=token.decimals
++                )
++                updates.append(update)
++
++    if rewrite_invalid_values:
++        await asyncio.gather(*updates)
++
++    return errors
++
++
++async def check_token_holder_balances(token: TokenProxy, rewrite_invalid_values=False) -> None:
++    db_pool = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
++    total_records = await get_total_holders_count(db_pool, token.address)
+ 
+-    total_records = await get_total_holders_count(pool=db_pool, token_address=token.address)
+     print(f"Address{' ' * 36 }| Actual value { ' ' * 17 } | Value in database ")
+-    for offset in range(0, total_records, QUERY_SIZE):
+-        holders = await storage.get_tokens_holders(address=token.address, offset=offset, limit=QUERY_SIZE, order='asc')
+-        holders = [holder.to_dict() for holder in holders]
+-
+-        for chunk in split(holders, size=BATCH_REQUEST_SIZE):
+-            counter = count()
+-
+-            accounts = [Web3.toChecksumAddress(item['accountAddress']) for item in chunk]
+-            calls = [token.get_balance_call(pk=next(counter), args=[account]) for account in accounts]
+-
+-            results = eth_call_batch(calls=calls)
+-            balances = [results.get(call.pk) for call in calls]
+-
+-            updates = list()
+-            for original_balance, token_holder in zip(balances, chunk):
+-                address = token_holder['accountAddress']
+-                balance = token_holder['balance']
+-
+-                if original_balance != balance:
+-                    errors += 1
+-                    print(f"{address} | {original_balance:<30} | {balance:<30}")
+-
+-                    if rewrite_invalide_values:
+-                        update = update_token_holder_balance(
+-                            pool=db_pool,
+-                            token_address=token.address,
+-                            account_address=address,
+-                            balance=original_balance,
+-                            decimals=token.decimals
+-                        )
+-                        updates.append(update)
+-
+-            if rewrite_invalide_values:
+-                await asyncio.gather(*updates)
+-
+-        if offset:
+-            progress = offset / total_records * 100.0
++
++    errors = 0
++    chunk = []
++    processed = count(step=BATCH_REQUEST_SIZE)
++    async for holder in await iterate_holders(db_pool, token_address=token.address):
++        if len(chunk) < BATCH_REQUEST_SIZE:
++            chunk.append(holder)
++        else:
++            errors += await check_token_holder_chunk(db_pool, token, chunk, rewrite_invalid_values)
++            chunk = []
++            progress = next(processed) / total_records * 100.0
+             print(f"[PROGRESS] {progress:2.2f}")
+ 
++    if chunk:
++        errors += await check_token_holder_chunk(db_pool, token, chunk, rewrite_invalid_values)
++
+     print(f"[STATISTICS] {total_records} total records with {errors} errors")
+diff --git a/jsearch/validation/queries.py b/jsearch/validation/queries.py
+index 00d3003..520443b 100644
+--- a/jsearch/validation/queries.py
++++ b/jsearch/validation/queries.py
+@@ -1,6 +1,42 @@
++from typing import AsyncGenerator, Dict, Any
++
+ from asyncpg.pool import Pool
+ 
+ 
++async def iterate_query(pool: Pool, query: str, *args: Any, **kwargs: Any) -> AsyncGenerator[Dict[str, Any], None]:
++    async with pool.acquire() as connection:
++        async with connection.transaction():
++            async for record in connection.cursor(query, *args, **kwargs):
++                yield dict(record)
++
++
++async def iterate_holders(pool: Pool, token_address: str) -> AsyncGenerator[Dict[str, Any], None]:
++    query = """
++        SELECT account_address,
++               token_address,
++               balance,
++               decimals
++        FROM token_holders WHERE token_address = $1
++        ORDER BY balance desc;
++    """
++    return iterate_query(pool, query, token_address)
++
++
++async def iterate_transfers(pool: Pool, token_address: str) -> AsyncGenerator[Dict[str, Any], None]:
++    query = """
++        SELECT block_number,
++               block_hash,
++               transaction_hash,
++               token_amount,
++               token_transfer_from,
++               token_transfer_to
++        FROM logs
++        WHERE address = $1 AND is_token_transfer = true
++        ORDER BY block_number asc;
++    """
++    return iterate_query(pool, query, token_address)
++
++
+ async def get_total_holders_count(pool: Pool, token_address: str) -> int:
+     query = "SELECT count(*) as count FROM token_holders WHERE token_address = $1"
+ 
+@@ -36,7 +72,7 @@ async def update_token_holder_balance(pool: Pool,
+                                       decimals: int) -> None:
+     query = """
+         UPDATE token_holders
+-        SET balance = $3, decimals = $
++        SET balance = $3, decimals = $4
+         WHERE account_address = $1 and token_address = $2;
+     """
+     async with pool.acquire() as conn:

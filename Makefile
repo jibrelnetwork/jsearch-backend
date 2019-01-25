@@ -3,24 +3,24 @@ PROJECT_NAME=jsearch
 shell:
 	docker-compose run --rm --entrypoint bash syncer
 
-shell_tests:
-	docker-compose run --rm --entrypoint bash tests
+shell_dev:
+	docker-compose run --rm --entrypoint bash dev
 
 build:
 	docker-compose build api
 
-build_tests:
+build_dev:
 	docker-compose build api
-	docker-compose build tests
+	docker-compose build dev
 
 lint:
-	docker-compose run --rm --entrypoint flake8 tests
+	docker-compose run --rm --entrypoint flake8 dev
 
 test:
-	docker-compose run --rm --entrypoint pytest tests 
+	docker-compose run --rm --entrypoint pytest dev
 
 validate:
-	make build_tests
+	make build_dev
 	make lint
 	make test
 

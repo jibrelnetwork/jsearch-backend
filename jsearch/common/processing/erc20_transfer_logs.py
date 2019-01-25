@@ -1,15 +1,17 @@
+import asyncio
 import logging
 from itertools import count, chain
 from typing import Dict, Set
 from typing import List, Optional
 
+from aiokafka import AIOKafkaProducer
 from web3 import Web3
 
 from jsearch import settings
 from jsearch.common.contracts import NULL_ADDRESS
 from jsearch.common.database import MainDBSync
-from jsearch.common.integrations.contracts import get_contracts
 from jsearch.common.rpc import ContractCall, eth_call_batch
+from jsearch.kafka.utils import ask
 from jsearch.typing import Log, Abi, Contract, Contracts, Logs, Transfers, Block
 from jsearch.utils import split
 
@@ -142,9 +144,19 @@ def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpd
     return updates
 
 
-def fetch_contracts(logs: Logs) -> Dict[str, Contract]:
-    contracts = get_contracts(addresses={log['address'] for log in logs}) or []
-    contracts = chain(*(fetch_erc20_token_decimal_bulk(chunk) for chunk in split(contracts, 50)))
+async def fetch_contracts(producer: AIOKafkaProducer, logs: Logs) -> Dict[str, Contract]:
+    addresses = list({log['address'] for log in logs})
+
+    tasks = []
+    for chunk in split(addresses, 50):
+        task = ask(topic='request_contracts', value={"addresses": chunk}, producer=producer)
+        tasks.append(task)
+
+    chunks = await asyncio.gather(*tasks)
+    chunks = (fetch_erc20_token_decimal_bulk(chunk) for chunk in chunks)
+
+    contracts = chain(*chunks)
+
     return {contract['address']: contract for contract in contracts}
 
 

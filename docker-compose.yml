@@ -3,9 +3,9 @@ version: '3.2'
 services:
   api:
     depends_on:
-    - raw_db
-    - main_db
-    - celery_worker
+      - raw_db
+      - main_db
+      - celery_worker
     build:
       context: .
       dockerfile: Dockerfile
@@ -13,86 +13,119 @@ services:
     container_name: jsearch_api
     restart: always
     env_file:
-    - config/dev.env
+      - config/dev.env
     ports:
-    - 8000:8000
+      - 8000:8000
     volumes:
-    - ./:/app
+      - ./:/app
 
   syncer:
     depends_on:
-    - raw_db
-    - main_db
-    - celery_worker
+      - raw_db
+      - main_db
+      - celery_worker
     build:
       context: .
       dockerfile: Dockerfile
     networks:
-    - default
-    - jsearch-contracts_default
+      - default
+      - jsearch-contracts_default
     image: jsearch/backend
     entrypoint: jsearch-syncer
     env_file:
-    - config/dev.env
+      - config/dev.env
     container_name: jsearch_syncer
 
   post_processing:
     depends_on:
-    - main_db
+      - main_db
+      - kafka
     build:
       context: .
       dockerfile: Dockerfile
     networks:
-    - default
-    - jsearch-contracts_default
+      - default
+      - jsearch-contracts_default
     image: jsearch/backend
     entrypoint: jsearch-post-processing
     env_file:
-    - config/dev.env
+      - config/dev.env
     container_name: jsearch_post_processing
 
   celery_worker:
     depends_on:
-    - redis
-    - raw_db
-    - main_db
+      - redis
+      - raw_db
+      - main_db
     build:
       context: .
       dockerfile: Dockerfile
     image: jsearch/backend
     container_name: jsearch_celery_worker
     env_file:
-    - config/dev.env
+      - config/dev.env
     restart: always
     command: celeryworker
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181"
+    networks:
+      - default
+      - jsearch-contracts_default
+    restart: always
+    volumes:
+      - zookeeper-data:/opt
+
+  kafka:
+    image: wurstmeister/kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092"
+    networks:
+      - default
+      - jsearch-contracts_default
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://:9092
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - kafka-data:/kafka
+    restart: always
 
   raw_db:
     #    image: postgres:11.0-alpine
     image: postgres:9.6-alpine
     container_name: jsearch_raw_db
     volumes:
-    - raw_db:/var/lib/postgresql/data
-    - ./backups:/backups
+      - raw_db:/var/lib/postgresql/data
+      - ./backups:/backups
     environment:
-    - POSTGRES_USER=postgres
-    - POSTGRES_PASSWORD=postgres
-    - POSTGRES_DB=jsearch_raw
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=jsearch_raw
 
   main_db:
     #    image: postgres:11.0-alpine
     image: postgres:9.6-alpine
     container_name: jsearch_main_db
     volumes:
-    - main_db:/var/lib/postgresql/data
+      - main_db:/var/lib/postgresql/data
     environment:
-    - POSTGRES_USER=postgres
-    - POSTGRES_PASSWORD=postgres
-    - POSTGRES_DB=jsearch_main
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=jsearch_main
 
   redis:
     image: redis:5.0-alpine
 
 volumes:
+  kafka-data:
+    driver: local
+  zookeeper-data:
+    driver: local
   raw_db:
   main_db:
 
