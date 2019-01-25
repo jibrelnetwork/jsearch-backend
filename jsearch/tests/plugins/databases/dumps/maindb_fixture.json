@@ -811,14 +811,235 @@
   ],
   "uncles": [],
   "token_holders": [
-    {"account_address":  "a1", "token_address": "t1", "balance":  1000},
-    {"account_address":  "a1", "token_address": "t2", "balance":  2000},
-    {"account_address":  "a1", "token_address": "t3", "balance":  3000},
-    {"account_address":  "a2", "token_address": "t1", "balance":  2000},
-    {"account_address":  "a2", "token_address": "t2", "balance":  1000},
-    {"account_address":  "a3", "token_address": "t1", "balance":  3000},
-    {"account_address":  "a3", "token_address": "t3", "balance":  5000},
-    {"account_address":  "a4", "token_address": "t3", "balance":  6000},
-    {"account_address":  "a5", "token_address": "t3", "balance":  7000}
+    {
+      "account_address": "a1",
+      "token_address": "t1",
+      "decimals": 2,
+      "balance": 1000
+    },
+    {
+      "account_address": "a1",
+      "token_address": "t2",
+      "decimals": 2,
+      "balance": 2000
+    },
+    {
+      "account_address": "a1",
+      "token_address": "t3",
+      "decimals": 2,
+      "balance": 3000
+    },
+    {
+      "account_address": "a2",
+      "token_address": "t1",
+      "decimals": 2,
+      "balance": 2000
+    },
+    {
+      "account_address": "a2",
+      "token_address": "t2",
+      "decimals": 2,
+      "balance": 1000
+    },
+    {
+      "account_address": "a3",
+      "token_address": "t1",
+      "decimals": 2,
+      "balance": 3000
+    },
+    {
+      "account_address": "a3",
+      "token_address": "t3",
+      "decimals": 2,
+      "balance": 5000
+    },
+    {
+      "account_address": "a4",
+      "token_address": "t3",
+      "decimals": 2,
+      "balance": 6000
+    },
+    {
+      "account_address": "a5",
+      "token_address": "t3",
+      "decimals": 2,
+      "balance": 7000
+    }
+  ],
+  "token_transfers": [
+    {
+      "address": "a1",
+      "transaction_hash": "t1",
+      "log_index": 10,
+      "block_number": 6700502,
+      "block_hash": "b1",
+      "timestamp": 1529159847,
+      "from_address": "a2",
+      "to_address": "a1",
+      "token_address": "c1",
+      "token_value": 100.0,
+      "token_decimals": 2,
+      "token_name": "A Token",
+      "token_symbol": "TKN",
+      "is_forked": false,
+      "transaction_index": 30
+    },
+    {
+      "address": "a2",
+      "transaction_hash": "t1",
+      "log_index": 10,
+      "block_number": 6700502,
+      "block_hash": "b1",
+      "timestamp": 1529159847,
+      "from_address": "a2",
+      "to_address": "a1",
+      "token_address": "c1",
+      "token_value": 100.0,
+      "token_decimals": 2,
+      "token_name": "A Token",
+      "token_symbol": "TKN",
+      "is_forked": false,
+      "transaction_index": 30
+    },
+
+    {
+      "address": "a1",
+      "transaction_hash": "t1",
+      "log_index": 11,
+      "block_number": 6700502,
+      "block_hash": "b1",
+      "timestamp": 1529159847,
+      "from_address": "a2",
+      "to_address": "a1",
+      "token_address": "c2",
+      "token_value": 200.0,
+      "token_decimals": 2,
+      "token_name": "A Token 2",
+      "token_symbol": "TKN2",
+      "is_forked": false,
+      "transaction_index": 30
+    },
+        {
+      "address": "a2",
+      "transaction_hash": "t1",
+      "log_index": 11,
+      "block_number": 6700502,
+      "block_hash": "b1",
+      "timestamp": 1529159847,
+      "from_address": "a2",
+      "to_address": "a1",
+      "token_address": "c2",
+      "token_value": 200.0,
+      "token_decimals": 2,
+      "token_name": "A Token 2",
+      "token_symbol": "TKN2",
+      "is_forked": false,
+      "transaction_index": 30
+    },
+
+    {
+      "address": "a1",
+      "transaction_hash": "t1",
+      "log_index": 12,
+      "block_number": 6700502,
+      "block_hash": "b1",
+      "timestamp": 1529159847,
+      "from_address": "a1",
+      "to_address": "a3",
+      "token_address": "c1",
+      "token_value": 300.0,
+      "token_decimals": 2,
+      "token_name": "A Token",
+      "token_symbol": "TKN",
+      "is_forked": false,
+      "transaction_index": 30
+    },
+    {
+      "address": "a3",
+      "transaction_hash": "t1",
+      "log_index": 12,
+      "block_number": 6700502,
+      "block_hash": "b1",
+      "timestamp": 1529159847,
+      "from_address": "a1",
+      "to_address": "a3",
+      "token_address": "c1",
+      "token_value": 300.0,
+      "token_decimals": 2,
+      "token_name": "A Token",
+      "token_symbol": "TKN",
+      "is_forked": false,
+      "transaction_index": 30
+    },
+
+    {
+      "address": "a1",
+      "transaction_hash": "t1",
+      "log_index": 13,
+      "block_number": 6700502,
+      "block_hash": "b0",
+      "timestamp": 1529159847,
+      "from_address": "a1",
+      "to_address": "a3",
+      "token_address": "c1",
+      "token_value": 400.0,
+      "token_decimals": 2,
+      "token_name": "A Token",
+      "token_symbol": "TKN",
+      "is_forked": true,
+      "transaction_index": 30
+    },    {
+      "address": "a3",
+      "transaction_hash": "t1",
+      "log_index": 13,
+      "block_number": 6700502,
+      "block_hash": "b0",
+      "timestamp": 1529159847,
+      "from_address": "a1",
+      "to_address": "a3",
+      "token_address": "c1",
+      "token_value": 400.0,
+      "token_decimals": 2,
+      "token_name": "A Token",
+      "token_symbol": "TKN",
+      "is_forked": true,
+      "transaction_index": 30
+    },
+
+
+    {
+      "address": "a1",
+      "transaction_hash": "t2",
+      "log_index": 14,
+      "block_number": 6700503,
+      "block_hash": "b2",
+      "timestamp": 1529159847,
+      "from_address": "a3",
+      "to_address": "a1",
+      "token_address": "c2",
+      "token_value": 500.0,
+      "token_decimals": 2,
+      "token_name": "A Token 2",
+      "token_symbol": "TKN2",
+      "is_forked": false,
+      "transaction_index": 30
+    },
+        {
+      "address": "a3",
+      "transaction_hash": "t2",
+      "log_index": 14,
+      "block_number": 6700503,
+      "block_hash": "b2",
+      "timestamp": 1529159847,
+      "from_address": "a3",
+      "to_address": "a1",
+      "token_address": "c2",
+      "token_value": 500.0,
+      "token_decimals": 2,
+      "token_name": "A Token 2",
+      "token_symbol": "TKN2",
+      "is_forked": false,
+      "transaction_index": 30
+    }
   ]
 }

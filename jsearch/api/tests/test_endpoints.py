@@ -1,4 +1,3 @@
-from typing import List
 from unittest import mock
 
 import pytest
@@ -7,10 +6,7 @@ from asynctest import CoroutineMock
 from jsearch.tests.entities import (
     TransactionFromDumpWrapper,
     BlockFromDumpWrapper,
-    TokenTransferFromDumpWrapper,
-    ReceiptFromDumpWrapper,
-    AccountBaseFromDumpWrapper)
-from jsearch.tests.utils import pprint_returned_value
+)
 
 pytest_plugins = [
     'jsearch.tests.plugins.tools',
@@ -40,6 +36,37 @@ async def test_get_block_by_number(cli, main_db_data):
     resp = await cli.get('/blocks/2')
     assert resp.status == 200
     assert await resp.json() == block.as_dict()
+
+
+async def test_get_block_by_number_no_forked(cli, db):
+    # given
+    db.execute('INSERT INTO blocks (number, hash, is_forked, static_reward, uncle_inclusion_reward, tx_fees)'
+               'values (%s, %s, %s, %s, %s, %s)', [
+                   (1, 'aa', False, 0, 0, 0),
+                   (2, 'ab', False, 0, 0, 0),
+                   (2, 'ax', True, 0, 0, 0),
+                   (3, 'ac', False, 0, 0, 0),
+               ])
+    # then
+    resp = await cli.get('/blocks/2')
+    assert resp.status == 200
+    b = await resp.json()
+    assert b['hash'] == 'ab'
+    assert b['number'] == 2
+
+
+async def test_get_block_by_hash_forked_404(cli, db):
+    # given
+    db.execute('INSERT INTO blocks (number, hash, is_forked, static_reward, uncle_inclusion_reward, tx_fees)'
+               'values (%s, %s, %s, %s, %s, %s)', [
+                   (1, 'aa', False, 0, 0, 0),
+                   (2, 'ab', False, 0, 0, 0),
+                   (2, 'ax', True, 0, 0, 0),
+                   (3, 'ac', False, 0, 0, 0),
+               ])
+    # then
+    resp = await cli.get('/blocks/ax')
+    assert resp.status == 404
 
 
 async def test_get_block_by_hash(cli, main_db_data):
@@ -219,6 +246,34 @@ async def test_get_block_transactions(cli, main_db_data):
         'v': txs[0]['v'],
         'value': txs[0]['value'],
     }
+
+
+async def test_get_block_transactions_forked(cli, db):
+    # given
+    db.execute('INSERT INTO transactions (block_number, block_hash, hash, is_forked, transaction_index)'
+               'values (%s, %s, %s, %s, %s)', [
+                   (1, 'aa', 'tx1', False, 1),
+                   (2, 'ab', 'tx2', False, 1),
+                   (2, 'ax', 'tx3', True, 1),
+                   (3, 'ac', 'tx3', False, 1),
+               ])
+    # then
+    resp = await cli.get('/blocks/2/transactions')
+    assert resp.status == 200
+    txs = await resp.json()
+    assert len(txs) == 1
+    assert txs[0]['hash'] == 'tx2'
+
+    resp = await cli.get('/blocks/ab/transactions')
+    assert resp.status == 200
+    txs = await resp.json()
+    assert len(txs) == 1
+    assert txs[0]['hash'] == 'tx2'
+
+    resp = await cli.get('/blocks/ax/transactions')
+    assert resp.status == 200
+    txs = await resp.json()
+    assert len(txs) == 0
 
 
 async def test_get_block_transactions_by_number(cli, main_db_data):
@@ -542,64 +597,133 @@ async def test_verify_contract_ok(db, cli, main_db_data, here, fuck_token):
     )
 
 
-@pytest.mark.parametrize("account_index", [0, 1, 2])
-async def test_get_account_token_transfers(cli, account_index, main_db_data, post_processing):
-    # given
-    dump = post_processing(main_db_data)
-    account: AccountBaseFromDumpWrapper = AccountBaseFromDumpWrapper.from_dump(
-        dump=dump,
-        index=account_index
-    )
-    token_transfers: List[TokenTransferFromDumpWrapper] = TokenTransferFromDumpWrapper.from_dump(
-        dump=dump,
-        filters={
-            'token_transfer_to': account.entity.address,
-            'token_transfer_from': account.entity.address
-        },
-        strict=False,
-        bulk=True
-    )
-    # when
-    resp = await cli.get(f'/accounts/{account.entity.address}/token_transfers')
+_token_1_transfers = [{'from': 'a1',
+                       'timestamp': 1529159847,
+                       'to': 'a3',
+                       'tokenAddress': 'c1',
+                       'tokenDecimals': 2,
+                       'tokenName': 'A Token',
+                       'tokenSymbol': 'TKN',
+                       'amount': 300,
+                       'transactionHash': 't1'},
+                      {'from': 'a2',
+                       'timestamp': 1529159847,
+                       'to': 'a1',
+                       'tokenAddress': 'c1',
+                       'tokenDecimals': 2,
+                       'tokenName': 'A Token',
+                       'tokenSymbol': 'TKN',
+                       'amount': 100,
+                       'transactionHash': 't1'}]
 
-    # then
+
+async def test_get_token_transfers(cli, main_db_data):
+    resp = await cli.get(f'/tokens/c1/transfers')
     assert resp.status == 200
-    assert sort_token_transfers(await resp.json()) == sort_token_transfers(
-        [transfer.as_dict() for transfer in token_transfers]
-    )
+    assert await resp.json() == _token_1_transfers[:]
 
 
-async def test_get_token_transfers(cli, main_db_data, post_processing):
-    # given
-    dump = post_processing(main_db_data)
-    receipt: ReceiptFromDumpWrapper = ReceiptFromDumpWrapper.from_dump(
-        dump=dump,
-        index=0
-    )
-    token_transfers: List[TokenTransferFromDumpWrapper] = TokenTransferFromDumpWrapper.from_dump(
-        dump=dump,
-        filters={
-            'address': receipt.entity.contract_address,
-            'is_token_transfer': True,
-        },
-        bulk=True
-    )
-    # when
-    resp = await cli.get(f'/tokens/{receipt.entity.contract_address}/transfers')
-
-    # then
+async def test_get_token_transfers_asc(cli, main_db_data):
+    resp = await cli.get(f'/tokens/c1/transfers?order=asc')
     assert resp.status == 200
-    assert sort_token_transfers(await resp.json()) == sort_token_transfers(
-        [transfer.as_dict() for transfer in token_transfers]
-    )
+    assert await resp.json() == _token_1_transfers[::-1]
 
 
-@pprint_returned_value
-def sort_token_transfers(transfers):
-    return sorted(
-        transfers,
-        key=lambda item: (item['blockHash'], item['transaction'], item['from'], item['to'], item['amount'])
-    )
+async def test_get_token_transfers_limit(cli, main_db_data):
+    resp = await cli.get(f'/tokens/c1/transfers?limit=1')
+    assert resp.status == 200
+    assert await resp.json() == _token_1_transfers[:1]
+
+
+async def test_get_token_transfers_offset(cli, main_db_data):
+    resp = await cli.get(f'/tokens/c1/transfers?offset=1')
+    assert resp.status == 200
+    assert await resp.json() == _token_1_transfers[1:]
+
+
+_account_1_transfers = [{'from': 'a3',
+                         'timestamp': 1529159847,
+                         'to': 'a1',
+                         'tokenAddress': 'c2',
+                         'tokenDecimals': 2,
+                         'tokenName': 'A Token 2',
+                         'tokenSymbol': 'TKN2',
+                         'amount': 500,
+                         'transactionHash': 't2'},
+                        {'from': 'a1',
+                         'timestamp': 1529159847,
+                         'to': 'a3',
+                         'tokenAddress': 'c1',
+                         'tokenDecimals': 2,
+                         'tokenName': 'A Token',
+                         'tokenSymbol': 'TKN',
+                         'amount': 300,
+                         'transactionHash': 't1'},
+                        {'from': 'a2',
+                         'timestamp': 1529159847,
+                         'to': 'a1',
+                         'tokenAddress': 'c2',
+                         'tokenDecimals': 2,
+                         'tokenName': 'A Token 2',
+                         'tokenSymbol': 'TKN2',
+                         'amount': 200,
+                         'transactionHash': 't1'},
+                        {'from': 'a2',
+                         'timestamp': 1529159847,
+                         'to': 'a1',
+                         'tokenAddress': 'c1',
+                         'tokenDecimals': 2,
+                         'tokenName': 'A Token',
+                         'tokenSymbol': 'TKN',
+                         'amount': 100,
+                         'transactionHash': 't1'}]
+
+
+async def test_get_account_token_transfers(cli, main_db_data):
+    resp = await cli.get(f'/accounts/a1/token_transfers')
+    assert resp.status == 200
+    assert await resp.json() == _account_1_transfers[:]
+
+
+async def test_get_account_token_transfers_asc(cli, main_db_data):
+    resp = await cli.get(f'/accounts/a1/token_transfers?order=asc')
+    assert resp.status == 200
+    assert await resp.json() == _account_1_transfers[::-1]
+
+
+async def test_get_account_token_transfers_limit(cli, main_db_data):
+    resp = await cli.get(f'/accounts/a1/token_transfers?limit=1')
+    assert resp.status == 200
+    assert await resp.json() == _account_1_transfers[:1]
+
+
+async def test_get_account_token_transfers_offset(cli, main_db_data):
+    resp = await cli.get(f'/accounts/a1/token_transfers?offset=1')
+    assert resp.status == 200
+    assert await resp.json() == _account_1_transfers[1:]
+
+
+async def test_get_account_token_transfers_a2(cli, main_db_data):
+    resp = await cli.get(f'/accounts/a2/token_transfers')
+    assert resp.status == 200
+    assert await resp.json() == [{'from': 'a2',
+                                  'timestamp': 1529159847,
+                                  'to': 'a1',
+                                  'tokenAddress': 'c2',
+                                  'tokenDecimals': 2,
+                                  'tokenName': 'A Token 2',
+                                  'tokenSymbol': 'TKN2',
+                                  'amount': 200,
+                                  'transactionHash': 't1'},
+                                 {'from': 'a2',
+                                  'timestamp': 1529159847,
+                                  'to': 'a1',
+                                  'tokenAddress': 'c1',
+                                  'tokenDecimals': 2,
+                                  'tokenName': 'A Token',
+                                  'tokenSymbol': 'TKN',
+                                  'amount': 100,
+                                  'transactionHash': 't1'}]
 
 
 async def test_account_get_mined_blocks(cli, main_db_data):
@@ -626,34 +750,34 @@ async def test_get_token_holders(cli, main_db_data):
     resp = await cli.get(f'/tokens/t1/holders')
     assert resp.status == 200
     res = await resp.json()
-    assert res == [{'accountAddress': 'a3', 'balance': 3000, 'tokenAddress': 't1'},
-                   {'accountAddress': 'a2', 'balance': 2000, 'tokenAddress': 't1'},
-                   {'accountAddress': 'a1', 'balance': 1000, 'tokenAddress': 't1'}]
+    assert res == [{'accountAddress': 'a3', 'decimals': 2, 'balance': 3000, 'tokenAddress': 't1'},
+                   {'accountAddress': 'a2', 'decimals': 2, 'balance': 2000, 'tokenAddress': 't1'},
+                   {'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'tokenAddress': 't1'}]
 
     resp = await cli.get(f'/tokens/t1/holders?order=asc')
     assert resp.status == 200
     res = await resp.json()
-    assert res == [{'accountAddress': 'a1', 'balance': 1000, 'tokenAddress': 't1'},
-                   {'accountAddress': 'a2', 'balance': 2000, 'tokenAddress': 't1'},
-                   {'accountAddress': 'a3', 'balance': 3000, 'tokenAddress': 't1'}]
+    assert res == [{'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'tokenAddress': 't1'},
+                   {'accountAddress': 'a2', 'decimals': 2, 'balance': 2000, 'tokenAddress': 't1'},
+                   {'accountAddress': 'a3', 'decimals': 2, 'balance': 3000, 'tokenAddress': 't1'}]
 
     resp = await cli.get(f'/tokens/t3/holders?order=asc&limit=2&offset=1')
     assert resp.status == 200
     res = await resp.json()
-    assert res == [{'accountAddress': 'a3', 'balance': 5000, 'tokenAddress': 't3'},
-                   {'accountAddress': 'a4', 'balance': 6000, 'tokenAddress': 't3'}]
+    assert res == [{'accountAddress': 'a3', 'decimals': 2, 'balance': 5000, 'tokenAddress': 't3'},
+                   {'accountAddress': 'a4', 'decimals': 2, 'balance': 6000, 'tokenAddress': 't3'}]
 
 
 async def test_get_account_token_balance(cli, main_db_data):
     resp = await cli.get(f'/accounts/a1/token_balance/t1')
     assert resp.status == 200
     res = await resp.json()
-    assert res == {'accountAddress': 'a1', 'balance': 1000, 'tokenAddress': 't1'}
+    assert res == {'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'tokenAddress': 't1'}
 
     resp = await cli.get(f'/accounts/a3/token_balance/t3')
     assert resp.status == 200
     res = await resp.json()
-    assert res == {'accountAddress': 'a3', 'balance': 5000, 'tokenAddress': 't3'}
+    assert res == {'accountAddress': 'a3', 'decimals': 2, 'balance': 5000, 'tokenAddress': 't3'}
 
     resp = await cli.get(f'/accounts/a3/token_balance/tX')
     assert resp.status == 404

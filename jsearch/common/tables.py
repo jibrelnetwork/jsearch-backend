@@ -201,6 +201,7 @@ token_holders_t = sa.Table(
     sa.Column('account_address', sa.String, primary_key=True),
     sa.Column('token_address', sa.String, primary_key=True),
     sa.Column('balance', postgresql.NUMERIC(32, 0), index=True),
+    sa.Column('decimals', sa.Integer, index=True),
 )
 
 reorgs_t = sa.Table(
@@ -211,6 +212,26 @@ reorgs_t = sa.Table(
     sa.Column('block_number', sa.Integer),
     sa.Column('reinserted', sa.Boolean),
     sa.Column('node_id', sa.String),
+)
+
+token_transfers_t = sa.Table(
+    'token_transfers',
+    metadata,
+    sa.Column('address', sa.String),
+    sa.Column('transaction_hash', sa.String),
+    sa.Column('transaction_index', sa.Integer),
+    sa.Column('log_index', sa.Integer),
+    sa.Column('block_number', sa.Integer),
+    sa.Column('block_hash', sa.String),
+    sa.Column('timestamp', sa.Integer),
+    sa.Column('from_address', sa.String),
+    sa.Column('to_address', sa.String),
+    sa.Column('token_address', sa.String),
+    sa.Column('token_value', postgresql.NUMERIC()),
+    sa.Column('token_decimals', sa.Integer),
+    sa.Column('token_name', sa.String),
+    sa.Column('token_symbol', sa.String),
+    sa.Column('is_forked', sa.Boolean),
 )
 
 TABLES = (
@@ -224,4 +245,5 @@ TABLES = (
     token_holders_t,
     internal_transactions_t,
     reorgs_t,
+    token_transfers_t,
 )

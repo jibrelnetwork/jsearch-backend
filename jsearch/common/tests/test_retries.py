@@ -3,7 +3,8 @@ import random
 import pytest
 import requests
 import requests_mock
-from requests import Session
+
+from jsearch import settings
 
 pytest_plugins = (
     'jsearch.tests.plugins.ether',
@@ -11,64 +12,46 @@ pytest_plugins = (
 
 
 @pytest.fixture()
-def request_mock_adapter():
-    from jsearch import settings
-    from web3.utils.request import _get_session, _session_cache
+def connect_timeout_on_geth_node():
+    with requests_mock.Mocker() as m:
+        m.post(settings.ETH_NODE_URL, exc=requests.exceptions.ConnectTimeout)
 
-    adapter = requests_mock.Adapter()
-
-    session: Session = _get_session(settings.ETH_NODE_URL)
-    session.mount('https://', adapter)
-    session.mount('http://', adapter)
-
-    yield adapter
-
-    _session_cache.clear()
+        yield
 
 
-def test_fetch_decimals_from_eth_node(mocker, ether_address_generator, request_mock_adapter):
+@pytest.mark.usefixtures('connect_timeout_on_geth_node')
+def test_retries_when_fetch_decimals_from_eth_node(mocker, main_db_data):
     # given
-    from jsearch import settings
-    from jsearch.common.contracts import ERC20_ABI
-    from jsearch.common.processing.erc20_transfer_logs import BalanceUpdate, fetch_erc20_token_decimal_bulk
-    from web3.utils.request import make_post_request
+    from jsearch.common.processing.erc20_balances import fetch_erc20_token_decimal_bulk
 
     mocker.patch('time.sleep')
-    post_mock = mocker.patch('web3.providers.rpc.make_post_request', side_effect=make_post_request)
-    request_mock_adapter.register_uri('POST', settings.ETH_NODE_URL, exc=requests.exceptions.ConnectTimeout)
+    post_mock = mocker.patch('requests.post', side_effect=requests.post)
 
-    update = BalanceUpdate(
-        account_address=next(ether_address_generator),
-        token_address=next(ether_address_generator),
-        block=random.randint(1, 6800000),
-        abi=ERC20_ABI
-    )
-    updates = [update]
-
+    contracts = main_db_data['contracts']
     # when
     with pytest.raises(requests.exceptions.ConnectTimeout):
-        fetch_erc20_token_decimal_bulk(updates=updates)
+        fetch_erc20_token_decimal_bulk(contracts)
 
     # then
     assert post_mock.call_count == 10
 
 
-def test_fetch_balances_from_eth_node(mocker, ether_address_generator, request_mock_adapter):
+@pytest.mark.usefixtures('connect_timeout_on_geth_node')
+def test_retries_when_fetch_balances_from_eth_node(mocker, ether_address_generator):
     # given
-    from jsearch import settings
+    import requests
     from jsearch.common.contracts import ERC20_ABI
-    from jsearch.common.processing.erc20_transfer_logs import BalanceUpdate, fetch_erc20_balance_bulk
-    from web3.utils.request import make_post_request
+    from jsearch.common.processing.erc20_balances import BalanceUpdate, fetch_erc20_balance_bulk
 
     mocker.patch('time.sleep')
-    post_mock = mocker.patch('web3.providers.rpc.make_post_request', side_effect=make_post_request)
-    request_mock_adapter.register_uri('POST', settings.ETH_NODE_URL, exc=requests.exceptions.ConnectTimeout)
+    post_mock = mocker.patch('requests.post', side_effect=requests.post)
 
     update = BalanceUpdate(
         account_address=next(ether_address_generator),
         token_address=next(ether_address_generator),
         block=random.randint(1, 6800000),
-        abi=ERC20_ABI
+        abi=ERC20_ABI,
+        decimals=2,
     )
     updates = [update]
 

@@ -77,13 +77,15 @@ class Storage:
         fields = models.Transaction.select_fields()
 
         if tag.is_hash():
-            query = f"SELECT {fields} FROM transactions WHERE block_hash=$1 ORDER BY transaction_index;"
+            query = f"SELECT {fields} FROM transactions WHERE block_hash=$1 AND is_forked=false " \
+                        f"ORDER BY transaction_index;"
         elif tag.is_number():
-            query = f"SELECT {fields} FROM transactions WHERE block_number=$1 ORDER BY transaction_index;"
+            query = f"SELECT {fields} FROM transactions WHERE block_number=$1 AND is_forked=false " \
+                        f"ORDER BY transaction_index;"
         else:
             query = f"""
                 SELECT {fields} FROM transactions
-                WHERE block_number=(SELECT max(number) FROM blocks) ORDER BY transaction_index;
+                WHERE block_number=(SELECT max(number) FROM blocks) AND is_forked=false ORDER BY transaction_index;
         """
 
         async with self.pool.acquire() as conn:
@@ -97,13 +99,13 @@ class Storage:
     async def get_block(self, tag):
 
         if tag.is_hash():
-            query = "SELECT * FROM blocks WHERE hash=$1"
+            query = "SELECT * FROM blocks WHERE hash=$1 AND is_forked=false"
         elif tag.is_number():
-            query = "SELECT * FROM blocks WHERE number=$1"
+            query = "SELECT * FROM blocks WHERE number=$1 AND is_forked=false"
         else:
-            query = "SELECT * FROM blocks WHERE number=(SELECT max(number) FROM blocks)"
+            query = "SELECT * FROM blocks WHERE number=(SELECT max(number) FROM blocks) AND is_forked=false"
 
-        tx_query = "SELECT hash FROM transactions WHERE block_number=$1 ORDER BY transaction_index"
+        tx_query = "SELECT hash FROM transactions WHERE block_hash=$1 ORDER BY transaction_index"
         async with self.pool.acquire() as conn:
             if tag.is_latest():
                 row = await conn.fetchrow(query)
@@ -119,14 +121,14 @@ class Storage:
             data['uncle_inclusion_reward'] = int(data['uncle_inclusion_reward'])
             data['tx_fees'] = int(data['tx_fees'])
 
-            txs = await conn.fetch(tx_query, data['number'])
+            txs = await conn.fetch(tx_query, data['hash'])
             data['transactions'] = [tx['hash'] for tx in txs]
             data['uncles'] = None
             return models.Block(**data)
 
     async def get_blocks(self, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = f"""SELECT * FROM blocks ORDER BY number {order} LIMIT $1 OFFSET $2"""
+        query = f"""SELECT * FROM blocks WHERE is_forked=false ORDER BY number {order} LIMIT $1 OFFSET $2"""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, limit, offset)
             rows = [dict(r) for r in rows]
@@ -268,37 +270,58 @@ class Storage:
             -> List[TokenTransfer]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address, limit, offset)
-            tokens: List[models.TokenTransfer] = []
+            transfers: List[models.TokenTransfer] = []
             for row in rows:
-                tokens.append(models.TokenTransfer.from_log_record(log=row))
-            return tokens
+                row = dict(row)
+                del row['transaction_index']
+                del row['log_index']
+                del row['block_number']
+                del row['block_hash']
+                transfers.append(models.TokenTransfer(**row))
+            return transfers
 
     async def get_tokens_transfers(self, address: str, limit: int, offset: int, order: str) \
             -> List[models.TokenTransfer]:
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
         query = f"""
-            SELECT block_hash,
-                transaction_hash,
-                token_amount,
-                token_transfer_from,
-                token_transfer_to
-            FROM logs
-            WHERE address = $1 AND is_token_transfer = true
-            ORDER BY block_number {order} LIMIT $2 OFFSET $3;
+            SELECT DISTINCT transaction_hash,
+                    transaction_index,
+                    log_index,
+                    block_number,
+                    block_hash,
+                    timestamp,
+                    from_address,
+                    to_address,
+                    token_address,
+                    token_value,
+                    token_decimals,
+                    token_name,
+                    token_symbol
+            FROM token_transfers
+            WHERE token_address = $1 AND is_forked = false
+            ORDER BY block_number {order}, transaction_index {order}, log_index {order} LIMIT $2 OFFSET $3;
         """
         return await self._fetch_token_transfers(query, address, limit, offset)
 
     async def get_account_tokens_transfers(self, address, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
         query = f"""
-            SELECT block_hash,
-                transaction_hash,
-                token_transfer_from,
-                token_transfer_to,
-                token_amount
-            FROM logs
-            WHERE is_token_transfer is true AND token_transfer_from=$1 OR token_transfer_to=$1
-            ORDER BY block_number, transaction_index {order} LIMIT $2 OFFSET $3;
+            SELECT transaction_hash,
+                    transaction_index,
+                    log_index,
+                    block_number,
+                    block_hash,
+                    timestamp,
+                    from_address,
+                    to_address,
+                    token_address,
+                    token_value,
+                    token_decimals,
+                    token_name,
+                    token_symbol
+            FROM token_transfers
+            WHERE address = $1 AND is_forked = false
+            ORDER BY block_number {order}, transaction_index {order}, log_index {order} LIMIT $2 OFFSET $3;
         """
         return await self._fetch_token_transfers(query, address, limit, offset)
 
@@ -317,7 +340,7 @@ class Storage:
             -> List[models.TokenHolder]:
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
         query = f"""
-        SELECT account_address, token_address, balance
+        SELECT account_address, token_address, balance, decimals
         FROM token_holders
         WHERE token_address=$1
         ORDER BY balance {order} LIMIT $2 OFFSET $3;
@@ -329,7 +352,7 @@ class Storage:
     async def get_account_token_balance(self, account_address: str, token_address: str) \
             -> List[models.TokenHolder]:
         query = """
-        SELECT account_address, token_address, balance
+        SELECT account_address, token_address, balance, decimals
         FROM token_holders
         WHERE account_address=$1 AND token_address=$2
         """

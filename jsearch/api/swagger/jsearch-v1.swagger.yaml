@@ -798,6 +798,7 @@ definitions:
         type: string
       abi:
         type: array
+        items: {}
       compilerVersion:
         type: string
       optimizationEnabled:
@@ -806,6 +807,8 @@ definitions:
         type: integer
       constructorArgs:
         type: array
+        items:
+          type: string
       verified_at:
         type: string
       token:
@@ -827,7 +830,9 @@ definitions:
   
   TokenTransfer:
     properties:
-      transaction:
+      timestamp:
+        type: integer
+      transactionHash:
         type: string
         format: hex
       from:
@@ -836,8 +841,17 @@ definitions:
       to:
         type: string
         format: address
+      tokenDecimals:
+        type: integer
+      tokenSymbol:
+        type: string
+      tokenName:
+        type: string
+      tokenAddress:
+        type: string
+        format: address
       amount:
-        type: float
+        type: integer
 
   TokenHolder:
     properties:
@@ -848,8 +862,10 @@ definitions:
         type: string
         format: address
       balance:
-        type: float
-      
+        type: integer
+      decimals:
+        type: integer
+
 schemes:
  - http
 
