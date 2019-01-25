@@ -1,12 +1,14 @@
+import asyncio
 import logging
+from typing import List, Dict, Any
 
 import aiopg
+import backoff
 import psycopg2
-from aiopg.sa import create_engine as async_create_engine
+from aiopg.sa import create_engine as async_create_engine, Engine
 from psycopg2.extras import DictCursor
-from sqlalchemy import create_engine as sync_create_engine
+from sqlalchemy import create_engine as sync_create_engine, and_, false, select, true
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.engine.base import Engine as SyncEngine
 from sqlalchemy.pool import NullPool
 
 from jsearch.common import contracts
@@ -20,7 +22,8 @@ from jsearch.common.tables import (
     transactions_t,
     uncles_t,
     reorgs_t,
-)
+    token_holders_t, token_transfers_t)
+from jsearch.common.utils import as_dicts
 
 MAIN_DB_POOL_SIZE = 22
 
@@ -183,7 +186,16 @@ class MainDB(DBWrapper):
     jSearch Main db wrapper
     """
 
-    engine: SyncEngine
+    engine: Engine
+
+    async def __aenter__(self):
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.disconnect()
+        if exc_type:
+            return False
 
     async def connect(self):
         self.engine = await async_create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
@@ -191,6 +203,17 @@ class MainDB(DBWrapper):
     async def disconnect(self):
         self.engine.close()
         await self.engine.wait_closed()
+
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    async def execute(self, query, *params):
+        async with self.engine.acquire() as connection:
+            return await connection.execute(query, params)
+
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    async def fetch_all(self, query, *params):
+        async with self.engine.acquire() as connection:
+            cursor = await connection.execute(query, params)
+            return await cursor.fetchall()
 
     async def get_latest_synced_block_number(self, blocks_range):
         """
@@ -284,6 +307,108 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             last_reorg_num = row['id'] if row else 0
             return last_reorg_num
+
+    @as_dicts
+    async def get_blocks(self, hashes: List[str]):
+        query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
+        return await self.fetch_all(query)
+
+    async def update_token_holder_balance(self, token_address: str, account_address: str, balance: int, decimals: int):
+        insert_query = insert(token_holders_t).values(
+            token_address=token_address,
+            account_address=account_address,
+            balance=balance,
+            decimals=decimals
+        )
+        query = insert_query.on_conflict_do_update(
+            index_elements=['token_address', 'account_address'],
+            set_=dict(balance=balance, decimals=decimals)
+        )
+        return await self.execute(query)
+
+    async def update_log(self, record: Dict[str, Any]):
+        query = logs_t.update(). \
+            where(and_(logs_t.c.transaction_hash == record['transaction_hash'],
+                       logs_t.c.block_hash == record['block_hash'],
+                       logs_t.c.log_index == record['log_index'])). \
+            values(**record)
+
+        await self.execute(query)
+
+    async def insert_or_update_transfers(self, records: List[Dict[str, Any]]):
+        tasks = []
+        for record in records:
+            insert_query = insert(token_transfers_t).values(record).on_conflict_do_update(
+                index_elements=[
+                    'transaction_hash',
+                    'log_index',
+                    'address',
+                ],
+                set_={
+                    'block_number': record['block_number'],
+                    'block_hash': record['block_hash'],
+                    'transaction_index': record['transaction_index'],
+                    'timestamp': record['timestamp'],
+                    'from_address': record['from_address'],
+                    'to_address': record['to_address'],
+                    'token_address': record['token_address'],
+                    'token_decimals': record['token_decimals'],
+                    'token_name': record['token_name'],
+                    'token_symbol': record['token_symbol'],
+                    'token_value': record['token_value'],
+                }
+            )
+            task = self.execute(query=insert_query)
+            tasks.append(task)
+        await asyncio.gather(*tasks)
+
+    @as_dicts
+    async def get_logs_to_process_events(self, limit=1000):
+        unprocessed_blocks_query = select(
+            columns=[logs_t.c.is_processed, logs_t.c.block_number],
+            whereclause=logs_t.c.is_processed == false(),
+        ) \
+            .order_by(logs_t.c.is_processed.asc(), logs_t.c.block_number.asc()) \
+            .limit(limit)
+        unprocessed_blocks = {row[1] for row in await self.fetch_all(unprocessed_blocks_query)}
+
+        query = select(
+            columns=[logs_t],
+            whereclause=and_(
+                logs_t.c.is_processed == false(),
+                logs_t.c.block_number.in_(unprocessed_blocks)
+            )
+        ) \
+            .order_by(logs_t.c.block_number.asc()) \
+            .limit(limit)
+        return await self.fetch_all(query)
+
+    @as_dicts
+    async def get_logs_to_process_operations(self, limit=1000):
+        unprocessed_blocks_query = select(
+            columns=[logs_t.c.is_token_transfer, logs_t.c.is_transfer_processed, logs_t.c.block_number],
+            whereclause=and_(
+                logs_t.c.is_token_transfer == true(),
+                logs_t.c.is_transfer_processed == false()
+            ),
+        ) \
+            .order_by(logs_t.c.is_token_transfer.asc(),
+                      logs_t.c.is_transfer_processed.asc(),
+                      logs_t.c.block_number.asc()) \
+            .limit(limit)
+        unprocessed_blocks = {row[2] for row in await self.fetch_all(unprocessed_blocks_query)}
+
+        query = select(
+            columns=[logs_t],
+            whereclause=and_(
+                logs_t.c.is_token_transfer == true(),
+                logs_t.c.is_transfer_processed == false(),
+                logs_t.c.block_number.in_(unprocessed_blocks),
+            )
+        ) \
+            .order_by(logs_t.c.block_number.asc()) \
+            .limit(limit)
+        return await self.fetch_all(query)
 
 
 class MainDBSync(DBWrapperSync):

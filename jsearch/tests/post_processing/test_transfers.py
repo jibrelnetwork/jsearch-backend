@@ -286,7 +286,7 @@ def test_logs_to_transfer():
         }]
 
 
-def test_insert_transfers_to_db(db, db_connection_string, mocker):
+def test_insert_or_update_transfers_to_db(db, db_connection_string, mocker):
     mocker.patch('time.sleep')
     from jsearch.common.database import MainDBSync
 
@@ -328,7 +328,7 @@ def test_insert_transfers_to_db(db, db_connection_string, mocker):
 
     # when
     with MainDBSync(db_connection_string) as main_db:
-        main_db.insert_transfers(transfers)
+        main_db.insert_or_update_transfers(transfers)
 
     # then
     result = db.execute('SELECT count(*) FROM token_transfers').fetchone()

@@ -1,17 +1,18 @@
+import asyncio
 import logging
 import time
-from typing import Callable, List, Optional
+from typing import List, Optional
 
 from jsearch import settings
-from jsearch.common.database import MainDBSync
-from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.erc20_balances import (
     fetch_blocks,
     fetch_contracts,
     process_log_operations_bulk,
 )
+from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
 from jsearch.kafka.producer import get_producer
+from jsearch.syncer.database import MainDB
 from jsearch.typing import Log
 
 ACTION_LOG_EVENTS = 'events'
@@ -19,37 +20,40 @@ ACTION_LOG_OPERATIONS = 'operations'
 
 logger = logging.getLogger(__name__)
 
-Worker = Callable[[List[Log], Optional[str]], None]
-Query = Callable[[int], List[Log]]
+
+async def log_event_processing_worker(db, logs: List[Log]):
+    tasks = []
+    for log in logs:
+        log = process_log_event(log)
+        task = db.update_log(record=log)
+        tasks.append(task)
+    await asyncio.gather(*tasks)
 
 
-async def log_event_processing_worker(logs: List[Log], dsn: str = settings.JSEARCH_MAIN_DB):
-    with MainDBSync(connection_string=dsn) as db:
-        for log in logs:
-            log = process_log_event(log)
-            db.update_log(record=log)
-
-
-async def log_operations_processing_worker(logs: List[Log], dsn: str = settings.JSEARCH_MAIN_DB):
+async def log_operations_processing_worker(db, logs: List[Log]):
     producer = get_producer()
-    with MainDBSync(connection_string=dsn) as db:
-        try:
-            await producer.start()
-            contracts = await fetch_contracts(producer, logs)
-            logs = process_log_operations_bulk(db, logs, contracts)
+    try:
+        await producer.start()
+        contracts = await fetch_contracts(producer, logs)
+        logs = await process_log_operations_bulk(db, logs, contracts)
 
-            blocks = fetch_blocks(db, logs)
-            transfers = logs_to_transfers(logs, blocks, contracts)
+        blocks = await fetch_blocks(db, logs)
+        transfers = logs_to_transfers(logs, blocks, contracts)
 
-            db.insert_transfers(transfers)
-            for log in logs:
-                log['is_transfer_processed'] = True
-                db.update_log(record=log)
-        finally:
-            await producer.stop()
+        await db.insert_or_update_transfers(transfers)
+
+        tasks = []
+        for log in logs:
+            log['is_transfer_processed'] = True
+            task = db.update_log(record=log)
+            tasks.append(task)
+        await asyncio.gather(*tasks)
+
+    finally:
+        await producer.stop()
 
 
-def get_worker(action: str) -> Worker:
+def get_worker(action: str):
     worker_map = {
         ACTION_LOG_EVENTS: log_event_processing_worker,
         ACTION_LOG_OPERATIONS: log_operations_processing_worker
@@ -57,7 +61,7 @@ def get_worker(action: str) -> Worker:
     return worker_map[action]
 
 
-def get_query(action: str, db: MainDBSync) -> Query:
+def get_query(action: str, db: MainDB):
     query_map = {
         ACTION_LOG_EVENTS: db.get_logs_to_process_events,
         ACTION_LOG_OPERATIONS: db.get_logs_to_process_operations
@@ -70,14 +74,14 @@ async def post_processing(action: str,
                           query_limit: Optional[int] = None,
                           wait_new_result: bool = False,
                           dsn: str = settings.JSEARCH_MAIN_DB) -> None:
-    with MainDBSync(connection_string=dsn) as db:
+    async with MainDB(connection_string=dsn) as db:
         worker = get_worker(action)
         query = get_query(action, db)
 
         while True:
             blocks = set()
             started_at = time.time()
-            logs = query(query_limit)
+            logs = await query(query_limit)
             if not logs:
                 if wait_new_result:
                     logger.info("[PROCESSING] There are not logs to read... wait")
@@ -87,16 +91,16 @@ async def post_processing(action: str,
                     logger.info("[PROCESSING] There are not logs to read")
                     break
 
-            # tasks = []
+            tasks = []
             chunk_size = int(len(logs) / (workers - 1)) or 1
             for offset in range(0, len(logs), chunk_size):
                 chunk = logs[offset: offset + chunk_size]
-                await worker(chunk)
+                task = worker(db, chunk)
 
-                # tasks.append(task)
+                tasks.append(task)
 
-            # if tasks:
-            #     await asyncio.gather(*tasks)
+            if tasks:
+                await asyncio.gather(*tasks)
 
             working_time = time.time() - started_at
 

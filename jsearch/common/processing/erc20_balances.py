@@ -9,9 +9,9 @@ from web3 import Web3
 
 from jsearch import settings
 from jsearch.common.contracts import NULL_ADDRESS
-from jsearch.common.database import MainDBSync
 from jsearch.common.rpc import ContractCall, eth_call_batch
 from jsearch.kafka.utils import ask
+from jsearch.syncer.database import MainDB
 from jsearch.typing import Log, Abi, Contract, Contracts, Logs, Block
 from jsearch.utils import split
 
@@ -70,13 +70,9 @@ class BalanceUpdate:
     def key(self):
         return self.token_address, self.account_address
 
-    def apply(self, db):
+    async def apply(self, db: MainDB):
         if self.is_valid:
-            db.update_token_holder_balance(self.token_address, self.account_address, self.value, self.decimals)
-            logger.info(
-                'Token balance updated for token %s account %s block %s value %s',
-                self.token_address, self.account_address, self.block, self.value
-            )
+            await db.update_token_holder_balance(self.token_address, self.account_address, self.value, self.decimals)
         else:
             logger.error(
                 'Error when trying to update token holder balance: '
@@ -85,7 +81,10 @@ class BalanceUpdate:
             )
 
 
-def fetch_erc20_token_decimal_bulk(contracts: Contracts) -> Contracts:
+BalanceUpdates = List[BalanceUpdate]
+
+
+async def fetch_erc20_token_decimal_bulk(contracts: Contracts) -> Contracts:
     calls = []
     counter = count()
     for contract in contracts:
@@ -98,14 +97,14 @@ def fetch_erc20_token_decimal_bulk(contracts: Contracts) -> Contracts:
         )
         calls.append(call)
 
-    calls_results = eth_call_batch(calls=calls)
+    calls_results = await eth_call_batch(calls=calls)
     for call, contract in zip(calls, contracts):
         contract['decimals'] = calls_results.get(call.pk)
 
     return contracts
 
 
-def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
+async def fetch_erc20_balance_bulk(updates: BalanceUpdates) -> BalanceUpdates:
     calls = []
     counter = count()
     for update in updates:
@@ -118,7 +117,7 @@ def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate
             silent=True
         )
         calls.append(call)
-    calls_results = eth_call_batch(calls=calls)
+    calls_results = await eth_call_batch(calls=calls)
     for call, update in zip(calls, updates):
         update.value = calls_results.get(call.pk)
     return updates
@@ -153,21 +152,27 @@ async def fetch_contracts(producer: AIOKafkaProducer, logs: Logs) -> Dict[str, C
         tasks.append(task)
 
     chunks = await asyncio.gather(*tasks)
-    chunks = (fetch_erc20_token_decimal_bulk(chunk) for chunk in chunks)
+    chunks = await asyncio.gather(*[fetch_erc20_token_decimal_bulk(chunk) for chunk in chunks])
 
     contracts = chain(*chunks)
 
     return {contract['address']: contract for contract in contracts}
 
 
-def fetch_blocks(db: MainDBSync, logs: Logs) -> {str: Block}:
+async def fetch_blocks(db: MainDB, logs: Logs) -> {str: Block}:
     hashes = [log['block_hash'] for log in logs]
-    blocks = db.get_blocks(hashes=hashes)
+    blocks = await db.get_blocks(hashes=hashes)
     return {block['hash']: block for block in blocks}
 
 
-def process_log_operations_bulk(
-        db: MainDBSync,
+async def update_balances_bulk(db: MainDB, updates: BalanceUpdates):
+    updates = await fetch_erc20_balance_bulk(updates)
+    tasks = [update.apply(db) for update in updates]
+    await asyncio.gather(*tasks)
+
+
+async def process_log_operations_bulk(
+        db: MainDB,
         logs: List[Log],
         contracts: Dict[str, Contract],
         batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
@@ -180,11 +185,11 @@ def process_log_operations_bulk(
             decimals = contract.get('decimals')
             updates |= logs_to_balance_updates(log, abi, decimals)
 
-    updates = list(updates)
+    tasks = []
     for chunk in split(updates, batch_size):
-        chunk = fetch_erc20_balance_bulk(chunk)
+        task = update_balances_bulk(db, chunk)
+        tasks.append(task)
 
-        for update in chunk:
-            update.apply(db)
+    asyncio.gather(*tasks)
 
     return logs
