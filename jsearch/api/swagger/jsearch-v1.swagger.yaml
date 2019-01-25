@@ -798,6 +798,7 @@ definitions:
         type: string
       abi:
         type: array
+        items: {}
       compilerVersion:
         type: string
       optimizationEnabled:
@@ -806,6 +807,8 @@ definitions:
         type: integer
       constructorArgs:
         type: array
+        items:
+          type: string
       verified_at:
         type: string
       token:
@@ -848,7 +851,7 @@ definitions:
         type: string
         format: address
       amount:
-        type: float
+        type: integer
 
   TokenHolder:
     properties:

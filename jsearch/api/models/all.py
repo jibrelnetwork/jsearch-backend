@@ -264,7 +264,7 @@ class TokenTransfer(Model):
         "from_address": str,
         "to_address": str,
         "token_address": str,
-        "token_value": float,
+        "token_value": int,
         "token_decimals": int,
         "token_name": str,
         "token_symbol": str,
