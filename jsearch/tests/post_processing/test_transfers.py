@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from jsearch.syncer.database import MainDB
+
 
 def test_log_to_transfer():
     from jsearch.common.processing.erc20_transfers import log_to_transfers
@@ -286,9 +288,8 @@ def test_logs_to_transfer():
         }]
 
 
-def test_insert_or_update_transfers_to_db(db, db_connection_string, mocker):
+async def test_insert_or_update_transfers_to_db(db, db_connection_string, mocker):
     mocker.patch('time.sleep')
-    from jsearch.common.database import MainDBSync
 
     # given
     transfers = [
@@ -327,8 +328,8 @@ def test_insert_or_update_transfers_to_db(db, db_connection_string, mocker):
     ]
 
     # when
-    with MainDBSync(db_connection_string) as main_db:
-        main_db.insert_or_update_transfers(transfers)
+    async with MainDB(db_connection_string) as main_db:
+        await main_db.insert_or_update_transfers(transfers)
 
     # then
     result = db.execute('SELECT count(*) FROM token_transfers').fetchone()

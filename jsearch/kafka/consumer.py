@@ -1,5 +1,6 @@
 import asyncio
 import json
+from functools import lru_cache
 from typing import Any, Dict
 
 from aiokafka import AIOKafkaConsumer
@@ -11,6 +12,7 @@ def deserializer(serialized: str) -> Dict[str, Any]:
     return json.loads(serialized)
 
 
+@lru_cache()
 def get_consumer(group, *topics):
     loop = asyncio.get_event_loop()
     return AIOKafkaConsumer(

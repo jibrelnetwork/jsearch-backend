@@ -5,9 +5,8 @@ from random import randint
 from typing import Any, Dict, List, Optional
 
 import backoff
-import requests
 import web3
-from aiohttp import request
+from aiohttp import request, ClientError
 from eth_abi import decode_abi
 from eth_abi import encode_abi as eth_abi_encode_abi
 from eth_abi.exceptions import DecodingError, EncodingError
@@ -159,13 +158,12 @@ class ContractCall:
 ContractCalls = List[ContractCall]
 
 
-@backoff.on_exception(backoff.fibo, max_tries=10, exception=(EthRequestException, requests.RequestException))
+@backoff.on_exception(backoff.fibo, max_tries=10, exception=(EthRequestException, ClientError))
 async def eth_call_request(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     async with request('POST', url=settings.ETH_NODE_URL, json=data) as response:
         if response.status != 200:
             raise EthRequestException(f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}")
         data = await response.json()
-
         if any('error' in item for item in data):
             msg = pformat(data)
             raise EthCallException(

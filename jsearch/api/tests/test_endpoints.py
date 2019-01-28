@@ -1,4 +1,3 @@
-from typing import List
 from unittest import mock
 
 import pytest
@@ -8,7 +7,6 @@ from jsearch.tests.entities import (
     TransactionFromDumpWrapper,
     BlockFromDumpWrapper,
 )
-
 
 pytest_plugins = [
     'jsearch.tests.plugins.tools',

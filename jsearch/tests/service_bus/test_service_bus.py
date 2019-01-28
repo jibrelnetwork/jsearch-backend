@@ -13,4 +13,3 @@ async def test_ask(mocker, mock_kafka):
 
     # then - check reply
     assert reply == {"request": "test"}
-

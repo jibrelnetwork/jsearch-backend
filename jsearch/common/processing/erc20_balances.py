@@ -4,7 +4,6 @@ from itertools import count, chain
 from typing import Dict, Set
 from typing import List, Optional
 
-from aiokafka import AIOKafkaProducer
 from web3 import Web3
 
 from jsearch import settings
@@ -143,9 +142,7 @@ def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpd
     return updates
 
 
-async def fetch_contracts(logs: Logs) -> Dict[str, Contract]:
-    addresses = list({log['address'] for log in logs})
-
+async def fetch_contracts(addresses: List[str]) -> Dict[str, Contract]:
     tasks = []
     for chunk in split(addresses, 50):
         task = ask(topic='request_contracts', value={"addresses": chunk})
