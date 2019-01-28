@@ -1,3 +1,3 @@
 import logging
 
-log = logging.getLogger('kafka')
+log = logging.getLogger('service_bus')

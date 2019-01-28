@@ -38,7 +38,7 @@ class RequestListener(Service):
     async def listen_requests(self):
         async for msg in self.consumer:
             try:
-                log.debug("[KAFKA] Get requests by key %s with value %s", msg.key, msg.value)
+                log.debug("[SERVICE BUS] Get requests by key %s with value %s", msg.key, msg.value)
 
                 uuid, topic, request = read_request(msg.value)
                 value = await self.handle_request(request)
@@ -47,7 +47,7 @@ class RequestListener(Service):
                 await self.producer.send(topic, reply)
 
             except ValueError:
-                log.exception('[KAFKA] Error when process message: %s, %s', msg.key, msg.value)
+                log.exception('[SERVICE BUS] Error when process message: %s, %s', msg.key, msg.value)
                 continue
 
     @abc.abstractmethod

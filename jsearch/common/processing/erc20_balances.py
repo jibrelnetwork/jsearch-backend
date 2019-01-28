@@ -143,12 +143,12 @@ def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpd
     return updates
 
 
-async def fetch_contracts(producer: AIOKafkaProducer, logs: Logs) -> Dict[str, Contract]:
+async def fetch_contracts(logs: Logs) -> Dict[str, Contract]:
     addresses = list({log['address'] for log in logs})
 
     tasks = []
     for chunk in split(addresses, 50):
-        task = ask(topic='request_contracts', value={"addresses": chunk}, producer=producer)
+        task = ask(topic='request_contracts', value={"addresses": chunk})
         tasks.append(task)
 
     chunks = await asyncio.gather(*tasks)

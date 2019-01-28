@@ -11,7 +11,6 @@ from jsearch.common.processing.erc20_balances import (
 )
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
-from jsearch.kafka.producer import get_producer
 from jsearch.syncer.database import MainDB
 from jsearch.typing import Log
 
@@ -31,26 +30,20 @@ async def log_event_processing_worker(db, logs: List[Log]):
 
 
 async def log_operations_processing_worker(db, logs: List[Log]):
-    producer = get_producer()
-    try:
-        await producer.start()
-        contracts = await fetch_contracts(producer, logs)
-        logs = await process_log_operations_bulk(db, logs, contracts)
+    contracts = await fetch_contracts(logs)
+    logs = await process_log_operations_bulk(db, logs, contracts)
 
-        blocks = await fetch_blocks(db, logs)
-        transfers = logs_to_transfers(logs, blocks, contracts)
+    blocks = await fetch_blocks(db, logs)
+    transfers = logs_to_transfers(logs, blocks, contracts)
 
-        await db.insert_or_update_transfers(transfers)
+    await db.insert_or_update_transfers(transfers)
 
-        tasks = []
-        for log in logs:
-            log['is_transfer_processed'] = True
-            task = db.update_log(record=log)
-            tasks.append(task)
-        await asyncio.gather(*tasks)
-
-    finally:
-        await producer.stop()
+    tasks = []
+    for log in logs:
+        log['is_transfer_processed'] = True
+        task = db.update_log(record=log)
+        tasks.append(task)
+    await asyncio.gather(*tasks)
 
 
 def get_worker(action: str):

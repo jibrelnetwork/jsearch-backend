@@ -4,19 +4,19 @@ from uuid import uuid4
 
 def get_uuid(msg: Dict[str, Any]) -> str:
     if 'uuid' not in msg:
-        raise ValueError('There is not uuid in msg: %s', msg)
+        raise ValueError('[SERVICE BUS] There is not uuid in msg: %s', msg)
     return msg['uuid']
 
 
 def get_value(msg: Dict[str, Any]) -> Dict[str, Any]:
     if 'value' not in msg:
-        raise ValueError('There is not value in msg: %s', msg)
+        raise ValueError('[SERVICE BUS] TThere is not value in msg: %s', msg)
     return msg['value']
 
 
 def get_reply_topic(msg) -> str:
     if 'reply_to' not in msg:
-        raise ValueError('There is not topic in msg: %s', msg)
+        raise ValueError('[SERVICE BUS] TThere is not topic in msg: %s', msg)
     return msg['reply_to']
 
 
