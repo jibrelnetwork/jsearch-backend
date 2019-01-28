@@ -68,7 +68,7 @@ parameters:
     
 paths:
 
-  /accounts/balances:
+  /v1/accounts/balances:
     get:
       operationId: getBalancesForMultiAddresses
       description: |
@@ -90,7 +90,7 @@ paths:
         400:
           description: bad input parameter
     
-  /accounts/{address}:
+  /v1/accounts/{address}:
     get:
       operationId: getAccount
       description: |
@@ -109,7 +109,7 @@ paths:
         400:
           description: bad input parameter
   
-  /accounts/{address}/transactions:
+  /v1/accounts/{address}/transactions:
     get:
       operationId: getAccountTransactions
       description: |
@@ -131,7 +131,7 @@ paths:
         400:
           description: bad input parameter
           
-  /accounts/{address}/mined_blocks:
+  /v1/accounts/{address}/mined_blocks:
     get:
       operationId: getAccountMinedBlocks
       description: |
@@ -153,7 +153,7 @@ paths:
         400:
           description: bad input parameter
           
-  /accounts/{address}/mined_uncles:
+   /v1/accounts/{address}/mined_uncles:
     get:
       operationId: getAccountMinedUncles
       description: |
@@ -175,7 +175,7 @@ paths:
         400:
           description: bad input parameter
 
-  /accounts/{address}/token_transfers:
+  /v1/accounts/{address}/token_transfers:
     get:
       operationId: getAccountTokenTransfers
       description: |
@@ -197,7 +197,7 @@ paths:
         400:
           description: bad input parameter
           
-  /blocks:
+  /v1/blocks:
     get:
       operationId: getBlockList
       description: |
@@ -217,7 +217,7 @@ paths:
         400:
           description: bad input parameter
           
-  /blocks/{tag}:
+  /v1/blocks/{tag}:
     get:
       operationId: getBlock
       description: |
@@ -234,7 +234,7 @@ paths:
         400:
           description: bad input parameter
           
-  /blocks/{tag}/transactions:
+  /v1/blocks/{tag}/transactions:
     get:
       operationId: getBlockTransactions
       description: |
@@ -253,7 +253,7 @@ paths:
         400:
           description: bad input parameter
           
-  /blocks/{tag}/uncles:
+  /v1/blocks/{tag}/uncles:
     get:
       operationId: getBlockUncles
       description: |
@@ -272,7 +272,7 @@ paths:
         400:
           description: bad input parameter
           
-  /transactions/{txhash}:
+  /v1/transactions/{txhash}:
     get:
       operationId: getTransaction
       description: |
@@ -289,7 +289,7 @@ paths:
         400:
           description: bad input parameter
           
-  /receipts/{txhash}:
+  /v1/receipts/{txhash}:
     get:
       operationId: getReceipt
       description: |
@@ -306,7 +306,7 @@ paths:
         400:
           description: bad input parameter
           
-  /uncles:
+  /v1/uncles:
     get:
       operationId: getUnclesList
       description: |
@@ -327,7 +327,7 @@ paths:
         400:
           description: bad input parameter
 
-  /uncles/{tag}:
+  /v1/uncles/{tag}:
     get:
       operationId: getUncle
       description: |
@@ -344,7 +344,7 @@ paths:
         400:
           description: bad input parameter
 
-  /verified_contracts:
+  /v1/verified_contracts:
     get:
       operationId: getVerifiedContractsList
       description: |
@@ -365,7 +365,7 @@ paths:
         400:
           description: bad input parameter
 
-  /verified_contracts/{address}:
+  /v1/verified_contracts/{address}:
     get:
       operationId: getVerifiedContract
       description: |
@@ -382,7 +382,7 @@ paths:
         404:
           description: Contract not found
 
-  /tokens:
+  /v1/tokens:
     get:
       operationId: getTokensList
       description: |
@@ -403,7 +403,7 @@ paths:
         400:
           description: bad input parameter
 
-  /tokens/{address}:
+  /v1/tokens/{address}:
     get:
       operationId: getToken
       description: |
@@ -420,7 +420,7 @@ paths:
         404:
           description: Token not found
 
-  /tokens/{address}/token_transfers:
+  /v1/tokens/{address}/transfers:
     get:
       operationId: getTokenTransfers
       description: |
@@ -442,7 +442,7 @@ paths:
         400:
           description: bad input parameter
 
-  /tokens/{address}/holders:
+  /v1/tokens/{address}/holders:
     get:
       operationId: getTokenHolders
       description: |
@@ -861,26 +861,35 @@ definitions:
     properties:
       timestamp:
         type: integer
+        example: 1548229016
       transactionHash:
         type: string
         format: hex
+        example: "0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c"
       from:
         type: string
         format: address
+        example: "0xf73c3c65bde10bf26c2e1763104e609a41702efe"
       to:
         type: string
         format: address
+        example: "0x355941cf7ac065310fd4023e1b913209f076a48a"
       tokenDecimals:
         type: integer
+        example: 18
       tokenSymbol:
         type: string
+        example: "JNT"
       tokenName:
         type: string
+        example: "Jibrel Network Token"
       tokenAddress:
         type: string
         format: address
+        example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
       amount:
         type: integer
+        example: 1664600000000000000000
 
   TokenHolder:
     properties:
