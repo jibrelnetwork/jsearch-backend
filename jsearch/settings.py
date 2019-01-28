@@ -3,6 +3,8 @@ import os
 JSEARCH_MAIN_DB = os.getenv('JSEARCH_MAIN_DB', 'postgres://localhost/jsearch_main')
 JSEARCH_RAW_DB = os.getenv('JSEARCH_RAW_DB', 'postgres://localhost/jsearch_raw')
 
+KAFKA = os.getenv('KAFKA', 'kafka:9092')
+
 ETH_NODE_URL = os.getenv('ETH_NODE_URL', 'https://main-node.jwallet.network')
 ETH_NODE_BATCH_REQUEST_SIZE = int(os.getenv('ETH_NODE_BATCH_REQUEST_SIZE', '50'))
 

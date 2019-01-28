@@ -10,7 +10,6 @@ from jsearch import settings
 from jsearch.api import handlers
 from jsearch.api.storage import Storage
 
-
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
 swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
 

@@ -5,9 +5,8 @@ from random import randint
 from typing import Any, Dict, List, Optional
 
 import backoff
-import requests
 import web3
-from aiohttp import request
+from aiohttp import request, ClientError
 from eth_abi import decode_abi
 from eth_abi import encode_abi as eth_abi_encode_abi
 from eth_abi.exceptions import DecodingError, EncodingError
@@ -159,32 +158,34 @@ class ContractCall:
 ContractCalls = List[ContractCall]
 
 
-@backoff.on_exception(backoff.fibo, max_tries=10, exception=(EthRequestException, requests.RequestException))
-def eth_call_batch_request(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    response = requests.post(settings.ETH_NODE_URL, json=data)
-    if response.status_code != 200:
-        raise EthRequestException(f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}")
-
-    data = response.json()
-    if any('error' in item for item in data):
-        msg = pformat(data)
-        raise EthCallException(f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}: {msg}")
+@backoff.on_exception(backoff.fibo, max_tries=10, exception=(EthRequestException, ClientError))
+async def eth_call_request(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async with request('POST', url=settings.ETH_NODE_URL, json=data) as response:
+        if response.status != 200:
+            raise EthRequestException(f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}")
+        data = await response.json()
+        if any('error' in item for item in data):
+            msg = pformat(data)
+            raise EthCallException(
+                f"[REQUEST] {settings.ETH_NODE_URL}: "
+                f"{response.status_code}, {response.reason}: {msg}"
+            )
 
     return data
 
 
-def eth_call(call: ContractCall) -> Any:
+async def eth_call(call: ContractCall) -> Any:
     data = [call.encode()]
-    response = eth_call_batch_request(data)
+    response = await eth_call_request(data)
     results = {result["id"]: HexBytes(result["result"]) for result in response}
     return call.decode(results[call.pk])
 
 
-def eth_call_batch(calls: ContractCalls) -> Dict[str, Any]:
+async def eth_call_batch(calls: ContractCalls) -> Dict[str, Any]:
     data = [call.encode() for call in calls]
     data = [item for item in data if item]
 
-    response = eth_call_batch_request(data)
+    response = await eth_call_request(data)
     results = {result["id"]: HexBytes(result["result"]) for result in response}
 
     return {call.pk: call.decode(results[call.pk]) for call in calls if call.pk in results}

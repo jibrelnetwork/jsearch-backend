@@ -1,24 +1,16 @@
 import pathlib
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 version = pathlib.Path('version.txt').read_text().strip()
-
 setup(
     name='jsearch',
     version=version,
     description='JSearch backend services',
-    packages=[
-        'jsearch',
-        'jsearch.api',
-        'jsearch.api.models',
-        'jsearch.common',
-        'jsearch.common.integrations',
-        'jsearch.common.processing',
-        'jsearch.syncer',
-        'jsearch.post_processing',
-        'jsearch.validation',
-    ],
+    packages=find_packages(
+        exclude=('*.tests.*',),
+        include=('jsearch', 'jsearch.*',)
+    ),
     zip_safe=False,
     platforms='any',
     install_requires=[],

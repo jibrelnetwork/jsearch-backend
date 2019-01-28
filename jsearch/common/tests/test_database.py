@@ -8,7 +8,7 @@ pytest_plugins = [
 ]
 
 
-def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocker, post_processing):
+async def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocker, post_processing, mock_kafka):
     # given
     mocker.patch('time.sleep')
     from jsearch.common import tables as t
@@ -17,7 +17,7 @@ def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocke
     token_address = main_db_data['accounts_state'][2]['address']
 
     # when run system under test
-    post_processing(main_db_data)
+    await post_processing(main_db_data)
 
     # then check results
     q = select([t.logs_t]).where(t.logs_t.c.transaction_hash == tx_hash)

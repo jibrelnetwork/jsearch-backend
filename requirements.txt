@@ -1,3 +1,6 @@
+mode
+async_timeout
+aiokafka
 aiohttp-swagger==1.0.5
 aiohttp==3.1.2
 aiopg==0.14.0
@@ -21,6 +24,7 @@ raven==6.6.0
 redis==2.10.6
 requests==2.18.4
 rlp==0.6.0
+faust==1.4.5
 sentry-sdk==0.6.2
 SQLAlchemy==1.2.6
 web3==4.2.1
