@@ -26,6 +26,13 @@ parameters:
     description: Account address
     type: string
     format: address
+  contract_address:
+    name: address
+    in: path
+    required: true
+    description: Contract address
+    type: string
+    format: address
   tag:
     name: tag
     in: path
@@ -72,6 +79,7 @@ paths:
       - in: query
         name: addresses
         type: string
+        description: Comma separated list of addresses
       responses:
         200:
           description: List of balances
@@ -91,14 +99,13 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
+        description: Account address
       - $ref: '#/parameters/tag'
       responses:
         200:
           description: Account object
           schema:
-            type: object
-            items:
-              $ref: '#/definitions/Account'
+            $ref: '#/definitions/Account'
         400:
           description: bad input parameter
   
@@ -366,7 +373,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/contract_address'
       responses:
         200:
           description: Contract
@@ -404,7 +411,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/contract_address'
       responses:
         200:
           description: Token
@@ -421,7 +428,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/contract_address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
@@ -443,7 +450,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/contract_address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
@@ -463,64 +470,86 @@ definitions:
     properties:
       blockNumber:
         type: integer
+        example: 4087355
       blockHash:
         type: string
         format: hash
+        example: "0x0e851d527ca5b1a8356a29d198c920f20da9af51edc084acaa0de481324d8f5d"
       address:
         type: string
         format: address
+        example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
       nonce:
         type: integer
+        example: 976
       code:
         type: string
+        example: ""
       codeHash:
         type: string
         format: hash
+        example: "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
       balance:
-        type: integer
+        type: string
+        format: hex
+        example: "0x3a844524342f0"
   
   Transaction:
     properties:
       blockHash:
         type: string
         format: hash
+        example: "0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad"
       blockNumber:
         type: integer
+        example: 119416
       from:
-       type: string
-       format: address
+        type: string
+        format: address
+        example: "0x3a844524342f0"
       gas:
-       type: string
-       format: hex
+        type: string
+        format: hex
+        example: "0x61a8"
       gasPrice:
-       type: string
-       format: hex
+        type: string
+        format: hex
+        example: "0xba43b7400"
       hash:
-       type: string
-       format: hash
+        type: string
+        format: hash
+        example: "0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5"
       input:
-       type: string
-       format: hex
+        type: string
+        format: hex
+        example: "0x"
       nonce:
-       type: string
-       format: hex
+        type: string
+        format: hex
+        example: "0x21f"
       r:
-       type: string
-       format: hex
+        type: string
+        format: hex
+        example: "0x23e819fa3f631c042d20b70f28f8f08ef1a2733061b92c59b43ea0997b6cf834"
       s:
-       type: string
-       format: hash
+        type: string
+        format: hash
+        example: "0x1ad76eadafc639103f6ba7bc0b9f839757086669b973e601ab69efda745948e3"
       to:
-       type: string
-       format: address
+        type: string
+        format: address
+        example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
       transactionIndex:
         type: integer
+        example: 84
       v:
-       type: string
-       format: hex
+        type: string
+        format: hex
+        example: "0x1c"
       value:
-       type: string
-       format: hex
+        type: string
+        format: hex
+        example: "0x26f8fac3b94e7e00"
  
   Block:
     properties:
@@ -686,8 +715,7 @@ definitions:
         type: string
         format: hex
         example: 0x2563918244f40000
-      
-  
+
   Receipt:
     properties:
       blockHash:
@@ -780,10 +808,11 @@ definitions:
       balance:
         type: string
         format: hex
-        example: 0x2563918244f40000
+        example: "0x2563918244f40000"
       address:
         type: string
         format: address
+        example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
         
   Contract:
     properties:
@@ -858,13 +887,17 @@ definitions:
       accountAddress:
         type: string
         format: address
+        example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
       tokenAddress:
         type: string
         format: address
+        example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
       balance:
         type: integer
+        example: 0
       decimals:
         type: integer
+        example: 18
 
 schemes:
  - http
