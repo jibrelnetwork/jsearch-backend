@@ -23,6 +23,6 @@ async def test_get_block_by_number(cli, db_dump_on_fuck_token_transfer_case):
         transactions=[tx.entity.hash for tx in txs]
     )
     # then
-    resp = await cli.get('/blocks/2')
+    resp = await cli.get('/v1/blocks/2')
     assert resp.status == 200
     assert await resp.json() == block.as_dict()
