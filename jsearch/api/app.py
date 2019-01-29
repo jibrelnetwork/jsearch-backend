@@ -32,29 +32,29 @@ async def make_app():
     app['storage'] = Storage(app['db_pool'])
 
     # Configure service routes
-    app.router.add_route('GET', '/accounts/balances', handlers.get_accounts_balances)
-    app.router.add_route('GET', '/accounts/{address}', handlers.get_account)
-    app.router.add_route('GET', '/accounts/{address}/transactions', handlers.get_account_transactions)
-    app.router.add_route('GET', '/accounts/{address}/mined_blocks', handlers.get_account_mined_blocks)
-    app.router.add_route('GET', '/accounts/{address}/mined_uncles', handlers.get_account_mined_uncles)
-    app.router.add_route('GET', '/accounts/{address}/token_transfers', handlers.get_account_token_transfers)
-    app.router.add_route('GET', '/accounts/{address}/token_balance/{token_address}', handlers.get_account_token_balance)
+    app.router.add_route('GET', '/v1/accounts/balances', handlers.get_accounts_balances)
+    app.router.add_route('GET', '/v1/accounts/{address}', handlers.get_account)
+    app.router.add_route('GET', '/v1/accounts/{address}/transactions', handlers.get_account_transactions)
+    app.router.add_route('GET', '/v1/accounts/{address}/mined_blocks', handlers.get_account_mined_blocks)
+    app.router.add_route('GET', '/v1/accounts/{address}/mined_uncles', handlers.get_account_mined_uncles)
+    app.router.add_route('GET', '/v1/accounts/{address}/token_transfers', handlers.get_account_token_transfers)
+    app.router.add_route('GET', '/v1/accounts/{address}/token_balance/{token_address}', handlers.get_account_token_balance)
 
-    app.router.add_route('GET', '/blocks', handlers.get_blocks)
-    app.router.add_route('GET', '/blocks/{tag}', handlers.get_block)
-    app.router.add_route('GET', '/blocks/{tag}/transactions', handlers.get_block_transactions)
-    app.router.add_route('GET', '/blocks/{tag}/uncles', handlers.get_block_uncles)
+    app.router.add_route('GET', '/v1/blocks', handlers.get_blocks)
+    app.router.add_route('GET', '/v1/blocks/{tag}', handlers.get_block)
+    app.router.add_route('GET', '/v1/blocks/{tag}/transactions', handlers.get_block_transactions)
+    app.router.add_route('GET', '/v1/blocks/{tag}/uncles', handlers.get_block_uncles)
 
-    app.router.add_route('GET', '/transactions/{txhash}', handlers.get_transaction)
-    app.router.add_route('GET', '/receipts/{txhash}', handlers.get_receipt)
+    app.router.add_route('GET', '/v1/transactions/{txhash}', handlers.get_transaction)
+    app.router.add_route('GET', '/v1/receipts/{txhash}', handlers.get_receipt)
 
-    app.router.add_route('GET', '/uncles', handlers.get_uncles)
-    app.router.add_route('GET', '/uncles/{tag}', handlers.get_uncle)
+    app.router.add_route('GET', '/v1/uncles', handlers.get_uncles)
+    app.router.add_route('GET', '/v1/uncles/{tag}', handlers.get_uncle)
 
-    app.router.add_route('POST', '/verify_contract', handlers.verify_contract)
+    app.router.add_route('POST', '/v1/verify_contract', handlers.verify_contract)
 
-    app.router.add_route('GET', '/tokens/{address}/transfers', handlers.get_token_transfers)
-    app.router.add_route('GET', '/tokens/{address}/holders', handlers.get_token_holders)
+    app.router.add_route('GET', '/v1/tokens/{address}/transfers', handlers.get_token_transfers)
+    app.router.add_route('GET', '/v1/tokens/{address}/holders', handlers.get_token_holders)
 
     app.router.add_route('POST', '/_on_new_contracts_added', handlers.on_new_contracts_added)
 
