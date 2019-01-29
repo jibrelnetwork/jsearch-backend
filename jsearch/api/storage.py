@@ -283,8 +283,10 @@ class Storage:
     async def get_tokens_transfers(self, address: str, limit: int, offset: int, order: str) \
             -> List[models.TokenTransfer]:
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+        offset *= 2
+        limit *= 2
         query = f"""
-            SELECT DISTINCT transaction_hash,
+            SELECT transaction_hash,
                     transaction_index,
                     log_index,
                     block_number,
@@ -301,7 +303,22 @@ class Storage:
             WHERE token_address = $1 AND is_forked = false
             ORDER BY block_number {order}, transaction_index {order}, log_index {order} LIMIT $2 OFFSET $3;
         """
-        return await self._fetch_token_transfers(query, address, limit, offset)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, address, limit, offset)
+            transfers: List[models.TokenTransfer] = []
+            distinct_set = set()
+            for row in rows:
+                row = dict(row)
+                distinct_key = tuple(row.values())
+                if distinct_key in distinct_set:
+                    continue
+                distinct_set.add(distinct_key)
+                del row['transaction_index']
+                del row['log_index']
+                del row['block_number']
+                del row['block_hash']
+                transfers.append(models.TokenTransfer(**row))
+            return transfers
 
     async def get_account_tokens_transfers(self, address, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
