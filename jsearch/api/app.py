@@ -38,7 +38,9 @@ async def make_app():
     app.router.add_route('GET', '/v1/accounts/{address}/mined_blocks', handlers.get_account_mined_blocks)
     app.router.add_route('GET', '/v1/accounts/{address}/mined_uncles', handlers.get_account_mined_uncles)
     app.router.add_route('GET', '/v1/accounts/{address}/token_transfers', handlers.get_account_token_transfers)
-    app.router.add_route('GET', '/v1/accounts/{address}/token_balance/{token_address}', handlers.get_account_token_balance)
+    app.router.add_route(
+        'GET', '/v1/accounts/{address}/token_balance/{token_address}', handlers.get_account_token_balance
+    )
 
     app.router.add_route('GET', '/v1/blocks', handlers.get_blocks)
     app.router.add_route('GET', '/v1/blocks/{tag}', handlers.get_block)
