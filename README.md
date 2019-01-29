@@ -78,6 +78,12 @@ Then run:
 jsearch-syncer
 ```
 
+### Post processing:
+```
+jsearch-post-processing --wait
+jsearch-post-processing operations --wait
+```
+
 ### API:
 ```
 gunicorn  --bind 0.0.0.0:8081 jsearch.api.app:make_app --worker-class aiohttp.worker.GunicornWebWorker
