@@ -175,6 +175,26 @@ paths:
         400:
           description: bad input parameter
 
+  /v1/tokens/{address}/token_balance/{contract_address}:
+    get:
+      operationId: getTokenHolderBalance
+      description: |
+        Get token holder balance for specific token
+      produces:
+        - application/json
+      parameters:
+        - $ref: '#/parameters/address'
+        - $ref: '#/parameters/contract_address'
+      responses:
+        200:
+          description: token holders balance
+          schema:
+            $ref: '#/definitions/TokenHolder'
+        400:
+          description: bad input parameter
+        404:
+          description: Holder not found
+
   /v1/accounts/{address}/token_transfers:
     get:
       operationId: getAccountTokenTransfers

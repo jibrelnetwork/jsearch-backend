@@ -33,7 +33,11 @@ class UserBehavior(TaskSet):
     @task(1)
     def get_accounts_balances(self):
         addresses = ','.join([r[0] for r in random.choices(keys['accounts'], k=5)])
-        self.client.get(f"/v1/accounts/balances?addresses={addresses}", catch_response=False, name="/v1/account/balances")
+        self.client.get(
+            f"/v1/accounts/balances?addresses={addresses}",
+            catch_response=False,
+            name="/v1/account/balances"
+        )
 
     # app.router.add_route('GET', '/v1/accounts/{address}', handlers.get_account)
     @task(1)
