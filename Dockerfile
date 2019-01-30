@@ -10,6 +10,9 @@ ENV LOG_LEVEL=INFO \
     JSEARCH_CONTRACTS_API="http://contracts:8080" \
     JSEARCH_COMPILER_API="http://compiler" \
     JSEARCH_API_ENABLE_RESET_LOGS_PROCESSING="1" \
+    KAFKA="kafka:9092" \
+    KAFKA_TOPIC_REQUEST_CONTRACTS="request_contracts" \
+    KAFKA_TOPIC_NEW_TX_LOGS="new_tx_logs" \
     ENH_NODE_URL="https://main-node.jwallet.network"
 
 

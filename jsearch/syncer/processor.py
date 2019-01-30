@@ -5,6 +5,7 @@ from typing import Optional
 
 from jsearch import settings
 from jsearch.common import contracts
+from jsearch.kafka.utils import sync_send
 from jsearch.syncer.database import MainDBSync, RawDBSync
 
 logger = logging.getLogger(__name__)
@@ -50,9 +51,14 @@ class SyncProcessor:
         internal_transactions = self.raw_db.get_internal_transactions(block_hash)
         self.raw_db.disconnect()
 
-        self.write_block(header=header, body=body, accounts=accounts,
-                         receipts=receipts, reward=reward,
-                         internal_transactions=internal_transactions)
+        self.write_block(
+            header=header,
+            body=body,
+            accounts=accounts,
+            receipts=receipts,
+            reward=reward,
+            internal_transactions=internal_transactions
+        )
 
         sync_time = time.monotonic() - start_time
         logger.debug("Block %s #%s synced on %ss", block_hash, block_number, sync_time)
@@ -61,15 +67,7 @@ class SyncProcessor:
 
     def write_block(self, header, body, reward, receipts, accounts, internal_transactions):
         """
-        Preprocess and write block data fetched from Raw DB to Main DB
-
-        :param header:
-        :param body:
-        :param reward:
-        :param receipts:
-        :param accounts:
-        :param internal_transactions:
-        :return: None
+        Preprocess, write block data fetched from Raw DB to Main DB and send new logs to service bus
         """
         uncles = body['fields']['Uncles'] or []
         transactions = body['fields']['Transactions'] or []
@@ -85,8 +83,16 @@ class SyncProcessor:
         accounts_data = self.process_accounts(accounts, block_number, block_hash)
         internal_txs_data = self.process_internal_txs(internal_transactions, block_number, block_hash)
 
-        self.main_db.write_block_data(block_data, uncles_data, transactions_data, receipts_data,
-                                      logs_data, accounts_data, internal_txs_data)
+        self.main_db.write_block_data(
+            block_data=block_data,
+            uncles_data=uncles_data,
+            transactions_data=transactions_data,
+            receipts_data=receipts_data,
+            logs_data=logs_data,
+            accounts_data=accounts_data,
+            internal_txs_data=internal_txs_data
+        )
+        sync_send(topic=settings.KAFKA_TOPIC_NEW_TX_LOGS, value=logs_data)
 
     def process_rewards(self, reward, block_number):
         if block_number == 0:

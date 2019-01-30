@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional, List, Union
 from uuid import uuid4
 
 
@@ -20,7 +20,7 @@ def get_reply_topic(msg) -> str:
     return msg['reply_to']
 
 
-def make_request(value: Dict[str, Any], reply_to: str):
+def make_request(value: Union[Dict[str, Any], List[Any]], reply_to: Optional[str] = None):
     return {
         'uuid': str(uuid4()),
         'value': value,
