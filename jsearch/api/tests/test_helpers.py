@@ -7,6 +7,7 @@ from aiohttp.test_utils import make_mocked_request
 from aiohttp import web
 
 from jsearch.api import helpers
+from jsearch.api.error_code import ErrorCode
 
 
 def test_validate_request_ok():
@@ -26,7 +27,20 @@ def test_validate_request_ok():
     with pytest.raises(web.HTTPBadRequest) as ex:
         params = helpers.validate_params(req)
     assert json.loads(ex.value.text) == {
-        'order': 'Order value should be one of "asc", "desc", got "foo"',
-        'limit': 'Limit value should be valid integer, got "aaa"',
-        'offset': 'Offset value should be valid integer, got "xxx"',
+        'status': {
+            'success': False,
+            'errors':[
+                {'field':'limit',
+                 'error_message': 'Limit value should be valid integer, got "aaa"',
+                 'error_code': ErrorCode.INVALID_LIMIT_VALUE},
+                {'field':'offset',
+                 'error_message': 'Offset value should be valid integer, got "xxx"',
+                 'error_code': ErrorCode.INVALID_OFFSET_VALUE},
+                {'field': 'order',
+                 'error_message': 'Order value should be one of "asc", "desc", got "foo"',
+                 'error_code': ErrorCode.INVALID_ORDER_VALUE},
+            ]},
+        'data': None
     }
+
+
