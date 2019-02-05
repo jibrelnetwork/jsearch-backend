@@ -9,6 +9,7 @@ from aiohttp_swagger import setup_swagger
 from jsearch import settings
 from jsearch.api import handlers
 from jsearch.api.storage import Storage
+from jsearch.api.node_proxy import NodeProxy
 
 
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
@@ -30,6 +31,7 @@ async def make_app():
     # Create a database connection pool
     app['db_pool'] = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
     app['storage'] = Storage(app['db_pool'])
+    app['node_proxy'] = NodeProxy(settings.ETH_NODE_URL)
 
     # Configure service routes
     app.router.add_route('GET', '/v1/accounts/balances', handlers.get_accounts_balances)
@@ -57,6 +59,12 @@ async def make_app():
 
     app.router.add_route('GET', '/v1/tokens/{address}/transfers', handlers.get_token_transfers)
     app.router.add_route('GET', '/v1/tokens/{address}/holders', handlers.get_token_holders)
+
+    app.router.add_route('GET', '/v1/gas_price', handlers.get_gas_price)
+    app.router.add_route('POST', '/v1/estimate_gas', handlers.calculate_estimate_gas)
+    app.router.add_route('POST', '/v1/call_contract', handlers.call_contract)
+    app.router.add_route('POST', '/v1/send_raw_transaction', handlers.send_raw_transaction)
+
 
     app.router.add_route('POST', '/_on_new_contracts_added', handlers.on_new_contracts_added)
 
