@@ -24,4 +24,3 @@ rlp==0.6.0
 sentry-sdk==0.6.2
 SQLAlchemy==1.2.6
 web3==4.2.1
-jsonrpc_async
