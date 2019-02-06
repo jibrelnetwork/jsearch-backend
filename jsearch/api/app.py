@@ -65,7 +65,6 @@ async def make_app():
     app.router.add_route('POST', '/v1/call_contract', handlers.call_contract)
     app.router.add_route('POST', '/v1/send_raw_transaction', handlers.send_raw_transaction)
 
-
     app.router.add_route('POST', '/_on_new_contracts_added', handlers.on_new_contracts_added)
 
     app.router.add_static('/docs', swagger_ui_path)

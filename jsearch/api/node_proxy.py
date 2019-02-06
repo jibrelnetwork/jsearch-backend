@@ -1,5 +1,5 @@
 
-from typing import Any, List, Dict
+from typing import Any, List
 
 import aiohttp
 import backoff
@@ -14,7 +14,7 @@ class NodeProxy:
         self.node_url = node_url
 
     @backoff.on_exception(backoff.expo, aiohttp.ClientError, max_tries=MAX_RETRY)
-    async def _request(self, method: str, params: List=None):
+    async def _request(self, method: str, params: List = None):
         params = params or []
         message = {'jsonrpc': '2.0', 'method': method, 'params': params, 'id': 1}
         async with aiohttp.ClientSession() as session:
@@ -36,5 +36,3 @@ class NodeProxy:
     async def send_raw_transaction(self, args: List) -> str:
         res = await self._request('eth_sendRawTransaction', args)
         return res
-
-

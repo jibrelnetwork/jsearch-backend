@@ -1,4 +1,3 @@
-
 import json
 
 import pytest
@@ -29,11 +28,11 @@ def test_validate_request_ok():
     assert json.loads(ex.value.text) == {
         'status': {
             'success': False,
-            'errors':[
-                {'field':'limit',
+            'errors': [
+                {'field': 'limit',
                  'error_message': 'Limit value should be valid integer, got "aaa"',
                  'error_code': ErrorCode.INVALID_LIMIT_VALUE},
-                {'field':'offset',
+                {'field': 'offset',
                  'error_message': 'Offset value should be valid integer, got "xxx"',
                  'error_code': ErrorCode.INVALID_OFFSET_VALUE},
                 {'field': 'order',
@@ -42,5 +41,3 @@ def test_validate_request_ok():
             ]},
         'data': None
     }
-
-
