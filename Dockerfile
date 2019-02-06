@@ -20,6 +20,9 @@ RUN groupadd -g 999 app \
 
 WORKDIR /app
 
+COPY --chown=app:app ./jsearch-service-bus /app/jsearch-service-bus/
+RUN cd jsearch-service-bus && pip install --no-cache-dir . && cd ..
+
 COPY --chown=app:app requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
