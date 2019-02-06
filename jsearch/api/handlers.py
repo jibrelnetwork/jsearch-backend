@@ -5,7 +5,7 @@ from jsearch import settings
 from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
-from jsearch.api.helpers import get_tag, validate_params, api_success, api_error
+from jsearch.api.helpers import get_tag, validate_params, api_success, proxy_response
 
 
 async def get_account(request):
@@ -249,6 +249,29 @@ async def get_account_token_balance(request):
     if holder is None:
         return web.json_response(status=404)
     return api_success(holder.to_dict())
+
+
+async def get_gas_price(request):
+    resp = await request.app['node_proxy'].gas_price()
+    return proxy_response(resp)
+
+
+async def calculate_estimate_gas(request):
+    args = await request.json()
+    resp = await request.app['node_proxy'].estimate_gas(args)
+    return proxy_response(resp)
+
+
+async def call_contract(request):
+    args = await request.json()
+    resp = await request.app['node_proxy'].call_contract(args)
+    return proxy_response(resp)
+
+
+async def send_raw_transaction(request):
+    args = await request.json()
+    resp = await request.app['node_proxy'].send_raw_transaction(args)
+    return proxy_response(resp)
 
 
 async def on_new_contracts_added(request):

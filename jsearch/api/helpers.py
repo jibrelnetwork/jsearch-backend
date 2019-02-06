@@ -3,7 +3,6 @@ import json
 from aiohttp import web
 from jsearch.api.error_code import ErrorCode
 
-
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
 DEFAULT_OFFSET = 0
@@ -110,3 +109,18 @@ def api_error(status, errors, data=None):
         'data': data
     }
     return web.json_response(body, status=status)
+
+
+def proxy_response(resp):
+    if 'error' in resp:
+        err = {
+            'field': 'non_filed_error',
+            'error_code': resp['error']['code'],
+            'error_message': resp['error']['message']
+        }
+        status = {'success': False, 'errors': [err]}
+    else:
+        status = {'success': True, 'errors': []}
+
+    body = {'status': status, 'data': resp.pop('result', None)}
+    return web.json_response(body)

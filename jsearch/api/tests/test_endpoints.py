@@ -146,12 +146,12 @@ async def test_get_account(cli, main_db_data):
     account_base = main_db_data['accounts_base'][0]
     rdata = await resp.json()
     assert rdata['data'] == {'address': account_state['address'],
-                                 'balance': hex(account_state['balance']),
-                                 'blockHash': account_state['block_hash'],
-                                 'blockNumber': account_state['block_number'],
-                                 'code': account_base['code'],
-                                 'codeHash': account_base['code_hash'],
-                                 'nonce': account_state['nonce']}
+                             'balance': hex(account_state['balance']),
+                             'blockHash': account_state['block_hash'],
+                             'blockNumber': account_state['block_number'],
+                             'code': account_base['code'],
+                             'codeHash': account_base['code_hash'],
+                             'nonce': account_state['nonce']}
 
 
 async def test_get_account_block_number(cli, main_db_data):
@@ -164,12 +164,12 @@ async def test_get_account_block_number(cli, main_db_data):
     account_base = main_db_data['accounts_base'][0]
     rdata = await resp.json()
     assert rdata['data'] == {'address': account_state['address'],
-                                 'balance': hex(account_state['balance']),
-                                 'blockHash': account_state['block_hash'],
-                                 'blockNumber': account_state['block_number'],
-                                 'code': account_base['code'],
-                                 'codeHash': account_base['code_hash'],
-                                 'nonce': account_state['nonce']}
+                             'balance': hex(account_state['balance']),
+                             'blockHash': account_state['block_hash'],
+                             'blockNumber': account_state['block_number'],
+                             'code': account_base['code'],
+                             'codeHash': account_base['code_hash'],
+                             'nonce': account_state['nonce']}
 
 
 async def test_get_account_block_hash(cli, main_db_data):
@@ -182,12 +182,12 @@ async def test_get_account_block_hash(cli, main_db_data):
     account_base = main_db_data['accounts_base'][0]
     rdata = await resp.json()
     assert rdata['data'] == {'address': account_state['address'],
-                                 'balance': hex(account_state['balance']),
-                                 'blockHash': account_state['block_hash'],
-                                 'blockNumber': account_state['block_number'],
-                                 'code': account_base['code'],
-                                 'codeHash': account_base['code_hash'],
-                                 'nonce': account_state['nonce']}
+                             'balance': hex(account_state['balance']),
+                             'blockHash': account_state['block_hash'],
+                             'blockNumber': account_state['block_number'],
+                             'code': account_base['code'],
+                             'codeHash': account_base['code_hash'],
+                             'nonce': account_state['nonce']}
 
 
 async def test_get_account_transactions(cli, main_db_data):
@@ -443,7 +443,7 @@ async def test_get_blocks_limit_offset(cli):
 async def test_get_uncles(cli, main_db_data):
     resp = await cli.get('/v1/uncles')
     assert resp.status == 200
-    assert (await resp.json() )['data'] == [
+    assert (await resp.json())['data'] == [
         {'blockNumber': main_db_data['blocks'][2]['number'],
          'difficulty': 18180751616,
          'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
@@ -517,7 +517,7 @@ async def test_get_uncle_404(cli):
 async def test_get_uncle_by_hash(cli, main_db_data):
     resp = await cli.get('/v1/uncles/0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff')
     assert resp.status == 200
-    assert (await resp.json() )['data'] == {
+    assert (await resp.json())['data'] == {
         'blockNumber': main_db_data['blocks'][2]['number'],
         'difficulty': 18180751616,
         'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
@@ -545,7 +545,7 @@ async def test_get_uncle_by_hash(cli, main_db_data):
 async def test_get_uncle_by_number(cli, main_db_data):
     resp = await cli.get('/v1/uncles/62')
     assert resp.status == 200
-    assert (await resp.json() )['data'] == {
+    assert (await resp.json())['data'] == {
         'blockNumber': main_db_data['blocks'][2]['number'],
         'difficulty': 18180751616,
         'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
@@ -598,7 +598,7 @@ async def test_verify_contract_ok(db, cli, main_db_data, here, fuck_token):
 
         resp = await cli.post('/v1/verify_contract', json=contract_data)
     assert resp.status == 200
-    assert (await resp.json() )['data'] == {'verification_passed': True}
+    assert (await resp.json())['data'] == {'verification_passed': True}
 
     # assert m.has_call()
     m.assert_called_with(
@@ -642,25 +642,25 @@ _token_1_transfers = [{'from': 'a1',
 async def test_get_token_transfers(cli, main_db_data):
     resp = await cli.get(f'/v1/tokens/c1/transfers')
     assert resp.status == 200
-    assert (await resp.json() )['data'] == _token_1_transfers[:]
+    assert (await resp.json())['data'] == _token_1_transfers[:]
 
 
 async def test_get_token_transfers_asc(cli, main_db_data):
     resp = await cli.get(f'/v1/tokens/c1/transfers?order=asc')
     assert resp.status == 200
-    assert (await resp.json() )['data'] == _token_1_transfers[::-1]
+    assert (await resp.json())['data'] == _token_1_transfers[::-1]
 
 
 async def test_get_token_transfers_limit(cli, main_db_data):
     resp = await cli.get(f'/v1/tokens/c1/transfers?limit=1')
     assert resp.status == 200
-    assert (await resp.json() )['data'] == _token_1_transfers[:1]
+    assert (await resp.json())['data'] == _token_1_transfers[:1]
 
 
 async def test_get_token_transfers_offset(cli, main_db_data):
     resp = await cli.get(f'/v1/tokens/c1/transfers?offset=1')
     assert resp.status == 200
-    assert (await resp.json() )['data'] == _token_1_transfers[1:]
+    assert (await resp.json())['data'] == _token_1_transfers[1:]
 
 
 _account_1_transfers = [{'from': 'a3',
@@ -704,48 +704,48 @@ _account_1_transfers = [{'from': 'a3',
 async def test_get_account_token_transfers(cli, main_db_data):
     resp = await cli.get(f'/v1/accounts/a1/token_transfers')
     assert resp.status == 200
-    assert (await resp.json() )['data'] == _account_1_transfers[:]
+    assert (await resp.json())['data'] == _account_1_transfers[:]
 
 
 async def test_get_account_token_transfers_asc(cli, main_db_data):
     resp = await cli.get(f'/v1/accounts/a1/token_transfers?order=asc')
     assert resp.status == 200
-    assert (await resp.json() )['data'] == _account_1_transfers[::-1]
+    assert (await resp.json())['data'] == _account_1_transfers[::-1]
 
 
 async def test_get_account_token_transfers_limit(cli, main_db_data):
     resp = await cli.get(f'/v1/accounts/a1/token_transfers?limit=1')
     assert resp.status == 200
-    assert (await resp.json() )['data'] == _account_1_transfers[:1]
+    assert (await resp.json())['data'] == _account_1_transfers[:1]
 
 
 async def test_get_account_token_transfers_offset(cli, main_db_data):
     resp = await cli.get(f'/v1/accounts/a1/token_transfers?offset=1')
     assert resp.status == 200
-    assert (await resp.json() )['data'] == _account_1_transfers[1:]
+    assert (await resp.json())['data'] == _account_1_transfers[1:]
 
 
 async def test_get_account_token_transfers_a2(cli, main_db_data):
     resp = await cli.get(f'/v1/accounts/a2/token_transfers')
     assert resp.status == 200
     assert (await resp.json())['data'] == [{'from': 'a2',
-                                  'timestamp': 1529159847,
-                                  'to': 'a1',
-                                  'tokenAddress': 'c2',
-                                  'tokenDecimals': 2,
-                                  'tokenName': 'A Token 2',
-                                  'tokenSymbol': 'TKN2',
-                                  'amount': 200,
-                                  'transactionHash': 't1'},
-                                 {'from': 'a2',
-                                  'timestamp': 1529159847,
-                                  'to': 'a1',
-                                  'tokenAddress': 'c1',
-                                  'tokenDecimals': 2,
-                                  'tokenName': 'A Token',
-                                  'tokenSymbol': 'TKN',
-                                  'amount': 100,
-                                  'transactionHash': 't1'}]
+                                            'timestamp': 1529159847,
+                                            'to': 'a1',
+                                            'tokenAddress': 'c2',
+                                            'tokenDecimals': 2,
+                                            'tokenName': 'A Token 2',
+                                            'tokenSymbol': 'TKN2',
+                                            'amount': 200,
+                                            'transactionHash': 't1'},
+                                           {'from': 'a2',
+                                            'timestamp': 1529159847,
+                                            'to': 'a1',
+                                            'tokenAddress': 'c1',
+                                            'tokenDecimals': 2,
+                                            'tokenName': 'A Token',
+                                            'tokenSymbol': 'TKN',
+                                            'amount': 100,
+                                            'transactionHash': 't1'}]
 
 
 async def test_account_get_mined_blocks(cli, main_db_data):
