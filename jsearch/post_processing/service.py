@@ -11,7 +11,6 @@ from jsearch.common.processing.erc20_balances import (
 )
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
-from jsearch.kafka.producer import get_producer
 from jsearch.syncer.database import MainDB
 from jsearch.typing import Log
 
@@ -73,10 +72,6 @@ async def post_processing(action: str,
         worker = get_worker(action)
         query = get_query(action, db)
 
-        if action == ACTION_LOG_OPERATIONS:
-            producer = get_producer()
-            await producer.start()
-
         while True:
             blocks = set()
             started_at = time.time()
@@ -114,7 +109,3 @@ async def post_processing(action: str,
             logger.info("[PROCESSING] speed %0.2f blocks/second", avg_block_speed)
             logger.info("[PROCESSING] speed %0.2f logs/second", avg_log_speed)
             logger.info("[PROCESSING] block range %s - %s", min_block, max_block)
-
-        if action == ACTION_LOG_OPERATIONS:
-            producer = get_producer()
-            await producer.stop()

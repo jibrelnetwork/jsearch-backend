@@ -16,10 +16,10 @@ def post_processing(db_connection_string, mocker):
             contract.value = 100
         return contracts
 
-    mocker.patch('time.sleep')
-    mocker.patch('jsearch.common.processing.erc20_balances.fetch_erc20_balance_bulk', fetch_erc20_balance_bulk)
-
     async def _wrapper(dump):
+        mocker.patch('time.sleep')
+        mocker.patch('jsearch.common.processing.erc20_balances.fetch_erc20_balance_bulk', fetch_erc20_balance_bulk)
+       
         contracts = {contract['address']: {'decimals': 2, **contract} for contract in dump.get('contracts')}
 
         async def get_contracts(addresses: List[str]):

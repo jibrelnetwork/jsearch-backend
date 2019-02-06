@@ -1,6 +1,7 @@
 # !/usr/bin/env python
 import asyncio
 import logging
+from functools import partial
 
 import click
 
@@ -10,6 +11,7 @@ from jsearch.post_processing.service import (
     ACTION_LOG_EVENTS,
     ACTION_LOG_OPERATIONS
 )
+from jsearch.service_bus import service_bus
 
 logger = logging.getLogger('post_processing')
 
@@ -23,10 +25,14 @@ logger = logging.getLogger('post_processing')
 def main(log_level, action, workers, query_limit, wait):
     logs.configure(log_level)
 
-    async_func = post_processing(action=action, workers=workers, query_limit=query_limit, wait_new_result=wait)
+    service = partial(post_processing, action, workers, query_limit, wait_new_result=wait)
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(async_func)
+    loop.run_until_complete(service_bus.start())
+    try:
+        loop.run_until_complete(service())
+    except KeyboardInterrupt:
+        loop.run_until_complete(service_bus.stop())
 
 
 def run():

@@ -8,7 +8,7 @@ pytest_plugins = [
 ]
 
 
-async def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocker, post_processing, mock_kafka):
+async def test_process_logs_transfers_ok(db, db_connection_string, main_db_data, mocker, post_processing):
     # given
     mocker.patch('time.sleep')
     from jsearch.common import tables as t

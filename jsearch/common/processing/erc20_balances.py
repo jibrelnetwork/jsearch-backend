@@ -9,7 +9,7 @@ from web3 import Web3
 from jsearch import settings
 from jsearch.common.contracts import NULL_ADDRESS
 from jsearch.common.rpc import ContractCall, eth_call_batch
-from jsearch.kafka.utils import ask
+from jsearch.service_bus import service_bus
 from jsearch.syncer.database import MainDB
 from jsearch.typing import Log, Abi, Contract, Contracts, Logs, Block
 from jsearch.utils import split
@@ -145,7 +145,7 @@ def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpd
 async def fetch_contracts(addresses: List[str]) -> Dict[str, Contract]:
     tasks = []
     for chunk in split(addresses, 50):
-        task = ask(topic='request_contracts', value={"addresses": chunk})
+        task = service_bus.get_contracts({'addresses': chunk})
         tasks.append(task)
 
     chunks = await asyncio.gather(*tasks)
