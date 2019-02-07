@@ -213,8 +213,8 @@ class MainDB(DBWrapper):
 
     async def get_missed_blocks_numbers(self, limit: int):
         q = """SELECT l.number + 1 as start
-                FROM (SELECT * FROM blocks WHERE is_forked=false) as l
-                LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number
+                FROM (SELECT * FROM blocks WHERE is_forked = false) as l
+                LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number AND r.is_forked = false
                 WHERE r.number IS NULL order by start limit %s"""
         async with self.engine.acquire() as conn:
             res = await conn.execute(q, limit)
