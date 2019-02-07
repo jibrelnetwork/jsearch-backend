@@ -5,7 +5,7 @@ from jsearch import settings
 from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
-from jsearch.api.helpers import get_tag, validate_params
+from jsearch.api.helpers import get_tag, validate_params, api_success, proxy_response
 
 
 async def get_account(request):
@@ -19,7 +19,7 @@ async def get_account(request):
     account = await storage.get_account(address, tag)
     if account is None:
         return web.json_response(status=404)
-    return web.json_response(account.to_dict())
+    return api_success(account.to_dict())
 
 
 async def get_account_transactions(request):
@@ -31,7 +31,7 @@ async def get_account_transactions(request):
     params = validate_params(request)
 
     txs = await storage.get_account_transactions(address, params['limit'], params['offset'])
-    return web.json_response([t.to_dict() for t in txs])
+    return api_success([t.to_dict() for t in txs])
 
 
 async def get_account_mined_blocks(request):
@@ -43,7 +43,7 @@ async def get_account_mined_blocks(request):
     params = validate_params(request)
 
     blocks = await storage.get_account_mined_blocks(address, params['limit'], params['offset'], params['order'])
-    return web.json_response([b.to_dict() for b in blocks])
+    return api_success([b.to_dict() for b in blocks])
 
 
 async def get_account_mined_uncles(request):
@@ -55,7 +55,7 @@ async def get_account_mined_uncles(request):
     params = validate_params(request)
 
     uncles = await storage.get_account_mined_uncles(address, params['limit'], params['offset'], params['order'])
-    return web.json_response([u.to_dict() for u in uncles])
+    return api_success([u.to_dict() for u in uncles])
 
 
 async def get_accounts_balances(request):
@@ -65,7 +65,7 @@ async def get_accounts_balances(request):
     storage = request.app['storage']
     addresses = request.query.get('addresses', '').lower().split(',')
     ballances = await storage.get_accounts_balances(addresses)
-    return web.json_response([b.to_dict() for b in ballances])
+    return api_success([b.to_dict() for b in ballances])
 
 
 async def get_blocks(request):
@@ -76,7 +76,7 @@ async def get_blocks(request):
 
     storage = request.app['storage']
     blocks = await storage.get_blocks(params['limit'], params['offset'], params['order'])
-    return web.json_response([block.to_dict() for block in blocks])
+    return api_success([block.to_dict() for block in blocks])
 
 
 async def get_block(request):
@@ -88,21 +88,21 @@ async def get_block(request):
     block = await storage.get_block(tag)
     if block is None:
         return web.json_response(status=404)
-    return web.json_response(block.to_dict())
+    return api_success(block.to_dict())
 
 
 async def get_block_transactions(request):
     storage = request.app['storage']
     tag = get_tag(request)
     txs = await storage.get_block_transactions(tag)
-    return web.json_response([t.to_dict() for t in txs])
+    return api_success([t.to_dict() for t in txs])
 
 
 async def get_block_uncles(request):
     storage = request.app['storage']
     tag = get_tag(request)
     uncles = await storage.get_block_uncles(tag)
-    return web.json_response([u.to_dict() for u in uncles])
+    return api_success([u.to_dict() for u in uncles])
 
 
 async def get_transaction(request):
@@ -112,7 +112,7 @@ async def get_transaction(request):
     transaction = await storage.get_transaction(txhash)
     if transaction is None:
         return web.json_response(status=404)
-    return web.json_response(transaction.to_dict())
+    return api_success(transaction.to_dict())
 
 
 async def get_receipt(request):
@@ -122,7 +122,7 @@ async def get_receipt(request):
     receipt = await storage.get_receipt(txhash)
     if receipt is None:
         return web.json_response(status=404)
-    return web.json_response(receipt.to_dict())
+    return api_success(receipt.to_dict())
 
 
 async def get_uncles(request):
@@ -132,7 +132,7 @@ async def get_uncles(request):
     params = validate_params(request)
     storage = request.app['storage']
     uncles = await storage.get_uncles(params['limit'], params['offset'], params['order'])
-    return web.json_response([uncle.to_dict() for uncle in uncles])
+    return api_success([uncle.to_dict() for uncle in uncles])
 
 
 async def get_uncle(request):
@@ -144,7 +144,7 @@ async def get_uncle(request):
     uncle = await storage.get_uncle(tag)
     if uncle is None:
         return web.json_response(status=404)
-    return web.json_response(uncle.to_dict())
+    return api_success(uncle.to_dict())
 
 
 async def verify_contract(request):
@@ -190,7 +190,7 @@ async def verify_contract(request):
             res = await resp.json()
     else:
         verification_passed = False
-    return web.json_response({'verification_passed': verification_passed})
+    return api_success({'verification_passed': verification_passed})
 
 
 async def get_token_transfers(request):
@@ -205,7 +205,7 @@ async def get_token_transfers(request):
         offset=params['offset'],
         order=params['order']
     )
-    return web.json_response([transfer.to_dict() for transfer in transfers])
+    return api_success([transfer.to_dict() for transfer in transfers])
 
 
 async def get_account_token_transfers(request):
@@ -220,7 +220,7 @@ async def get_account_token_transfers(request):
         offset=params['offset'],
         order=params['order']
     )
-    return web.json_response([transfer.to_dict() for transfer in transfers])
+    return api_success([transfer.to_dict() for transfer in transfers])
 
 
 async def get_token_holders(request):
@@ -234,7 +234,7 @@ async def get_token_holders(request):
         offset=params['offset'],
         order=params['order']
     )
-    return web.json_response([holder.to_dict() for holder in holders])
+    return api_success([holder.to_dict() for holder in holders])
 
 
 async def get_account_token_balance(request):
@@ -248,7 +248,30 @@ async def get_account_token_balance(request):
     )
     if holder is None:
         return web.json_response(status=404)
-    return web.json_response(holder.to_dict())
+    return api_success(holder.to_dict())
+
+
+async def get_gas_price(request):
+    resp = await request.app['node_proxy'].gas_price()
+    return proxy_response(resp)
+
+
+async def calculate_estimate_gas(request):
+    args = await request.json()
+    resp = await request.app['node_proxy'].estimate_gas(args)
+    return proxy_response(resp)
+
+
+async def call_contract(request):
+    args = await request.json()
+    resp = await request.app['node_proxy'].call_contract(args)
+    return proxy_response(resp)
+
+
+async def send_raw_transaction(request):
+    args = await request.json()
+    resp = await request.app['node_proxy'].send_raw_transaction(args)
+    return proxy_response(resp)
 
 
 async def on_new_contracts_added(request):
@@ -256,4 +279,4 @@ async def on_new_contracts_added(request):
     address = data['address']
     if settings.ENABLE_RESET_POST_PROCESSING:
         tasks.on_new_contracts_added_task.delay(address)
-    return web.json_response()
+    return api_success({})
