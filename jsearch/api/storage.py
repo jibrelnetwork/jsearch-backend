@@ -264,7 +264,7 @@ class Storage:
             rows = await conn.fetch(query, addresses)
             addr_map = {r['address']: r for r in rows}
             return [models.Balance(balance=int(addr_map[a]['balance']), address=addr_map[a]['address'])
-                    for a in addresses]
+                    for a in addresses if a in addr_map]
 
     async def _fetch_token_transfers(self, query: str, address: str, limit: int, offset: int) \
             -> List[TokenTransfer]:

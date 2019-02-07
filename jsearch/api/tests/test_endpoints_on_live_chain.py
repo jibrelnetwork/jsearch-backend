@@ -25,4 +25,4 @@ async def test_get_block_by_number(cli, db_dump_on_fuck_token_transfer_case):
     # then
     resp = await cli.get('/v1/blocks/2')
     assert resp.status == 200
-    assert await resp.json() == block.as_dict()
+    assert (await resp.json())['data'] == block.as_dict()
