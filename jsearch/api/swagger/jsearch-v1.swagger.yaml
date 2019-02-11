@@ -124,6 +124,34 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "tag", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
+  /v1/accounts/{address}/logs:
+    get:
+      summary: Get contract logs.
+      operationId: getLogs
+      produces:
+      - application/json
+      parameters:
+        - $ref: '#/parameters/address'
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/order'
+      responses:
+        200:
+          description: logs
+          schema:
+            type: object
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/Log'
+        400:
+          description: bad input parameter
+          schema:
+            example: {"success": false, "errors": [{"field": "address", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
   /v1/accounts/{address}/transactions:
     get:
       summary: Get account transactions.

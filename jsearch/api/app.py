@@ -49,6 +49,7 @@ async def make_app():
     app.router.add_route(
         'GET', '/v1/accounts/{address}/token_balance/{token_address}', handlers.get_account_token_balance
     )
+    app.router.add_route('GET', '/v1/accounts/{address}/logs', handlers.get_account_logs)
 
     app.router.add_route('GET', '/v1/blocks', handlers.get_blocks)
     app.router.add_route('GET', '/v1/blocks/{tag}', handlers.get_block)

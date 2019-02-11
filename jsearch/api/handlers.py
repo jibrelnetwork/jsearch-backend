@@ -50,6 +50,14 @@ async def get_account_pending_transactions(request):
     return api_success([])
 
 
+async def get_account_logs(request):
+    """
+    Get contract logs
+    """
+    # todo: implement it
+    return api_success([])
+
+
 async def get_account_mined_blocks(request):
     """
     Get account mined blocks
