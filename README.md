@@ -1,21 +1,36 @@
 # jSearch backend services
 
+This is a core of jSearch 
+
 # Description
 
 jSearch backend services includes following components: 
 
+- Main DB
 - syncer
-- api
-- celery task queue
-- esparser - scrapy-based parser for etherscan
+- post-processing
+- jSearch api
 
-Syncer grabs blockchain data from RAW database and puts it into MAIN database
+Main DB - PostgreSQL database, stores processed and structured blockchain data
 
-API component is public web API server - implements access to blockchain data stored in main database and acts as Web3 API proxy
+Syncer component grabs blockchain data from RAW database and puts it into MAIN database
 
-Celery - for warious background tasks
+Postprocessing component performs raw blockchain data processing - transaction and logs decoding,
+token transfers detection, token holders balances updates 
 
-Esparser - used to get verified contracts data from etherscan.io
+API component is public web API server - provides access to blockchain data stored in main database and acts as Web3 API proxy
+
+
+# Dependencies
+
+jSearch Backend depends on following services:
+- jSearch Raw DB (geth fork) [https://github.com/jibrelnetwork/go-ethereum]
+- jSearch Contracts Service [https://github.com/jibrelnetwork/jsearch-contracts]
+- jSearch Compiler [https://github.com/jibrelnetwork/jsearch-compiler]
+
+
+# Install
+
 
 ## Prerequisites
 
@@ -27,11 +42,12 @@ sudo apt-get update
 sudo apt-get install python3.6 python3.6-dev postgresql-client-9.5 libssl-dev python3-pip
 ```
 
-Contract Compilation service requires shared directory for `solc` installation, use env var `SOLC_BASE_INSTALL_PATH` to define this directory path (default `~/.py-solc`)
 
-## Installation
+## Build
 
 ```
+git clone git@github.com:jibrelnetwork/jsearch-contracts.git
+cd jsearch-contracts
 pip install -r requirements.txt
 pip install -e .
 ```
@@ -43,57 +59,44 @@ List of environ vars:
 JSEARCH_MAIN_DB (default postgres://localhost/jsearch_main)
 JSEARCH_RAW_DB (default postgres://localhost/jsearch_raw)
 ETH_NODE_URL (default https://main-node.jwallet.network)
-JSEARCH_CELERY_BROKER (default redis://localhost:6379/0)
-JSEARCH_CELERY_BACKEND (default redis://localhost:6379/0)
 JSEARCH_COMPILER_API (default http://localhost:8101)
 JSEARCH_CONTRACTS_API (default http://localhost:8101)
 JSEARCH_SYNC_PARALLEL (default 10) - number of blocks to sync in parallel
 ```
 
-## DB migration
+# Run components
 
-make new revision
-```
-python manage.py revision -db=postgresql://dbuser@localhost:5433/jsearch_main -m "Initial"
-```
-
-run migration on database
+## Before run
+Apply database migrations:
 ```
 python manage.py upgrade head -db=postgresql://dbuser@localhost:5433/jsearch_main
 ```
 
-## Running tests
-    
-First you need blank PostgreSQL database for tests
-
-Then run:
-
-```JSEARCH_MAIN_DB_TEST=postgresql://localhost/jsearch_main_test JSEARCH_MAIN_DB=postgres://localhost/jsearch_main_test pytest -v```
-
-
-## Starting services
-
-### Syncer:
+## Run Syncer:
 ```
 jsearch-syncer
 ```
 
-### Post processing:
+## Run Post processing:
 ```
-jsearch-post-processing --wait
-jsearch-post-processing operations --wait
+jsearch-post-processing --wait  # run logs processing/decoding
+jsearch-post-processing operations --wait  # run operations (Token Transfers) processing - will update token balances
 ```
 
-### API:
+## Run API server:
 ```
 gunicorn  --bind 0.0.0.0:8081 jsearch.api.app:make_app --worker-class aiohttp.worker.GunicornWebWorker
 ```
 
-### Celery
-```
-celery worker -A jsearch.common.celery
-```
 
+# API
+
+Swagger docs for API is available by {hostname}/docs/index.html URL
+
+
+# Development
+
+Use docker-compose to create and run development environment:
 ## Docker compose
 
 ### Running components 
