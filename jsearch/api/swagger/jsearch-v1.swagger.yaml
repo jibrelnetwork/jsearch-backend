@@ -735,24 +735,17 @@ paths:
                 example: "10000000000000"
 
   /v1/transaction_count:
-    get:
+    post:
       summary: Returns the number of transactions sent from an address.
-      produces:
-      - application/json
       parameters:
-        - name: address
-          in: query
+        - name: body
+          in: body
           required: true
-          description: account address
           schema:
-            type: string
-            format: hex
-        - name: tag
-          in: query
-          required: true
-          description: integer block number, or the string "latest", "earliest" or "pending"
-          schema:
-            type: string
+            type: array
+            items:
+              type: string
+            example: ["0xf8b483dba2c3b7176a3da549ad41a48bb3121069", "latest"]
       responses:
         200:
           description: nonce
@@ -812,18 +805,16 @@ paths:
   /v1/send_raw_transaction:
     post:
       summary: Creates new message call transaction or a contract creation for signed transactions.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                "data":
-                  type: string
-                  required: true
-                  description: The signed transaction data.
-                  example: "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+              format: hex
+            example: ["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"]
       responses:
         200:
           schema:
