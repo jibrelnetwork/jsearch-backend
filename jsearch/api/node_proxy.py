@@ -36,3 +36,7 @@ class NodeProxy:
     async def send_raw_transaction(self, args: List) -> str:
         res = await self._request('eth_sendRawTransaction', args)
         return res
+
+    async def transaction_count(self, args: List) -> str:
+        res = await self._request('eth_getTransactionCount', args)
+        return res
