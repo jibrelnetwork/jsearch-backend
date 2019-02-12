@@ -70,7 +70,7 @@ async def make_app():
     app.router.add_route('GET', '/v1/tokens/{address}/holders', handlers.get_token_holders)
 
     app.router.add_route('GET', '/v1/gas_price', handlers.get_gas_price)
-    app.router.add_route('GET', '/v1/transaction_count', handlers.get_transaction_count)
+    app.router.add_route('POST', '/v1/transaction_count', handlers.get_transaction_count)
     app.router.add_route('POST', '/v1/estimate_gas', handlers.calculate_estimate_gas)
     app.router.add_route('POST', '/v1/call_contract', handlers.call_contract)
     app.router.add_route('POST', '/v1/send_raw_transaction', handlers.send_raw_transaction)

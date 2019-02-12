@@ -297,8 +297,9 @@ async def get_gas_price(request):
 
 
 async def get_transaction_count(request):
-    # todo: implement it
-    return proxy_response({})
+    args = await request.json()
+    resp = await request.app['node_proxy'].transaction_count(args)
+    return proxy_response(resp)
 
 
 async def calculate_estimate_gas(request):
