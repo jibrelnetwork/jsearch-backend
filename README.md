@@ -1,13 +1,17 @@
 # jSearch backend services
 
+This is a core of jSearch 
 
 # Description
 
 jSearch backend services includes following components: 
 
+- Main DB
 - syncer
 - post-processing
 - jSearch api
+
+Main DB - PostgreSQL database, stores processed and structured blockchain data
 
 Syncer component grabs blockchain data from RAW database and puts it into MAIN database
 
