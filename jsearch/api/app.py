@@ -37,12 +37,19 @@ async def make_app():
     app.router.add_route('GET', '/v1/accounts/balances', handlers.get_accounts_balances)
     app.router.add_route('GET', '/v1/accounts/{address}', handlers.get_account)
     app.router.add_route('GET', '/v1/accounts/{address}/transactions', handlers.get_account_transactions)
+    app.router.add_route(
+        'GET', '/v1/accounts/{address}/internal_transactions', handlers.get_account_internal_transactions
+    )
+    app.router.add_route(
+        'GET', '/v1/accounts/{address}/pending_transactions', handlers.get_account_pending_transactions
+    )
     app.router.add_route('GET', '/v1/accounts/{address}/mined_blocks', handlers.get_account_mined_blocks)
     app.router.add_route('GET', '/v1/accounts/{address}/mined_uncles', handlers.get_account_mined_uncles)
     app.router.add_route('GET', '/v1/accounts/{address}/token_transfers', handlers.get_account_token_transfers)
     app.router.add_route(
         'GET', '/v1/accounts/{address}/token_balance/{token_address}', handlers.get_account_token_balance
     )
+    app.router.add_route('GET', '/v1/accounts/{address}/logs', handlers.get_account_logs)
 
     app.router.add_route('GET', '/v1/blocks', handlers.get_blocks)
     app.router.add_route('GET', '/v1/blocks/{tag}', handlers.get_block)
@@ -50,6 +57,8 @@ async def make_app():
     app.router.add_route('GET', '/v1/blocks/{tag}/uncles', handlers.get_block_uncles)
 
     app.router.add_route('GET', '/v1/transactions/{txhash}', handlers.get_transaction)
+    app.router.add_route('GET', '/v1/transactions/internal/{txhash}', handlers.get_internal_transactions)
+    app.router.add_route('GET', '/v1/transactions/pending/{txhash}', handlers.get_pending_transactions)
     app.router.add_route('GET', '/v1/receipts/{txhash}', handlers.get_receipt)
 
     app.router.add_route('GET', '/v1/uncles', handlers.get_uncles)
@@ -61,6 +70,7 @@ async def make_app():
     app.router.add_route('GET', '/v1/tokens/{address}/holders', handlers.get_token_holders)
 
     app.router.add_route('GET', '/v1/gas_price', handlers.get_gas_price)
+    app.router.add_route('GET', '/v1/transaction_count', handlers.get_transaction_count)
     app.router.add_route('POST', '/v1/estimate_gas', handlers.calculate_estimate_gas)
     app.router.add_route('POST', '/v1/call_contract', handlers.call_contract)
     app.router.add_route('POST', '/v1/send_raw_transaction', handlers.send_raw_transaction)
