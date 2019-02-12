@@ -89,6 +89,11 @@ gunicorn  --bind 0.0.0.0:8081 jsearch.api.app:make_app --worker-class aiohttp.wo
 ```
 
 
+# API
+
+Swagger docs for API is available by {hostname}/docs/index.html URL
+
+
 # Development
 
 Use docker-compose to create and run development environment:
