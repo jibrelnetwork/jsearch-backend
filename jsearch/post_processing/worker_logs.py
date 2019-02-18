@@ -4,7 +4,7 @@ from typing import List
 
 from jsearch import settings
 from jsearch.common.processing.logs import process_log_event
-from jsearch.multiprocessing import get_executor
+from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics, Metric
 from jsearch.service_bus import service_bus
 from jsearch.syncer.database import MainDBSync
@@ -15,14 +15,13 @@ metrics = Metrics()
 
 @service_bus.listen_stream('handle_transaction_logs', task_limit=20, batch_size=20, batch_timeout=5)
 async def handle_transaction_logs(blocks: List[Logs]):
-    executor = get_executor()
     loop = asyncio.get_event_loop()
 
     logs_per_seconds = Metric('logs_per_second')
     blocks_per_seconds = Metric('blocks_per_second')
 
     logs = list(chain(*blocks))
-    transfers = await loop.run_in_executor(executor, worker, logs)
+    transfers = await loop.run_in_executor(executor.get(), worker, logs)
 
     print(1)
     block_transfers = groupby(sorted(transfers, key=lambda x: x['block_number']), lambda x: x['block_number'])

@@ -6,7 +6,7 @@ from functools import partial
 import click
 
 from jsearch.common import logs
-from jsearch.multiprocessing import init_executor
+from jsearch.multiprocessing import executor
 from jsearch.post_processing.reprocessing import send_erc20_transfers_to_reprocess, send_trx_logs_to_reprocess
 from jsearch.post_processing.worker_logs import handle_transaction_logs
 from jsearch.post_processing.worker_transfers import handle_new_transfers
@@ -50,7 +50,7 @@ async def run_reprocessing(reprocessing):
 def main(action, log_level, workers, reprocessing, block_range):
     logs.configure(log_level)
 
-    init_executor(workers=workers)
+    executor.init(workers)
 
     if reprocessing:
         # disable all stream workers

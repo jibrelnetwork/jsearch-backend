@@ -1,18 +1,23 @@
 from concurrent.futures.process import ProcessPoolExecutor
 
-executor = None
+from jsearch.utils import Singleton
 
 
-def init_executor(workers: int):
-    global executor
+class Executor(Singleton):
 
-    if executor:
-        raise ValueError('Executor already was inited')
+    def __init__(self):
+        self.workers = 0
+        self._executor = None
 
-    executor = ProcessPoolExecutor(max_workers=workers)
+    def init(self, workers: int) -> None:
+        if self.workers:
+            raise ValueError('Executor already init')
+
+        self.workers = workers
+        self._executor = ProcessPoolExecutor(max_workers=workers)
+
+    def get(self):
+        return self._executor
 
 
-def get_executor():
-    if not executor:
-        raise ValueError('Executor does not inited')
-    return executor
+executor = Executor()
