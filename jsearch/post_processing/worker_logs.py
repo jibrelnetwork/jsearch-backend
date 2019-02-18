@@ -51,6 +51,6 @@ def worker(logs: Logs) -> Logs:
         for log in logs:
             log = process_log_event(log)
             db.update_log(log)
-            print('speed', len(logs) / (time.time() - start_at))
+        print('speed', len(logs) / (time.time() - start_at))
     print(6)
     return [log for log in logs if log['is_token_transfer']]

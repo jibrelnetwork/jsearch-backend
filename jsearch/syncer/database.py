@@ -484,7 +484,6 @@ class MainDBSync(DBWrapperSync):
                        logs_t.c.log_index == record['log_index'])). \
             values(**record)
         self.execute(query)
-        print('complete', record['block_number'])
 
     def update_token_holder_balance(self, token_address: str, account_address: str, balance: int, decimals: int):
         insert_query = insert(token_holders_t).values(
