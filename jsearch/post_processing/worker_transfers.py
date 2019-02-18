@@ -35,6 +35,11 @@ async def handle_new_transfers(blocks: List[Logs]):
 
     metrics.update(logs_per_seconds)
     metrics.update(blocks_per_seconds)
+    metrics.set_value(
+        name='last_block',
+        value=logs[0]['block_number'],
+        callback=lambda prev, value: (prev and prev > value) or value
+    )
 
 
 def worker(contracts: Contracts, logs: Logs) -> None:
