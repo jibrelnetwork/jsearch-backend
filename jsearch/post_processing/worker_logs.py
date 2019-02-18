@@ -43,9 +43,11 @@ async def handle_transaction_logs(blocks: List[Logs]):
 
 
 def worker(logs: Logs) -> Logs:
+    print(4)
     with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
+        print(5)
         for log in logs:
             log = process_log_event(log)
             db.update_log(log)
-
+    print(6)
     return [log for log in logs if log['is_token_transfer']]
