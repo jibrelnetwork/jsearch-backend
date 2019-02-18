@@ -14,7 +14,7 @@ from jsearch.typing import Logs
 metrics = Metrics()
 
 
-@service_bus.listen_stream('handle_transaction_logs', batch_size=10, task_limit=30, batch_timeout=5)
+@service_bus.listen_stream('handle_transaction_logs', batch_size=20, task_limit=30, batch_timeout=5)
 async def handle_transaction_logs(blocks: List[Logs]):
     loop = asyncio.get_event_loop()
 
