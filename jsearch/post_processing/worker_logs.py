@@ -15,15 +15,14 @@ metrics = Metrics()
 
 
 # @service_bus.listen_stream('handle_transaction_logs', task_limit=10, batch_size=2, batch_timeout=5)
-@service_bus.listen_stream('handle_transaction_logs', task_limit=10, batch_size=2, batch_timeout=5)
-async def handle_transaction_logs(blocks: List[Logs]):
+@service_bus.listen_stream('handle_transaction_logs', task_limit=50)
+async def handle_transaction_logs(logs: Logs):
     loop = asyncio.get_event_loop()
 
     logs_per_seconds = Metric('logs_per_second')
     blocks_per_seconds = Metric('blocks_per_second')
 
-    logs = list(chain(*blocks))
-    from pdb import set_trace; set_trace()
+    # logs = list(chain(*blocks))
     transfers = await loop.run_in_executor(executor.get(), worker, logs)
 
     print(1)
@@ -39,20 +38,17 @@ async def handle_transaction_logs(blocks: List[Logs]):
     print(3)
 
     logs_per_seconds.finish(value=len(logs))
-    blocks_per_seconds.finish(value=len(blocks))
+    blocks_per_seconds.finish(value=1)
 
     metrics.update(logs_per_seconds)
     metrics.update(blocks_per_seconds)
 
 
 def worker(logs: Logs) -> Logs:
-    print(4)
     with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
-        print(5)
         start_at = time.time()
+        logs = [process_log_event(log) for log in logs]
         for log in logs:
-            log = process_log_event(log)
             db.update_log(log)
         print('speed', len(logs) / (time.time() - start_at))
-    print(6)
     return [log for log in logs if log['is_token_transfer']]
