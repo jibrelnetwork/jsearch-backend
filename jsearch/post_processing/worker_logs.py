@@ -39,6 +39,11 @@ async def handle_transaction_logs(logs: Logs):
 
     metrics.update(logs_per_seconds)
     metrics.update(blocks_per_seconds)
+    metrics.set_value(
+        name='last_block',
+        value=logs[0]['block_number'],
+        callback=lambda prev, value: (prev and prev > value) or value
+    )
 
 
 def worker(logs: Logs) -> Logs:

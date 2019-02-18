@@ -65,10 +65,15 @@ class Metrics(Singleton):
 
         self.future = None
         self.metrics = defaultdict(list)
+        self.values = {}
 
     def update(self, metric: Metric):
         self.ensure_started()
         self.metrics[metric.name].append(metric)
+
+    def set_value(self, name, value, callback):
+        if callback(self.values.get(name), value):
+            self.values[name] = value
 
     def ensure_started(self):
         if not self.future:
@@ -81,7 +86,6 @@ class Metrics(Singleton):
     def show(self):
         for name, metrics in self.metrics.items():
             if metrics:
-
                 value = sum([metric.value for metric in metrics], 0)
                 worked_time = sum([metric.worked_time for metric in metrics], 0)
                 speed = value / worked_time
@@ -91,6 +95,9 @@ class Metrics(Singleton):
                 )
 
             self.metrics[name].clear()
+
+        for name, value in self.values.items():
+            logger.info("[METRICS] %s is %s", name, value)
 
     async def task(self):
         while True:
