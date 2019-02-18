@@ -1,4 +1,5 @@
 import asyncio
+import time
 from itertools import chain, groupby
 from typing import List
 
@@ -46,8 +47,10 @@ def worker(logs: Logs) -> Logs:
     print(4)
     with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
         print(5)
+        start_at = time.time()
         for log in logs:
             log = process_log_event(log)
             db.update_log(log)
+            print('speed', len(logs) / (time.time() - start_at))
     print(6)
     return [log for log in logs if log['is_token_transfer']]
