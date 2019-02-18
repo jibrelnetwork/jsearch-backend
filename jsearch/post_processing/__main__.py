@@ -50,6 +50,7 @@ async def run_reprocessing(reprocessing):
 def main(action, log_level, workers, reprocessing, block_range):
     logs.configure(log_level)
 
+    from pdb import set_trace; set_trace()
     executor.init(workers)
 
     if reprocessing:
