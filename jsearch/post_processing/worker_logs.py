@@ -56,7 +56,7 @@ def worker(logs: Logs) -> Logs:
                 log_index=log['log_index'],
                 block_hash=log['block_hash'],
                 values={
-                    'is_proceed': True,
+                    'is_processed': True,
                     'is_token_transfer': log.get('is_token_transfer', False),
                     'token_transfer_to': log.get('token_transfer_to'),
                     'token_transfer_from': log.get('token_transfer_from'),
