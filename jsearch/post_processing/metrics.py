@@ -20,8 +20,6 @@ class Metric:
         self.name = name
         self.started_at = time.time()
 
-        logger.info('[METRICS] new %s', self.name)
-
     @property
     def worked_time(self):
         if self.finished_at:
@@ -83,9 +81,6 @@ class Metrics(Singleton):
     def show(self):
         for name, metrics in self.metrics.items():
             if metrics:
-
-                for metric in metrics:
-                    print(metric)
 
                 value = sum([metric.value for metric in metrics], 0)
                 worked_time = sum([metric.worked_time for metric in metrics], 0)
