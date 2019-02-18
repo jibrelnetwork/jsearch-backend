@@ -16,7 +16,7 @@ metrics = Metrics()
 logger = logging.getLogger(__name__)
 
 
-@service_bus.listen_stream('handle_transaction_logs')
+@service_bus.listen_stream('handle_transaction_logs', task_limit=50)
 async def handle_transaction_logs(logs: Logs):
     if not logs:
         return
