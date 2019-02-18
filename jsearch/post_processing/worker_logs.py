@@ -46,6 +46,19 @@ def worker(logs: Logs) -> Logs:
         start_at = time.time()
         logs = [process_log_event(log) for log in logs]
         for log in logs:
-            db.update_log(log)
+            db.update_log(
+                tx_hash=log['transaction_hash'],
+                log_index=log['log_index'],
+                block_hash=log['block_hash'],
+                values={
+                    'is_proceed': True,
+                    'is_token_transfer': log.get('is_token_transfer', False),
+                    'token_transfer_to': log.get('token_transfer_to'),
+                    'token_transfer_from': log.get('token_transfer_from'),
+                    'token_amount': log.get('token_amount'),
+                    'event_type': log.get('event_type'),
+                    'event_args': log.get('event_args'),
+                }
+            )
         logger.info('[WORKER] log update speed %0.2f', len(logs) / (time.time() - start_at))
     return [log for log in logs if log['is_token_transfer']]
