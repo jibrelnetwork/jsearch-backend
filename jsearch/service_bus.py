@@ -20,5 +20,5 @@ class JsearchServiceBus(ServiceBus):
         return await self.rpc_call(ROUTE_GET_CONTRACTS, value={'addresses': addresses})
 
 
-service_bus = JsearchServiceBus('jsearch', bootstrap_servers=settings.KAFKA)
-sync_client = JsearchSyncServiceBusClient('jsearch_backend', bootstrap_servers=settings.KAFKA)
+service_bus = JsearchServiceBus('jsearch', bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
+sync_client = JsearchSyncServiceBusClient('jsearch_backend', bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
