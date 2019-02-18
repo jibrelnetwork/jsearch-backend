@@ -66,6 +66,34 @@ services:
     restart: always
     command: celeryworker
 
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181"
+    networks:
+      - default
+      - jsearch-contracts_default
+    restart: always
+    volumes:
+      - zookeeper-data:/opt
+
+  kafka:
+    image: wurstmeister/kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092"
+    networks:
+      - default
+      - jsearch-contracts_default
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://:9092
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - kafka-data:/kafka
+    restart: always
+
   raw_db:
     #    image: postgres:11.0-alpine
     image: postgres:9.6-alpine
@@ -93,6 +121,10 @@ services:
     image: redis:5.0-alpine
 
 volumes:
+  kafka-data:
+    driver: local
+  zookeeper-data:
+    driver: local
   raw_db:
   main_db:
 
