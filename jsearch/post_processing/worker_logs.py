@@ -13,7 +13,7 @@ from jsearch.typing import Logs
 metrics = Metrics()
 
 
-@service_bus.listen_stream('handle_transaction_logs', batch_size=20, batch_timeout=5)
+@service_bus.listen_stream('handle_transaction_logs', task_limit=20, batch_size=20, batch_timeout=5)
 async def handle_transaction_logs(blocks: List[Logs]):
     executor = get_executor()
     loop = asyncio.get_event_loop()
