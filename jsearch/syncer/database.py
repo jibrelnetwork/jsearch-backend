@@ -483,8 +483,9 @@ class MainDBSync(DBWrapperSync):
                        logs_t.c.block_hash == record['block_hash'],
                        logs_t.c.log_index == record['log_index'])). \
             values(**record)
-
+        print(query)
         self.execute(query)
+        print('complete', query)
 
     def update_token_holder_balance(self, token_address: str, account_address: str, balance: int, decimals: int):
         insert_query = insert(token_holders_t).values(
