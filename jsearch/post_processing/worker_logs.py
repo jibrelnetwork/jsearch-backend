@@ -24,14 +24,17 @@ async def handle_transaction_logs(blocks: List[Logs]):
     logs = list(chain(*blocks))
     transfers = await loop.run_in_executor(executor, worker, logs)
 
+    print(1)
     block_transfers = groupby(sorted(transfers, key=lambda x: x['block_number']), lambda x: x['block_number'])
     futures = []
     for block, items in block_transfers:
         block_transfers = list(items)
         future = await service_bus.send_to_stream('jsearch.handle_erc20_transfers', value=block_transfers)
         futures.append(future)
+    print(2)
 
     await asyncio.gather(*futures)
+    print(3)
 
     logs_per_seconds.finish(value=len(logs))
     blocks_per_seconds.finish(value=len(blocks))
