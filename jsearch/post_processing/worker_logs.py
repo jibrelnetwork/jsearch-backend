@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 @service_bus.listen_stream('handle_transaction_logs')
 async def handle_transaction_logs(logs: Logs):
+    if not logs:
+        return
+
     loop = asyncio.get_event_loop()
 
     logs_per_seconds = Metric('logs_per_second')
