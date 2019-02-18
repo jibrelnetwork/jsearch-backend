@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import List
 
 import pytest
 
@@ -11,28 +11,26 @@ pytest_plugins = (
 
 @pytest.fixture(scope="function")
 def post_processing(db_connection_string, mocker):
-    mocker.patch('time.sleep')
-    mocker.patch(
-        'jsearch.common.processing.erc20_balances.fetch_erc20_token_decimal_bulk',
-        lambda contracts: [contract.update(decimals=2) for contract in contracts] and contracts
-    )
-    mocker.patch(
-        'jsearch.common.processing.erc20_balances.fetch_erc20_balance_bulk',
-        lambda updates: [setattr(update, 'value', 100) for update in updates] and updates
-    )
+    async def fetch_erc20_balance_bulk(contracts):
+        for contract in contracts:
+            contract.value = 100
+        return contracts
 
-    def _wrapper(dump):
-        contracts: Dict[str, Dict[str, Any]] = {contract['address']: contract for contract in dump.get('contracts')}
+    async def _wrapper(dump):
+        mocker.patch('time.sleep')
+        mocker.patch('jsearch.common.processing.erc20_balances.fetch_erc20_balance_bulk', fetch_erc20_balance_bulk)
 
-        def get_contract(addresses: List[str]):
-            return [contracts.get(address) for address in addresses]
+        contracts = {contract['address']: {'decimals': 2, **contract} for contract in dump.get('contracts')}
 
-        mocker.patch('jsearch.common.processing.erc20_balances.get_contracts', get_contract)
+        async def get_contracts(addresses: List[str]):
+            return {address: contracts.get(address) for address in addresses}
 
-        from jsearch.post_processing.service import post_processing, ACTION_LOG_OPERATIONS, ACTION_LOG_EVENTS
+        mocker.patch('jsearch.post_processing.service.fetch_contracts', get_contracts)
 
-        post_processing(ACTION_LOG_EVENTS)
-        post_processing(ACTION_LOG_OPERATIONS)
+        # from jsearch.post_processing.service import post_processing, ACTION_LOG_OPERATIONS, ACTION_LOG_EVENTS
+
+        await post_processing(ACTION_LOG_EVENTS)
+        await post_processing(ACTION_LOG_OPERATIONS)
 
         return get_dump(db_connection_string)
 

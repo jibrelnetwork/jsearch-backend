@@ -11,7 +11,6 @@ from jsearch.api import handlers
 from jsearch.api.storage import Storage
 from jsearch.api.node_proxy import NodeProxy
 
-
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
 swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
 
@@ -69,6 +68,7 @@ async def make_app():
 
     app.router.add_static('/docs', swagger_ui_path)
     setup_swagger(app, swagger_from_file=swagger_file)
+
     return app
 
 
