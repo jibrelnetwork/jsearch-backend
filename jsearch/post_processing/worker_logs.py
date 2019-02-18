@@ -14,31 +14,27 @@ from jsearch.typing import Logs
 metrics = Metrics()
 
 
-# @service_bus.listen_stream('handle_transaction_logs', task_limit=10, batch_size=2, batch_timeout=5)
-@service_bus.listen_stream('handle_transaction_logs', task_limit=50)
-async def handle_transaction_logs(logs: Logs):
+@service_bus.listen_stream('handle_transaction_logs', batch_size=10, task_limit=30, batch_timeout=5)
+async def handle_transaction_logs(blocks: List[Logs]):
     loop = asyncio.get_event_loop()
 
     logs_per_seconds = Metric('logs_per_second')
     blocks_per_seconds = Metric('blocks_per_second')
 
-    # logs = list(chain(*blocks))
+    logs = list(chain(*blocks))
     transfers = await loop.run_in_executor(executor.get(), worker, logs)
 
-    print(1)
     block_transfers = groupby(sorted(transfers, key=lambda x: x['block_number']), lambda x: x['block_number'])
     futures = []
     for block, items in block_transfers:
         block_transfers = list(items)
-        future = await service_bus.send_to_stream('jsearch.handle_erc20_transfers', value=block_transfers)
+        future = await service_bus.send_transfers( value=block_transfers)
         futures.append(future)
-    print(2)
 
     await asyncio.gather(*futures)
-    print(3)
 
     logs_per_seconds.finish(value=len(logs))
-    blocks_per_seconds.finish(value=1)
+    blocks_per_seconds.finish(value=len(blocks))
 
     metrics.update(logs_per_seconds)
     metrics.update(blocks_per_seconds)

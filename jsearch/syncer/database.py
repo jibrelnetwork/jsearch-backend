@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import List, Dict, Any
 
 import aiopg
@@ -483,7 +484,9 @@ class MainDBSync(DBWrapperSync):
                        logs_t.c.block_hash == record['block_hash'],
                        logs_t.c.log_index == record['log_index'])). \
             values(**record)
+        start_at = time.time()
         self.execute(query)
+        print(f'Query {time.time() - start_at:0.2}')
 
     def update_token_holder_balance(self, token_address: str, account_address: str, balance: int, decimals: int):
         insert_query = insert(token_holders_t).values(

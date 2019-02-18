@@ -16,6 +16,9 @@ class JsearchSyncServiceBusClient(SyncServiceBusClient):
 
 class JsearchServiceBus(ServiceBus):
 
+    async def send_transfers(self, value):
+        return await self.send_to_stream(ROUTE_HANDLE_ERC20_TRANSFERS, value)
+
     async def get_contracts(self, addresses):
         return await self.rpc_call(ROUTE_GET_CONTRACTS, value={'addresses': addresses})
 
