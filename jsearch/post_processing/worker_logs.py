@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import time
-from itertools import groupby
+from itertools import groupby, chain
+from typing import List
 
 from jsearch import settings
 from jsearch.common.processing.logs import process_log_event
@@ -16,9 +17,9 @@ metrics = Metrics()
 logger = logging.getLogger(__name__)
 
 
-@service_bus.listen_stream('handle_transaction_logs', task_limit=50)
-async def handle_transaction_logs(logs: Logs):
-    if not logs:
+@service_bus.listen_stream('handle_transaction_logs', task_limit=30, batch_size=10, batch_timeout=5)
+async def handle_transaction_logs(blocks: List[Logs]):
+    if not blocks:
         return
 
     loop = asyncio.get_event_loop()
@@ -26,6 +27,7 @@ async def handle_transaction_logs(logs: Logs):
     logs_per_seconds = Metric('logs_per_second')
     blocks_per_seconds = Metric('blocks_per_second')
 
+    logs = list(chain(*blocks))
     transfers = await loop.run_in_executor(executor.get(), worker, logs)
 
     block_transfers = groupby(sorted(transfers, key=lambda x: x['block_number']), lambda x: x['block_number'])
