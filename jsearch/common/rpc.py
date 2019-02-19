@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 import backoff
 import requests
 import web3
-from aiohttp import request, ClientError
+from aiohttp import request
 from eth_abi import decode_abi
 from eth_abi import encode_abi as eth_abi_encode_abi
 from eth_abi.exceptions import DecodingError, EncodingError

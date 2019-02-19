@@ -38,7 +38,6 @@ def load_logs(db_connection_string) -> Callable[[Logs], Logs]:
 
 @pytest.fixture(scope="function")
 def load_transfers(db_connection_string) -> Callable[[Logs], Transfers]:
-    from jsearch.common.utils import as_dicts
     from jsearch.syncer.database import MainDBSync
 
     def get_queries(log: Log) -> List[Query]:
