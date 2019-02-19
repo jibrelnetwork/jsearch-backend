@@ -104,3 +104,24 @@ def celery_config():
         'broker_url': 'redis://',
         'result_backend': 'redis://',
     }
+
+
+@pytest.fixture(autouse=True)
+def mock_executor(mocker):
+    from concurrent.futures import Future
+
+    class Executor:
+        def init(self, workers):
+            pass
+
+        def get(self):
+            return self
+
+        def submit(self, func, *args):
+            result = func(*args)
+
+            future = Future()
+            future.set_result(result)
+            return future
+
+    mocker.patch('jsearch.multiprocessing.executor', Executor())
