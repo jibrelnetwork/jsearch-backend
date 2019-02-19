@@ -2,8 +2,8 @@ from jsearch_service_bus import SyncServiceBusClient, ServiceBus
 
 from jsearch import settings
 
-ROUTE_HANDLE_ERC20_TRANSFERS = 'jsearch.handle_erc20_transfers'
-ROUTE_HANDLE_TRANSACTION_LOGS = 'jsearch.handle_transaction_logs'
+ROUTE_HANDLE_ERC20_TRANSFERS = 'jsearch.erc20_transfers'
+ROUTE_HANDLE_TRANSACTION_LOGS = 'jsearch.transaction_logs'
 
 ROUTE_GET_CONTRACTS = 'jsearch_contracts.get_contracts'
 
