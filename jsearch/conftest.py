@@ -107,21 +107,8 @@ def celery_config():
 
 
 @pytest.fixture(autouse=True)
-def mock_executor(mocker):
-    from concurrent.futures import Future
+def mock_executor():
+    from jsearch.service_bus import service_bus, sync_client
 
-    class Executor:
-        def init(self, workers):
-            pass
-
-        def get(self):
-            return self
-
-        def submit(self, func, *args):
-            result = func(*args)
-
-            future = Future()
-            future.set_result(result)
-            return future
-
-    mocker.patch('jsearch.multiprocessing.executor', Executor())
+    service_bus.disable_rpc()
+    sync_client.allow_rpc = False
