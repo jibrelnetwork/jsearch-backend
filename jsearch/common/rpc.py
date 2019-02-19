@@ -159,7 +159,11 @@ class ContractCall:
 ContractCalls = List[ContractCall]
 
 
-@backoff.on_exception(backoff.fibo, max_tries=10, exception=(EthRequestException, ClientError))
+@backoff.on_exception(
+    backoff.fibo,
+    max_tries=10,
+    exception=(EthRequestException, requests.exceptions.RequestException)
+)
 def eth_call_request(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     response = requests.post(url=settings.ETH_NODE_URL, json=data)
     if response.status_code != 200:

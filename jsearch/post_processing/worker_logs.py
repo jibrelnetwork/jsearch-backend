@@ -37,7 +37,8 @@ async def handle_transaction_logs(blocks: List[Logs]):
         future = await service_bus.send_transfers(value=block_transfers)
         futures.append(future)
 
-    await asyncio.gather(*futures)
+    if futures:
+        await asyncio.gather(*futures)
 
     logs_per_seconds.finish(value=len(logs))
     blocks_per_seconds.finish(value=1)

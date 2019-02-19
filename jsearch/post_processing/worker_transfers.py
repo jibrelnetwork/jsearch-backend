@@ -19,7 +19,7 @@ from jsearch.typing import Logs, Contracts
 metrics = Metrics()
 
 
-@service_bus.listen_stream('handle_erc20_transfers', task_limit=20, batch_size=100, batch_timeout=5)
+@service_bus.listen_stream('handle_erc20_transfers', task_limit=30, batch_size=20, batch_timeout=5)
 async def handle_new_transfers(blocks: List[Logs]):
     loop = asyncio.get_event_loop()
 

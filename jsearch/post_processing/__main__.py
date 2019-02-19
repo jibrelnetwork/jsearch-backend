@@ -30,44 +30,51 @@ REPROCESSING_MAP = {
 WORKERS = [handle_new_transfers, handle_transaction_logs]
 
 
-async def run_service_bus():
-    await service_bus.start()
-    await service_bus.wait()
+async def post_processing(action: str) -> None:
+    # choose only one stream worker which related to action
+    service_bus.streams = {k: v for k, v in service_bus.streams.items() if WORKER_MAP[k] == action}
+
+    try:
+        await service_bus.start()
+    finally:
+        await service_bus.wait()
 
 
-async def run_reprocessing(reprocessing):
-    await service_bus.start()
-    await reprocessing()
-    await service_bus.stop()
+async def prepare_data_for_post_processing(block_range: str, action: str) -> None:
+    # disable all stream workers
+    service_bus.streams = {}
+    block_from, block_until = parse_range(block_range)
+    worker = partial(REPROCESSING_MAP[action], block_from, block_until, 100)
+
+    try:
+        await service_bus.start()
+        await worker()
+    finally:
+        await service_bus.stop()
 
 
 @click.command()
 @click.argument('action', type=click.Choice([ACTION_PROCESS_LOGS, ACTION_PROCESS_TRANSFERS]))
 @click.option('--log-level', default='INFO', help="Log level")
 @click.option('--workers', default=30, help="Workers count")
-@click.option('--reprocessing', is_flag=True)
+@click.option('--prepare_data', is_flag=True)
 @click.option('--block-range')
-def main(action, log_level, workers, reprocessing, block_range):
+def main(action, log_level, workers, prepare_data, block_range) -> None:
     logs.configure(log_level)
 
     executor.init(workers)
 
-    if reprocessing:
-        # disable all stream workers
-        block_from, block_until = parse_range(block_range)
-        worker = partial(REPROCESSING_MAP[action], block_from, block_until, 100)
-        coro = run_reprocessing(worker)
-        service_bus.streams = {}
+    if prepare_data:
+        coro = prepare_data_for_post_processing(block_range, action)
     else:
-        # choose only one stream worker which related to action
-        service_bus.streams = {k: v for k, v in service_bus.streams.items() if WORKER_MAP[k] == action}
-        coro = run_service_bus()
+        coro = post_processing(action)
 
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(coro)
     except KeyboardInterrupt:
         loop.run_until_complete(service_bus.stop())
+    finally:
         loop.stop()
         loop.close()
 
