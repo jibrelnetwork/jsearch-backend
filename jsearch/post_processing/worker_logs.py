@@ -52,6 +52,17 @@ async def handle_transaction_logs(blocks: List[Logs]):
 
 
 def worker(logs: Logs) -> Logs:
+    """
+    Process transaction logs.
+    Parse their event types and args via ERC20 ABI.
+    Detect ERC20 transfers.
+
+    Args:
+        logs: list of transaction logs
+
+    Returns:
+        list of erc20 transfers
+    """
     with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
         start_at = time.time()
         logs = [process_log_event(log) for log in logs]
