@@ -80,8 +80,8 @@ jsearch-syncer
 
 ### Post processing:
 ```
-jsearch-post-processing --wait
-jsearch-post-processing operations --wait
+jsearch-post-processing logs
+jsearch-post-processing transfers
 ```
 
 ### API:
