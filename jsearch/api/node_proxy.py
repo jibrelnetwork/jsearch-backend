@@ -8,6 +8,15 @@ import backoff
 MAX_RETRY = 5
 
 
+def _decimal_result(res):
+    if 'error' not in res:
+        try:
+            res['result'] = str(int(res['result'], 16))
+        except Exception:
+            pass
+    return res
+
+
 class NodeProxy:
 
     def __init__(self, node_url):
@@ -23,6 +32,7 @@ class NodeProxy:
 
     async def gas_price(self) -> str:
         res = await self._request('eth_gasPrice')
+        res = _decimal_result(res)
         return res
 
     async def call_contract(self, args: List) -> Any:
@@ -31,8 +41,14 @@ class NodeProxy:
 
     async def estimate_gas(self, args: List) -> str:
         res = await self._request('eth_estimateGas', args)
+        res = _decimal_result(res)
         return res
 
     async def send_raw_transaction(self, args: List) -> str:
         res = await self._request('eth_sendRawTransaction', args)
+        return res
+
+    async def transaction_count(self, args: List) -> str:
+        res = await self._request('eth_getTransactionCount', args)
+        res = _decimal_result(res)
         return res

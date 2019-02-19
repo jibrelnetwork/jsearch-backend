@@ -34,6 +34,30 @@ async def get_account_transactions(request):
     return api_success([t.to_dict() for t in txs])
 
 
+async def get_account_internal_transactions(request):
+    """
+    Get account internal transactions
+    """
+    # todo: implement it
+    return api_success([])
+
+
+async def get_account_pending_transactions(request):
+    """
+    Get account pending transactions
+    """
+    # todo: implement it
+    return api_success([])
+
+
+async def get_account_logs(request):
+    """
+    Get contract logs
+    """
+    # todo: implement it
+    return api_success([])
+
+
 async def get_account_mined_blocks(request):
     """
     Get account mined blocks
@@ -113,6 +137,22 @@ async def get_transaction(request):
     if transaction is None:
         return web.json_response(status=404)
     return api_success(transaction.to_dict())
+
+
+async def get_internal_transactions(request):
+    """
+    Get internal transactions by transaction hash
+    """
+    # todo: implement it
+    return api_success([])
+
+
+async def get_pending_transactions(request):
+    """
+    Get pending transactions by transaction hash
+    """
+    # todo: implement it
+    return api_success([])
 
 
 async def get_receipt(request):
@@ -253,6 +293,12 @@ async def get_account_token_balance(request):
 
 async def get_gas_price(request):
     resp = await request.app['node_proxy'].gas_price()
+    return proxy_response(resp)
+
+
+async def get_transaction_count(request):
+    args = await request.json()
+    resp = await request.app['node_proxy'].transaction_count(args)
     return proxy_response(resp)
 
 
