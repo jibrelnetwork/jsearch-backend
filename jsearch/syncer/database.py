@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import List, Dict, Any
 
 import aiopg
@@ -7,7 +6,7 @@ import backoff
 import psycopg2
 from aiopg.sa import create_engine as async_create_engine, Engine
 from psycopg2.extras import DictCursor
-from sqlalchemy import create_engine as sync_create_engine, and_, false, select, true
+from sqlalchemy import create_engine as sync_create_engine, and_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.pool import NullPool
 
@@ -320,54 +319,6 @@ class MainDB(DBWrapper):
     @as_dicts
     async def get_blocks(self, hashes: List[str]):
         query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
-        return await self.fetch_all(query)
-
-    @as_dicts
-    async def get_logs_to_process_events(self, limit=1000):
-        unprocessed_blocks_query = select(
-            columns=[logs_t.c.is_processed, logs_t.c.block_number],
-            whereclause=logs_t.c.is_processed == false(),
-        ) \
-            .order_by(logs_t.c.is_processed.asc(), logs_t.c.block_number.asc()) \
-            .limit(limit)
-        unprocessed_blocks = {row[1] for row in await self.fetch_all(unprocessed_blocks_query)}
-
-        query = select(
-            columns=[logs_t],
-            whereclause=and_(
-                logs_t.c.is_processed == false(),
-                logs_t.c.block_number.in_(unprocessed_blocks)
-            )
-        ) \
-            .order_by(logs_t.c.block_number.asc()) \
-            .limit(limit)
-        return await self.fetch_all(query)
-
-    @as_dicts
-    async def get_logs_to_process_operations(self, limit=1000):
-        unprocessed_blocks_query = select(
-            columns=[logs_t.c.is_token_transfer, logs_t.c.is_transfer_processed, logs_t.c.block_number],
-            whereclause=and_(
-                logs_t.c.is_token_transfer == true(),
-                logs_t.c.is_transfer_processed == false()
-            ),
-        ) \
-            .order_by(logs_t.c.is_token_transfer.asc(),
-                      logs_t.c.is_transfer_processed.asc(),
-                      logs_t.c.block_number.asc()) \
-            .limit(limit)
-        unprocessed_blocks = {row[2] for row in await self.fetch_all(unprocessed_blocks_query)}
-
-        query = select(
-            columns=[logs_t],
-            whereclause=and_(
-                logs_t.c.is_token_transfer == true(),
-                logs_t.c.is_transfer_processed == false(),
-                logs_t.c.block_number.in_(unprocessed_blocks),
-            )
-        ) \
-            .order_by(logs_t.c.block_number.asc()) \
-            .limit(limit)
         return await self.fetch_all(query)
 
 
