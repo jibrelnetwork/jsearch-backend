@@ -20,6 +20,7 @@ from jsearch.common.tables import (
     transactions_t,
     uncles_t,
     reorgs_t,
+    chain_splits_t,
 )
 
 MAIN_DB_POOL_SIZE = 22
@@ -95,7 +96,7 @@ class RawDB(DBWrapper):
         return rows
 
     async def get_latest_available_block_number(self):
-        q = """SELECT max(block_number) as max_block from bodies"""
+        q = """SELECT max(block_number) AS max_block FROM bodies"""
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(q)
@@ -103,11 +104,20 @@ class RawDB(DBWrapper):
                 cur.close()
         return row['max_block'] or None
 
-    async def get_reorgs_from(self, reorg_from_num, limit):
-        q = """SELECT * FROM reorgs where id > %s ORDER BY id LIMIT %s"""
+    async def get_reorgs_by_chain_split_id(self, chain_split_id):
+        q = """SELECT * FROM reorgs WHERE split_id = %s"""
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(q, [reorg_from_num, limit])
+                await cur.execute(q, [chain_split_id])
+                rows = await cur.fetchall()
+                cur.close()
+        return rows
+
+    async def get_chain_splits_from(self, split_from_num, limit):
+        q = """SELECT * FROM chain_splits WHERE id > %s ORDER BY id LIMIT %s"""
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [split_from_num, limit])
                 rows = await cur.fetchall()
                 cur.close()
         return rows
@@ -277,13 +287,18 @@ class MainDB(DBWrapper):
                 logger.debug('Reorg applyed for block %s %s', reorg['block_number'], reorg['block_hash'])
                 return True
 
-    async def get_last_reorg(self):
-        q = """SELECT id FROM reorgs ORDER BY id DESC LIMIT 1"""
+    async def get_last_chain_split(self):
+        q = """SELECT id FROM chain_splits ORDER BY id DESC LIMIT 1"""
         async with self.engine.acquire() as conn:
             res = await conn.execute(q)
             row = await res.fetchone()
-            last_reorg_num = row['id'] if row else 0
-            return last_reorg_num
+            last_chain_split_num = row['id'] if row else 0
+            return last_chain_split_num
+
+    async def insert_chain_split(self, split):
+        q = chain_splits_t.insert().values(**split)
+        async with self.engine.acquire() as conn:
+            await conn.execute(q)
 
 
 class MainDBSync(DBWrapperSync):

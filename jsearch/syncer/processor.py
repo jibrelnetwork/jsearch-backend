@@ -24,7 +24,7 @@ class SyncProcessor:
         :param block_number: number of block to sync
         :return: True if sync is successfull, False if syn fails or block already synced
         """
-
+        print("Syncing Block", block_hash, block_number)
         logger.debug("Syncing Block %s #%s", block_hash, block_number)
 
         self.main_db.connect()

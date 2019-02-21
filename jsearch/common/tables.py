@@ -212,6 +212,7 @@ reorgs_t = sa.Table(
     sa.Column('block_number', sa.Integer),
     sa.Column('reinserted', sa.Boolean),
     sa.Column('node_id', sa.String),
+    sa.Column('split_id', sa.BigInteger),
 )
 
 token_transfers_t = sa.Table(
@@ -234,6 +235,36 @@ token_transfers_t = sa.Table(
     sa.Column('is_forked', sa.Boolean),
 )
 
+chain_splits_t = sa.Table(
+    'chain_splits',
+    metadata,
+    sa.Column('id', sa.BigInteger, primary_key=True),
+    sa.Column('common_block_number', sa.Integer),
+    sa.Column('common_block_hash', sa.String),
+    sa.Column('drop_length', sa.Integer),
+    sa.Column('drop_block_hash', sa.String),
+    sa.Column('add_length', sa.Integer),
+    sa.Column('add_block_hash', sa.String),
+    sa.Column('node_id', sa.String),
+)
+
+assets_transfers_t = sa.Table(
+    'assets_transfers',
+    metadata,
+    sa.Column('address', sa.String),
+    sa.Column('type', sa.String),
+    sa.Column('from', sa.String),
+    sa.Column('to', sa.String),
+    sa.Column('asset_address', sa.String),
+    sa.Column('amount', sa.Integer),
+    sa.Column('tx_data', postgresql.JSONB),
+    sa.Column('is_forked', sa.Boolean),
+    sa.Column('block_number', sa.String),
+    sa.Column('block_hash', sa.String),
+    sa.Column('order', sa.String),
+)
+
+
 TABLES = (
     blocks_t,
     uncles_t,
@@ -246,4 +277,5 @@ TABLES = (
     internal_transactions_t,
     reorgs_t,
     token_transfers_t,
+    chain_splits_t,
 )

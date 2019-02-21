@@ -80,6 +80,21 @@
       "UncleInclusionReward": 0
     }
   },
+    {
+    "block_number": 6000004,
+    "block_hash": "0xb9c83e79b22f1fb05f32309b1277c5b789995e603612785cc914339cc9f7b000",
+    "address": "0x6a7a43BE33ba930fE58F34E07D0ad6bA7ADB9B1F",
+    "fields": {
+      "Uncles": [],
+      "TimeStamp": 1532118647,
+      "TxsReward": 9278222800000000,
+      "BlockMiner": "0x6a7a43be33ba930fe58f34e07d0ad6ba7adb9b1f",
+      "BlockNumber": 6000004,
+      "BlockReward": 3000000000000000000,
+      "UnclesReward": 0,
+      "UncleInclusionReward": 0
+    }
+  },
   {
     "block_number": 6000005,
     "block_hash": "0x43fe51b771bede814e59f9e3b204ba470f193d66e907827a642c9f243a0c2115",

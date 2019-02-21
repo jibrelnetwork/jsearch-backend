@@ -326,3 +326,22 @@ async def on_new_contracts_added(request):
     if settings.ENABLE_RESET_POST_PROCESSING:
         tasks.on_new_contracts_added_task.delay(address)
     return api_success({})
+
+
+async def get_blockchain_tip(request):
+    last_known_block_hash = request.query.get('tip')
+    storage = request.app['storage']
+    block_status = await storage.get_blockchain_tip_status(last_known_block_hash)
+    return api_success(block_status)
+
+
+async def get_assets_summary(request):
+    return api_success({})
+
+
+async def get_wallet_transfers(request):
+    return api_success({})
+
+
+async def get_wallet_transactions(request):
+    return api_success({})
