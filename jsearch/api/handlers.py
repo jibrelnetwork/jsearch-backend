@@ -5,7 +5,8 @@ from jsearch import settings
 from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
-from jsearch.api.helpers import get_tag, validate_params, api_success, proxy_response
+from jsearch.api.helpers import get_tag, validate_params, api_success, proxy_response, api_error
+from jsearch.api.error_code import ErrorCode
 
 
 async def get_account(request):
@@ -329,9 +330,16 @@ async def on_new_contracts_added(request):
 
 
 async def get_blockchain_tip(request):
-    last_known_block_hash = request.query.get('tip')
+    tip = request.query.get('tip')
     storage = request.app['storage']
-    block_status = await storage.get_blockchain_tip_status(last_known_block_hash)
+    block_status = await storage.get_blockchain_tip_status(tip)
+    if block_status is None:
+        err = {
+            'field': 'tip',
+            'error_code': ErrorCode.BLOCK_NOT_FOUND,
+            'error_message': f'Block with hash {tip} not found'
+        }
+        return api_error(status=404, errors=[err])
     return api_success(block_status)
 
 

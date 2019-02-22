@@ -379,38 +379,19 @@ class Storage:
 
     async def get_blockchain_tip_status(self, last_known_block_hash: str):
         """
-        {
-          “data“: {
-            “blockchainTip“: {
-              “blockHash“: string,
-              “blockNumber“: string
-            },
-            “forkData“: {
-              “isInFork“: true/false,
-              “lastUnchangedBlock“: number
-            }
-          },
-          “status“: {..}
-        }
-
-         id                  | bigint                | not null default nextval('chain_splits_id_seq'::regclass)
-         common_block_number | bigint                | not null
-         common_block_hash   | character varying(70) | not null
-         drop_length         | bigint                | not null
-         drop_block_hash     | character varying(70) | not null
-         add_length          | bigint                | not null
-         add_block_hash      | character varying(70) | not null
-         node_id             | character varying(70) | not null
-
-        :return:
+        Retruns status of client's last known block
         """
-        split_query = "SELECT common_block_number, drop_block_hash FROM chain_splits WHERE drop_block_hash=$1"
+        split_query = """SELECT common_block_number FROM chain_splits
+                            WHERE id=(SELECT  split_id FROM  reorgs where block_hash=$1)"""
         block_query = "SELECT number FROM blocks WHERE hash=$1"
 
         async with self.pool.acquire() as conn:
             split = await conn.fetchrow(split_query, last_known_block_hash)
         async with self.pool.acquire() as conn:
             block = await conn.fetchrow(block_query, last_known_block_hash)
+
+        if block is None:
+            return None
 
         if split is None:
             result = {

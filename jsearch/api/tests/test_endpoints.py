@@ -3,6 +3,12 @@ from unittest import mock
 import pytest
 from asynctest import CoroutineMock
 
+from jsearch.common.tables import (
+    blocks_t,
+    reorgs_t,
+    chain_splits_t,
+)
+
 from jsearch.tests.entities import (
     TransactionFromDumpWrapper,
     BlockFromDumpWrapper,
@@ -806,3 +812,50 @@ async def test_get_account_token_balance(cli, main_db_data):
 
     resp = await cli.get(f'/v1/accounts/aX/token_balance/t1')
     assert resp.status == 404
+
+
+async def test_get_blockchain_tip(cli, db):
+    db.execute(blocks_t.insert().values(hash='aa', number=100))
+    db.execute(blocks_t.insert().values(hash='ab', number=101))
+    db.execute(blocks_t.insert().values(hash='abf', number=101))
+    db.execute(blocks_t.insert().values(hash='ac', number=102))
+    db.execute(blocks_t.insert().values(hash='acf', number=102))
+
+    db.execute(chain_splits_t.insert().values(id=1, common_block_number=100))
+
+    db.execute(
+        reorgs_t.insert().values(id=1, split_id=1, block_hash='abf', block_number=101, reinserted=False, node_id='a'))
+    db.execute(
+        reorgs_t.insert().values(id=2, split_id=1, block_hash='acf', block_number=102, reinserted=False, node_id='a'))
+
+    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=aa')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == {'blockchainTip': {'blockHash': 'aa', 'blockNumber': 100},
+                   'forkData': {'isInFork': False, 'lastUnchangedBlock': 100}}
+
+    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=ac')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == {'blockchainTip': {'blockHash': 'ac', 'blockNumber': 102},
+                   'forkData': {'isInFork': False, 'lastUnchangedBlock': 102}}
+
+    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=abf')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == {'blockchainTip': {'blockHash': 'abf', 'blockNumber': 101},
+                   'forkData': {'isInFork': True, 'lastUnchangedBlock': 100}}
+
+    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=acf')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == {'blockchainTip': {'blockHash': 'acf', 'blockNumber': 102},
+                   'forkData': {'isInFork': True, 'lastUnchangedBlock': 100}}
+
+
+async def test_get_blockchain_tip_no_block(cli):
+    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=aa')
+    assert resp.status == 404
+    assert (await resp.json()) == {'status': {'success': False, 'errors': [
+        {'field': 'tip', 'error_code': 'BLOCK_NOT_FOUND', 'error_message': 'Block with hash aa not found'}]},
+                                   'data': None}
