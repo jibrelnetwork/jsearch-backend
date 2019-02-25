@@ -6,8 +6,6 @@ from functools import partial
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from sqlalchemy import create_engine
-
 log = logging.getLogger(__name__)
 
 
@@ -49,15 +47,6 @@ def sync_blocks(blocks, start_from=0, main_db_dsn="", raw_db_dsn=""):
             )
             func()
             executor.submit(func)
-
-
-def add_test_contract(connection_string, address, fuck_token):
-    from jsearch.common.tables import contracts_t
-
-    engine = create_engine(connection_string)
-    conn = engine.connect()
-    query = contracts_t.insert().values(address=address, **fuck_token.as_db_record())
-    conn.execute(query)
 
 
 def pprint_returned_value(func):

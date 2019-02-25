@@ -79,8 +79,8 @@ jsearch-syncer
 
 ## Run Post processing:
 ```
-jsearch-post-processing --wait  # run logs processing/decoding
-jsearch-post-processing operations --wait  # run operations (Token Transfers) processing - will update token balances
+jsearch-post-processing logs  # run logs processing/decoding
+jsearch-post-processing transfers  # run operations (Token Transfers) processing - will update token balances
 ```
 
 ## Run API server:

@@ -1,4 +1,4 @@
-from typing import Any, Dict, NewType, List
+from typing import Any, Dict, NewType, List, Callable, Awaitable
 
 Abi = List[Dict[str, Any]]
 Abi_ERC20 = NewType('Abi_ERC20', Abi)
@@ -16,3 +16,6 @@ EventArgs = Dict[str, Any]
 Contract = Dict[str, Any]
 Contracts = List[Contract]
 Token = Dict[str, Any]
+
+AsyncCallback = Callable[..., Awaitable[Any]]
+AsyncReducer = Callable[[Any, AsyncCallback], Any]
