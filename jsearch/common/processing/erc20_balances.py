@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 from itertools import count, chain
 from typing import Dict, Set
 from typing import List, Optional
@@ -152,7 +153,7 @@ async def fetch_contracts(service_bus, logs: Logs) -> Contracts:
     addresses = list({log['address'] for log in logs})
     contracts = chain(
         *await do_parallel(
-            func=service_bus.get_contracts,
+            func=partial(service_bus.get_contracts, fields=["address", "abi"]),
             argument_list=addresses,
             chunk_size=settings.ETH_NODE_BATCH_REQUEST_SIZE
         )
