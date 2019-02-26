@@ -77,8 +77,8 @@ async def make_app():
 
     app.router.add_route('GET', '/v1/wallet/blockchain_tip', handlers.get_blockchain_tip)
     app.router.add_route('GET', '/v1/wallet/assets_summary', handlers.get_assets_summary)
-    app.router.add_route('GET', '/v1/wallet/{address}/transfers', handlers.get_wallet_transfers)
-    app.router.add_route('GET', '/v1/wallet/{address}/transactions', handlers.get_wallet_transactions)
+    app.router.add_route('GET', '/v1/wallet/transfers', handlers.get_wallet_transfers)
+    app.router.add_route('GET', '/v1/wallet/transactions', handlers.get_wallet_transactions)
 
     app.router.add_route('POST', '/_on_new_contracts_added', handlers.on_new_contracts_added)
 

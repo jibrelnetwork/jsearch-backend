@@ -23,9 +23,10 @@ class Model(object):
 
     def __init__(self, **fields):
         for k, v in fields.items():
-            assert k in self.attribute_map, 'Invalid field "{}"'.format(k)
+            # assert k in self.attribute_map, 'Invalid field "{}"'.format(k)
             # assert k in self.swagger_types, 'Invalid field "{}"'.format(k)
-            setattr(self, k, v)
+            if k in self.attribute_map:
+                setattr(self, k, v)
 
     def to_dict(self):
         """Returns the model properties as a dict

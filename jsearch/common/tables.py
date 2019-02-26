@@ -100,6 +100,7 @@ transactions_t = sa.Table(
     sa.Column('value', sa.String),
     sa.Column('contract_call_description', postgresql.JSONB),
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
+    sa.Column('address', sa.String, index=True),
 )
 
 receipts_t = sa.Table(
@@ -256,12 +257,22 @@ assets_transfers_t = sa.Table(
     sa.Column('from', sa.String),
     sa.Column('to', sa.String),
     sa.Column('asset_address', sa.String),
-    sa.Column('amount', sa.Integer),
+    sa.Column('amount', postgresql.NUMERIC()),
     sa.Column('tx_data', postgresql.JSONB),
     sa.Column('is_forked', sa.Boolean),
-    sa.Column('block_number', sa.String),
+    sa.Column('block_number', sa.BigInteger),
     sa.Column('block_hash', sa.String),
-    sa.Column('order', sa.String),
+    sa.Column('ordering', sa.String),
+)
+
+assets_summary_t = sa.Table(
+    'assets_summary',
+    metadata,
+    sa.Column('address', sa.String),
+    sa.Column('asset_address', sa.String),
+    sa.Column('balance', postgresql.NUMERIC()),
+    sa.Column('tx_number', sa.BigInteger),
+    sa.Column('nonce', sa.BigInteger),
 )
 
 

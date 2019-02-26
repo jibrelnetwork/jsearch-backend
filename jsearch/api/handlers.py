@@ -344,12 +344,42 @@ async def get_blockchain_tip(request):
 
 
 async def get_assets_summary(request):
-    return api_success({})
+    params = validate_params(request)
+    addresses = request.query.get('addresses')
+    addresses = addresses.split(',')
+    assets = request.query.get('assets', '')
+    assets = [a for a in assets.split(',') if a]
+    storage = request.app['storage']
+    summary = await storage.get_wallet_assets_summary(
+        addresses,
+        limit=params['limit'],
+        offset=params['offset'],
+        assets=assets)
+    return api_success(summary)
 
 
 async def get_wallet_transfers(request):
-    return api_success({})
+    params = validate_params(request)
+    addresses = request.query.get('addresses')
+    addresses = addresses.split(',')
+    assets = request.query.get('assets', '')
+    assets = [a for a in assets.split(',') if a]
+    storage = request.app['storage']
+    transfers = await storage.get_wallet_assets_transfers(
+        addresses,
+        limit=params['limit'],
+        offset=params['offset'],
+        assets=assets)
+    return api_success([t.to_dict() for t in transfers])
 
 
 async def get_wallet_transactions(request):
-    return api_success({})
+    params = validate_params(request)
+    addresses = request.query.get('addresses')
+    addresses = addresses.split(',')
+    storage = request.app['storage']
+    transactions = await storage.get_wallet_transactions(
+        addresses,
+        limit=params['limit'],
+        offset=params['offset'])
+    return api_success([t.to_dict() for t in transactions])

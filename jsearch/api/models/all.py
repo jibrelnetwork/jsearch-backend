@@ -297,3 +297,23 @@ class TokenHolder(Model):
         'balance': 'balance',
         'decimals': 'decimals'
     }
+
+
+class AssetTransfer(Model):
+    swagger_types = {
+        'type': str,
+        'from': str,
+        'to': str,
+        'asset_address': str,
+        'amount': float,
+        'tx_data': Transaction
+    }
+    attribute_map = {
+
+        'type': 'type',
+        'from': 'from',
+        'to': 'to',
+        'asset_address': 'assetAddress',
+        'amount': 'amount',
+        'tx_data': 'txData',
+    }

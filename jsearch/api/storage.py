@@ -1,4 +1,6 @@
-from typing import List
+from typing import List, Optional
+from itertools import groupby
+import json
 
 from jsearch.api import models
 from jsearch.api.models.all import TokenTransfer
@@ -416,3 +418,91 @@ class Storage:
                 }
             }
         return result
+
+    async def get_wallet_assets_transfers(self, addresses: List[str], limit: int, offset: int, assets: Optional[List[str]]=None) -> List:
+
+        if assets:
+            assets_filter = " AND asset_address = ANY($2::varchar[]) "
+            limit_stmt = "LIMIT $3 OFFSET $4 "
+        else:
+            assets_filter = ""
+            limit_stmt = "LIMIT $2 OFFSET $3 "
+
+        query = f"""SELECT * FROM assets_transfers
+                        WHERE address = ANY($1::varchar[]) {assets_filter} AND is_forked=false
+                        ORDER BY ordering DESC
+                        {limit_stmt}"""
+        async with self.pool.acquire() as conn:
+            if assets:
+                rows = await conn.fetch(query, addresses, assets, limit, offset)
+            else:
+                rows = await conn.fetch(query, addresses, limit, offset)
+
+            items = []
+            for row in rows:
+                t = dict(row)
+                t['tx_data'] = json.loads(t['tx_data'])
+                items.append(t)
+            return [models.AssetTransfer(**t) for t in items]
+
+    async def get_wallet_transactions(self, addresses: List[str], limit: int, offset: int) -> List:
+        offset *= 2
+        limit *= 2
+        query = """SELECT * FROM transactions
+                        WHERE address = ANY($1::varchar[])
+                        ORDER BY block_number, transaction_index DESC
+                        LIMIT $2 OFFSET $3 """
+
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, addresses, limit, offset)
+            distinct_set = set()
+            transactions = []
+            for row in rows:
+                row = dict(row)
+                row.pop('address')
+                distinct_key = tuple(row.values())
+                if distinct_key in distinct_set:
+                    continue
+                distinct_set.add(distinct_key)
+                transactions.append(models.Transaction(**row))
+        return transactions
+
+    async def get_wallet_assets_summary(self, addresses: List[str], limit: int, offset: int, assets: Optional[List[str]]=None):
+        if assets:
+            assets_filter = " AND asset_address = ANY($2::varchar[]) "
+            limit_stmt = "LIMIT $3 OFFSET $4 "
+        else:
+            assets_filter = ""
+            limit_stmt = "LIMIT $2 OFFSET $3 "
+
+        query = f"""SELECT * FROM assets_summary
+                        WHERE address = ANY($1::varchar[])
+                        {assets_filter}
+                        ORDER BY address, asset_address ASC
+                        {limit_stmt}"""
+
+        async with self.pool.acquire() as conn:
+            if assets:
+                rows = await conn.fetch(query, addresses, assets, limit, offset)
+            else:
+                rows = await conn.fetch(query, addresses, limit, offset)
+            addr_map = {k: list(g) for k, g in groupby(rows, lambda r: r['address'])}
+            summary = []
+            for addr in addresses:
+                assets_summary = []
+                nonce = 0
+                for row in addr_map.get(addr, []):
+                    assets_summary.append({
+                        'balance': float(row['balance']),
+                        'address': row['asset_address'],
+                        'transfersNumber': row['tx_number'],
+                    })
+                    nonce = row['nonce']
+                item = {
+                    'assetsSummary': assets_summary,
+                    'address': addr,
+                    'outgoingTransactionsNumber': nonce,
+                }
+                summary.append(item)
+            return summary
+
