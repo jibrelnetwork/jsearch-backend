@@ -91,13 +91,4 @@ def process_log_event(log: Log) -> Log:
                 'token_transfer_from': from_address,
                 'token_amount': token_amount,
             })
-
-    if 'is_token_transfer' not in log:
-        log.update({
-            'is_token_transfer': False,
-            'event_type': None,
-            'event_args': None,
-        })
-
-    log['is_processed'] = True
     return log

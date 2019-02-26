@@ -104,3 +104,11 @@ def celery_config():
         'broker_url': 'redis://',
         'result_backend': 'redis://',
     }
+
+
+@pytest.fixture(autouse=True)
+def mock_executor():
+    from jsearch.service_bus import service_bus, sync_client
+
+    service_bus.disable_rpc()
+    sync_client.allow_rpc = False

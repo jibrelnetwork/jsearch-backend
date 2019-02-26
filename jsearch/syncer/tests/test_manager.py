@@ -1,3 +1,6 @@
+import pytest
+
+from jsearch.common.tables import blocks_t
 from jsearch.common.tables import blocks_t, chain_splits_t
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.manager import Manager
@@ -8,9 +11,11 @@ pytest_plugins = [
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.dumps',
     'jsearch.tests.plugins.databases.raw_db',
+    'jsearch.tests.plugins.service_bus'
 ]
 
 
+@pytest.mark.usefixtures('mock_service_bus_sync_client')
 async def test_process_chain_split(raw_db_sample, db, raw_db_connection_string, db_connection_string):
     s = raw_db_sample
     processor = SyncProcessor(raw_db_connection_string, db_connection_string)

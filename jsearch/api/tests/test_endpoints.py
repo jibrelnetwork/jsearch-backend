@@ -18,7 +18,7 @@ from jsearch.tests.entities import (
 )
 
 pytest_plugins = [
-    'jsearch.tests.plugins.tools',
+    'jsearch.tests.plugins.post_processing',
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.dumps',
 ]
@@ -246,7 +246,8 @@ async def test_get_account_balances_invalid_addresses_all(cli):
     assert res == []
 
 
-async def test_get_account_balances_invalid_addresses(cli, main_db_data):
+
+async def test_get_account_balances_invalid_addresses(cli: object, main_db_data: object) -> object:
     a1 = main_db_data['accounts_base'][0]
     resp = await cli.get('/v1/accounts/balances?addresses={},{},{}'.format('foo', a1['address'], 'bar'))
     assert resp.status == 200

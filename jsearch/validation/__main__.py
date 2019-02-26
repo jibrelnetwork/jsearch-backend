@@ -5,7 +5,7 @@ import logging
 import click
 
 from jsearch.common import logs
-from jsearch.common.integrations.contracts import get_contract
+from jsearch.service_bus import service_bus
 from jsearch.validation.balances import check_token_holder_balances, show_statistics, show_top_holders
 from jsearch.validation.proxy import TokenProxy
 
@@ -22,8 +22,10 @@ def check(token, check_balances, rewrite, show_holders, log_level):
     logs.configure(log_level)
     loop = asyncio.get_event_loop()
 
-    token = get_contract(token)
-    if token:
+    tokens = service_bus.get_contracts(addresses=[token])
+    if tokens:
+        token = tokens[0]
+
         token_proxy = TokenProxy(abi=token['abi'], address=token['address'])
         loop.run_until_complete(show_statistics(token_proxy))
 

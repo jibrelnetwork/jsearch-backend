@@ -6,10 +6,10 @@ from typing import List, Optional
 from web3 import Web3
 
 from jsearch import settings
+from jsearch.async_utils import do_parallel
 from jsearch.common.contracts import NULL_ADDRESS
-from jsearch.common.database import MainDBSync
-from jsearch.common.integrations.contracts import get_contracts
 from jsearch.common.rpc import ContractCall, eth_call_batch
+from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Log, Abi, Contract, Contracts, Logs, Block
 from jsearch.utils import split
 
@@ -68,19 +68,18 @@ class BalanceUpdate:
     def key(self):
         return self.token_address, self.account_address
 
-    def apply(self, db):
+    def apply(self, db: MainDBSync):
         if self.is_valid:
             db.update_token_holder_balance(self.token_address, self.account_address, self.value, self.decimals)
-            logger.info(
-                'Token balance updated for token %s account %s block %s value %s',
-                self.token_address, self.account_address, self.block, self.value
-            )
         else:
             logger.error(
                 'Error when trying to update token holder balance: '
                 'token %s account %s block %s balance %s decimals %s',
                 self.token_address, self.account_address, self.block, self.value, self.decimals
             )
+
+
+BalanceUpdates = List[BalanceUpdate]
 
 
 def fetch_erc20_token_decimal_bulk(contracts: Contracts) -> Contracts:
@@ -103,7 +102,7 @@ def fetch_erc20_token_decimal_bulk(contracts: Contracts) -> Contracts:
     return contracts
 
 
-def fetch_erc20_balance_bulk(updates: List[BalanceUpdate]) -> List[BalanceUpdate]:
+def fetch_erc20_balance_bulk(updates: BalanceUpdates) -> BalanceUpdates:
     calls = []
     counter = count()
     for update in updates:
@@ -142,10 +141,23 @@ def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpd
     return updates
 
 
-def fetch_contracts(logs: Logs) -> Dict[str, Contract]:
-    contracts = get_contracts(addresses={log['address'] for log in logs}) or []
-    contracts = chain(*(fetch_erc20_token_decimal_bulk(chunk) for chunk in split(contracts, 50)))
+def prefetch_decimals(contracts: List[Contract]) -> Dict[str, Contract]:
+    contracts = chain(
+        *(fetch_erc20_token_decimal_bulk(chunk) for chunk in split(contracts, settings.ETH_NODE_BATCH_REQUEST_SIZE))
+    )
     return {contract['address']: contract for contract in contracts}
+
+
+async def fetch_contracts(service_bus, logs: Logs) -> Contracts:
+    addresses = list({log['address'] for log in logs})
+    contracts = chain(
+        *await do_parallel(
+            func=service_bus.get_contracts,
+            argument_list=addresses,
+            chunk_size=settings.ETH_NODE_BATCH_REQUEST_SIZE
+        )
+    )
+    return list(contracts)
 
 
 def fetch_blocks(db: MainDBSync, logs: Logs) -> {str: Block}:
@@ -168,11 +180,9 @@ def process_log_operations_bulk(
             decimals = contract.get('decimals')
             updates |= logs_to_balance_updates(log, abi, decimals)
 
-    updates = list(updates)
     for chunk in split(updates, batch_size):
-        chunk = fetch_erc20_balance_bulk(chunk)
-
-        for update in chunk:
+        updates = fetch_erc20_balance_bulk(chunk)
+        for update in updates:
             update.apply(db)
 
     return logs

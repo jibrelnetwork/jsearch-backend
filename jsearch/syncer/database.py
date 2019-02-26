@@ -1,12 +1,13 @@
 import logging
+from typing import List, Dict, Any
 
 import aiopg
+import backoff
 import psycopg2
-from aiopg.sa import create_engine as async_create_engine
+from aiopg.sa import create_engine as async_create_engine, Engine
 from psycopg2.extras import DictCursor
-from sqlalchemy import create_engine as sync_create_engine
+from sqlalchemy import create_engine as sync_create_engine, and_
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.engine.base import Engine as SyncEngine
 from sqlalchemy.pool import NullPool
 
 from jsearch.common import contracts
@@ -20,8 +21,12 @@ from jsearch.common.tables import (
     transactions_t,
     uncles_t,
     reorgs_t,
+    token_holders_t,
+    token_transfers_t,
     chain_splits_t,
 )
+from jsearch.common.utils import as_dicts
+
 
 MAIN_DB_POOL_SIZE = 22
 
@@ -67,6 +72,15 @@ class DBWrapperSync:
 
     def disconnect(self):
         self.conn.close()
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disconnect()
+        if exc_type:
+            return False
 
 
 class RawDB(DBWrapper):
@@ -193,7 +207,16 @@ class MainDB(DBWrapper):
     jSearch Main db wrapper
     """
 
-    engine: SyncEngine
+    engine: Engine
+
+    async def __aenter__(self):
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.disconnect()
+        if exc_type:
+            return False
 
     async def connect(self):
         self.engine = await async_create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
@@ -201,6 +224,17 @@ class MainDB(DBWrapper):
     async def disconnect(self):
         self.engine.close()
         await self.engine.wait_closed()
+
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    async def execute(self, query, *params):
+        async with self.engine.acquire() as connection:
+            return await connection.execute(query, params)
+
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    async def fetch_all(self, query, *params):
+        async with self.engine.acquire() as connection:
+            cursor = await connection.execute(query, params)
+            return await cursor.fetchall()
 
     async def get_latest_synced_block_number(self, blocks_range):
         """
@@ -300,12 +334,21 @@ class MainDB(DBWrapper):
         async with self.engine.acquire() as conn:
             await conn.execute(q)
 
+    @as_dicts
+    async def get_blocks(self, hashes: List[str]):
+        query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
+        return await self.fetch_all(query)
+
 
 class MainDBSync(DBWrapperSync):
 
     def connect(self):
         engine = sync_create_engine(self.connection_string, poolclass=NullPool)
         self.conn = engine.connect()
+
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    def execute(self, query, *args, **kwargs):
+        return self.conn.execute(query, *args, **kwargs)
 
     def is_block_exist(self, block_hash):
         q = """SELECT hash from blocks WHERE hash=%s"""
@@ -329,23 +372,23 @@ class MainDBSync(DBWrapperSync):
 
     def insert_block(self, block_data):
         if block_data:
-            self.conn.execute(blocks_t.insert(), block_data)
+            self.execute(blocks_t.insert(), block_data)
 
     def insert_uncles(self, uncles_data):
         if uncles_data:
-            self.conn.execute(uncles_t.insert(), *uncles_data)
+            self.execute(uncles_t.insert(), *uncles_data)
 
     def insert_transactions(self, transactions_data):
         if transactions_data:
-            self.conn.execute(transactions_t.insert(), *transactions_data)
+            self.execute(transactions_t.insert(), *transactions_data)
 
     def insert_receipts(self, receipts_data):
         if receipts_data:
-            self.conn.execute(receipts_t.insert(), *receipts_data)
+            self.execute(receipts_t.insert(), *receipts_data)
 
     def insert_logs(self, logs_data):
         if logs_data:
-            self.conn.execute(logs_t.insert(), *logs_data)
+            self.execute(logs_t.insert(), *logs_data)
 
     def insert_accounts(self, accounts):
         if not accounts:
@@ -373,9 +416,59 @@ class MainDBSync(DBWrapperSync):
             })
 
         base_insert = insert(accounts_base_t)
-        self.conn.execute(base_insert, *base_items)
-        self.conn.execute(accounts_state_t.insert(), *state_items)
+        self.execute(base_insert, *base_items)
+        self.execute(accounts_state_t.insert(), *state_items)
 
     def insert_internal_transactions(self, internal_transactions):
         if internal_transactions:
-            self.conn.execute(internal_transactions_t.insert(), *internal_transactions)
+            self.execute(internal_transactions_t.insert(), *internal_transactions)
+
+    def insert_or_update_transfers(self, records: List[Dict[str, Any]]):
+        for record in records:
+            insert_query = insert(token_transfers_t).values(record).on_conflict_do_update(
+                index_elements=[
+                    'transaction_hash',
+                    'log_index',
+                    'address',
+                ],
+                set_={
+                    'block_number': record['block_number'],
+                    'block_hash': record['block_hash'],
+                    'transaction_index': record['transaction_index'],
+                    'timestamp': record['timestamp'],
+                    'from_address': record['from_address'],
+                    'to_address': record['to_address'],
+                    'token_address': record['token_address'],
+                    'token_decimals': record['token_decimals'],
+                    'token_name': record['token_name'],
+                    'token_symbol': record['token_symbol'],
+                    'token_value': record['token_value'],
+                }
+            )
+            self.execute(insert_query)
+
+    def update_log(self, tx_hash, block_hash, log_index, values: Dict[str, Any]):
+        query = logs_t.update(). \
+            where(and_(logs_t.c.transaction_hash == tx_hash,
+                       logs_t.c.block_hash == block_hash,
+                       logs_t.c.log_index == log_index)). \
+            values(**values)
+        self.execute(query)
+
+    def update_token_holder_balance(self, token_address: str, account_address: str, balance: int, decimals: int):
+        insert_query = insert(token_holders_t).values(
+            token_address=token_address,
+            account_address=account_address,
+            balance=balance,
+            decimals=decimals
+        )
+        query = insert_query.on_conflict_do_update(
+            index_elements=['token_address', 'account_address'],
+            set_=dict(balance=balance, decimals=decimals)
+        )
+        return self.execute(query)
+
+    @as_dicts
+    def get_blocks(self, hashes):
+        query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
+        return self.execute(query)
