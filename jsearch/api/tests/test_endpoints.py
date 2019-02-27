@@ -246,7 +246,6 @@ async def test_get_account_balances_invalid_addresses_all(cli):
     assert res == []
 
 
-
 async def test_get_account_balances_invalid_addresses(cli: object, main_db_data: object) -> object:
     a1 = main_db_data['accounts_base'][0]
     resp = await cli.get('/v1/accounts/balances?addresses={},{},{}'.format('foo', a1['address'], 'bar'))
@@ -1019,6 +1018,7 @@ async def test_get_wallet_transactions(cli, db):
     ]
     for t in txs:
         db.execute(transactions_t.insert().values(**t))
+
     resp = await cli.get(f'/v1/wallet/transactions?addresses=a1,a2')
     assert resp.status == 200
     res = (await resp.json())['data']
