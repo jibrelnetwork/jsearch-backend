@@ -9,7 +9,7 @@ from web3 import Web3
 from jsearch import settings
 from jsearch.async_utils import do_parallel
 from jsearch.common.contracts import NULL_ADDRESS
-from jsearch.common.rpc import ContractCall, eth_call_batch
+from jsearch.common.rpc import ContractCall, eth_call_batch, eth_call
 from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Log, Abi, Contract, Contracts, Logs, Block
 from jsearch.utils import split
@@ -81,6 +81,21 @@ class BalanceUpdate:
 
 
 BalanceUpdates = List[BalanceUpdate]
+
+
+def fetch_erc20_token_balance(contract_abi: Abi, token_address: str, account_address: str) -> int:
+    token_address_checksum = Web3.toChecksumAddress(token_address)
+    account_address_checksum = Web3.toChecksumAddress(account_address)
+
+    call = ContractCall(
+        abi=contract_abi,
+        address=token_address_checksum,
+        method='balanceOf',
+        args=[account_address_checksum, ],
+        silent=True
+    )
+
+    return eth_call(call=call)
 
 
 def fetch_erc20_token_decimal_bulk(contracts: Contracts) -> Contracts:

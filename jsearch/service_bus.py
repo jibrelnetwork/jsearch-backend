@@ -6,6 +6,7 @@ ROUTE_HANDLE_ERC20_TRANSFERS = 'jsearch.erc20_transfers'
 ROUTE_HANDLE_TRANSACTION_LOGS = 'jsearch.transaction_logs'
 
 ROUTE_GET_CONTRACTS = 'jsearch_contracts.get_contracts'
+ROUTE_GET_CONTRACT = 'jsearch_contracts.get_contract'
 
 
 class JsearchSyncServiceBusClient(SyncServiceBusClient):
@@ -21,6 +22,9 @@ class JsearchServiceBus(ServiceBus):
 
     async def get_contracts(self, addresses, fields=None):
         return await self.rpc_call(ROUTE_GET_CONTRACTS, value={'addresses': addresses, 'fields': fields})
+
+    async def get_contract(self, address):
+        return await self.rpc_call(ROUTE_GET_CONTRACT, value={'address': address})
 
 
 service_bus = JsearchServiceBus('jsearch', bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)

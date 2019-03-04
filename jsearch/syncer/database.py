@@ -23,6 +23,7 @@ from jsearch.common.tables import (
     reorgs_t,
     token_holders_t, token_transfers_t)
 from jsearch.common.utils import as_dicts
+from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
 
 MAIN_DB_POOL_SIZE = 22
 
@@ -275,6 +276,10 @@ class MainDB(DBWrapper):
             .values(is_forked=not reorg['reinserted']) \
             .where(logs_t.c.block_hash == reorg['block_hash'])
 
+        update_token_transfers_q = logs_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(logs_t.c.block_hash == reorg['block_hash'])
+
         update_internal_transactions_q = internal_transactions_t.update() \
             .values(is_forked=not reorg['reinserted']) \
             .where(internal_transactions_t.c.block_hash == reorg['block_hash'])
@@ -305,6 +310,7 @@ class MainDB(DBWrapper):
                 await conn.execute(update_accounts_state_q)
                 await conn.execute(update_uncles_q)
                 await conn.execute(add_reorg_q)
+                await conn.execute(update_token_transfers_q)
                 logger.debug('Reorg applyed for block %s %s', reorg['block_number'], reorg['block_hash'])
                 return True
 
@@ -438,15 +444,11 @@ class MainDBSync(DBWrapperSync):
         self.execute(query)
 
     def update_token_holder_balance(self, token_address: str, account_address: str, balance: int, decimals: int):
-        insert_query = insert(token_holders_t).values(
+        query = update_token_holder_balance_q(
             token_address=token_address,
             account_address=account_address,
             balance=balance,
             decimals=decimals
-        )
-        query = insert_query.on_conflict_do_update(
-            index_elements=['token_address', 'account_address'],
-            set_=dict(balance=balance, decimals=decimals)
         )
         return self.execute(query)
 
