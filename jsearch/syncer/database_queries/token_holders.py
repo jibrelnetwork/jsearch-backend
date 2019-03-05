@@ -1,4 +1,4 @@
-from sqlalchemy import insert
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Query
 
 from jsearch.common.tables import token_holders_t

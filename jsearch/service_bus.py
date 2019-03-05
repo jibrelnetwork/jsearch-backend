@@ -1,6 +1,7 @@
 from jsearch_service_bus import SyncServiceBusClient, ServiceBus
 
 from jsearch import settings
+from jsearch.typing import Contracts
 
 SERVICE_JSEARCH = 'jsearch'
 SERVICE_CONTRACT = 'jsearch_contracts'
@@ -15,7 +16,6 @@ ROUTE_HANDLE_TRANSACTION_LOGS = f'{SERVICE_JSEARCH}.{WORKER_HANDLE_TRANSACTION_L
 ROUTE_HANDLE_UPDATE_TOKEN_HOLDER_BALANCE = f'{SERVICE_JSEARCH}.{WORKER_UPDATE_TOKEN_HOLDER_BALANCE}'
 ROUTE_HANDLE_REORGANIZATION_EVENTS = f'{SERVICE_JSEARCH}.{WORKER_HANDLE_REORGANIZATION_EVENT}'
 
-ROUTE_GET_CONTRACT = f'{SERVICE_CONTRACT}.get_contract'
 ROUTE_GET_CONTRACTS = f'{SERVICE_CONTRACT}.get_contracts'
 
 
@@ -49,11 +49,8 @@ class JsearchServiceBus(ServiceBus):
     async def send_transfers(self, value):
         return await self.send_to_stream(ROUTE_HANDLE_ERC20_TRANSFERS, value)
 
-    async def get_contracts(self, addresses, fields=None):
+    async def get_contracts(self, addresses, fields=None) -> Contracts:
         return await self.rpc_call(ROUTE_GET_CONTRACTS, value={'addresses': addresses, 'fields': fields})
-
-    async def get_contract(self, address):
-        return await self.rpc_call(ROUTE_GET_CONTRACT, value={'address': address})
 
 
 service_bus = JsearchServiceBus('jsearch', bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)

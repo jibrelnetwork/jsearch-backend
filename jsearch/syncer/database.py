@@ -21,7 +21,7 @@ from jsearch.common.tables import (
     transactions_t,
     uncles_t,
     reorgs_t,
-    token_holders_t, token_transfers_t)
+    token_transfers_t)
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
 
@@ -56,6 +56,15 @@ class DBWrapper:
     def disconnect(self):
         self.pool.close()
 
+    async def __aenter__(self):
+        await self.connect()
+        return self
+
+    async def __aexit__(self, *exc_info):
+        self.disconnect()
+        if any(exc_info):
+            return False
+
 
 class DBWrapperSync:
 
@@ -74,9 +83,9 @@ class DBWrapperSync:
         self.connect()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *exc_info):
         self.disconnect()
-        if exc_type:
+        if any(exc_info):
             return False
 
 
@@ -224,6 +233,12 @@ class MainDB(DBWrapper):
             cursor = await connection.execute(query, params)
             return await cursor.fetchall()
 
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    async def fetch_one(self, query, *params):
+        async with self.engine.acquire() as connection:
+            cursor = await connection.execute(query, params)
+            return await cursor.fetchone()
+
     async def get_latest_synced_block_number(self, blocks_range):
         """
         Get latest block writed in main DB
@@ -276,9 +291,9 @@ class MainDB(DBWrapper):
             .values(is_forked=not reorg['reinserted']) \
             .where(logs_t.c.block_hash == reorg['block_hash'])
 
-        update_token_transfers_q = logs_t.update() \
+        update_token_transfers_q = token_transfers_t.update() \
             .values(is_forked=not reorg['reinserted']) \
-            .where(logs_t.c.block_hash == reorg['block_hash'])
+            .where(token_transfers_t.c.block_hash == reorg['block_hash'])
 
         update_internal_transactions_q = internal_transactions_t.update() \
             .values(is_forked=not reorg['reinserted']) \
@@ -321,6 +336,10 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             last_reorg_num = row['id'] if row else 0
             return last_reorg_num
+
+    async def get_last_block(self):
+        result = await self.fetch_one(query="SELECT max(number) as last_block from bodies")
+        return result['last_block']
 
     @as_dicts
     async def get_blocks(self, hashes: List[str]):
