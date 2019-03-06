@@ -20,6 +20,7 @@ setup(
             'jsearch-syncer = jsearch.syncer.main:run',
             'jsearch-post-processing = jsearch.post_processing.__main__:main',
             'jsearch-check = jsearch.validation.__main__:check',
+            'jsearch-worker = jsearch.worker.__main__:main'
         ]
     }
 )
