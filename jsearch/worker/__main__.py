@@ -55,7 +55,7 @@ class DatabaseService(Service, Singleton):
 
     @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
     async def on_start(self) -> None:
-        self.engine = await create_engine(settings.DB_DSN)
+        self.engine = await create_engine(settings.JSEARCH_MAIN_DB)
 
     async def on_stop(self) -> None:
         self.engine.close()
