@@ -233,12 +233,6 @@ class MainDB(DBWrapper):
             cursor = await connection.execute(query, params)
             return await cursor.fetchall()
 
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
-    async def fetch_one(self, query, *params):
-        async with self.engine.acquire() as connection:
-            cursor = await connection.execute(query, params)
-            return await cursor.fetchone()
-
     async def get_latest_synced_block_number(self, blocks_range):
         """
         Get latest block writed in main DB
@@ -336,10 +330,6 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             last_reorg_num = row['id'] if row else 0
             return last_reorg_num
-
-    async def get_last_block(self):
-        result = await self.fetch_one(query="SELECT max(number) as last_block from bodies")
-        return result['last_block']
 
     @as_dicts
     async def get_blocks(self, hashes: List[str]):
