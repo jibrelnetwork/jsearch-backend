@@ -5,7 +5,7 @@ import time
 
 from jsearch import settings
 from jsearch.common.database import DatabaseError
-from jsearch.service_bus import sync_client
+from jsearch.service_bus import service_bus
 from jsearch.syncer.processor import SyncProcessor
 
 logger = logging.getLogger(__name__)
@@ -150,7 +150,7 @@ class Manager:
                 await loop.run_in_executor(self.executor, sync_block, reorg['block_hash'], reorg['block_number'])
                 return c
 
-            sync_client.emit_reorganization_event(
+            await service_bus.emit_reorganization_event(
                 block_hash=reorg['block_hash'],
                 block_number=reorg['block_number'],
                 reinserted=reorg['reinserted']

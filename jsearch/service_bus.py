@@ -8,7 +8,7 @@ SERVICE_CONTRACT = 'jsearch_contracts'
 
 WORKER_HANDLE_ERC20_TRANSFERS = 'erc20_transfers'
 WORKER_HANDLE_TRANSACTION_LOGS = 'transaction_logs'
-WORKER_HANDLE_REORGANIZATION_EVENT = 'reorganization'
+WORKER_HANDLE_REORGANIZATION_EVENT = 'reorganizations'
 
 ROUTE_HANDLE_ERC20_TRANSFERS = f'{SERVICE_JSEARCH}.{WORKER_HANDLE_ERC20_TRANSFERS}'
 ROUTE_HANDLE_TRANSACTION_LOGS = f'{SERVICE_JSEARCH}.{WORKER_HANDLE_TRANSACTION_LOGS}'
@@ -22,8 +22,10 @@ class JsearchSyncServiceBusClient(SyncServiceBusClient):
     def write_logs(self, logs):
         return self.send_to_stream(ROUTE_HANDLE_TRANSACTION_LOGS, value=logs)
 
-    def emit_reorganization_event(self, block_hash, block_number, reinserted):
-        return self.send_to_stream(
+
+class JsearchServiceBus(ServiceBus):
+    async def emit_reorganization_event(self, block_hash, block_number, reinserted):
+        return await self.send_to_stream(
             route=ROUTE_HANDLE_REORGANIZATION_EVENTS,
             value={
                 'block_hash': block_hash,
@@ -32,8 +34,6 @@ class JsearchSyncServiceBusClient(SyncServiceBusClient):
             }
         )
 
-
-class JsearchServiceBus(ServiceBus):
     async def send_transfers(self, value):
         return await self.send_to_stream(ROUTE_HANDLE_ERC20_TRANSFERS, value)
 
