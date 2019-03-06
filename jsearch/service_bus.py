@@ -9,11 +9,9 @@ SERVICE_CONTRACT = 'jsearch_contracts'
 WORKER_HANDLE_ERC20_TRANSFERS = 'erc20_transfers'
 WORKER_HANDLE_TRANSACTION_LOGS = 'transaction_logs'
 WORKER_HANDLE_REORGANIZATION_EVENT = 'reorganization'
-WORKER_UPDATE_TOKEN_HOLDER_BALANCE = 'update_token_holder_balance'
 
 ROUTE_HANDLE_ERC20_TRANSFERS = f'{SERVICE_JSEARCH}.{WORKER_HANDLE_ERC20_TRANSFERS}'
 ROUTE_HANDLE_TRANSACTION_LOGS = f'{SERVICE_JSEARCH}.{WORKER_HANDLE_TRANSACTION_LOGS}'
-ROUTE_HANDLE_UPDATE_TOKEN_HOLDER_BALANCE = f'{SERVICE_JSEARCH}.{WORKER_UPDATE_TOKEN_HOLDER_BALANCE}'
 ROUTE_HANDLE_REORGANIZATION_EVENTS = f'{SERVICE_JSEARCH}.{WORKER_HANDLE_REORGANIZATION_EVENT}'
 
 ROUTE_GET_CONTRACTS = f'{SERVICE_CONTRACT}.get_contracts'
@@ -36,16 +34,6 @@ class JsearchSyncServiceBusClient(SyncServiceBusClient):
 
 
 class JsearchServiceBus(ServiceBus):
-    async def emit_update_token_balance_holder_event(self, token_address: str, account_address: str, reason: str):
-        return await self.send_to_stream(
-            route=ROUTE_HANDLE_UPDATE_TOKEN_HOLDER_BALANCE,
-            value={
-                'token_address': token_address,
-                'account_address': account_address,
-                'reason': reason
-            }
-        )
-
     async def send_transfers(self, value):
         return await self.send_to_stream(ROUTE_HANDLE_ERC20_TRANSFERS, value)
 
