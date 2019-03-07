@@ -445,16 +445,16 @@ class Storage:
                 items.append(t)
             return [models.AssetTransfer(**t) for t in items]
 
-    async def get_wallet_transactions(self, addresses: List[str], limit: int, offset: int) -> List:
+    async def get_wallet_transactions(self, address: str, limit: int, offset: int) -> List:
         offset *= 2
         limit *= 2
         query = """SELECT * FROM transactions
-                        WHERE address = ANY($1::varchar[])
+                        WHERE address = $1
                         ORDER BY block_number, transaction_index DESC
                         LIMIT $2 OFFSET $3 """
 
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, addresses, limit, offset)
+            rows = await conn.fetch(query, address, limit, offset)
             distinct_set = set()
             transactions = []
             for row in rows:
@@ -505,4 +505,19 @@ class Storage:
                 }
                 summary.append(item)
             return summary
+
+    async def get_nonce(self, address):
+        """
+        Get account nonce
+        """
+
+        query = """
+            SELECT "nonce" FROM accounts_state
+            WHERE address=$1 ORDER BY block_number DESC LIMIT 1;
+        """
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(query, address)
+            if row:
+                return row['nonce']
+            return 0
 

@@ -1,3 +1,5 @@
+import asyncio
+
 import aiohttp
 from aiohttp import web
 
@@ -375,11 +377,19 @@ async def get_wallet_transfers(request):
 
 async def get_wallet_transactions(request):
     params = validate_params(request)
-    addresses = request.query.get('addresses')
-    addresses = addresses.split(',')
+    address = request.query.get('address')
     storage = request.app['storage']
-    transactions = await storage.get_wallet_transactions(
-        addresses,
+    txs_task = storage.get_wallet_transactions(
+        address,
         limit=params['limit'],
         offset=params['offset'])
-    return api_success([t.to_dict() for t in transactions])
+    nonce_task = storage.get_nonce(address)
+    results = await asyncio.gather(txs_task, nonce_task)
+    txs = [t.to_dict() for t in results[0]]
+    nonce = results[1]
+    result = {
+        'transactions': txs,
+        'pendingTransactions': [],
+        'outgoingTransactionsNumber': nonce
+    }
+    return api_success(result)

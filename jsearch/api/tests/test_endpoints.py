@@ -10,6 +10,7 @@ from jsearch.common.tables import (
     assets_transfers_t,
     transactions_t,
     assets_summary_t,
+    accounts_state_t,
 )
 
 from jsearch.tests.entities import (
@@ -954,7 +955,7 @@ async def test_get_wallet_transactions(cli, db):
         {
             'address': 'a1',
             'hash': '0xt1',
-            'block_number': '0xb1',
+            'block_number': 1,
             'block_hash': '0xb1',
             'transaction_index': 0,
             'from': '0xa1',
@@ -970,7 +971,7 @@ async def test_get_wallet_transactions(cli, db):
         {
             'address': 'a2',
             'hash': '0xt1',
-            'block_number': '0xb1',
+            'block_number': 1,
             'block_hash': '0xb1',
             'transaction_index': 0,
             'from': '0xa1',
@@ -986,7 +987,7 @@ async def test_get_wallet_transactions(cli, db):
         {
             'address': 'a1',
             'hash': '0xt2',
-            'block_number': '0xb1',
+            'block_number': 1,
             'block_hash': '0xb1',
             'transaction_index': 0,
             'from': 'a1',
@@ -1002,7 +1003,7 @@ async def test_get_wallet_transactions(cli, db):
         {
             'address': 'a3',
             'hash': '0xt2',
-            'block_number': '0xb1',
+            'block_number': 1,
             'block_hash': '0xb1',
             'transaction_index': 0,
             'from': 'a1',
@@ -1018,12 +1019,14 @@ async def test_get_wallet_transactions(cli, db):
     ]
     for t in txs:
         db.execute(transactions_t.insert().values(**t))
+        
+    db.execute(accounts_state_t.insert().values(address='a1', nonce=1, block_number=1, block_hash='0xb1'))
 
-    resp = await cli.get(f'/v1/wallet/transactions?addresses=a1,a2')
+    resp = await cli.get(f'/v1/wallet/transactions?address=a1')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == [{'blockHash': '0xb1',
-                    'blockNumber': 177,
+    assert res == {'transactions':[{'blockHash': '0xb1',
+                    'blockNumber': 1,
                     'from': '0xa1',
                     'gas': '0xf4240',
                     'gasPrice': '0x430e23400',
@@ -1037,7 +1040,7 @@ async def test_get_wallet_transactions(cli, db):
                     'v': None,
                     'value': '0x0'},
                    {'blockHash': '0xb1',
-                    'blockNumber': 177,
+                    'blockNumber': 1,
                     'from': 'a1',
                     'gas': '0xf4240',
                     'gasPrice': '0x430e23400',
@@ -1049,7 +1052,13 @@ async def test_get_wallet_transactions(cli, db):
                     'to': 'a2',
                     'transactionIndex': 0,
                     'v': None,
-                    'value': '0x0'}]
+                    'value': '0x0'}],
+
+    'pendingTransactions': [
+
+    ],
+    'outgoingTransactionsNumber': 1
+    }
 
 
 async def test_get_wallet_assets_summary(cli, db):
