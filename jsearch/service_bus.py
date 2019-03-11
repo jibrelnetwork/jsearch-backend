@@ -29,8 +29,8 @@ class JsearchSyncServiceBusClient(SyncServiceBusClient):
     def write_logs(self, logs):
         return self.send_to_stream(ROUTE_HANDLE_TRANSACTION_LOGS, value=logs)
 
-    async def get_contracts(self, addresses, fields=None) -> Contracts:
-        return await self.rpc_call(ROUTE_GET_CONTRACTS, value={'addresses': addresses, 'fields': fields})
+    def get_contracts(self, addresses, fields=None) -> Contracts:
+        return self.rpc_call(ROUTE_GET_CONTRACTS, value={'addresses': addresses, 'fields': fields})
 
 
 class JsearchServiceBus(ServiceBus):
