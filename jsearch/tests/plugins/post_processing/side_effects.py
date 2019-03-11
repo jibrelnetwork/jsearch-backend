@@ -1,18 +1,23 @@
+from typing import List
+
 import pytest
 
-from jsearch.typing import Transfers, Contracts
+from jsearch.common.contracts import ERC20_ABI
+from jsearch.typing import Contracts
 
 
 @pytest.fixture()
 def mock_async_fetch_contracts(mocker):
     def _wrapper(contracts: Contracts):
-        async def get_contracts(transfers: Transfers):
-            nonlocal contracts
-
+        async def get_contracts(addresses: List[str]):
             result = []
-            for transfer in transfers:
-                contracts = [item for item in contracts if item['address'] == transfer['address']]
-                contract = contracts and contracts[0] or {'address': transfer['address']}
+            for address in addresses:
+                matched_contracts = [item for item in contracts if item['address'] == address]
+                contract = matched_contracts and matched_contracts[0] or {
+                    'address': address,
+                    'abi': ERC20_ABI,
+                    'token_decimals': 18,
+                }
                 result.append(contract)
             return result
 
@@ -24,13 +29,15 @@ def mock_async_fetch_contracts(mocker):
 @pytest.fixture()
 def mock_fetch_contracts(mocker):
     def _wrapper(contracts: Contracts):
-        def get_contracts(transfers: Transfers):
-            nonlocal contracts
-
+        def get_contracts(addresses):
             result = []
-            for transfer in transfers:
-                contracts = [item for item in contracts if item['address'] == transfer['address']]
-                contract = contracts and contracts[0] or {'address': transfer['address']}
+            for address in addresses:
+                matched_contracts = [item for item in contracts if item['address'] == address]
+                contract = matched_contracts and matched_contracts[0] or {
+                    'address': address,
+                    'abi': ERC20_ABI,
+                    'token_decimals': 18,
+                }
                 result.append(contract)
             return result
 

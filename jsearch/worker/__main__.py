@@ -74,6 +74,18 @@ class DatabaseService(Service, Singleton):
 service = DatabaseService()
 
 
+async def get_positive_changes(connection, account, last_stable_block) -> int:
+    query = get_transfer_to_since_block_query(account, last_stable_block)
+    result = await connection.execute(query)
+    return (await result.fetchone())['value'] or 0
+
+
+async def get_negative_changes(connection, account, last_stable_block) -> int:
+    query = get_transfer_from_since_block_query(account, last_stable_block)
+    result = await connection.execute(query)
+    return (await result.fetchone())['value'] or 0
+
+
 async def get_balance(account, token, abi, connection):
     loop = asyncio.get_event_loop()
     last_stable_block = await LastBlock().get_last_stable_block()
@@ -93,16 +105,14 @@ async def get_balance(account, token, abi, connection):
         logger.info("[GET BALANCE] Balance %s can't be handled for %s holder %s", balance, token, account)
         balance = None
     else:
-        negative, positive = await asyncio.gather(
-            connection.execute(get_transfer_from_since_block_query(account, last_stable_block)),
-            connection.execute(get_transfer_to_since_block_query(account, last_stable_block))
-        )
-        changes = positive['value'] + negative['value']
+        positive_changes = await get_positive_changes(connection, account, last_stable_block)
+        negative_chagnes = await get_negative_changes(connection, account, last_stable_block)
+        changes = positive_changes - negative_chagnes
         balance = (balance or 0) + changes
     return balance
 
 
-@service_bus.listen_stream(group='jsearch-worker', WORKER_HANDLE_REORGANIZATION_EVENT)
+@service_bus.listen_stream(WORKER_HANDLE_REORGANIZATION_EVENT, service_name='jsearch-worker')
 async def handle_block_reorganization(block_hash, block_number, reinserted):
     logging.info("[REORG] Block number %s, hash %s with reinsert status (%s)", block_number, block_hash, reinserted)
 
@@ -141,7 +151,7 @@ async def handle_block_reorganization(block_hash, block_number, reinserted):
                     await connection.execute(query=query)
 
 
-@service_bus.listen_stream(group='jsearch-worker', stream_name=WORKER_HANDLE_LAST_BLOCK)
+@service_bus.listen_stream(service_name='jsearch-worker', stream_name=WORKER_HANDLE_LAST_BLOCK)
 async def receive_last_block(number):
     logger.info("[LAST BLOCK] Receive new last block number %s", number)
 

@@ -368,8 +368,7 @@ class MainDBSync(DBWrapperSync):
         return self.conn.execute(query, *args, **kwargs)
 
     def fetch_one(self, query, *args, **kwargs):
-        with self.conn.execute(query, *args, **kwargs) as cursor:
-            return cursor.fetchone()
+        return self.execute(query, *args, **kwargs).fetchone()
 
     def is_block_exist(self, block_hash):
         q = """SELECT hash from blocks WHERE hash=%s"""
@@ -494,4 +493,4 @@ class MainDBSync(DBWrapperSync):
         positive_changes = self.fetch_one(query=get_transfer_to_since_block_query(address, block_number))['value']
         negative_changes = self.fetch_one(query=get_transfer_from_since_block_query(address, block_number))['value']
 
-        return positive_changes - negative_changes
+        return (positive_changes or 0) - (negative_changes or 0)

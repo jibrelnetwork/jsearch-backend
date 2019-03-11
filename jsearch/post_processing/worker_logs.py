@@ -88,11 +88,13 @@ def worker(logs: Logs) -> Logs:
 
         transfer_logs = [log for log in logs if log['is_token_transfer']]
 
-        contracts = fetch_contracts(transfer_logs)
+        addresses = list({log['address'] for log in transfer_logs})
+        contracts = fetch_contracts(addresses=addresses)
         contracts = prefetch_decimals(contracts)
-        blocks = fetch_blocks(db, logs)
 
-        transfers = logs_to_transfers(logs, blocks, contracts)
+        blocks = fetch_blocks(db, transfer_logs)
+
+        transfers = logs_to_transfers(transfer_logs, blocks, contracts)
         db.insert_or_update_transfers(transfers)
 
         return transfers

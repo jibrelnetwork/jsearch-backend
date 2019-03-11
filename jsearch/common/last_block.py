@@ -43,19 +43,21 @@ class LastBlock(Singleton):
 
     async def load(self):
         consumer = _get_consumer()
-
+        await consumer.start()
         offsets = await consumer.end_offsets(partitions=[self._partition])
-        last_value_offset = offsets[ROUTE_HANDLE_LAST_BLOCK]
 
-        await consumer.seek(self._partition, last_value_offset - 1)
-        value = await consumer.getone(self._partition)
+        last_value_offset = offsets[self._partition]
+        if last_value_offset > 1:
+            last_value_offset -= 1
 
+        consumer.seek(self._partition, last_value_offset)
+        msg = await consumer.getone(self._partition)
         await consumer.stop()
 
-        number = value['number']
-        self.update(number=number)
+        last_block = msg.value['number']
+        self.update(number=last_block)
 
-        return number
+        return last_block
 
     def update(self, number):
         self.number = number

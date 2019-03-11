@@ -21,7 +21,7 @@ def mock_service_bus_get_contracts(mocker):
 def mock_fetch_erc20_balance_bulk(mocker):
     store = defaultdict(dict)
 
-    def fetch_erc20_token_balance(contract_abi, token_address, account_address):
+    def fetch_erc20_token_balance(contract_abi, token_address, account_address, block):
         if account_address in store[token_address]:
             return store[token_address][account_address]
 

@@ -28,7 +28,10 @@ async def handle_new_transfers(blocks: List[Transfers]):
 
     logs = list(chain(*blocks))
     last_stable_block = await last_block.get_last_stable_block()
-    contracts = await async_fetch_contracts(service_bus, logs)
+
+    addresses = list({log['token_address'] for log in logs})
+    contracts = await async_fetch_contracts(addresses)
+
     await loop.run_in_executor(executor.get(), worker, contracts, logs, last_stable_block)
 
     logs_per_seconds.finish(value=len(logs))
