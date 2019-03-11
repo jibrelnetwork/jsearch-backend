@@ -347,8 +347,8 @@ async def get_blockchain_tip(request):
 
 async def get_assets_summary(request):
     params = validate_params(request)
-    addresses = request.query.get('addresses')
-    addresses = addresses.split(',')
+    addresses = request.query.get('addresses', '')
+    addresses = addresses.split(',') if addresses else []
     assets = request.query.get('assets', '')
     assets = [a for a in assets.split(',') if a]
     storage = request.app['storage']
@@ -362,8 +362,8 @@ async def get_assets_summary(request):
 
 async def get_wallet_transfers(request):
     params = validate_params(request)
-    addresses = request.query.get('addresses')
-    addresses = addresses.split(',')
+    addresses = request.query.get('addresses', '')
+    addresses = addresses.split(',') if addresses else []
     assets = request.query.get('assets', '')
     assets = [a for a in assets.split(',') if a]
     storage = request.app['storage']
@@ -377,7 +377,7 @@ async def get_wallet_transfers(request):
 
 async def get_wallet_transactions(request):
     params = validate_params(request)
-    address = request.query.get('address')
+    address = request.query.get('address', '')
     storage = request.app['storage']
     txs_task = storage.get_wallet_transactions(
         address,

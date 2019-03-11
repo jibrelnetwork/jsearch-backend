@@ -389,7 +389,6 @@ class Storage:
 
         async with self.pool.acquire() as conn:
             split = await conn.fetchrow(split_query, last_known_block_hash)
-        async with self.pool.acquire() as conn:
             block = await conn.fetchrow(block_query, last_known_block_hash)
 
         if block is None:

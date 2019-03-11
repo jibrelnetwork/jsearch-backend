@@ -865,6 +865,13 @@ async def test_get_blockchain_tip_no_block(cli):
                                    'data': None}
 
 
+async def test_get_wallet_transfers_no_addresses(cli, db):
+    resp = await cli.get(f'/v1/wallet/transfers')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == []
+
+
 async def test_get_wallet_transfers(cli, db):
     transfers = [
         {'address': 'a1',
