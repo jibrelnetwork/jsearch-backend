@@ -36,6 +36,7 @@ def truncate(db):
         "accounts",
         "rewards",
         "reorgs",
+        "chain_splits",
         "internal_transactions"
     ]
     for table in tables:

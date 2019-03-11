@@ -1,3 +1,5 @@
+import pytest
+
 from jsearch.common.tables import blocks_t, transactions_t, receipts_t, logs_t, accounts_base_t, accounts_state_t
 from jsearch.syncer.processor import SyncProcessor
 
@@ -5,10 +7,12 @@ pytest_plugins = [
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.dumps',
     'jsearch.tests.plugins.databases.raw_db',
+    'jsearch.tests.plugins.service_bus'
 ]
 
 
-def test_sync_block(raw_db_sample, db, raw_db_connection_string, db_connection_string):
+@pytest.mark.usefixtures('mock_service_bus_sync_client')
+async def test_sync_block(raw_db_sample, db, raw_db_connection_string, db_connection_string):
     s = raw_db_sample
     processor = SyncProcessor(raw_db_connection_string, db_connection_string)
     processor.sync_block(s['headers'][0]['block_hash'])

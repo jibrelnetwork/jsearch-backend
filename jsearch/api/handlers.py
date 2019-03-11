@@ -1,3 +1,5 @@
+import asyncio
+
 import aiohttp
 from aiohttp import web
 
@@ -5,7 +7,8 @@ from jsearch import settings
 from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
-from jsearch.api.helpers import get_tag, validate_params, api_success, proxy_response
+from jsearch.api.helpers import get_tag, validate_params, api_success, proxy_response, api_error
+from jsearch.api.error_code import ErrorCode
 
 
 async def get_account(request):
@@ -326,3 +329,67 @@ async def on_new_contracts_added(request):
     if settings.ENABLE_RESET_POST_PROCESSING:
         tasks.on_new_contracts_added_task.delay(address)
     return api_success({})
+
+
+async def get_blockchain_tip(request):
+    tip = request.query.get('tip')
+    storage = request.app['storage']
+    block_status = await storage.get_blockchain_tip_status(tip)
+    if block_status is None:
+        err = {
+            'field': 'tip',
+            'error_code': ErrorCode.BLOCK_NOT_FOUND,
+            'error_message': f'Block with hash {tip} not found'
+        }
+        return api_error(status=404, errors=[err])
+    return api_success(block_status)
+
+
+async def get_assets_summary(request):
+    params = validate_params(request)
+    addresses = request.query.get('addresses', '')
+    addresses = addresses.split(',') if addresses else []
+    assets = request.query.get('assets', '')
+    assets = [a for a in assets.split(',') if a]
+    storage = request.app['storage']
+    summary = await storage.get_wallet_assets_summary(
+        addresses,
+        limit=params['limit'],
+        offset=params['offset'],
+        assets=assets)
+    return api_success(summary)
+
+
+async def get_wallet_transfers(request):
+    params = validate_params(request)
+    addresses = request.query.get('addresses', '')
+    addresses = addresses.split(',') if addresses else []
+    assets = request.query.get('assets', '')
+    assets = [a for a in assets.split(',') if a]
+    storage = request.app['storage']
+    transfers = await storage.get_wallet_assets_transfers(
+        addresses,
+        limit=params['limit'],
+        offset=params['offset'],
+        assets=assets)
+    return api_success([t.to_dict() for t in transfers])
+
+
+async def get_wallet_transactions(request):
+    params = validate_params(request)
+    address = request.query.get('address', '')
+    storage = request.app['storage']
+    txs_task = storage.get_wallet_transactions(
+        address,
+        limit=params['limit'],
+        offset=params['offset'])
+    nonce_task = storage.get_nonce(address)
+    results = await asyncio.gather(txs_task, nonce_task)
+    txs = [t.to_dict() for t in results[0]]
+    nonce = results[1]
+    result = {
+        'transactions': txs,
+        'pendingTransactions': [],
+        'outgoingTransactionsNumber': nonce
+    }
+    return api_success(result)

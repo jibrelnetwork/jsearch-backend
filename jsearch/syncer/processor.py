@@ -8,6 +8,7 @@ from jsearch import settings
 from jsearch.common import contracts
 from jsearch.syncer.database import MainDBSync, RawDBSync
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +39,6 @@ class SyncProcessor:
         :param block_number: number of block to sync
         :return: True if sync is successfull, False if syn fails or block already synced
         """
-
         logger.debug("Syncing Block %s #%s", block_hash, block_number)
 
         self.main_db.connect()
