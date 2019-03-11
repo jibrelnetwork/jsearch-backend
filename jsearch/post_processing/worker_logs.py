@@ -5,7 +5,9 @@ from itertools import groupby, chain
 from typing import List
 
 from jsearch import settings
+from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
+from jsearch.common.processing.utils import fetch_contracts, fetch_blocks, prefetch_decimals
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics, Metric
 from jsearch.service_bus import service_bus, WORKER_HANDLE_TRANSACTION_LOGS
@@ -56,7 +58,7 @@ def worker(logs: Logs) -> Logs:
     """
     Process transaction logs.
     Parse their event types and args via ERC20 ABI.
-    Detect ERC20 transfers.
+    Detect ERC20 transfers and send them to service bus.
 
     Args:
         logs: list of transaction logs
@@ -83,4 +85,14 @@ def worker(logs: Logs) -> Logs:
                 }
             )
         logger.info('[WORKER] log update speed %0.2f', len(logs) / (time.time() - start_at))
-    return [log for log in logs if log['is_token_transfer']]
+
+        transfer_logs = [log for log in logs if log['is_token_transfer']]
+
+        contracts = fetch_contracts(transfer_logs)
+        contracts = prefetch_decimals(contracts)
+        blocks = fetch_blocks(db, logs)
+
+        transfers = logs_to_transfers(logs, blocks, contracts)
+        db.insert_or_update_transfers(transfers)
+
+        return transfers

@@ -11,6 +11,8 @@ KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092,')
 if ',' in KAFKA_BOOTSTRAP_SERVERS:
     KAFKA_BOOTSTRAP_SERVERS = [server.strip() for server in KAFKA_BOOTSTRAP_SERVERS.split(',')]
 
+ETH_BALANCE_BLOCK_OFFSET = os.getenv('ETH_BALANCE_BLOCK_OFFSET', 6)
+
 ETH_NODE_URL = os.getenv('ETH_NODE_URL', 'https://main-node.jwallet.network')
 ETH_NODE_BATCH_REQUEST_SIZE = int(os.getenv('ETH_NODE_BATCH_REQUEST_SIZE', '50'))
 

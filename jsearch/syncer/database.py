@@ -21,9 +21,14 @@ from jsearch.common.tables import (
     transactions_t,
     uncles_t,
     reorgs_t,
-    token_transfers_t)
+    token_transfers_t
+)
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
+from jsearch.syncer.database_queries.token_transfers import (
+    get_transfer_from_since_block_query,
+    get_transfer_to_since_block_query
+)
 
 MAIN_DB_POOL_SIZE = 22
 
@@ -347,6 +352,10 @@ class MainDBSync(DBWrapperSync):
     def execute(self, query, *args, **kwargs):
         return self.conn.execute(query, *args, **kwargs)
 
+    def fetch_one(self, query, *args, **kwargs):
+        with self.conn.execute(query, *args, **kwargs) as cursor:
+            return cursor.fetchone()
+
     def is_block_exist(self, block_hash):
         q = """SELECT hash from blocks WHERE hash=%s"""
         row = self.conn.execute(q, [block_hash]).fetchone()
@@ -465,3 +474,9 @@ class MainDBSync(DBWrapperSync):
     def get_blocks(self, hashes):
         query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
         return self.execute(query)
+
+    def get_balance_changes_since_block(self, address: str, block_number: int) -> int:
+        positive_changes = self.fetch_one(query=get_transfer_to_since_block_query(address, block_number))['value']
+        negative_changes = self.fetch_one(query=get_transfer_from_since_block_query(address, block_number))['value']
+
+        return positive_changes - negative_changes

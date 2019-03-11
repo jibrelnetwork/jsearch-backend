@@ -105,7 +105,7 @@ class ContractCall:
                  pk: Optional[int] = None,
                  args: Any = None,
                  kwargs: Any = None,
-                 block: str = 'latest',
+                 block: Optional[str] = None,
                  silent: bool = False) -> None:
         self.pk = pk if pk is not None else randint(1, 100)
         self.abi = abi
@@ -113,7 +113,7 @@ class ContractCall:
         self.method = method
         self.args = args
         self.kwargs = kwargs
-        self.block = block
+        self.block = block or 'latest'
         self.silent = silent
 
     def encode(self) -> Dict[str, Any]:

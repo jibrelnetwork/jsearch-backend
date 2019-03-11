@@ -35,6 +35,8 @@ class Manager:
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
         self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
 
+        self.latest_available_block_num = None
+
     async def run(self):
         logger.info("Starting Sync Manager, sync range: %s", self.sync_range)
         self._running = True
@@ -61,10 +63,10 @@ class Manager:
                 avg_time = sync_time / synced_blocks_cnt if synced_blocks_cnt else 0
                 logger.info("%s blocks synced on %0.2fs, avg time %0.2fs", synced_blocks_cnt, sync_time, avg_time)
             except DatabaseError:
-                logger.exception("Database Error accured:")
+                logger.exception("Database Error raised:")
                 await asyncio.sleep(self.sleep_on_db_error)
             except Exception:
-                logger.exception("Error accured:")
+                logger.exception("Error raised:")
                 await asyncio.sleep(self.sleep_on_error)
                 self.sleep_on_error = self.sleep_on_error * 2
             else:
@@ -99,7 +101,7 @@ class Manager:
     async def get_blocks_to_sync(self):
         latest_synced_block_num = await self.main_db.get_latest_synced_block_number(blocks_range=self.sync_range)
         latest_available_block_num = await self.raw_db.get_latest_available_block_number()
-        if latest_available_block_num - (latest_synced_block_num or 0) < self.chunk_size:
+        if self.latest_available_block_num - (latest_synced_block_num or 0) < self.chunk_size:
             # syncer is almost reached the head of chain, can fetch missed blocks now
             sync_mode = 'strict'
             blocks = await self.get_blocks_to_sync_strict()
@@ -112,6 +114,10 @@ class Manager:
             # syncer is far from chain head, need more speed, will skip missed blocks
             sync_mode = 'fast'
             blocks = await self.get_blocks_to_sync_fast(latest_synced_block_num, self.chunk_size)
+
+        if latest_available_block_num != self.latest_available_block_num:
+            self.latest_available_block_num = latest_available_block_num
+            await service_bus.emit_last_block_event(number=self.latest_available_block_num)
 
         logger.info("Latest synced block num is %s, %s blocks to sync, sync mode: %s",
                     latest_synced_block_num, len(blocks), sync_mode)

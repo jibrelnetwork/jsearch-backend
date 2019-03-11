@@ -1,17 +1,15 @@
 import logging
-from functools import partial
-from itertools import count, chain
+from itertools import count
 from typing import Dict, Set
 from typing import List, Optional
 
 from web3 import Web3
 
 from jsearch import settings
-from jsearch.async_utils import do_parallel
 from jsearch.common.contracts import NULL_ADDRESS
 from jsearch.common.rpc import ContractCall, eth_call_batch, eth_call
 from jsearch.syncer.database import MainDBSync
-from jsearch.typing import Log, Abi, Contract, Contracts, Logs, Block
+from jsearch.typing import Log, Abi, Contract, Transfers
 from jsearch.utils import split
 
 logger = logging.getLogger(__name__)
@@ -62,19 +60,19 @@ class BalanceUpdate:
         return Web3.toChecksumAddress(self.account_address)
 
     @property
-    def is_valid(self):
-        return isinstance(self.value, int)
-
-    @property
     def key(self):
         return self.token_address, self.account_address
 
-    def apply(self, db: MainDBSync):
-        if self.is_valid:
-            db.update_token_holder_balance(self.token_address, self.account_address, self.value, self.decimals)
+    def apply(self, db: MainDBSync, last_block: int):
+        is_valid = isinstance(self.value, int)
+        if is_valid:
+            changes = db.get_balance_changes_since_block(address=self.account_address, block_number=last_block)
+            balance = self.value + changes
+
+            db.update_token_holder_balance(self.token_address, self.account_address, balance, self.decimals)
         else:
             logger.error(
-                'Error when trying to update token holder balance: '
+                'Error due to balance update: '
                 'token %s account %s block %s balance %s decimals %s',
                 self.token_address, self.account_address, self.block, self.value, self.decimals
             )
@@ -83,7 +81,10 @@ class BalanceUpdate:
 BalanceUpdates = List[BalanceUpdate]
 
 
-def fetch_erc20_token_balance(contract_abi: Abi, token_address: str, account_address: str) -> int:
+def fetch_erc20_token_balance(contract_abi: Abi,
+                              token_address: str,
+                              account_address: str,
+                              block: str = 'latest') -> int:
     token_address_checksum = Web3.toChecksumAddress(token_address)
     account_address_checksum = Web3.toChecksumAddress(account_address)
 
@@ -92,33 +93,14 @@ def fetch_erc20_token_balance(contract_abi: Abi, token_address: str, account_add
         address=token_address_checksum,
         method='balanceOf',
         args=[account_address_checksum, ],
+        block=block,
         silent=True
     )
 
     return eth_call(call=call)
 
 
-def fetch_erc20_token_decimal_bulk(contracts: Contracts) -> Contracts:
-    calls = []
-    counter = count()
-    for contract in contracts:
-        call = ContractCall(
-            pk=next(counter),
-            abi=contract['abi'],
-            address=contract['address'],
-            method='decimals',
-            silent=True
-        )
-        calls.append(call)
-
-    calls_results = eth_call_batch(calls=calls)
-    for call, contract in zip(calls, contracts):
-        contract['decimals'] = calls_results.get(call.pk)
-
-    return contracts
-
-
-def fetch_erc20_balance_bulk(updates: BalanceUpdates) -> BalanceUpdates:
+def fetch_erc20_balance_bulk(updates: BalanceUpdates, block: Optional[int] = None) -> BalanceUpdates:
     calls = []
     counter = count()
     for update in updates:
@@ -128,6 +110,7 @@ def fetch_erc20_balance_bulk(updates: BalanceUpdates) -> BalanceUpdates:
             address=update.token_as_checksum,
             method='balanceOf',
             args=[update.account_as_checksum],
+            block=block,
             silent=True
         )
         calls.append(call)
@@ -139,66 +122,39 @@ def fetch_erc20_balance_bulk(updates: BalanceUpdates) -> BalanceUpdates:
 
 def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpdate]:
     updates = set()
-    if log.get('token_transfer_to'):
-        to_address = log['token_transfer_to']
-        from_address = log['token_transfer_from']
+    to_address = log['to_address']
+    from_address = log['from_address']
 
-        block = log['block_number']
-        token_address = log['address']
+    block = log['block_number']
+    token_address = log['token_address']
 
-        if to_address != NULL_ADDRESS:
-            update = BalanceUpdate(token_address, to_address, block, abi, decimals)
-            updates.add(update)
+    if to_address != NULL_ADDRESS:
+        update = BalanceUpdate(token_address, to_address, block, abi, decimals)
+        updates.add(update)
 
-        if from_address != NULL_ADDRESS:
-            update = BalanceUpdate(token_address, from_address, block, abi, decimals)
-            updates.add(update)
+    update = BalanceUpdate(token_address, from_address, block, abi, decimals)
+    updates.add(update)
 
     return updates
 
 
-def prefetch_decimals(contracts: List[Contract]) -> Dict[str, Contract]:
-    contracts = chain(
-        *(fetch_erc20_token_decimal_bulk(chunk) for chunk in split(contracts, settings.ETH_NODE_BATCH_REQUEST_SIZE))
-    )
-    return {contract['address']: contract for contract in contracts}
-
-
-async def fetch_contracts(service_bus, logs: Logs) -> Contracts:
-    addresses = list({log['address'] for log in logs})
-    contracts = chain(
-        *await do_parallel(
-            func=partial(service_bus.get_contracts, fields=["address", "abi"]),
-            argument_list=addresses,
-            chunk_size=settings.ETH_NODE_BATCH_REQUEST_SIZE
-        )
-    )
-    return list(contracts)
-
-
-def fetch_blocks(db: MainDBSync, logs: Logs) -> {str: Block}:
-    hashes = [log['block_hash'] for log in logs]
-    blocks = db.get_blocks(hashes=hashes)
-    return {block['hash']: block for block in blocks}
-
-
-def process_log_operations_bulk(
+def update_token_holder_balances(
         db: MainDBSync,
-        logs: List[Log],
+        transfers: Transfers,
         contracts: Dict[str, Contract],
+        last_block: int,
         batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
-) -> Logs:
+) -> None:
     updates = set()
-    for log in logs:
-        contract = contracts.get(log['address'])
-        if log and contract:
+    for transfer in transfers:
+        contract_address = transfer['token_address']
+        contract = contracts.get(contract_address)
+        if transfer and contract:
             abi = contract.get('abi')
             decimals = contract.get('decimals')
-            updates |= logs_to_balance_updates(log, abi, decimals)
+            updates |= logs_to_balance_updates(transfer, abi, decimals)
 
     for chunk in split(updates, batch_size):
         updates = fetch_erc20_balance_bulk(chunk)
         for update in updates:
-            update.apply(db)
-
-    return logs
+            update.apply(db, last_block)
