@@ -1,5 +1,6 @@
 import logging
 from typing import Coroutine
+from uuid import uuid4
 
 from jsearch_service_bus.base import get_async_consumer
 from kafka import TopicPartition
@@ -12,8 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def _get_consumer():
+    uuid = str(uuid4())
     return get_async_consumer(
-        group='last_block_loader',
+        group=f'last_block_loader_{uuid}',
         topic=ROUTE_HANDLE_LAST_BLOCK,
         bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS
     )
