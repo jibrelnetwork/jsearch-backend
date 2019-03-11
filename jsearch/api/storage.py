@@ -1,4 +1,6 @@
-from typing import List
+from typing import List, Optional
+from itertools import groupby
+import json
 
 from jsearch.api import models
 from jsearch.api.models.all import TokenTransfer
@@ -376,3 +378,145 @@ class Storage:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, account_address, token_address)
             return models.TokenHolder(**row) if row else None
+
+    async def get_blockchain_tip_status(self, last_known_block_hash: str):
+        """
+        Retruns status of client's last known block
+        """
+        split_query = """SELECT common_block_number FROM chain_splits
+                            WHERE id=(SELECT  split_id FROM  reorgs where block_hash=$1)"""
+        block_query = "SELECT number FROM blocks WHERE hash=$1"
+
+        async with self.pool.acquire() as conn:
+            split = await conn.fetchrow(split_query, last_known_block_hash)
+            block = await conn.fetchrow(block_query, last_known_block_hash)
+
+        if block is None:
+            return None
+
+        if split is None:
+            result = {
+                'blockchainTip': {
+                  'blockHash': last_known_block_hash,
+                  'blockNumber': block['number']
+                },
+                'forkData': {
+                  'isInFork': False,
+                  'lastUnchangedBlock': block['number']
+                }
+            }
+        else:
+            result = {
+                'blockchainTip': {
+                  'blockHash': last_known_block_hash,
+                  'blockNumber': block['number']
+                },
+                'forkData': {
+                  'isInFork': True,
+                  'lastUnchangedBlock': split['common_block_number']
+                }
+            }
+        return result
+
+    async def get_wallet_assets_transfers(self, addresses: List[str], limit: int, offset: int, assets: Optional[List[str]]=None) -> List:
+
+        if assets:
+            assets_filter = " AND asset_address = ANY($2::varchar[]) "
+            limit_stmt = "LIMIT $3 OFFSET $4 "
+        else:
+            assets_filter = ""
+            limit_stmt = "LIMIT $2 OFFSET $3 "
+
+        query = f"""SELECT * FROM assets_transfers
+                        WHERE address = ANY($1::varchar[]) {assets_filter} AND is_forked=false
+                        ORDER BY ordering DESC
+                        {limit_stmt}"""
+        async with self.pool.acquire() as conn:
+            if assets:
+                rows = await conn.fetch(query, addresses, assets, limit, offset)
+            else:
+                rows = await conn.fetch(query, addresses, limit, offset)
+
+            items = []
+            for row in rows:
+                t = dict(row)
+                t['tx_data'] = json.loads(t['tx_data'])
+                items.append(t)
+            return [models.AssetTransfer(**t) for t in items]
+
+    async def get_wallet_transactions(self, address: str, limit: int, offset: int) -> List:
+        offset *= 2
+        limit *= 2
+        query = """SELECT * FROM transactions
+                        WHERE address = $1
+                        ORDER BY block_number, transaction_index DESC
+                        LIMIT $2 OFFSET $3 """
+
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, address, limit, offset)
+            distinct_set = set()
+            transactions = []
+            for row in rows:
+                row = dict(row)
+                row.pop('address')
+                distinct_key = tuple(row.values())
+                if distinct_key in distinct_set:
+                    continue
+                distinct_set.add(distinct_key)
+                transactions.append(models.Transaction(**row))
+        return transactions
+
+    async def get_wallet_assets_summary(self, addresses: List[str], limit: int, offset: int, assets: Optional[List[str]]=None):
+        if assets:
+            assets_filter = " AND asset_address = ANY($2::varchar[]) "
+            limit_stmt = "LIMIT $3 OFFSET $4 "
+        else:
+            assets_filter = ""
+            limit_stmt = "LIMIT $2 OFFSET $3 "
+
+        query = f"""SELECT * FROM assets_summary
+                        WHERE address = ANY($1::varchar[])
+                        {assets_filter}
+                        ORDER BY address, asset_address ASC
+                        {limit_stmt}"""
+
+        async with self.pool.acquire() as conn:
+            if assets:
+                rows = await conn.fetch(query, addresses, assets, limit, offset)
+            else:
+                rows = await conn.fetch(query, addresses, limit, offset)
+            addr_map = {k: list(g) for k, g in groupby(rows, lambda r: r['address'])}
+            summary = []
+            for addr in addresses:
+                assets_summary = []
+                nonce = 0
+                for row in addr_map.get(addr, []):
+                    assets_summary.append({
+                        'balance': float(row['balance']),
+                        'address': row['asset_address'],
+                        'transfersNumber': row['tx_number'],
+                    })
+                    nonce = row['nonce']
+                item = {
+                    'assetsSummary': assets_summary,
+                    'address': addr,
+                    'outgoingTransactionsNumber': nonce,
+                }
+                summary.append(item)
+            return summary
+
+    async def get_nonce(self, address):
+        """
+        Get account nonce
+        """
+
+        query = """
+            SELECT "nonce" FROM accounts_state
+            WHERE address=$1 ORDER BY block_number DESC LIMIT 1;
+        """
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(query, address)
+            if row:
+                return row['nonce']
+            return 0
+

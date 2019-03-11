@@ -3,6 +3,16 @@ from unittest import mock
 import pytest
 from asynctest import CoroutineMock
 
+from jsearch.common.tables import (
+    blocks_t,
+    reorgs_t,
+    chain_splits_t,
+    assets_transfers_t,
+    transactions_t,
+    assets_summary_t,
+    accounts_state_t,
+)
+
 from jsearch.tests.entities import (
     TransactionFromDumpWrapper,
     BlockFromDumpWrapper,
@@ -233,28 +243,17 @@ async def test_get_account_balances(cli, main_db_data):
 async def test_get_account_balances_invalid_addresses_all(cli):
     resp = await cli.get('/v1/accounts/balances?addresses=foobar')
     assert resp.status == 200
-    res = await resp.json()
-
-    assert res == {
-        'status': {'success': True, 'errors': []},
-        'data': []
-    }
+    res = (await resp.json())['data']
+    assert res == []
 
 
 async def test_get_account_balances_invalid_addresses(cli: object, main_db_data: object) -> object:
     a1 = main_db_data['accounts_base'][0]
     resp = await cli.get('/v1/accounts/balances?addresses={},{},{}'.format('foo', a1['address'], 'bar'))
     assert resp.status == 200
-    res = await resp.json()
-    assert res == {
-        'status': {'success': True, 'errors': []},
-        'data': [
-            {
-                'address': a1['address'],
-                'balance': hex(main_db_data['accounts_state'][10]['balance'])
-            }
-        ]
-    }
+    res = (await resp.json())['data']
+    assert res == [{'address': a1['address'],
+                    'balance': hex(main_db_data['accounts_state'][10]['balance'])}]
 
 
 async def test_get_block_transactions(cli, main_db_data):
@@ -817,3 +816,307 @@ async def test_get_account_token_balance(cli, main_db_data):
 
     resp = await cli.get(f'/v1/accounts/aX/token_balance/t1')
     assert resp.status == 404
+
+
+async def test_get_blockchain_tip(cli, db):
+    db.execute(blocks_t.insert().values(hash='aa', number=100))
+    db.execute(blocks_t.insert().values(hash='ab', number=101))
+    db.execute(blocks_t.insert().values(hash='abf', number=101))
+    db.execute(blocks_t.insert().values(hash='ac', number=102))
+    db.execute(blocks_t.insert().values(hash='acf', number=102))
+
+    db.execute(chain_splits_t.insert().values(id=1, common_block_number=100))
+
+    db.execute(
+        reorgs_t.insert().values(id=1, split_id=1, block_hash='abf', block_number=101, reinserted=False, node_id='a'))
+    db.execute(
+        reorgs_t.insert().values(id=2, split_id=1, block_hash='acf', block_number=102, reinserted=False, node_id='a'))
+
+    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=aa')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == {'blockchainTip': {'blockHash': 'aa', 'blockNumber': 100},
+                   'forkData': {'isInFork': False, 'lastUnchangedBlock': 100}}
+
+    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=ac')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == {'blockchainTip': {'blockHash': 'ac', 'blockNumber': 102},
+                   'forkData': {'isInFork': False, 'lastUnchangedBlock': 102}}
+
+    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=abf')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == {'blockchainTip': {'blockHash': 'abf', 'blockNumber': 101},
+                   'forkData': {'isInFork': True, 'lastUnchangedBlock': 100}}
+
+    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=acf')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == {'blockchainTip': {'blockHash': 'acf', 'blockNumber': 102},
+                   'forkData': {'isInFork': True, 'lastUnchangedBlock': 100}}
+
+
+async def test_get_blockchain_tip_no_block(cli):
+    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=aa')
+    assert resp.status == 404
+    assert (await resp.json()) == {'status': {'success': False, 'errors': [
+        {'field': 'tip', 'error_code': 'BLOCK_NOT_FOUND', 'error_message': 'Block with hash aa not found'}]},
+                                   'data': None}
+
+
+async def test_get_wallet_transfers_no_addresses(cli, db):
+    resp = await cli.get(f'/v1/wallet/transfers')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == []
+
+
+async def test_get_wallet_transfers(cli, db):
+    transfers = [
+        {'address': 'a1',
+         'type': 'erc20-transfer',
+         'from': 'a1',
+         'to': 'a2',
+         'asset_address': 'ca1',
+         'amount': 100,
+         'tx_data': {'hash': 'f1'},
+         'is_forked': False,
+         'block_number': 100,
+         'block_hash': 'b1',
+         'ordering': 2},
+        {'address': 'a1',
+         'type': 'eth',
+         'from': 'a3',
+         'to': 'a1',
+         'asset_address': '',
+         'amount': 200,
+         'tx_data': {'hash': 'f2'},
+         'is_forked': False,
+         'block_number': 101,
+         'block_hash': 'b1',
+         'ordering': 1},
+        {'address': 'a2',
+         'type': 'erc20-transfer',
+         'from': 'a1',
+         'to': 'a2',
+         'asset_address': 'ca1',
+         'amount': 100,
+         'tx_data': {'hash': 'f1'},
+         'is_forked': False,
+         'block_number': 100,
+         'block_hash': 'b1',
+         'ordering': 1},
+        {'address': 'a2',
+         'type': 'eth',
+         'from': 'a3',
+         'to': 'a1',
+         'asset_address': '',
+         'amount': 300,
+         'tx_data': {'hash': 'f2'},
+         'is_forked': True,
+         'block_number': 100,
+         'block_hash': 'b1',
+         'ordering': 1},
+
+    ]
+    for t in transfers:
+        db.execute(assets_transfers_t.insert().values(**t))
+
+    resp = await cli.get(f'/v1/wallet/transfers?addresses=a1,a2')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == [{'amount': 100,
+                    'assetAddress': 'ca1',
+                    'from': 'a1',
+                    'to': 'a2',
+                    'txData': {"hash": "f1"},
+                    'type': 'erc20-transfer'},
+                   {'amount': 200,
+                    'assetAddress': '',
+                    'from': 'a3',
+                    'to': 'a1',
+                    'txData': {"hash": "f2"},
+                    'type': 'eth'},
+                   {'amount': 100,
+                    'assetAddress': 'ca1',
+                    'from': 'a1',
+                    'to': 'a2',
+                    'txData': {"hash": "f1"},
+                    'type': 'erc20-transfer'}]
+
+    resp = await cli.get(f'/v1/wallet/transfers?addresses=a1&assets=ca1')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == [{'amount': 100,
+                    'assetAddress': 'ca1',
+                    'from': 'a1',
+                    'to': 'a2',
+                    'txData': {"hash": "f1"},
+                    'type': 'erc20-transfer'}
+                   ]
+
+
+async def test_get_wallet_transactions(cli, db):
+    txs = [
+        {
+            'address': 'a1',
+            'hash': '0xt1',
+            'block_number': 1,
+            'block_hash': '0xb1',
+            'transaction_index': 0,
+            'from': '0xa1',
+            'to': '0xa2',
+            'gas': '0xf4240',
+            'gas_price': '0x430e23400',
+            'input': '0x6060',
+            'nonce': '0x0',
+            'value': '0x0',
+            'is_forked': False,
+            'contract_call_description': None
+        },
+        {
+            'address': 'a2',
+            'hash': '0xt1',
+            'block_number': 1,
+            'block_hash': '0xb1',
+            'transaction_index': 0,
+            'from': '0xa1',
+            'to': '0xa2',
+            'gas': '0xf4240',
+            'gas_price': '0x430e23400',
+            'input': '0x6060',
+            'nonce': '0x0',
+            'value': '0x0',
+            'is_forked': False,
+            'contract_call_description': None
+        },
+        {
+            'address': 'a1',
+            'hash': '0xt2',
+            'block_number': 1,
+            'block_hash': '0xb1',
+            'transaction_index': 0,
+            'from': 'a1',
+            'to': 'a2',
+            'gas': '0xf4240',
+            'gas_price': '0x430e23400',
+            'input': '0x6060',
+            'nonce': '0x0',
+            'value': '0x0',
+            'is_forked': False,
+            'contract_call_description': None
+        },
+        {
+            'address': 'a3',
+            'hash': '0xt2',
+            'block_number': 1,
+            'block_hash': '0xb1',
+            'transaction_index': 0,
+            'from': 'a1',
+            'to': 'a3',
+            'gas': '0xf4240',
+            'gas_price': '0x430e23400',
+            'input': '0x6060',
+            'nonce': '0x0',
+            'value': '0x0',
+            'is_forked': False,
+            'contract_call_description': None
+        },
+    ]
+    for t in txs:
+        db.execute(transactions_t.insert().values(**t))
+        
+    db.execute(accounts_state_t.insert().values(address='a1', nonce=1, block_number=1, block_hash='0xb1'))
+
+    resp = await cli.get(f'/v1/wallet/transactions?address=a1')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == {'transactions':[{'blockHash': '0xb1',
+                    'blockNumber': 1,
+                    'from': '0xa1',
+                    'gas': '0xf4240',
+                    'gasPrice': '0x430e23400',
+                    'hash': '0xt1',
+                    'input': '0x6060',
+                    'nonce': '0x0',
+                    'r': None,
+                    's': None,
+                    'to': '0xa2',
+                    'transactionIndex': 0,
+                    'v': None,
+                    'value': '0x0'},
+                   {'blockHash': '0xb1',
+                    'blockNumber': 1,
+                    'from': 'a1',
+                    'gas': '0xf4240',
+                    'gasPrice': '0x430e23400',
+                    'hash': '0xt2',
+                    'input': '0x6060',
+                    'nonce': '0x0',
+                    'r': None,
+                    's': None,
+                    'to': 'a2',
+                    'transactionIndex': 0,
+                    'v': None,
+                    'value': '0x0'}],
+
+    'pendingTransactions': [
+
+    ],
+    'outgoingTransactionsNumber': 1
+    }
+
+
+async def test_get_wallet_assets_summary(cli, db):
+    assets = [
+        {
+            'address': 'a1',
+            'asset_address': 'c1',
+            'balance': 100,
+            'tx_number': 1,
+            'nonce': 10,
+        },
+        {
+            'address': 'a1',
+            'asset_address': 'c2',
+            'balance': 200,
+            'tx_number': 2,
+            'nonce': 10,
+        },
+        {
+            'address': 'a1',
+            'asset_address': '',
+            'balance': 300,
+            'tx_number': 3,
+            'nonce': 10,
+        },
+        {
+            'address': 'a2',
+            'asset_address': 'c1',
+            'balance': 100,
+            'tx_number': 1,
+            'nonce': 5,
+        },
+    ]
+    for a in assets:
+        db.execute(assets_summary_t.insert().values(**a))
+    resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1,a2')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == [{'address': 'a1',
+                    'assetsSummary': [{'address': '', 'balance': 300.0, 'transfersNumber': 3},
+                                      {'address': 'c1', 'balance': 100.0, 'transfersNumber': 1},
+                                      {'address': 'c2', 'balance': 200.0, 'transfersNumber': 2}],
+                    'outgoingTransactionsNumber': 10},
+                   {'address': 'a2',
+                    'assetsSummary': [{'address': 'c1', 'balance': 100.0, 'transfersNumber': 1}],
+                    'outgoingTransactionsNumber': 5}]
+
+    resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1&assets=c2')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == [{'address': 'a1',
+                    'assetsSummary': [{'address': 'c2', 'balance': 200.0, 'transfersNumber': 2}],
+                    'outgoingTransactionsNumber': 10},
+                   ]

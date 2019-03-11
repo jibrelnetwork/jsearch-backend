@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import and_
 
-from jsearch.common.tables import blocks_t
+from jsearch.common.tables import blocks_t, chain_splits_t
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.manager import Manager
 from jsearch.syncer.processor import SyncProcessor
@@ -22,34 +22,53 @@ pytest_plugins = (
 
 
 @pytest.mark.usefixtures('mock_service_bus_sync_client')
-async def test_process_reorgs(raw_db_sample, db, raw_db_connection_string, db_connection_string):
+async def test_process_chain_split(raw_db_sample, db, raw_db_connection_string, db_connection_string):
     s = raw_db_sample
     processor = SyncProcessor(raw_db_connection_string, db_connection_string)
-    processor.sync_block(s['headers'][0]['block_hash'])
-    processor.sync_block(s['headers'][1]['block_hash'])
-    processor.sync_block(s['headers'][3]['block_hash'])
-    processor.sync_block(s['headers'][4]['block_hash'])
-    processor.sync_block(s['headers'][2]['block_hash'])
-    processor.sync_block(s['headers'][6]['block_hash'])
-    processor.sync_block(s['headers'][5]['block_hash'])
-
+    for h in s['headers']:
+        processor.sync_block(h['block_hash'])
     raw_db = RawDB(raw_db_connection_string)
     main_db = MainDB(db_connection_string)
     await main_db.connect()
+    await raw_db.connect()
     manager = Manager(None, main_db, raw_db, '6000000-')
 
-    reorgs = raw_db_sample['reorgs']
-    await manager.process_reorgs(reorgs)
+    splits = raw_db_sample['chain_splits']
+    await manager.process_chain_split(splits[0])
 
-    b1 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][2]['block_hash'])).fetchone()
-    b2 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][3]['block_hash'])).fetchone()
-    b3 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][5]['block_hash'])).fetchone()
-    b4 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][6]['block_hash'])).fetchone()
-    # import time; time.sleep(20)
-    assert b1.is_forked is True
-    assert b2.is_forked is False
+    b3f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][2]['block_hash'])).fetchone()
+    b3 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][3]['block_hash'])).fetchone()
+    b4f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][4]['block_hash'])).fetchone()
+    b4 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][5]['block_hash'])).fetchone()
+    b5 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][6]['block_hash'])).fetchone()
+    b5f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][7]['block_hash'])).fetchone()
+
+    assert b3f.is_forked is True
     assert b3.is_forked is False
-    assert b4.is_forked is True
+    assert b4f.is_forked is True
+    assert b4.is_forked is False
+    assert b5.is_forked is False
+    assert b5f.is_forked is False
+
+    await manager.process_chain_split(splits[1])
+
+    b3f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][2]['block_hash'])).fetchone()
+    b3 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][3]['block_hash'])).fetchone()
+    b4f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][4]['block_hash'])).fetchone()
+    b4 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][5]['block_hash'])).fetchone()
+    b5 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][6]['block_hash'])).fetchone()
+    b5f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][7]['block_hash'])).fetchone()
+
+    assert b3f.is_forked is True
+    assert b3.is_forked is False
+    assert b4f.is_forked is True
+    assert b4.is_forked is False
+    assert b5.is_forked is False
+    assert b5f.is_forked is True
+
+    maindb_splits = db.execute(chain_splits_t.select()).fetchall()
+    assert dict(maindb_splits[0]) == splits[0]
+    assert dict(maindb_splits[1]) == splits[1]
 
     # assert blocks[1].number == 6000003
     # assert blocks[1].hash.endswith('000')
@@ -95,7 +114,7 @@ async def test_process_reorgs(raw_db_sample, db, raw_db_connection_string, db_co
     # TODO: extend test cases
 
 
-@pytest.mark.usefixtures('mock_service_bus_sync_client')
+@pytest.mark.usefixtures('mock_service_bus_sync_client', 'mock_service_bus')
 @pytest.mark.parametrize("is_forked", [True, False])
 async def test_reorganization_for_token_transfers_is_forked_state(
         db,
@@ -106,7 +125,7 @@ async def test_reorganization_for_token_transfers_is_forked_state(
         reorg_factory,
         raw_db_connection_string,
         db_connection_string,
-        is_forked
+        is_forked,
 ):
     from jsearch.common.tables import token_transfers_t
     # given

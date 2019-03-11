@@ -33,6 +33,8 @@ def mock_service_bus(mocker, kafka_buffer):
 
 @pytest.fixture()
 def mock_service_bus_sync_client(mocker, kafka_buffer):
+    mocker.patch('jsearch.service_bus.sync_client.start')
+    mocker.patch('jsearch.service_bus.sync_client.stop')
     def send_to_stream(route, value):
         kafka_buffer[route].insert(0, value)
         return asyncio.sleep(0)
