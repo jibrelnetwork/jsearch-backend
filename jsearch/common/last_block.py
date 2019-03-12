@@ -47,7 +47,7 @@ class LastBlock(Singleton):
         offsets = await consumer.end_offsets(partitions=[self._partition])
 
         last_value_offset = offsets[self._partition]
-        if last_value_offset > 1:
+        if last_value_offset >= 1:
             last_value_offset -= 1
 
         consumer.seek(self._partition, last_value_offset)
