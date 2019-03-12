@@ -57,6 +57,7 @@ def load_transfers(db_connection_string) -> Callable[[Logs], Transfers]:
                 token_transfers_t.c.token_decimals,
                 token_transfers_t.c.token_name,
                 token_transfers_t.c.token_symbol,
+                token_transfers_t.c.is_forked,
             ]).where(
                 and_(
                     token_transfers_t.c.transaction_hash == log['transaction_hash'],
@@ -79,6 +80,7 @@ def load_transfers(db_connection_string) -> Callable[[Logs], Transfers]:
                 token_transfers_t.c.token_decimals,
                 token_transfers_t.c.token_name,
                 token_transfers_t.c.token_symbol,
+                token_transfers_t.c.is_forked,
             ]).where(
                 and_(
                     token_transfers_t.c.transaction_hash == log['transaction_hash'],

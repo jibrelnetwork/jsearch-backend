@@ -1,8 +1,8 @@
+import json
 import logging
 import os
 from functools import partial
 from pathlib import Path
-import json
 
 import pytest
 from sqlalchemy import create_engine, MetaData

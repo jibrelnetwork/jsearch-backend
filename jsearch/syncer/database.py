@@ -21,12 +21,11 @@ from jsearch.common.tables import (
     transactions_t,
     uncles_t,
     reorgs_t,
-    token_holders_t,
     token_transfers_t,
     chain_splits_t,
 )
 from jsearch.common.utils import as_dicts
-
+from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
 
 MAIN_DB_POOL_SIZE = 22
 
@@ -59,6 +58,15 @@ class DBWrapper:
     def disconnect(self):
         self.pool.close()
 
+    async def __aenter__(self):
+        await self.connect()
+        return self
+
+    async def __aexit__(self, *exc_info):
+        self.disconnect()
+        if any(exc_info):
+            return False
+
 
 class DBWrapperSync:
 
@@ -77,9 +85,9 @@ class DBWrapperSync:
         self.connect()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *exc_info):
         self.disconnect()
-        if exc_type:
+        if any(exc_info):
             return False
 
 
@@ -288,6 +296,10 @@ class MainDB(DBWrapper):
             .values(is_forked=not reorg['reinserted']) \
             .where(logs_t.c.block_hash == reorg['block_hash'])
 
+        update_token_transfers_q = token_transfers_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(token_transfers_t.c.block_hash == reorg['block_hash'])
+
         update_internal_transactions_q = internal_transactions_t.update() \
             .values(is_forked=not reorg['reinserted']) \
             .where(internal_transactions_t.c.block_hash == reorg['block_hash'])
@@ -318,6 +330,7 @@ class MainDB(DBWrapper):
                 await conn.execute(update_accounts_state_q)
                 await conn.execute(update_uncles_q)
                 await conn.execute(add_reorg_q)
+                await conn.execute(update_token_transfers_q)
                 logger.debug('Reorg applyed for block %s %s', reorg['block_number'], reorg['block_hash'])
                 return True
 
@@ -456,15 +469,11 @@ class MainDBSync(DBWrapperSync):
         self.execute(query)
 
     def update_token_holder_balance(self, token_address: str, account_address: str, balance: int, decimals: int):
-        insert_query = insert(token_holders_t).values(
+        query = update_token_holder_balance_q(
             token_address=token_address,
             account_address=account_address,
             balance=balance,
             decimals=decimals
-        )
-        query = insert_query.on_conflict_do_update(
-            index_elements=['token_address', 'account_address'],
-            set_=dict(balance=balance, decimals=decimals)
         )
         return self.execute(query)
 

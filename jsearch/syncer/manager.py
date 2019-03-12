@@ -5,6 +5,7 @@ import time
 
 from jsearch import settings
 from jsearch.common.database import DatabaseError
+from jsearch.service_bus import service_bus
 from jsearch.syncer.processor import SyncProcessor
 
 logger = logging.getLogger(__name__)
@@ -150,6 +151,11 @@ class Manager:
         c = 0
         for reorg in reorgs:
             await self.main_db.apply_reorg(reorg)
+            await service_bus.emit_reorganization_event(
+                block_hash=reorg['block_hash'],
+                block_number=reorg['block_number'],
+                reinserted=reorg['reinserted']
+            )
             c += 1
         return c
 
