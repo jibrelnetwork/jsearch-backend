@@ -10,7 +10,7 @@ from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.utils import fetch_contracts, fetch_blocks, prefetch_decimals
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics, Metric
-from jsearch.service_bus import service_bus, WORKER_HANDLE_TRANSACTION_LOGS
+from jsearch.service_bus import service_bus, ROUTE_HANDLE_TRANSACTION_LOGS
 from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Logs
 
@@ -19,7 +19,7 @@ metrics = Metrics()
 logger = logging.getLogger(__name__)
 
 
-@service_bus.listen_stream(WORKER_HANDLE_TRANSACTION_LOGS, task_limit=30, batch_size=10, batch_timeout=5)
+@service_bus.listen_stream(ROUTE_HANDLE_TRANSACTION_LOGS, task_limit=30, batch_size=10, batch_timeout=5)
 async def handle_transaction_logs(blocks: List[Logs]):
     if not blocks:
         return

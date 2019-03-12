@@ -42,7 +42,7 @@ from jsearch.common.logs import configure
 from jsearch.common.processing.erc20_balances import fetch_erc20_token_balance
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics
-from jsearch.service_bus import service_bus, WORKER_HANDLE_REORGANIZATION_EVENT, WORKER_HANDLE_LAST_BLOCK
+from jsearch.service_bus import service_bus, ROUTE_HANDLE_REORGANIZATION_EVENTS, ROUTE_HANDLE_LAST_BLOCK
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
 from jsearch.syncer.database_queries.token_transfers import (
     get_token_address_and_accounts_for_block_q,
@@ -112,7 +112,7 @@ async def get_balance(account, token, abi, connection):
     return balance
 
 
-@service_bus.listen_stream(WORKER_HANDLE_REORGANIZATION_EVENT, service_name='jsearch-worker')
+@service_bus.listen_stream(ROUTE_HANDLE_REORGANIZATION_EVENTS, service_name='jsearch-worker')
 async def handle_block_reorganization(block_hash, block_number, reinserted):
     logging.info("[REORG] Block number %s, hash %s with reinsert status (%s)", block_number, block_hash, reinserted)
 
@@ -151,7 +151,7 @@ async def handle_block_reorganization(block_hash, block_number, reinserted):
                     await connection.execute(query=query)
 
 
-@service_bus.listen_stream(service_name='jsearch-worker', stream_name=WORKER_HANDLE_LAST_BLOCK)
+@service_bus.listen_stream(service_name='jsearch-worker', stream_name=ROUTE_HANDLE_LAST_BLOCK)
 async def receive_last_block(number):
     logger.info("[LAST BLOCK] Receive new last block number %s", number)
 

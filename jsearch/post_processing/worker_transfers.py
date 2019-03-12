@@ -9,7 +9,7 @@ from jsearch.common.processing.erc20_balances import update_token_holder_balance
 from jsearch.common.processing.utils import async_fetch_contracts, prefetch_decimals
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics, Metric
-from jsearch.service_bus import service_bus, WORKER_HANDLE_ERC20_TRANSFERS, WORKER_HANDLE_LAST_BLOCK
+from jsearch.service_bus import service_bus, ROUTE_HANDLE_ERC20_TRANSFERS, ROUTE_HANDLE_LAST_BLOCK
 from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Contracts, Transfers
 
@@ -18,7 +18,7 @@ metrics = Metrics()
 logger = logging.getLogger('worker')
 
 
-@service_bus.listen_stream(WORKER_HANDLE_ERC20_TRANSFERS, task_limit=30, batch_size=20, batch_timeout=5)
+@service_bus.listen_stream(ROUTE_HANDLE_ERC20_TRANSFERS, task_limit=30, batch_size=20, batch_timeout=5)
 async def handle_new_transfers(blocks: List[Transfers]):
     loop = asyncio.get_event_loop()
     last_block = LastBlock()
@@ -46,7 +46,7 @@ async def handle_new_transfers(blocks: List[Transfers]):
     )
 
 
-@service_bus.listen_stream(WORKER_HANDLE_LAST_BLOCK)
+@service_bus.listen_stream(ROUTE_HANDLE_LAST_BLOCK)
 async def receive_last_block(number):
     logger.info("[LAST BLOCK] Receive new last block number %s", number)
 
