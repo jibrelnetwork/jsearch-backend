@@ -18,7 +18,6 @@ from jsearch.tests.entities import (
 )
 
 pytest_plugins = [
-    'jsearch.tests.plugins.post_processing',
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.dumps',
 ]

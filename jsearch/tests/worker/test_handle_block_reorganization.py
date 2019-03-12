@@ -12,6 +12,7 @@ pytest_plugins = (
     'jsearch.tests.plugins.databases.factories.token_transfers',
     'jsearch.tests.plugins.databases.factories.contracts',
     'jsearch.tests.plugins.databases.factories.reorgs',
+    'jsearch.tests.plugins.last_block',
 )
 
 
@@ -23,11 +24,14 @@ async def test_handle_reorganization(db,
                                      token_factory,
                                      transfer_factory,
                                      reorg_factory,
+                                     mock_last_block_consumer,
                                      mock_fetch_erc20_balance_bulk,
                                      mock_service_bus_get_contracts):
     from jsearch.common.tables import token_holders_t
     # given
     # create reorganization event
+    mock_last_block_consumer({"number": 6000000})
+
     token = token_factory.create()
     block = block_factory.create()
 
