@@ -4,6 +4,8 @@ from typing import AsyncGenerator
 import pytest
 from aiopg.sa import Engine
 
+from jsearch.worker.__main__ import service
+
 
 @pytest.fixture()
 def mock_service_bus_get_contracts(mocker):
@@ -32,8 +34,6 @@ def mock_fetch_erc20_balance_bulk(mocker):
 
 @pytest.fixture(scope='function')
 async def worker(sa_engine: Engine) -> AsyncGenerator[Engine, None]:
-    from jsearch.worker.__main__ import service
-
     service.engine = sa_engine
     try:
         yield service

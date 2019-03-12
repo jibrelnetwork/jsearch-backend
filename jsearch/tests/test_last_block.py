@@ -3,6 +3,10 @@ from asynctest import CoroutineMock
 
 from jsearch.common.last_block import LastBlock
 
+pytest_plugins = (
+    'jsearch.tests.plugins.last_block',
+)
+
 
 @pytest.fixture()
 def last_block():
@@ -10,6 +14,19 @@ def last_block():
     yield last_block
 
     LastBlock._instance = None
+
+
+@pytest.mark.asyncio
+async def test_last_block_loaded_from_kafka(last_block, mock_last_block_consumer):
+    # given
+    expected_block_number = 6000000
+    mock_last_block_consumer({"number": expected_block_number})
+
+    # when
+    block_number = await last_block.get()
+
+    # then
+    assert block_number == expected_block_number
 
 
 @pytest.mark.asyncio
