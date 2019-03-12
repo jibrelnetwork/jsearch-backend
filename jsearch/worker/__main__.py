@@ -21,31 +21,6 @@ Communication scheme for token transfer reorganization.
        - last_block         ----------------
                            |     main db    |
                             ----------------
-
- ------------------------------------------------------------------
-|  --------------------                -------------------------   |
-| | jsearch.last_block |   kafka      | jsearch.erc20_transfers |  |
-|  --------------------                -------------------------   |
- ---------- | ---------------------------------- | ----------------
-            |                                    |
-            |                                    |
-           \./                                  \./
- ------------------------------------------------------------------
-|  ---------------------      share           -------------------  |   get balance        -------
-| | last block receiver | - - - - - - - - >  | transfer receiver | < - - - - - - - - -   | geth  |
-|  ---------------------    last block        ---------/ \ -------  |  on last_block - 6  -------
-|                                                       |          |
-|                        jsearch-post-processing        |          |
- ------------------------------------------------------ |  ---------
-                                                        |
-                                get token transfers     |
-                                on interval:            |
-                                  - from last_block - 6 |
-                                  - until last block    |
-                                                       \./
-                                                    ---------
-                                                   | main_db |
-                                                    ---------
 """
 
 import asyncio
