@@ -8,6 +8,7 @@ from jsearch import settings
 from jsearch.common import contracts
 from jsearch.syncer.database import MainDBSync, RawDBSync
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +31,7 @@ class SyncProcessor:
         self.raw_db = RawDBSync(raw_db_dsn or settings.JSEARCH_RAW_DB)
         self.main_db = MainDBSync(main_db_dsn or settings.JSEARCH_MAIN_DB)
 
-        service_bus.service_bus.allow_rpc = False
+        service_bus.sync_client.allow_rpc = False
         service_bus.sync_client.start()
 
     def sync_block(self, block_hash: str, block_number: int = None) -> bool:
@@ -38,7 +39,6 @@ class SyncProcessor:
         :param block_number: number of block to sync
         :return: True if sync is successfull, False if syn fails or block already synced
         """
-
         logger.debug("Syncing Block %s #%s", block_hash, block_number)
 
         self.main_db.connect()

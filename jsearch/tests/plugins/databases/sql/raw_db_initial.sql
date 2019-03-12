@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS reorgs (
     block_hash varchar(70),
     header jsonb,
     reinserted boolean,
+    split_id bigint,
     node_id varchar(70)
 );
 

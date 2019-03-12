@@ -5,7 +5,7 @@ services:
     depends_on:
     - test_db
     - test_raw_db
-    - redis
+    - kafka
     build:
       context: .
       dockerfile: ./docker/tests/Dockerfile

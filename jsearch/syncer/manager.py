@@ -5,6 +5,7 @@ import time
 
 from jsearch import settings
 from jsearch.common.database import DatabaseError
+from jsearch.service_bus import service_bus
 from jsearch.syncer.processor import SyncProcessor
 
 logger = logging.getLogger(__name__)
@@ -74,26 +75,29 @@ class Manager:
         while self._running is True:
             try:
                 start_time = time.monotonic()
-                new_reorgs = await self.get_new_reorgs()
-                if len(new_reorgs) == 0:
-                    logger.info("No reorgs, sleeping")
+                new_splits = await self.get_new_chain_splits()
+                if len(new_splits) == 0:
+                    logger.info("No chain splits(reorgs), sleeping")
                     await asyncio.sleep(self.sleep_on_no_blocks)
                     continue
-
-                processed_reorgs_num = await self.process_reorgs(new_reorgs)
+                for split in new_splits:
+                    await self.process_chain_split(split)
 
                 proc_time = time.monotonic() - start_time
-                logger.info("%s reorgs processed on %0.2fs", processed_reorgs_num, proc_time)
-                await asyncio.sleep(0.1)
-            except DatabaseError:
-                logger.exception("Database Error accured:")
-                await asyncio.sleep(self.sleep_on_db_error)
+                logger.info("%s chain splits processed on %0.2fs", len(new_splits), proc_time)
             except Exception:
-                logger.exception("Error accured:")
+                logger.exception("Reorg Loop Error accured:")
                 await asyncio.sleep(self.sleep_on_error)
                 self.sleep_on_error = self.sleep_on_error * 2
             else:
                 self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
+                await asyncio.sleep(0.1)
+
+    async def process_chain_split(self, split):
+        new_reorgs = await self.get_reorgs(split['id'])
+        await self.process_reorgs(new_reorgs)
+        await self.main_db.insert_chain_split(split)
+        await asyncio.sleep(0.1)
 
     async def get_blocks_to_sync(self):
         latest_synced_block_num = await self.main_db.get_latest_synced_block_number(blocks_range=self.sync_range)
@@ -134,20 +138,24 @@ class Manager:
         blocks = await self.raw_db.get_missed_blocks(missed_blocks_nums)
         return blocks
 
-    async def get_new_reorgs(self):
-        last_reorg_num = await self.main_db.get_last_reorg()
-        new_reorgs = await self.raw_db.get_reorgs_from(last_reorg_num, REORGS_BATCH_SIZE)
+    async def get_reorgs(self, chain_split_id):
+        new_reorgs = await self.raw_db.get_reorgs_by_chain_split_id(chain_split_id)
         return new_reorgs
+
+    async def get_new_chain_splits(self):
+        last_chain_split_num = await self.main_db.get_last_chain_split()
+        new_chain_splits = await self.raw_db.get_chain_splits_from(last_chain_split_num, REORGS_BATCH_SIZE)
+        return new_chain_splits
 
     async def process_reorgs(self, reorgs):
         c = 0
         for reorg in reorgs:
-            success = await self.main_db.apply_reorg(reorg)
-            if success is not True:
-                # reorg block is not synced, try to sync it now
-                logger.debug('Reorg: try to sync missed block %s %s', reorg['block_hash'], reorg['block_number'])
-                await loop.run_in_executor(self.executor, sync_block, reorg['block_hash'], reorg['block_number'])
-                return c
+            await self.main_db.apply_reorg(reorg)
+            await service_bus.emit_reorganization_event(
+                block_hash=reorg['block_hash'],
+                block_number=reorg['block_number'],
+                reinserted=reorg['reinserted']
+            )
             c += 1
         return c
 

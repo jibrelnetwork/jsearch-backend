@@ -23,7 +23,7 @@ services:
     depends_on:
     - raw_db
     - main_db
-    - celery_worker
+    - kafka
     build:
       context: .
       dockerfile: Dockerfile

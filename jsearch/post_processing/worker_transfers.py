@@ -12,14 +12,14 @@ from jsearch.common.processing.erc20_balances import (
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics, Metric
-from jsearch.service_bus import service_bus
+from jsearch.service_bus import service_bus, WORKER_HANDLE_ERC20_TRANSFERS
 from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Logs, Contracts
 
 metrics = Metrics()
 
 
-@service_bus.listen_stream('erc20_transfers', task_limit=30, batch_size=20, batch_timeout=5)
+@service_bus.listen_stream(WORKER_HANDLE_ERC20_TRANSFERS, task_limit=30, batch_size=20, batch_timeout=5)
 async def handle_new_transfers(blocks: List[Logs]):
     loop = asyncio.get_event_loop()
 
