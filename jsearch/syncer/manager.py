@@ -103,7 +103,7 @@ class Manager:
 
     async def get_blocks_to_sync(self):
         latest_synced_block_num = await self.main_db.get_latest_synced_block_number(blocks_range=self.sync_range)
-        latest_available_block_num = await self.raw_db.get_latest_available_block_number()
+        self.latest_available_block_num = await self.raw_db.get_latest_available_block_number()
         if self.latest_available_block_num - (latest_synced_block_num or 0) < self.chunk_size:
             # syncer is almost reached the head of chain, can fetch missed blocks now
             sync_mode = 'strict'
