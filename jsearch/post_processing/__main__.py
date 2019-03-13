@@ -42,8 +42,9 @@ async def post_processing(action: str) -> None:
 
     try:
         await service_bus.start()
-    finally:
         await service_bus.wait()
+    finally:
+        await service_bus.stop()
 
 
 async def prepare_data_for_post_processing(block_range: str, action: str) -> None:
