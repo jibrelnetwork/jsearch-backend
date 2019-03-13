@@ -119,7 +119,7 @@ class Manager:
             blocks = await self.get_blocks_to_sync_fast(latest_synced_block_num, self.chunk_size)
 
         if self.latest_available_block_num != latest_available_block_num:
-            self.latest_available_block_num = self.latest_available_block_num
+            self.latest_available_block_num = latest_available_block_num
             await service_bus.emit_last_block_event(number=self.latest_available_block_num)
 
         logger.info("Latest synced block num is %s, %s blocks to sync, sync mode: %s",
