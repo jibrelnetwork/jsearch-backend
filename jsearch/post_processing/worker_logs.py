@@ -56,6 +56,7 @@ def process_tx_logs(logs: Logs) -> Logs:
 
 def save_transfers(contracts: Contracts, transfer_logs: Logs) -> Transfers:
     with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
+        start_at = time.time()
         contracts = prefetch_decimals(contracts)
 
         block_hashes = [log['block_hash'] for log in transfer_logs]
@@ -63,6 +64,7 @@ def save_transfers(contracts: Contracts, transfer_logs: Logs) -> Transfers:
 
         transfers = logs_to_transfers(transfer_logs, blocks, contracts)
         db.insert_or_update_transfers(transfers)
+        logger.info('[WORKER] transfer insert speed %0.2f', len(transfers) / (time.time() - start_at))
 
         return transfers
 
