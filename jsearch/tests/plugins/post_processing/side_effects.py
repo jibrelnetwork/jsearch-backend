@@ -7,7 +7,7 @@ from jsearch.typing import Contracts
 
 
 @pytest.fixture()
-def mock_async_fetch_contracts(mocker):
+def mock_fetch_contracts(mocker):
     def _wrapper(contracts: Contracts):
         async def get_contracts(addresses: List[str]):
             result = []
@@ -21,27 +21,9 @@ def mock_async_fetch_contracts(mocker):
                 result.append(contract)
             return result
 
-        mocker.patch('jsearch.post_processing.worker_transfers.async_fetch_contracts', get_contracts)
-
-    return _wrapper
-
-
-@pytest.fixture()
-def mock_fetch_contracts(mocker):
-    def _wrapper(contracts: Contracts):
-        def get_contracts(addresses):
-            result = []
-            for address in addresses:
-                matched_contracts = [item for item in contracts if item['address'] == address]
-                contract = matched_contracts and matched_contracts[0] or {
-                    'address': address,
-                    'abi': ERC20_ABI,
-                    'token_decimals': 18,
-                }
-                result.append(contract)
-            return result
-
+        mocker.patch('jsearch.post_processing.worker_transfers.fetch_contracts', get_contracts)
         mocker.patch('jsearch.post_processing.worker_logs.fetch_contracts', get_contracts)
+        # mocker.patch('jsearch.common.processing.utils.fetch_contracts', get_contracts)
 
     return _wrapper
 

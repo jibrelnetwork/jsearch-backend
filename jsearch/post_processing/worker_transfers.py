@@ -6,7 +6,7 @@ from typing import List
 from jsearch import settings
 from jsearch.common.last_block import LastBlock
 from jsearch.common.processing.erc20_balances import update_token_holder_balances
-from jsearch.common.processing.utils import async_fetch_contracts, prefetch_decimals
+from jsearch.common.processing.utils import fetch_contracts, prefetch_decimals
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics, Metric
 from jsearch.service_bus import service_bus, ROUTE_HANDLE_ERC20_TRANSFERS, ROUTE_HANDLE_LAST_BLOCK
@@ -30,7 +30,7 @@ async def handle_new_transfers(blocks: List[Transfers]):
     last_stable_block = await last_block.get_last_stable_block()
 
     addresses = list({log['token_address'] for log in logs})
-    contracts = await async_fetch_contracts(addresses)
+    contracts = await fetch_contracts(addresses)
 
     await loop.run_in_executor(executor.get(), worker, contracts, logs, last_stable_block)
 
