@@ -59,7 +59,7 @@ def save_transfers(contracts: Contracts, transfer_logs: Logs) -> Transfers:
         start_at = time.time()
         contracts = prefetch_decimals(contracts)
 
-        block_hashes = [log['block_hash'] for log in transfer_logs]
+        block_hashes = list({log['block_hash'] for log in transfer_logs})
         blocks = {block['hash']: block for block in db.get_blocks(hashes=block_hashes)}
 
         transfers = logs_to_transfers(transfer_logs, blocks, contracts)
