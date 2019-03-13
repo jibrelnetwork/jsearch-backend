@@ -10,7 +10,12 @@ from jsearch.multiprocessing import executor
 from jsearch.post_processing.reprocessing import send_erc20_transfers_to_reprocess, send_trx_logs_to_reprocess
 from jsearch.post_processing.worker_logs import handle_transaction_logs
 from jsearch.post_processing.worker_transfers import handle_new_transfers
-from jsearch.service_bus import service_bus, ROUTE_HANDLE_TRANSACTION_LOGS, ROUTE_HANDLE_ERC20_TRANSFERS
+from jsearch.service_bus import (
+    ROUTE_HANDLE_ERC20_TRANSFERS,
+    ROUTE_HANDLE_LAST_BLOCK,
+    ROUTE_HANDLE_TRANSACTION_LOGS,
+    service_bus,
+)
 from jsearch.utils import parse_range
 
 logger = logging.getLogger('post_processing')
@@ -19,6 +24,7 @@ ACTION_PROCESS_LOGS = 'logs'
 ACTION_PROCESS_TRANSFERS = 'transfers'
 
 WORKER_MAP = {
+    ROUTE_HANDLE_LAST_BLOCK: ACTION_PROCESS_LOGS,
     ROUTE_HANDLE_TRANSACTION_LOGS: ACTION_PROCESS_LOGS,
     ROUTE_HANDLE_ERC20_TRANSFERS: ACTION_PROCESS_TRANSFERS,
 }
