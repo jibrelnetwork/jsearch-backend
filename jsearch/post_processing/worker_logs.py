@@ -34,7 +34,9 @@ def process_tx_logs(logs: Logs) -> Logs:
     with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
         start_at = time.time()
         logs = [process_log_event(log) for log in logs]
-        for log in logs:
+        for i, log in enumerate(logs):
+            if not (i % 50):
+                print('50 logs was updated')
             db.update_log(
                 tx_hash=log['transaction_hash'],
                 log_index=log['log_index'],
