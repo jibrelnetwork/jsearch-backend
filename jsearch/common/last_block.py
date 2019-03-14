@@ -54,7 +54,7 @@ class LastBlock(Singleton):
         msg = await consumer.getone(self._partition)
         await consumer.stop()
 
-        last_block = msg.value['number']
+        last_block = msg.value['value']['number']
         self.update(number=last_block)
 
         return last_block
