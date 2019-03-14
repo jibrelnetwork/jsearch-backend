@@ -1,13 +1,13 @@
 # !/usr/bin/env python
 import asyncio
 import logging
-from functools import partial
+import signal
 
 import click
+from mode import Service
 
 from jsearch.common import logs
 from jsearch.multiprocessing import executor
-from jsearch.post_processing.reprocessing import send_erc20_transfers_to_reprocess, send_trx_logs_to_reprocess
 from jsearch.post_processing.worker_logs import handle_transaction_logs
 from jsearch.post_processing.worker_transfers import handle_new_transfers
 from jsearch.service_bus import (
@@ -16,7 +16,7 @@ from jsearch.service_bus import (
     ROUTE_HANDLE_TRANSACTION_LOGS,
     service_bus,
 )
-from jsearch.utils import parse_range
+from jsearch.utils import Singleton
 
 logger = logging.getLogger('post_processing')
 
@@ -28,62 +28,98 @@ WORKER_MAP = {
     ROUTE_HANDLE_TRANSACTION_LOGS: ACTION_PROCESS_LOGS,
     ROUTE_HANDLE_ERC20_TRANSFERS: ACTION_PROCESS_TRANSFERS,
 }
-REPROCESSING_MAP = {
-    ACTION_PROCESS_LOGS: send_erc20_transfers_to_reprocess,
-    ACTION_PROCESS_TRANSFERS: send_trx_logs_to_reprocess
-}
 
 WORKERS = [handle_new_transfers, handle_transaction_logs]
 
 
-async def post_processing(action: str) -> None:
-    # choose only one stream worker which related to action
-    service_bus.streams = {k: v for k, v in service_bus.streams.items() if WORKER_MAP[k] == action}
+class PostProcessingWorker(Singleton, Service):
+    action: str
 
-    try:
-        await service_bus.start()
-        await service_bus.wait()
-    finally:
+    def __init__(self, action, *args, **kwargs):
+        super(PostProcessingWorker, self).__init__(*args, **kwargs)
+
+        self.action = action
+        self._is_need_to_stop = False
+
+    def on_init_dependencies(self):
+        service_bus.streams = {k: v for k, v in service_bus.streams.items() if WORKER_MAP[k] == self.action}
+        return [service_bus]
+
+    async def on_start(self):
+        print('start?')
+        self._is_need_to_stop = False
+        await service_bus.maybe_start()
+
+    async def on_stop(self):
+        print('stop?')
         await service_bus.stop()
 
+    def graceful_stop(self):
+        self._is_need_to_stop = True
 
-async def prepare_data_for_post_processing(block_range: str, action: str) -> None:
-    # disable all stream workers
-    service_bus.streams = {}
-    block_from, block_until = parse_range(block_range)
-    worker = partial(REPROCESSING_MAP[action], block_from, block_until, 100)
+        loop = asyncio.get_event_loop()
+        loop.remove_signal_handler(sig=signal.SIGTERM)
+        loop.remove_signal_handler(sig=signal.SIGINT)
 
-    try:
-        await service_bus.start()
-        await worker()
-    finally:
-        await service_bus.stop()
+    @Service.task
+    async def monitor(self):
+        while not self._is_need_to_stop:
+            await asyncio.sleep(0.5)
+
+        logging.info(f'Received exit signal ...')
+        logging.info('Stop service bus...')
+
+        await self.stop()
+
+        asyncio.ensure_future(shutdown())
+
+        logging.info('Shutdown complete.')
+
+
+async def shutdown():
+    loop = asyncio.get_event_loop()
+
+    logging.info(f'Received exit signal ...')
+    tasks = [task for task in asyncio.Task.all_tasks() if task is not asyncio.Task.current_task()]
+
+    for task in tasks:
+        task.cancel()
+
+    logging.info('Canceling outstanding tasks')
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    for result in results:
+        if isinstance(result, Exception):
+            print(result)
+            logging.info('finished awaiting cancelled tasks, results: {0}'.format(result))
+
+    loop.stop()
+    logging.info('Shutdown complete.')
 
 
 @click.command()
 @click.argument('action', type=click.Choice([ACTION_PROCESS_LOGS, ACTION_PROCESS_TRANSFERS]))
 @click.option('--log-level', default='INFO', help="Log level")
 @click.option('--workers', default=30, help="Workers count")
-@click.option('--prepare_data', is_flag=True)
-@click.option('--block-range')
-def main(action, log_level, workers, prepare_data, block_range) -> None:
+def main(action, log_level, workers) -> None:
     logs.configure(log_level)
 
+    service = PostProcessingWorker(action=action)
     executor.init(workers)
 
-    if prepare_data:
-        coro = prepare_data_for_post_processing(block_range, action)
-    else:
-        coro = post_processing(action)
+    coro = service.start()
 
     loop = asyncio.get_event_loop()
+    for signame in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig=signame, callback=service.graceful_stop)
+
+    task = asyncio.ensure_future(coro)
     try:
-        loop.run_until_complete(coro)
-    except KeyboardInterrupt:
-        loop.run_until_complete(service_bus.stop())
+        loop.run_forever()
     finally:
-        loop.stop()
         loop.close()
+        if not task.cancelled():
+            task.result()
 
 
 if __name__ == '__main__':

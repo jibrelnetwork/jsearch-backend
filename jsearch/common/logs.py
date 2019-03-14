@@ -26,6 +26,10 @@ def configure(log_level):
             },
         },
         'loggers': {
+            'kafka.conn': {
+                'level': 'DEBUG',
+                'handlers': ['console']
+            },
             'post_processing': {
                 'level': log_level,
                 'handlers': ['console'],
