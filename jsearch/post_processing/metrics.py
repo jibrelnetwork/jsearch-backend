@@ -72,6 +72,11 @@ class Metrics(Singleton):
         self.metrics[metric.name].append(metric)
 
     def set_value(self, name, value, callback):
+        """
+        set value to metrics
+
+        it there is a callback - value will rewrite only if callback returns True
+        """
         if callback(self.values.get(name), value):
             self.values[name] = value
 
