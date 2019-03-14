@@ -71,13 +71,14 @@ class Metrics(Singleton):
         self.ensure_started()
         self.metrics[metric.name].append(metric)
 
-    def set_value(self, name, value, callback):
+    def set_value(self, name, value, is_need_to_update):
         """
         set value to metrics
 
         it there is a callback - value will rewrite only if callback returns True
         """
-        if callback(self.values.get(name), value):
+        prev = self.values.get(name)
+        if is_need_to_update(prev, value):
             self.values[name] = value
 
     def ensure_started(self):

@@ -1,21 +1,41 @@
 import asyncio
 import logging
+import time
 from itertools import chain
 from typing import List
 
 from jsearch import settings
 from jsearch.common.last_block import LastBlock
 from jsearch.common.processing.erc20_balances import update_token_holder_balances
+from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.utils import fetch_contracts, prefetch_decimals
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics, Metric
 from jsearch.service_bus import service_bus, ROUTE_HANDLE_ERC20_TRANSFERS, ROUTE_HANDLE_LAST_BLOCK
 from jsearch.syncer.database import MainDBSync
-from jsearch.typing import Contracts, Transfers
+from jsearch.typing import Contracts, Transfers, Logs
 
 metrics = Metrics()
 
 logger = logging.getLogger('worker')
+
+
+def worker(contracts: Contracts, transfer_logs: Logs, last_block: int) -> None:
+    with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
+        start_at = time.time()
+        contracts = prefetch_decimals(contracts)
+
+        block_hashes = list({log['block_hash'] for log in transfer_logs})
+        blocks = {block['hash']: block for block in db.get_blocks(hashes=block_hashes)}
+
+        transfers = logs_to_transfers(transfer_logs, blocks, contracts)
+        db.insert_or_update_transfers(transfers)
+
+        logger.info('[WORKER] transfer insert speed %0.2f', len(transfers) / (time.time() - start_at))
+
+        start_at = time.time()
+        update_token_holder_balances(db, transfers, contracts, last_block)
+        logger.info('[WORKER] update token holder balance speed %0.2f', len(transfers) / (time.time() - start_at))
 
 
 @service_bus.listen_stream(ROUTE_HANDLE_ERC20_TRANSFERS, task_limit=30, batch_size=20, batch_timeout=5)
@@ -42,7 +62,7 @@ async def handle_new_transfers(blocks: List[Transfers]):
     metrics.set_value(
         name='last_block',
         value=logs[0]['block_number'],
-        callback=lambda prev, value: not prev or prev > value
+        is_need_to_update=lambda prev, value: prev is None or prev < value
     )
 
 
@@ -52,9 +72,3 @@ async def receive_last_block(number):
 
     last_block = LastBlock()
     last_block.update(number=number)
-
-
-def worker(contracts: Contracts, transfers: Transfers, last_block: int) -> None:
-    with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
-        contracts = prefetch_decimals(contracts)
-        update_token_holder_balances(db, transfers, contracts, last_block)
