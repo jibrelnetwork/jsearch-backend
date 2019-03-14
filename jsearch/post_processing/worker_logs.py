@@ -107,5 +107,5 @@ async def handle_transaction_logs(blocks: List[Logs]):
     metrics.set_value(
         name='last_block',
         value=logs[0]['block_number'],
-        callback=lambda prev, value: prev and prev > value
+        callback=lambda prev, value: not prev or prev > value
     )

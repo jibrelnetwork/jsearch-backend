@@ -42,7 +42,7 @@ async def handle_new_transfers(blocks: List[Transfers]):
     metrics.set_value(
         name='last_block',
         value=logs[0]['block_number'],
-        callback=lambda prev, value: (prev and prev > value) or value
+        callback=lambda prev, value: not prev or prev > value
     )
 
 
