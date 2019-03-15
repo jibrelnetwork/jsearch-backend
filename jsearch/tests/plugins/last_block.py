@@ -21,7 +21,7 @@ def mock_last_block_consumer(mocker):
                 partition=0,
                 offset=1,
                 key=str(uuid4()),
-                value=value
+                value={"value": value},
             )
         )
 

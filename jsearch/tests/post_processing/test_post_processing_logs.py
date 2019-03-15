@@ -29,10 +29,8 @@ async def test_post_processing_logs(mocker,
 
     # then check results
     loaded_logs = load_logs(transaction['hash'], transaction['block_hash'])
-    loaded_transfers = load_transfers(transaction['hash'], transaction['block_hash'])
 
     assert len(loaded_logs) == 1
-    assert len(loaded_transfers) == 2
 
     # check logs was updated
     for log in loaded_logs:
@@ -47,19 +45,4 @@ async def test_post_processing_logs(mocker,
             'value': 1000
         }
 
-    # check transfers
-    for transfer in loaded_transfers:
-        assert transfer['token_value'] == 1000
 
-    transfers = sorted(transfers, key=lambda x: x['address'])
-
-    items = sorted(loaded_transfers, key=lambda x: x['address'])
-    assert items == transfers
-
-    # check transfers was send to service bus
-    items = sorted(get_erc20_transfers_from_kafka(), key=lambda x: x['address'])
-    assert items == transfers
-
-
-def sort_token_holders_key(x):
-    return x['token_address'], x['account_address'], x['balance']

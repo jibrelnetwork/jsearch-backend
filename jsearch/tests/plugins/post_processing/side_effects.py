@@ -22,8 +22,6 @@ def mock_fetch_contracts(mocker):
             return result
 
         mocker.patch('jsearch.post_processing.worker_transfers.fetch_contracts', get_contracts)
-        mocker.patch('jsearch.post_processing.worker_logs.fetch_contracts', get_contracts)
-        # mocker.patch('jsearch.common.processing.utils.fetch_contracts', get_contracts)
 
     return _wrapper
 
@@ -34,7 +32,6 @@ def mock_prefetch_decimals(mocker, main_db_data):
         return {contract['address']: dict(decimals=10, **contract) for contract in contracts}
 
     mocker.patch('jsearch.post_processing.worker_transfers.prefetch_decimals', prefetch_decimals)
-    mocker.patch('jsearch.post_processing.worker_logs.prefetch_decimals', prefetch_decimals)
 
 
 @pytest.fixture()

@@ -3,8 +3,6 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import select
 
-from jsearch.tests.post_processing.test_post_processing_logs import sort_token_holders_key
-
 pytest_plugins = [
     'jsearch.tests.plugins.databases.dumps',
     'jsearch.tests.plugins.databases.main_db',
@@ -16,22 +14,51 @@ pytest_plugins = [
 
 
 @pytest.mark.usefixtures('mock_service_bus', 'mock_executor')
+async def test_post_processing_logs_to_transfer_transition(transaction,
+                                                           logs,
+                                                           transfers,
+                                                           load_transfers,
+                                                           mock_last_block_consumer,
+                                                           get_erc20_transfers_from_kafka,
+                                                           post_processing_transfers,
+                                                           token_address):
+    # given
+    mock_last_block_consumer({"number": 7000000})
+
+    # when
+    await post_processing_transfers(logs)
+
+    # then
+
+    loaded_transfers = load_transfers(transaction['hash'], transaction['block_hash'])
+    assert len(loaded_transfers) == 2
+    # check transfers
+    for transfer in loaded_transfers:
+        assert transfer['token_value'] == 1000
+
+    transfers = sorted(transfers, key=lambda x: x['address'])
+
+    items = sorted(loaded_transfers, key=lambda x: x['address'])
+    assert items == transfers
+
+
+@pytest.mark.usefixtures('mock_service_bus', 'mock_executor')
 async def test_post_processing_account_balance(mocker,
                                                mock_last_block_consumer,
                                                db_connection_string,
                                                main_db_data,
                                                post_processing_transfers,
                                                token_address,
-                                               transfers):
+                                               logs):
     from jsearch.common.tables import token_holders_t
     from jsearch.syncer.database import MainDBSync
     # given
     # get transfers from logs
-    mock_last_block_consumer({"number": 6000000})
+    mock_last_block_consumer({"number": 7000000})
     mocker.patch('time.sleep')
 
     # when run system under test
-    await post_processing_transfers(transfers)
+    await post_processing_transfers(logs)
 
     # then
     with MainDBSync(db_connection_string) as db:
@@ -52,3 +79,7 @@ async def test_post_processing_account_balance(mocker,
             'decimals': 10
         },
     ], key=sort_token_holders_key)
+
+
+def sort_token_holders_key(x):
+    return x['token_address'], x['account_address'], x['balance']
