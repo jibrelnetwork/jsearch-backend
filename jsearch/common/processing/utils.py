@@ -38,9 +38,16 @@ def fetch_erc20_token_decimal_bulk(contracts: Contracts) -> Contracts:
 
 
 async def fetch_contracts(addresses: List[str]) -> Contracts:
+    fields = [
+        'address',
+        'abi',
+        'token_name',
+        'token_symbol',
+        'token_decimals'
+    ]
     contracts = chain(
         *await do_parallel(
-            func=partial(service_bus.get_contracts, fields=["address", "abi", ]),
+            func=partial(service_bus.get_contracts, fields),
             argument_list=addresses,
             chunk_size=settings.ETH_NODE_BATCH_REQUEST_SIZE
         )

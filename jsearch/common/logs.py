@@ -27,7 +27,7 @@ def configure(log_level):
         },
         'loggers': {
             'kafka.conn': {
-                'level': 'DEBUG',
+                'level': 'WARNING',
                 'handlers': ['console']
             },
             'post_processing': {

@@ -48,9 +48,6 @@ class BalanceUpdate:
             raise ValueError('Expected BalanceUpdate instance')
         return self.key == other.key
 
-    def __repr__(self):
-        return f"<Balance update> {self.token_address}, {self.account_address} -> {self.value}"
-
     @property
     def token_as_checksum(self):
         return Web3.toChecksumAddress(self.token_address)
@@ -70,6 +67,10 @@ class BalanceUpdate:
             balance = self.value + changes
 
             db.update_token_holder_balance(self.token_address, self.account_address, balance, self.decimals)
+            logger.info(
+                '[BALANCE UPDATE] on last block %s, token %s on address %s -> %s + %s',
+                last_block, self.token_address, self.account_address, self.value, changes
+            )
         else:
             logger.error(
                 'Error due to balance update: '

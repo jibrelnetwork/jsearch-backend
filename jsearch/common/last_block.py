@@ -42,6 +42,7 @@ class LastBlock(Singleton):
         return await self.get() - self.offset
 
     async def load(self):
+        logging.info('[LAST BLOCK] load last from the topic...')
         consumer = _get_consumer()
         await consumer.start()
         offsets = await consumer.end_offsets(partitions=[self._partition])

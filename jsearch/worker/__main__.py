@@ -27,7 +27,7 @@ import asyncio
 import logging
 from collections import defaultdict
 from functools import partial
-from typing import List
+from typing import List, Dict
 
 import backoff
 import click
@@ -151,7 +151,9 @@ async def handle_block_reorganization(block_hash, block_number, reinserted):
 
 
 @service_bus.listen_stream(service_name='jsearch-worker', stream_name=ROUTE_HANDLE_LAST_BLOCK)
-async def receive_last_block(number):
+async def receive_last_block(record: Dict[str, int]):
+    number = record.get('value')
+
     logger.info("[LAST BLOCK] Receive new last block number %s", number)
 
     last_block = LastBlock()

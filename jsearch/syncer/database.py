@@ -445,8 +445,6 @@ class MainDBSync(DBWrapperSync):
 
     def insert_or_update_transfers(self, records: List[Dict[str, Any]]):
         for i, record in enumerate(records):
-            if not (i % 50):
-                print('50 logs was updated')
             insert_query = insert(token_transfers_t).values(record).on_conflict_do_update(
                 index_elements=[
                     'transaction_hash',

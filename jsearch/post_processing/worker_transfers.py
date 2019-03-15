@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 from itertools import chain
-from typing import List
+from typing import List, Dict
 
 from jsearch import settings
 from jsearch.common.last_block import LastBlock
@@ -11,7 +11,7 @@ from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.utils import fetch_contracts, prefetch_decimals
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics, Metric
-from jsearch.service_bus import service_bus, ROUTE_HANDLE_ERC20_TRANSFERS, ROUTE_HANDLE_LAST_BLOCK
+from jsearch.service_bus import service_bus, ROUTE_HANDLE_LAST_BLOCK, ROUTE_HANDLE_ERC20_TRANSFERS
 from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Contracts, Transfers, Logs
 
@@ -67,7 +67,9 @@ async def handle_new_transfers(blocks: List[Transfers]):
 
 
 @service_bus.listen_stream(ROUTE_HANDLE_LAST_BLOCK)
-async def receive_last_block(number):
+async def receive_last_block(record: Dict[str, int]):
+    number = record.get('number')
+
     logger.info("[LAST BLOCK] Receive new last block number %s", number)
 
     last_block = LastBlock()
