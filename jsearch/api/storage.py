@@ -8,6 +8,9 @@ from jsearch.api.models.all import TokenTransfer
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class Storage:
 
@@ -447,6 +450,7 @@ class Storage:
     async def get_wallet_transactions(self, address: str, limit: int, offset: int) -> List:
         offset *= 2
         limit *= 2
+        print("TXS %s", address)
         query = """SELECT * FROM transactions
                         WHERE address = $1
                         ORDER BY block_number, transaction_index DESC
@@ -516,6 +520,7 @@ class Storage:
         """
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, address)
+            print("NONS %s %s", address, row)
             if row:
                 return row['nonce']
             return 0

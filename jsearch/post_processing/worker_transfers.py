@@ -12,7 +12,7 @@ from jsearch.common.processing.erc20_balances import (
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics, Metric
-from jsearch.service_bus import service_bus, WORKER_HANDLE_ERC20_TRANSFERS
+from jsearch.service_bus import service_bus, sync_client, WORKER_HANDLE_ERC20_TRANSFERS
 from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Logs, Contracts
 
@@ -51,3 +51,4 @@ def worker(contracts: Contracts, logs: Logs) -> None:
         transfers = logs_to_transfers(logs, blocks, contracts)
 
         db.insert_or_update_transfers(transfers)
+        sync_client.write_transfers(transfers)

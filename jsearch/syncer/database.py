@@ -1,4 +1,5 @@
 import logging
+from copy import copy
 from typing import List, Dict, Any
 
 import aiopg
@@ -19,6 +20,7 @@ from jsearch.common.tables import (
     logs_t,
     receipts_t,
     transactions_t,
+    uncles_t,
     uncles_t,
     reorgs_t,
     token_transfers_t,
@@ -393,7 +395,16 @@ class MainDBSync(DBWrapperSync):
 
     def insert_transactions(self, transactions_data):
         if transactions_data:
-            self.execute(transactions_t.insert(), *transactions_data)
+            transactions = []
+            for td in transactions_data:
+                tx1 = copy(td)
+                tx1['address'] = tx1['from']
+                tx2 = copy(td)
+                tx2['address'] = tx2['from']
+                transactions.append(tx1)
+                transactions.append(tx2)
+            self.execute(transactions_t.insert(), *transactions)
+
 
     def insert_receipts(self, receipts_data):
         if receipts_data:
