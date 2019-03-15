@@ -47,7 +47,7 @@ class LastBlock(Singleton):
         consumer = _get_consumer()
         await consumer.start()
 
-        print(consumer._client.api_version)
+        print('VERSION', consumer._client.api_version)
         offsets = await consumer.end_offsets(partitions=[self._partition])
 
         last_value_offset = offsets[self._partition]
