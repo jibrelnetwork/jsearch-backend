@@ -64,5 +64,6 @@ class LastBlock(Singleton):
         return last_block
 
     def update(self, number):
-        self.number = number
-        logging.info("[LAST BLOCK] %s", self.number)
+        if self.number is None or self.number < number:
+            self.number = number
+            logging.info("[LAST BLOCK] %s", self.number)
