@@ -70,19 +70,19 @@ async def handle_transaction_logs(blocks: List[Logs]):
 
     loop = asyncio.get_event_loop()
 
-    logs_per_seconds = Metric('logs_per_second')
-    blocks_per_seconds = Metric('blocks_per_second')
+    metric_logs = Metric('logs')
+    metric_blocks = Metric('blocks')
 
     logs = list(chain(*blocks))
     transfer_logs = await loop.run_in_executor(executor.get(), process_tx_logs, logs)
 
     await write_transfers_logs_bus(transfer_logs)
 
-    logs_per_seconds.finish(value=len(logs))
-    blocks_per_seconds.finish(value=1)
+    metric_logs.finish(value=len(logs))
+    metric_blocks.finish(value=1)
 
-    metrics.update(logs_per_seconds)
-    metrics.update(blocks_per_seconds)
+    metrics.update(metric_logs)
+    metrics.update(metric_blocks)
     metrics.set_value(
         name='last_block',
         value=logs[0]['block_number'],

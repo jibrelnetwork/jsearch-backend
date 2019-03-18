@@ -43,8 +43,8 @@ async def handle_new_transfers(blocks: List[Transfers]):
     loop = asyncio.get_event_loop()
     last_block = LastBlock()
 
-    logs_per_seconds = Metric('logs_per_second')
-    blocks_per_seconds = Metric('blocks_per_second')
+    metric_logs = Metric('logs')
+    metric_blocks = Metric('blocks')
 
     logs = list(chain(*blocks))
     last_stable_block = await last_block.get_last_stable_block()
@@ -54,11 +54,11 @@ async def handle_new_transfers(blocks: List[Transfers]):
 
     await loop.run_in_executor(executor.get(), worker, contracts, logs, last_stable_block)
 
-    logs_per_seconds.finish(value=len(logs))
-    blocks_per_seconds.finish(value=len(blocks))
+    metric_logs.finish(value=len(logs))
+    metric_blocks.finish(value=len(blocks))
 
-    metrics.update(logs_per_seconds)
-    metrics.update(blocks_per_seconds)
+    metrics.update(metric_logs)
+    metrics.update(metric_blocks)
     metrics.set_value(
         name='last_block',
         value=logs[0]['block_number'],
