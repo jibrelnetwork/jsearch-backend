@@ -47,7 +47,7 @@ async def fetch_contracts(addresses: List[str]) -> Contracts:
     ]
     contracts = chain(
         *await do_parallel(
-            func=partial(service_bus.get_contracts, fields),
+            func=partial(service_bus.get_contracts, fields=fields),
             argument_list=addresses,
             chunk_size=settings.ETH_NODE_BATCH_REQUEST_SIZE
         )
