@@ -152,7 +152,7 @@ async def handle_block_reorganization(block_hash, block_number, reinserted):
 
 @service_bus.listen_stream(service_name='jsearch-worker', stream_name=ROUTE_HANDLE_LAST_BLOCK)
 async def receive_last_block(record: Dict[str, int]):
-    number = record.get('value')
+    number = record.get('number')
 
     logger.info("[LAST BLOCK] Receive new last block number %s", number)
 
