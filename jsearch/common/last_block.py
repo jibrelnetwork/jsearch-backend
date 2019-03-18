@@ -36,8 +36,9 @@ class LastBlock(Singleton):
         return TopicPartition(topic=ROUTE_HANDLE_LAST_BLOCK, partition=0)
 
     async def get(self):
-        if not self.number:
+        if self.number is None:
             return await self.load()
+        return self.number
 
     async def get_last_stable_block(self):
         return await self.get() - self.offset

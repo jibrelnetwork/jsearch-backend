@@ -44,5 +44,3 @@ async def test_post_processing_logs(mocker,
             'from': main_db_data['accounts_state'][0]['address'],
             'value': 1000
         }
-
-
