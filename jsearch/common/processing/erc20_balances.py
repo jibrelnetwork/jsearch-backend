@@ -133,8 +133,9 @@ def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpd
         update = BalanceUpdate(token_address, to_address, block, abi, decimals)
         updates.add(update)
 
-    update = BalanceUpdate(token_address, from_address, block, abi, decimals)
-    updates.add(update)
+    if from_address != NULL_ADDRESS:
+        update = BalanceUpdate(token_address, from_address, block, abi, decimals)
+        updates.add(update)
 
     return updates
 
