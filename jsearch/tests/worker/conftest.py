@@ -12,7 +12,7 @@ def mock_service_bus_get_contracts(mocker):
     from jsearch.service_bus import service_bus
     store = {}
 
-    async def get_contracts(addresses):
+    async def get_contracts(addresses, fields):
         return [contract for contract in store.values() if contract['address'] in addresses]
 
     mocker.patch.object(service_bus, 'get_contracts', get_contracts)
@@ -23,11 +23,13 @@ def mock_service_bus_get_contracts(mocker):
 def mock_fetch_erc20_balance_bulk(mocker):
     store = defaultdict(dict)
 
-    def fetch_erc20_token_balance(contract_abi, token_address, account_address, block):
-        if account_address in store[token_address]:
-            return store[token_address][account_address]
+    def fetch_erc20_balance_bulk(chunk, block):
+        for update in chunk:
+            update.value = store[update.token_address][update.account_address]
 
-    mocker.patch('jsearch.worker.__main__.fetch_erc20_token_balance', fetch_erc20_token_balance)
+        return chunk
+
+    mocker.patch('jsearch.worker.__main__.fetch_erc20_balance_bulk', fetch_erc20_balance_bulk)
 
     return store
 

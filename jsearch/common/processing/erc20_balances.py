@@ -1,6 +1,6 @@
 import logging
 from itertools import count
-from typing import Dict, Set
+from typing import Dict, Set, Union
 from typing import List, Optional
 
 from web3 import Web3
@@ -61,21 +61,30 @@ class BalanceUpdate:
         return self.token_address, self.account_address
 
     def apply(self, db: MainDBSync, last_block: int):
+        changes = None
+        balance = None
+
         is_valid = isinstance(self.value, int)
         if is_valid:
-            changes = db.get_balance_changes_since_block(address=self.account_address, block_number=last_block)
+            changes = db.get_balance_changes_since_block(
+                token=self.token_address,
+                account=self.account_address,
+                block_number=last_block
+            )
             balance = self.value + changes
 
-            db.update_token_holder_balance(self.token_address, self.account_address, balance, self.decimals)
-            logger.info(
-                '[BALANCE UPDATE] on last block %s, token %s on address %s -> %s + %s',
-                last_block, self.token_address, self.account_address, self.value, changes
-            )
-        else:
+            is_valid = balance >= 0
+            if is_valid:
+                db.update_token_holder_balance(self.token_address, self.account_address, balance, self.decimals)
+                logger.info(
+                    '[BALANCE UPDATE] %s on block %s token %s address %s -> %30d + %30d : %30d',
+                    self.block, last_block, self.token_address, self.account_address, self.value, changes, balance
+                )
+
+        if not is_valid:
             logger.error(
-                'Error due to balance update: '
-                'token %s account %s block %s balance %s decimals %s',
-                self.token_address, self.account_address, self.block, self.value, self.decimals
+                '[BALANCE UPDATE ERROR] %s on block %s token %s address %s -> %30s + %30s : %30s',
+                self.block, last_block, self.token_address, self.account_address, self.value, changes, balance
             )
 
 
@@ -85,7 +94,7 @@ BalanceUpdates = List[BalanceUpdate]
 def fetch_erc20_token_balance(contract_abi: Abi,
                               token_address: str,
                               account_address: str,
-                              block: str = 'latest') -> int:
+                              block: Optional[Union[str, int]] = 'latest') -> int:
     token_address_checksum = Web3.toChecksumAddress(token_address)
     account_address_checksum = Web3.toChecksumAddress(account_address)
 
@@ -101,7 +110,7 @@ def fetch_erc20_token_balance(contract_abi: Abi,
     return eth_call(call=call)
 
 
-def fetch_erc20_balance_bulk(updates: BalanceUpdates, block: Optional[int] = None) -> BalanceUpdates:
+def fetch_erc20_balance_bulk(updates: BalanceUpdates, block: Optional[Union[str, int]] = None) -> BalanceUpdates:
     calls = []
     counter = count()
     for update in updates:
@@ -151,12 +160,14 @@ def update_token_holder_balances(
     for transfer in transfers:
         contract_address = transfer['token_address']
         contract = contracts.get(contract_address)
-        if transfer and contract:
+        if contract:
             abi = contract.get('abi')
             decimals = contract.get('decimals')
             updates |= logs_to_balance_updates(transfer, abi, decimals)
+        else:
+            logger.info('[BALANCE UPDATE ERROR] Contract was not found %s', contract_address)
 
     for chunk in split(updates, batch_size):
-        updates = fetch_erc20_balance_bulk(chunk)
+        updates = fetch_erc20_balance_bulk(chunk, block=last_block)
         for update in updates:
             update.apply(db, last_block)

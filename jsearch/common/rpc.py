@@ -2,7 +2,7 @@ import logging
 from functools import partial
 from pprint import pformat
 from random import randint
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import backoff
 import requests
@@ -105,7 +105,7 @@ class ContractCall:
                  pk: Optional[int] = None,
                  args: Any = None,
                  kwargs: Any = None,
-                 block: Optional[str] = None,
+                 block: Optional[Union[str, int]] = None,
                  silent: bool = False) -> None:
         self.pk = pk if pk is not None else randint(1, 100)
         self.abi = abi
@@ -113,7 +113,7 @@ class ContractCall:
         self.method = method
         self.args = args
         self.kwargs = kwargs
-        self.block = block or 'latest'
+        self.block = block and to_hex(block) or 'latest'
         self.silent = silent
 
     def encode(self) -> Dict[str, Any]:
@@ -128,7 +128,7 @@ class ContractCall:
             if fn_arguments:
                 data += encode_abi(abi=fn_abi, arguments=fn_arguments)
             data = to_hex(data)
-            return {
+            value = {
                 "jsonrpc": "2.0",
                 "method": 'eth_call',
                 "params": [
@@ -140,6 +140,7 @@ class ContractCall:
                 ],
                 "id": self.pk,
             }
+            return value
         except web3.exceptions.ValidationError:
             if not self.silent:
                 raise

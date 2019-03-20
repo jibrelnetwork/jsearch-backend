@@ -36,7 +36,7 @@ def mock_prefetch_decimals(mocker, main_db_data):
 
 @pytest.fixture()
 def mock_fetch_erc20_balance_bulk(mocker):
-    def fetch_erc20_balance_bulk(updates):
+    def fetch_erc20_balance_bulk(updates, block):
         for update in updates:
             update.value = 100
         return updates

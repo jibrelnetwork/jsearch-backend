@@ -80,11 +80,11 @@ async def test_handle_reorganization(db,
     # handle reorganization event
     from jsearch.worker.__main__ import handle_block_reorganization
 
-    await handle_block_reorganization(
-        block_number=reorg.block_number,
-        block_hash=reorg.block_hash,
-        reinserted=reorg.reinserted
-    )
+    await handle_block_reorganization({
+        'block_number': reorg.block_number,
+        'block_hash': reorg.block_hash,
+        'reinserted': reorg.reinserted
+    })
 
     # then
     # check what balance was updated

@@ -27,8 +27,8 @@ from jsearch.common.tables import (
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
 from jsearch.syncer.database_queries.token_transfers import (
-    get_transfer_from_since_block_query,
-    get_transfer_to_since_block_query
+    get_transfers_from_query,
+    get_transfers_to_query
 )
 
 MAIN_DB_POOL_SIZE = 22
@@ -489,8 +489,11 @@ class MainDBSync(DBWrapperSync):
         query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
         return self.execute(query)
 
-    def get_balance_changes_since_block(self, address: str, block_number: int) -> int:
-        positive_changes = self.fetch_one(query=get_transfer_to_since_block_query(address, block_number))['value']
-        negative_changes = self.fetch_one(query=get_transfer_from_since_block_query(address, block_number))['value']
+    def get_balance_changes_since_block(self, token: str, account: str, block_number: int) -> int:
+        positive_changes_query = get_transfers_to_query(token, account, block_number)
+        positive_changes = self.fetch_one(positive_changes_query)['value']
+
+        negative_changes_query = get_transfers_from_query(token, account, block_number)
+        negative_changes = self.fetch_one(negative_changes_query)['value']
 
         return (positive_changes or 0) - (negative_changes or 0)
