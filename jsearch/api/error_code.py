@@ -1,5 +1,3 @@
-
-
 class ErrorCode:
     """
     APi Error Codes

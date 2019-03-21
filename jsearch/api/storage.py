@@ -1,6 +1,6 @@
-from typing import List, Optional
-from itertools import groupby
 import json
+from itertools import groupby
+from typing import List, Optional
 
 from jsearch.api import models
 from jsearch.api.models.all import TokenTransfer
@@ -83,10 +83,10 @@ class Storage:
 
         if tag.is_hash():
             query = f"SELECT {fields} FROM transactions WHERE block_hash=$1 AND is_forked=false " \
-                        f"ORDER BY transaction_index;"
+                    f"ORDER BY transaction_index;"
         elif tag.is_number():
             query = f"SELECT {fields} FROM transactions WHERE block_number=$1 AND is_forked=false " \
-                        f"ORDER BY transaction_index;"
+                    f"ORDER BY transaction_index;"
         else:
             query = f"""
                 SELECT {fields} FROM transactions
@@ -400,28 +400,29 @@ class Storage:
         if split is None:
             result = {
                 'blockchainTip': {
-                  'blockHash': last_known_block_hash,
-                  'blockNumber': block['number']
+                    'blockHash': last_known_block_hash,
+                    'blockNumber': block['number']
                 },
                 'forkData': {
-                  'isInFork': False,
-                  'lastUnchangedBlock': block['number']
+                    'isInFork': False,
+                    'lastUnchangedBlock': block['number']
                 }
             }
         else:
             result = {
                 'blockchainTip': {
-                  'blockHash': last_known_block_hash,
-                  'blockNumber': block['number']
+                    'blockHash': last_known_block_hash,
+                    'blockNumber': block['number']
                 },
                 'forkData': {
-                  'isInFork': True,
-                  'lastUnchangedBlock': split['common_block_number']
+                    'isInFork': True,
+                    'lastUnchangedBlock': split['common_block_number']
                 }
             }
         return result
 
-    async def get_wallet_assets_transfers(self, addresses: List[str], limit: int, offset: int, assets: Optional[List[str]]=None) -> List:
+    async def get_wallet_assets_transfers(self, addresses: List[str], limit: int, offset: int,
+                                          assets: Optional[List[str]] = None) -> List:
 
         if assets:
             assets_filter = " AND asset_address = ANY($2::varchar[]) "
@@ -470,7 +471,8 @@ class Storage:
                 transactions.append(models.Transaction(**row))
         return transactions
 
-    async def get_wallet_assets_summary(self, addresses: List[str], limit: int, offset: int, assets: Optional[List[str]]=None):
+    async def get_wallet_assets_summary(self, addresses: List[str], limit: int, offset: int,
+                                        assets: Optional[List[str]] = None):
         if assets:
             assets_filter = " AND asset_address = ANY($2::varchar[]) "
             limit_stmt = "LIMIT $3 OFFSET $4 "
@@ -524,4 +526,3 @@ class Storage:
             if row:
                 return row['nonce']
             return 0
-

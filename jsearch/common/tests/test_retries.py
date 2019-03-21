@@ -22,7 +22,7 @@ def connect_timeout_on_geth_node():
 @pytest.mark.usefixtures('connect_timeout_on_geth_node')
 def test_retries_when_fetch_decimals_from_eth_node(mocker, main_db_data):
     # given
-    from jsearch.common.processing.erc20_balances import fetch_erc20_token_decimal_bulk
+    from jsearch.common.processing.utils import fetch_erc20_token_decimal_bulk
 
     mocker.patch('time.sleep')
     post_mock = mocker.patch('requests.post', side_effect=requests.post)

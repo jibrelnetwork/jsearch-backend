@@ -12,14 +12,12 @@ from jsearch.common.tables import (
     assets_summary_t,
     accounts_state_t,
 )
-
 from jsearch.tests.entities import (
     TransactionFromDumpWrapper,
     BlockFromDumpWrapper,
 )
 
 pytest_plugins = [
-    'jsearch.tests.plugins.post_processing',
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.dumps',
 ]
@@ -1026,45 +1024,51 @@ async def test_get_wallet_transactions(cli, db):
     ]
     for t in txs:
         db.execute(transactions_t.insert().values(**t))
-        
+
     db.execute(accounts_state_t.insert().values(address='a1', nonce=1, block_number=1, block_hash='0xb1'))
 
     resp = await cli.get(f'/v1/wallet/transactions?address=a1')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == {'transactions':[{'blockHash': '0xb1',
-                    'blockNumber': 1,
-                    'from': '0xa1',
-                    'gas': '0xf4240',
-                    'gasPrice': '0x430e23400',
-                    'hash': '0xt1',
-                    'input': '0x6060',
-                    'nonce': '0x0',
-                    'r': None,
-                    's': None,
-                    'to': '0xa2',
-                    'transactionIndex': 0,
-                    'v': None,
-                    'value': '0x0'},
-                   {'blockHash': '0xb1',
-                    'blockNumber': 1,
-                    'from': 'a1',
-                    'gas': '0xf4240',
-                    'gasPrice': '0x430e23400',
-                    'hash': '0xt2',
-                    'input': '0x6060',
-                    'nonce': '0x0',
-                    'r': None,
-                    's': None,
-                    'to': 'a2',
-                    'transactionIndex': 0,
-                    'v': None,
-                    'value': '0x0'}],
+    assert res == {
+        'transactions': [
+            {
+                'blockHash': '0xb1',
+                'blockNumber': 1,
+                'from': '0xa1',
+                'gas': '0xf4240',
+                'gasPrice': '0x430e23400',
+                'hash': '0xt1',
+                'input': '0x6060',
+                'nonce': '0x0',
+                'r': None,
+                's': None,
+                'to': '0xa2',
+                'transactionIndex': 0,
+                'v': None,
+                'value': '0x0'
+            },
+            {
+                'blockHash': '0xb1',
+                'blockNumber': 1,
+                'from': 'a1',
+                'gas': '0xf4240',
+                'gasPrice': '0x430e23400',
+                'hash': '0xt2',
+                'input': '0x6060',
+                'nonce': '0x0',
+                'r': None,
+                's': None,
+                'to': 'a2',
+                'transactionIndex': 0,
+                'v': None,
+                'value': '0x0'
+            }
+        ],
+        'pendingTransactions': [
 
-    'pendingTransactions': [
-
-    ],
-    'outgoingTransactionsNumber': 1
+        ],
+        'outgoingTransactionsNumber': 1
     }
 
 

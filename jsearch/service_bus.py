@@ -1,35 +1,35 @@
+import logging
+
 from jsearch_service_bus import SyncServiceBusClient, ServiceBus
 
 from jsearch import settings
 from jsearch.typing import Contracts
 
+logger = logging.getLogger(__name__)
+
 SERVICE_JSEARCH = 'jsearch'
 SERVICE_CONTRACT = 'jsearch_contracts'
 
-WORKER_HANDLE_ERC20_TRANSFERS = 'erc20_transfers'
-WORKER_HANDLE_TRANSACTION_LOGS = 'transaction_logs'
-WORKER_HANDLE_REORGANIZATION_EVENT = 'reorganizations'
-
-WALLET_HANDLE_NEW_TRANSACTION = 'WALLET_HANDLE_NEW_TRANSACTION'
-WALLET_HANDLE_NEW_ACCOUNT = 'WALLET_HANDLE_NEW_ACCOUNT'
-WALLET_HANDLE_TOKEN_TRANSFER = 'WALLET_HANDLE_TOKEN_TRANSFER'
-WALLET_HANDLE_ASSETS_UPDATE = 'WALLET_HANDLE_ASSETS_UPDATE'
-
-ROUTE_HANDLE_ERC20_TRANSFERS = f'{SERVICE_JSEARCH}.{WORKER_HANDLE_ERC20_TRANSFERS}'
-ROUTE_HANDLE_TRANSACTION_LOGS = f'{SERVICE_JSEARCH}.{WORKER_HANDLE_TRANSACTION_LOGS}'
-ROUTE_HANDLE_REORGANIZATION_EVENTS = f'{SERVICE_JSEARCH}.{WORKER_HANDLE_REORGANIZATION_EVENT}'
-ROUTE_HANDLE_TRANSACTIONS = f'{SERVICE_JSEARCH}.{WALLET_HANDLE_NEW_TRANSACTION}'
-ROUTE_WALLET_HANDLE_TOKEN_TRANSFER = f'{SERVICE_JSEARCH}.{WALLET_HANDLE_TOKEN_TRANSFER}'
-ROUTE_WALLET_HANDLE_ASSETS_UPDATE = f'{SERVICE_JSEARCH}.{WALLET_HANDLE_ASSETS_UPDATE}'
-
+ROUTE_HANDLE_ERC20_TRANSFERS = f'{SERVICE_JSEARCH}.erc20_transfers'
+ROUTE_HANDLE_TRANSACTION_LOGS = f'{SERVICE_JSEARCH}.transaction_logs'
+ROUTE_HANDLE_REORGANIZATION_EVENTS = f'{SERVICE_JSEARCH}.reorganization'
+ROUTE_HANDLE_LAST_BLOCK = f'{SERVICE_JSEARCH}.last_block'
 
 ROUTE_GET_CONTRACTS = f'{SERVICE_CONTRACT}.get_contracts'
+
+ROUTE_HANDLE_TRANSACTIONS = f'{SERVICE_JSEARCH}.transactions'
+ROUTE_WALLET_HANDLE_TOKEN_TRANSFER = f'{SERVICE_JSEARCH}.token_transfers'
+ROUTE_WALLET_HANDLE_ASSETS_UPDATE = f'{SERVICE_JSEARCH}.asset_updates'
+
 
 
 class JsearchSyncServiceBusClient(SyncServiceBusClient):
 
     def write_logs(self, logs):
         return self.send_to_stream(ROUTE_HANDLE_TRANSACTION_LOGS, value=logs)
+
+    def get_contracts(self, addresses, fields=None) -> Contracts:
+        return self.rpc_call(ROUTE_GET_CONTRACTS, value={'addresses': addresses, 'fields': fields})
 
     def write_tx(self, tx):
         return self.send_to_stream(ROUTE_HANDLE_TRANSACTIONS, value=tx)
@@ -42,6 +42,14 @@ class JsearchSyncServiceBusClient(SyncServiceBusClient):
 
 
 class JsearchServiceBus(ServiceBus):
+    async def emit_last_block_event(self, number):
+        return await self.send_to_stream(
+            route=ROUTE_HANDLE_LAST_BLOCK,
+            value={
+                'number': number
+            }
+        )
+
     async def emit_reorganization_event(self, block_hash, block_number, reinserted):
         return await self.send_to_stream(
             route=ROUTE_HANDLE_REORGANIZATION_EVENTS,
@@ -60,4 +68,4 @@ class JsearchServiceBus(ServiceBus):
 
 
 service_bus = JsearchServiceBus('jsearch', bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
-sync_client = JsearchSyncServiceBusClient('jsearch_backend', bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
+sync_client = JsearchSyncServiceBusClient('jsearch', bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
