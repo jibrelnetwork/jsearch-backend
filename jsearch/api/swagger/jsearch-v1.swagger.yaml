@@ -1058,9 +1058,6 @@ definitions:
        type: string
        format: hex
        example: "0x2843dd2134eb02067b585e76ce6a7fc89d22d3eae1d38827b1eb15a3b5153347"
-      size:
-       type: integer
-       example: 1081
       stateRoot:
        type: string
        format: hex
@@ -1068,10 +1065,6 @@ definitions:
       timestamp:
        type: integer
        example: 1453686776
-      totalDifficulty:
-       type: string
-       format: dec
-       example: "6028818335021882784"
       transactions:
        type: array
        items:
