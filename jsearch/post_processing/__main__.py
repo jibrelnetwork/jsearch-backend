@@ -46,12 +46,10 @@ class PostProcessingWorker(Singleton, Service):
         return [service_bus]
 
     async def on_start(self):
-        print('start?')
         self._is_need_to_stop = False
         await service_bus.maybe_start()
 
     async def on_stop(self):
-        print('stop?')
         await service_bus.stop()
 
     def graceful_stop(self):
@@ -90,7 +88,6 @@ async def shutdown():
     results = await asyncio.gather(*tasks, return_exceptions=True)
     for result in results:
         if isinstance(result, Exception):
-            print(result)
             logging.info('finished awaiting cancelled tasks, results: {0}'.format(result))
 
     loop.stop()
