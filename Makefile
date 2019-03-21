@@ -30,3 +30,20 @@ main_db_shell:
 raw_db_shell:
 	docker-compose exec -u postgres raw_db psql jsearch_raw
 
+kafka_shell:
+	docker-compose exec kafka bash
+
+kafka_groups:
+	docker-compose exec kafka kafka-consumer-groups.sh --bootstrap-server kafka:9092 --list
+
+kafka_group_stat:
+	docker-compose exec kafka kafka-consumer-groups.sh --bootstrap-server kafka:9092 --describe --group ${group}
+
+kafka_topics:
+	docker-compose exec kafka kafka-topics.sh --list --zookeeper zookeeper:2181
+
+kafka_read_topic:
+	docker-compose exec kafka kafka-console-consumer.sh --topic ${topic} --from-beginning --bootstrap-server kafka:9092
+
+kafka_reset_offset:
+	docker-compose exec kafka kafka-consumer-groups.sh --bootstrap-server kafka:9092 --group ${group} --topic ${topic} --reset-offsets --to-earliest --execute
