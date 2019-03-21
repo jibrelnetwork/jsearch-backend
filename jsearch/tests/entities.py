@@ -4,6 +4,12 @@ from typing import Dict, List, Any, Optional, Union
 from jsearch.api.models import Block, Transaction, Account, TokenTransfer, Receipt
 
 
+def get_default_type(model, key):
+    if issubclass(model.swagger_types[key], list):
+        return list()
+    return None
+
+
 class ModelFromDumpWrapper:
     __table__: str
 
@@ -15,7 +21,9 @@ class ModelFromDumpWrapper:
 
     def _create_entity(self, **data):
         data = {key: value for key, value in data.items() if key in self.model.attribute_map}
-        data.update({key: None for key in set(self.model.attribute_map) - set(data.keys())})
+        data.update(
+            {key: get_default_type(self.model, key) for key in set(self.model.attribute_map) - set(data.keys())}
+        )
         return self.model(**data)
 
     @property
