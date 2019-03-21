@@ -30,11 +30,12 @@ import backoff
 import click
 import psycopg2
 from aiopg.sa import Engine, create_engine
+from sqlalchemy.dialects.postgresql import insert
 from mode import Service, Worker
 
 from jsearch import settings
 from jsearch.common.logs import configure
-from jsearch.common.tables import assets_transfers_t
+from jsearch.common.tables import assets_transfers_t, transactions_t, assets_summary_t
 from jsearch.common.processing.erc20_balances import fetch_erc20_token_balance
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics
@@ -74,7 +75,7 @@ class DatabaseService(Service, Singleton):
             'from':  tx_data['from'],
             'to':  tx_data['to'],
             'asset_address':  None,
-            'amount':  int(tx_data['value'], 16),
+            'amount':  tx_data['value'],
             'tx_data': tx_data,
             'is_forked':  False,
             'block_number': tx_data['block_number'],
@@ -86,20 +87,64 @@ class DatabaseService(Service, Singleton):
             transfer['address'] = tx_data['to']
             await connection.execute(assets_transfers_t.insert(), **transfer)
 
+    async def add_assets_transfer_token_transfer(self, transfer_data):
+        async with self.engine.acquire() as connection:
+            result = await connection.execute(transactions_t.select().where(
+                transactions_t.c.hash == transfer_data['transaction_hash']))
+            tx = await result.fetchone()
+            tx_data = dict(tx)
+            tx_data.pop('address')
+            amount = transfer_data['token_value'] / (10 ** transfer_data['token_decimals'])
+            print('AAAAAAA', amount, transfer_data['token_value'], transfer_data['token_decimals'])
+            transfer = {
+                'address': transfer_data['from_address'],
+                'type': 'erc20-transfer',
+                'from':  transfer_data['from_address'],
+                'to':  transfer_data['to_address'],
+                'asset_address':  transfer_data['token_address'],
+                'amount':  str(amount),
+                'tx_data': tx_data,
+                'is_forked':  False,
+                'block_number': transfer_data['block_number'],
+                'block_hash': transfer_data['block_hash'],
+                'ordering': '0',  # FIXME !!!
+            }
 
-"""
-    sa.Column('address', sa.String),
-    sa.Column('type', sa.String),
-    sa.Column('from', sa.String),
-    sa.Column('to', sa.String),
-    sa.Column('asset_address', sa.String),
-    sa.Column('amount', postgresql.NUMERIC()),
-    sa.Column('tx_data', postgresql.JSONB),
-    sa.Column('is_forked', sa.Boolean),
-    sa.Column('block_number', sa.BigInteger),
-    sa.Column('block_hash', sa.String),
-    sa.Column('ordering', sa.String),
-"""
+            await connection.execute(assets_transfers_t.insert(), **transfer)
+            transfer['address'] = transfer_data['to_address']
+            await connection.execute(assets_transfers_t.insert(), **transfer)
+
+    async def add_or_update_asset_summary_balance(self, asset_update):
+        summary_data = {
+            'address': asset_update['address'],
+            'asset_address': asset_update['asset_address'],
+            'balance': hex(asset_update['balance']),
+        }
+        q = insert(assets_summary_t).values(tx_number=1, **summary_data)
+
+        upsert = q.on_conflict_do_update(
+            index_elements=['address', 'asset_address'],
+            set_=dict(balance=summary_data['balance'])
+        )
+
+        async with self.engine.acquire() as connection:
+            await connection.execute(upsert)
+
+    async def add_or_update_asset_summary_transfer(self, asset_transfer):
+        summary_data = {
+            'address': asset_transfer['address'],
+            'asset_address': asset_transfer['asset_address'],
+        }
+        q = insert(assets_summary_t).values(tx_number=1, **summary_data)
+
+        upsert = q.on_conflict_do_update(
+            index_elements=['address', 'asset_address'],
+            set_=dict(tx_number=assets_summary_t.c.tx_number + 1)
+        )
+
+        async with self.engine.acquire() as connection:
+            await connection.execute(upsert)
+
 
 
 service = DatabaseService()
@@ -121,12 +166,16 @@ async def handle_token_transfer(transfers):
     for transfer_data in transfers:
         logging.info("[WALLET] Handling new Token Transfer %s block %s %s",
                      transfer_data['address'], transfer_data['block_number'], transfer_data['block_hash'])
+        await service.add_assets_transfer_token_transfer(transfer_data)
+        await service.add_or_update_asset_summary_transfer(transfer_data)
 
 
 @service_bus.listen_stream(WALLET_HANDLE_ASSETS_UPDATE)
 async def handle_assets_update(updates):
     for update_data in updates:
-        logging.info("[WALLET] Handling new Asset Update %s account", update_data['asset_address'], update_data['address'])
+        logging.info("[WALLET] Handling new Asset Update %s account %s",
+                     update_data['asset_address'], update_data['address'])
+
 
 
 @click.command()

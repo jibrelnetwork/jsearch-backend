@@ -43,6 +43,7 @@ async def handle_new_transfers(blocks: List[Logs]):
 
 
 def worker(contracts: Contracts, logs: Logs) -> None:
+    sync_client.start()
     with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
         contracts = prefetch_decimals(contracts)
         logs = process_log_operations_bulk(db, logs, contracts)

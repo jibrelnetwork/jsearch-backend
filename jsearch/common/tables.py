@@ -257,7 +257,7 @@ assets_transfers_t = sa.Table(
     sa.Column('from', sa.String),
     sa.Column('to', sa.String),
     sa.Column('asset_address', sa.String),
-    sa.Column('amount', postgresql.NUMERIC()),
+    sa.Column('amount', sa.String),
     sa.Column('tx_data', postgresql.JSONB),
     sa.Column('is_forked', sa.Boolean),
     sa.Column('block_number', sa.BigInteger),
@@ -270,7 +270,7 @@ assets_summary_t = sa.Table(
     metadata,
     sa.Column('address', sa.String),
     sa.Column('asset_address', sa.String),
-    sa.Column('balance', postgresql.NUMERIC()),
+    sa.Column('balance', sa.String),
     sa.Column('tx_number', sa.BigInteger),
     sa.Column('nonce', sa.BigInteger),
 )
@@ -289,4 +289,6 @@ TABLES = (
     reorgs_t,
     token_transfers_t,
     chain_splits_t,
+    assets_transfers_t,
+    assets_summary_t,
 )

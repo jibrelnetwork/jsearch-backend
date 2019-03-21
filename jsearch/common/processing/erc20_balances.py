@@ -84,7 +84,7 @@ class BalanceUpdate:
         return {
             'asset_address': self.token_address,
             'address': self.account_address,
-            'balance': self.balance}
+            'balance': self.value / (10 ** self.decimals) if (self.value and self.decimals) else None}
 
 
 BalanceUpdates = List[BalanceUpdate]
@@ -202,11 +202,10 @@ def process_log_operations_bulk(
             abi = contract.get('abi')
             decimals = contract.get('decimals')
             updates |= logs_to_balance_updates(log, abi, decimals)
-
     for chunk in split(updates, batch_size):
         updates = fetch_erc20_balance_bulk(chunk)
         for update in updates:
             update.apply(db)
-        sync_client.write_assets_updates([u.to_asset_update() for u in updates])
+        sync_client.write_assets_updates([u.to_asset_update() for u in updates if u.value])
 
     return logs
