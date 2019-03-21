@@ -124,7 +124,7 @@ async def handle_block_reorganization(record):
 
     logging.info("[REORG] Block number %s, hash %s with reinsert status (%s)", block_number, block_hash, reinserted)
     loop = asyncio.get_event_loop()
-    last_block = await LastBlock().get_last_stable_block()
+    last_block = await LastBlock().get()
 
     async with service.engine.acquire() as connection:
         updates = await get_balance_updates(connection, block_hash, block_number)

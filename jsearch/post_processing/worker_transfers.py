@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 from itertools import chain
-from typing import List, Dict
+from typing import List, Dict, Union
 
 from jsearch import settings
 from jsearch.common.last_block import LastBlock
@@ -20,7 +20,7 @@ metrics = Metrics()
 logger = logging.getLogger('worker')
 
 
-def worker(contracts: Contracts, transfer_logs: Logs, last_block: int) -> None:
+def worker(contracts: Contracts, transfer_logs: Logs, last_block: Union[int, str]) -> None:
     with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
         start_at = time.time()
         contracts = prefetch_decimals(contracts)
@@ -47,7 +47,7 @@ async def handle_new_transfers(blocks: List[Transfers]):
     metric_blocks = Metric('blocks')
 
     logs = list(chain(*blocks))
-    last_stable_block = await last_block.get_last_stable_block()
+    last_stable_block = await last_block.get()
 
     addresses = list({log['address'] for log in logs})
     contracts = await fetch_contracts(addresses)

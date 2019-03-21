@@ -1,7 +1,9 @@
+import asyncio
 import logging
-from typing import Coroutine
+from typing import Coroutine, Union
 from uuid import uuid4
 
+from funcy import cached_property
 from jsearch_service_bus.base import get_async_consumer
 from kafka import TopicPartition
 
@@ -24,26 +26,37 @@ def _get_consumer():
 class LastBlock(Singleton):
     offset = settings.ETH_BALANCE_BLOCK_OFFSET
 
-    number: int
     task: Coroutine[None, None, None]
 
-    def __init__(self):
-        self.number = None
-        self.task = None
+    LATEST_BLOCK = 'latest'
+
+    MODE_ALLOW_UPDATES = 'allow_updates'
+    MODE_READ_ONLY = 'read_only'
+
+    mode: str = MODE_ALLOW_UPDATES
+    number: Union[int, str] = None
+
+    @cached_property
+    def _semaphore(self):
+        return asyncio.Semaphore(1)
 
     @property
     def _partition(self):
         return TopicPartition(topic=ROUTE_HANDLE_LAST_BLOCK, partition=0)
 
     async def get(self):
-        if self.number is None:
-            return await self.load()
-        return self.number
+        if self.mode == self.MODE_ALLOW_UPDATES:
+            async with self._semaphore:
+                if self.number is None:
+                    await self._load()
 
-    async def get_last_stable_block(self):
-        return await self.get() - self.offset
+        if self.number == self.LATEST_BLOCK:
+            return self.number
+        elif self.number:
+            return self.number - self.offset
+        return self.LATEST_BLOCK
 
-    async def load(self):
+    async def _load(self):
         logging.info('[LAST BLOCK] load last from the topic...')
         consumer = _get_consumer()
         await consumer.start()
@@ -64,6 +77,9 @@ class LastBlock(Singleton):
         return last_block
 
     def update(self, number):
+        if self.mode != self.MODE_ALLOW_UPDATES:
+            return
+
         if self.number is None or self.number < number:
             self.number = number
-            logging.info("[LAST BLOCK] %s", self.number)
+            logging.info("[LAST BLOCK] updated to %s", self.number)

@@ -19,14 +19,17 @@ def last_block():
 @pytest.mark.asyncio
 async def test_last_block_loaded_from_kafka(last_block, mock_last_block_consumer):
     # given
+    offset = 6
     expected_block_number = 6000000
+
     mock_last_block_consumer({"number": expected_block_number})
+    last_block.offset = offset
 
     # when
     block_number = await last_block.get()
 
     # then
-    assert block_number == expected_block_number
+    assert block_number == expected_block_number - offset
 
 
 @pytest.mark.asyncio
@@ -34,8 +37,9 @@ async def test_last_block_cache(mocker, last_block):
     # given
     mock = CoroutineMock()
 
-    mocker.patch.object(last_block, 'load', mock)
-    last_block.update(number=1)
+    mocker.patch.object(last_block, '_load', mock)
+    last_block.update(number=10)
+    last_block.offset = 6
 
     # when
     # get last block
@@ -43,7 +47,7 @@ async def test_last_block_cache(mocker, last_block):
 
     # then
     # we await what number was cached
-    assert number == 1
+    assert number == 4
 
     mock.assert_not_called()
 
