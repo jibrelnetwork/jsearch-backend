@@ -1,46 +1,52 @@
 r"""
 Communication scheme for token transfer reorganization.
 
- --------                                    -------------------
-| raw_db |                                  | jsearch_contracts |
- --------                                    -------------------
-     |                                            /'\
-     |  reorg record                               |
-     |                                             | get contracts
-    \./                   jsearch.reorganization   |
- --------  reorg event  -----------------------------   balance     -----------
-| syncer | - - - - - > | handle_block_reorganization | < - - - ->  | geth node |
- --------  block hash   -----------------------------   request     -----------
-                                 /'\   |
-                                  |    |
-           get token and accounts |   \./ update balances
-                            ----------------
+                     jsearch.last_block
+ --------               ------------       -------------------
+| raw_db |             |   kafka    |     | jsearch_contracts |
+ --------               ------------       -------------------
+     |                     |                         /'\
+     |  reorg record       |  new last block          |
+     |                     |                          | get contracts
+     |                     |                          |
+    \./                   \./ jsearch.reorganization  |
+ --------  reorg event    -----------------------------                balance                    -----------
+| syncer | - - - - - >   | handle_block_reorganization | < - - - - - - - - - - - - - - - - - - - | geth node |
+ --------  block hash     -----------------------------     request with offset from last block   -----------
+                                 /'\    |
+                                  |     |
+     get token and accounts       |     |   update balances
+     get transfers on interval:   |     |
+       - last_block - offset      |    \./
+       - last_block         ----------------
                            |     main db    |
                             ----------------
-
 """
-
 import asyncio
 import logging
-from collections import defaultdict
-from functools import partial
-from typing import List
+from typing import List, Dict
 
 import backoff
 import click
 import psycopg2
-from aiopg.sa import Engine, create_engine
+from aiopg.sa import Engine, create_engine, SAConnection
 from mode import Service, Worker
 
 from jsearch import settings
+from jsearch.common.last_block import LastBlock
 from jsearch.common.logs import configure
-from jsearch.common.processing.erc20_balances import fetch_erc20_token_balance
+from jsearch.common.processing.erc20_balances import (
+    BalanceUpdate,
+    BalanceUpdates,
+    fetch_erc20_balance_bulk
+)
+from jsearch.common.processing.utils import fetch_contracts, prefetch_decimals
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics
-from jsearch.service_bus import service_bus, WORKER_HANDLE_REORGANIZATION_EVENT
-from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
+from jsearch.service_bus import service_bus, ROUTE_HANDLE_REORGANIZATION_EVENTS, ROUTE_HANDLE_LAST_BLOCK
+from jsearch.syncer.database import MainDBSync
 from jsearch.syncer.database_queries.token_transfers import get_token_address_and_accounts_for_block_q
-from jsearch.utils import Singleton
+from jsearch.utils import Singleton, split
 
 logger = logging.getLogger('worker')
 
@@ -65,56 +71,78 @@ class DatabaseService(Service, Singleton):
 service = DatabaseService()
 
 
-@service_bus.listen_stream(WORKER_HANDLE_REORGANIZATION_EVENT)
-async def handle_block_reorganization(block_hash, block_number, reinserted):
+async def get_balance_updates(connection: SAConnection, block_hash: str, block_number: int) -> BalanceUpdates:
+    loop = asyncio.get_event_loop()
+    query = get_token_address_and_accounts_for_block_q(block_hash=block_hash)
+
+    updates = set()
+    async with connection.execute(query) as cursor:
+        for record in await cursor.fetchall():
+            token = record['token_address']
+            account = record['address']
+
+            update = BalanceUpdate(
+                token_address=token,
+                account_address=account,
+                block=block_number,
+                abi=None,
+                decimals=None
+            )
+            updates.add(update)
+
+        addresses = list({update.token_address for update in updates})
+
+        contracts = await fetch_contracts(addresses)
+        contracts = await loop.run_in_executor(executor.get(), prefetch_decimals, contracts)
+
+        for update in updates:
+            contract = contracts.get(update.token_address)
+            if contract:
+                update.abi = contract['abi']
+                update.decimals = contract['decimals']
+            else:
+                logger.info("[BALANCE UPDATE ERROR] Contract was not found %s", update.token_address)
+
+        return [update for update in updates if update.abi is not None]
+
+
+def worker(updates: BalanceUpdates, last_block: int, batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE) -> None:
+    with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
+
+        for chunk in split(updates, batch_size):
+            updates = fetch_erc20_balance_bulk(chunk, block=last_block)
+
+        for update in updates:
+            update.apply(db, last_block)
+
+
+@service_bus.listen_stream(ROUTE_HANDLE_REORGANIZATION_EVENTS, service_name='jsearch-worker')
+async def handle_block_reorganization(record):
+    reinserted = record['reinserted']
+    block_hash = record['block_hash']
+    block_number = record['block_number']
+
     logging.info("[REORG] Block number %s, hash %s with reinsert status (%s)", block_number, block_hash, reinserted)
+    loop = asyncio.get_event_loop()
+    last_block = await LastBlock().get_last_stable_block()
 
     async with service.engine.acquire() as connection:
-        updates = defaultdict(set)
-        query = get_token_address_and_accounts_for_block_q(block_hash=block_hash)
+        updates = await get_balance_updates(connection, block_hash, block_number)
+        logging.info(
+            "[REORG] Block number %s, hash %s with reinsert status (%s): %s updates",
+            block_number, block_hash, reinserted, len(updates)
+        )
+        await loop.run_in_executor(executor.get(), worker, updates, last_block)
 
-        async with connection.execute(query) as cursor:
-            for record in await cursor.fetchall():
-                token = record['token_address']
-                account = record['address']
 
-                updates[token].add(account)
+@service_bus.listen_stream(service_name='jsearch-worker', stream_name=ROUTE_HANDLE_LAST_BLOCK)
+async def receive_last_block(record: Dict[str, int]):
+    number = record.get('number')
 
-            contract_list = await service_bus.get_contracts(addresses=updates.keys())
-            contracts = {contract['address']: contract for contract in contract_list}
+    logger.info("[LAST BLOCK] Receive new last block number %s", number)
 
-        loop = asyncio.get_event_loop()
-        for token, accounts in updates.items():
-            for account in accounts:
-                contract = contracts.get(token)
-
-                abi = contract['abi']
-                decimals = contract['token_decimals']
-
-                logger.info("[REORG] Get balance for token %s holder %s", token, account)
-
-                balance = await loop.run_in_executor(
-                    executor=executor.get(),
-                    func=partial(
-                        fetch_erc20_token_balance,
-                        contract_abi=abi,
-                        token_address=token,
-                        account_address=account
-                    )
-                )
-                if balance is None:
-                    logger.info("[REORG] Balance can't be fetched for %s holder %s", token, account)
-                    balance = 0
-
-                logger.info("[REORG] Update balance for token %s holder %s with balance %s", token, account, balance)
-
-                query = update_token_holder_balance_q(
-                    token_address=token,
-                    account_address=account,
-                    balance=balance,
-                    decimals=decimals
-                )
-                await connection.execute(query=query)
+    last_block = LastBlock()
+    last_block.update(number=number)
 
 
 @click.command()
