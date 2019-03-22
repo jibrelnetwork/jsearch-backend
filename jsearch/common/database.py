@@ -65,7 +65,7 @@ class MainDBSync(DBWrapperSync):
         self.conn.close()
 
     @as_dicts
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
     def get_blocks(self, hashes, offset: Optional[int] = None, limit: Optional[int] = None):
         query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
 
@@ -77,7 +77,7 @@ class MainDBSync(DBWrapperSync):
 
         return self.conn.execute(query)
 
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
     def update_log(self, record, conn=None):
         conn = self.conn or conn
 
@@ -89,7 +89,7 @@ class MainDBSync(DBWrapperSync):
         conn.execute(query)
 
     @as_dicts
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
     def get_transaction_logs(self, tx_hash):
         q = select([logs_t]).where(logs_t.c.transaction_hash == tx_hash)
         return self.conn.execute(q).fetchall()
