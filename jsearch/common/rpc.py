@@ -113,7 +113,12 @@ class ContractCall:
         self.method = method
         self.args = args
         self.kwargs = kwargs
-        self.block = block and to_hex(block) or 'latest'
+
+        if block:
+            self.block = isinstance(block, int) and to_hex(block) or block
+        else:
+            self.block = 'latest'
+
         self.silent = silent
 
     def encode(self) -> Dict[str, Any]:
