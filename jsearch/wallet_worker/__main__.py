@@ -1,24 +1,4 @@
-r"""
-Communication scheme for token transfer reorganization.
 
- --------                                    -------------------
-| raw_db |                                  | jsearch_contracts |
- --------                                    -------------------
-     |                                            /'\
-     |  reorg record                               |
-     |                                             | get contracts
-    \./                   jsearch.reorganization   |
- --------  reorg event  -----------------------------   balance     -----------
-| syncer | - - - - - > | handle_block_reorganization | < - - - ->  | geth node |
- --------  block hash   -----------------------------   request     -----------
-                                 /'\   |
-                                  |    |
-           get token and accounts |   \./ update balances
-                            ----------------
-                           |     main db    |
-                            ----------------
-
-"""
 
 import asyncio
 import logging
@@ -41,10 +21,9 @@ from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics
 from jsearch.service_bus import (
     service_bus,
-    WALLET_HANDLE_NEW_TRANSACTION,
-    WALLET_HANDLE_NEW_ACCOUNT,
-    WALLET_HANDLE_TOKEN_TRANSFER,
-    WALLET_HANDLE_ASSETS_UPDATE,
+   ROUTE_WALLET_HANDLE_ASSETS_UPDATE,
+ROUTE_WALLET_HANDLE_TOKEN_TRANSFER,
+ROUTE_HANDLE_TRANSACTIONS
 )
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
 from jsearch.syncer.database_queries.token_transfers import get_token_address_and_accounts_for_block_q
@@ -150,18 +129,18 @@ class DatabaseService(Service, Singleton):
 service = DatabaseService()
 
 
-@service_bus.listen_stream(WALLET_HANDLE_NEW_TRANSACTION)
+@service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS)
 async def handle_new_transaction(tx_data):
     logging.info("[WALLET] Handling new Transaction %s", tx_data['hash'])
     await service.add_assets_transafer_tx(tx_data)
 
 
-@service_bus.listen_stream(WALLET_HANDLE_NEW_ACCOUNT)
-async def handle_new_account(block_hash, block_number, account_data):
-    logging.info("[WALLET] Handling new Account %s block %s %s", account_data['address'], block_number, block_hash)
+# @service_bus.listen_stream(WALLET_HANDLE_NEW_ACCOUNT)
+# async def handle_new_account(block_hash, block_number, account_data):
+#     logging.info("[WALLET] Handling new Account %s block %s %s", account_data['address'], block_number, block_hash)
+#
 
-
-@service_bus.listen_stream(WALLET_HANDLE_TOKEN_TRANSFER)
+@service_bus.listen_stream(ROUTE_WALLET_HANDLE_TOKEN_TRANSFER)
 async def handle_token_transfer(transfers):
     for transfer_data in transfers:
         logging.info("[WALLET] Handling new Token Transfer %s block %s %s",
@@ -170,7 +149,7 @@ async def handle_token_transfer(transfers):
         await service.add_or_update_asset_summary_transfer(transfer_data)
 
 
-@service_bus.listen_stream(WALLET_HANDLE_ASSETS_UPDATE)
+@service_bus.listen_stream(ROUTE_WALLET_HANDLE_ASSETS_UPDATE)
 async def handle_assets_update(updates):
     for update_data in updates:
         logging.info("[WALLET] Handling new Asset Update %s account %s",
