@@ -7,6 +7,7 @@ import click
 from mode import Service
 
 from jsearch.common import logs
+from jsearch.common.last_block import LastBlock
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.worker_logs import handle_transaction_logs
 from jsearch.post_processing.worker_transfers import handle_new_transfers
@@ -19,6 +20,9 @@ from jsearch.service_bus import (
 from jsearch.utils import Singleton
 
 logger = logging.getLogger('post_processing')
+
+MODE_STRICT = 'strict'
+MODE_FAST = 'fast'
 
 ACTION_PROCESS_LOGS = 'logs'
 ACTION_PROCESS_TRANSFERS = 'transfers'
@@ -35,7 +39,7 @@ WORKERS = [handle_new_transfers, handle_transaction_logs]
 class PostProcessingWorker(Singleton, Service):
     action: str
 
-    def __init__(self, action, *args, **kwargs):
+    def __init__(self, action: str, *args, **kwargs):
         super(PostProcessingWorker, self).__init__(*args, **kwargs)
 
         self.action = action
@@ -98,11 +102,17 @@ async def shutdown():
 @click.argument('action', type=click.Choice([ACTION_PROCESS_LOGS, ACTION_PROCESS_TRANSFERS]))
 @click.option('--log-level', default='INFO', help="Log level")
 @click.option('--workers', default=30, help="Workers count")
-def main(action, log_level, workers) -> None:
+@click.option('--mode', type=click.Choice([MODE_FAST, MODE_STRICT]), default=MODE_STRICT)
+def main(action: str, log_level: str, workers: int, mode: str) -> None:
     logs.configure(log_level)
 
     service = PostProcessingWorker(action=action)
     executor.init(workers)
+
+    if mode == MODE_FAST:
+        last_block = LastBlock()
+        last_block.update(number='latest')
+        last_block.mode = LastBlock.MODE_READ_ONLY
 
     coro = service.start()
 
