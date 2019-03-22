@@ -31,6 +31,7 @@ ERC20_METHODS_IDS = {
 
 }
 
+ERC20_DEFAULT_DECIMALS = 18
 ERC20_ABI: Abi_ERC20 = [
     {
         "constant": True,
