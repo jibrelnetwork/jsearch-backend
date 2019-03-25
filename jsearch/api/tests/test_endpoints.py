@@ -32,7 +32,12 @@ async def assert_not_404_response(response: ClientResponse) -> None:
     data = await response.json()
 
     assert data['status']['success'] is False
-    assert data['status']['errors'] == [ErrorCode.RESOURCE_NOT_FOUND]
+    assert data['status']['errors'] == [
+        {
+            'code': ErrorCode.RESOURCE_NOT_FOUND,
+            'message': 'Resource not found'
+        }
+    ]
 
 
 async def test_get_block_404(cli):
