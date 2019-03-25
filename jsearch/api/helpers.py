@@ -1,6 +1,8 @@
 import json
+from functools import partial
 
 from aiohttp import web
+
 from jsearch.api.error_code import ErrorCode
 
 DEFAULT_LIMIT = 20
@@ -109,6 +111,9 @@ def api_error(status, errors, data=None):
         'data': data
     }
     return web.json_response(body, status=status)
+
+
+api_error_404 = partial(api_error, status=404, errors=[ErrorCode.RESOURCE_NOT_FOUND])
 
 
 def proxy_response(resp):
