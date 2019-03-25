@@ -1,6 +1,7 @@
 import json
 
 from aiohttp import web
+
 from jsearch.api.error_code import ErrorCode
 
 DEFAULT_LIMIT = 20
