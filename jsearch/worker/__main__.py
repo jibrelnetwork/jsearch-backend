@@ -33,6 +33,7 @@ from aiopg.sa import Engine, create_engine, SAConnection
 from mode import Service, Worker
 
 from jsearch import settings
+from jsearch.common.contracts import ERC20_ABI, ERC20_DEFAULT_DECIMALS
 from jsearch.common.last_block import LastBlock
 from jsearch.common.logs import configure
 from jsearch.common.processing.erc20_balances import (
@@ -101,7 +102,8 @@ async def get_balance_updates(connection: SAConnection, block_hash: str, block_n
                 update.abi = contract['abi']
                 update.decimals = contract['decimals']
             else:
-                logger.info("[BALANCE UPDATE ERROR] Contract was not found %s", update.token_address)
+                update.abi = ERC20_ABI
+                update.decimals = ERC20_DEFAULT_DECIMALS
 
         return [update for update in updates if update.abi is not None]
 
@@ -124,7 +126,7 @@ async def handle_block_reorganization(record):
 
     logging.info("[REORG] Block number %s, hash %s with reinsert status (%s)", block_number, block_hash, reinserted)
     loop = asyncio.get_event_loop()
-    last_block = await LastBlock().get_last_stable_block()
+    last_block = await LastBlock().get()
 
     async with service.engine.acquire() as connection:
         updates = await get_balance_updates(connection, block_hash, block_number)
