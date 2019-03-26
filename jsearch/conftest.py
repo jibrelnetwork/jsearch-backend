@@ -94,7 +94,8 @@ def uncles(db, main_db_data):
     for u in uncles:
         query = uncles_t.insert().values(**u)
         db.execute(query)
-    yield main_db_data['accounts_state']
+    yield uncles
+
     db.execute('DELETE FROM uncles')
 
 

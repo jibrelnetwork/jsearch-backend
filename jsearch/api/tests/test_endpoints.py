@@ -1,6 +1,7 @@
 from unittest import mock
 
 import pytest
+from aiohttp import ClientResponse
 from asynctest import CoroutineMock
 
 from jsearch.common.tables import (
@@ -23,29 +24,92 @@ pytest_plugins = [
 ]
 
 
+async def assert_not_404_response(response: ClientResponse) -> None:
+    from jsearch.api.error_code import ErrorCode
+
+    assert response.status == 404
+
+    data = await response.json()
+
+    assert data['status']['success'] is False
+    assert data['status']['errors'] == [
+        {
+            'code': ErrorCode.RESOURCE_NOT_FOUND,
+            'message': 'Resource not found'
+        }
+    ]
+
+
 async def test_get_block_404(cli):
     resp = await cli.get('/v1/blocks/1')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
 
 async def test_get_block_by_number(cli, main_db_data):
     # given
+    block_number = 2
+
     txs = TransactionFromDumpWrapper.from_dump(
         main_db_data,
-        filters={"block_number": 2},
+        filters={"block_number": block_number},
         bulk=True
     )
     block = BlockFromDumpWrapper.from_dump(
         dump=main_db_data,
-        filters={'number': 2},
+        filters={'number': block_number},
         transactions=[tx.entity.hash for tx in txs]
     )
     # then
-    resp = await cli.get('/v1/blocks/2')
+    resp = await cli.get(f'/v1/blocks/{block_number}')
     assert resp.status == 200
-    rdata = await resp.json()
-    assert rdata['status'] == {'success': True, 'errors': []}
-    assert rdata['data'] == block.as_dict()
+
+    payload = await resp.json()
+    assert payload['status'] == {'success': True, 'errors': []}
+    assert payload['data'] == block.as_dict()
+
+
+async def test_get_block_with_empty_uncles_list(cli, main_db_data):
+    # given
+    block_number = 1
+    block = BlockFromDumpWrapper.from_dump(
+        dump=main_db_data,
+        filters={'number': block_number},
+    )
+    # then
+    resp = await cli.get(f'/v1/blocks/{block_number}')
+    assert resp.status == 200
+
+    payload = await resp.json()
+    assert payload['status'] == {'success': True, 'errors': []}
+    assert payload['data'] == block.as_dict()
+
+    assert payload['data']['uncles'] == []
+    assert isinstance(payload['data']['uncles'], list)
+
+
+async def test_get_block_with_uncles(cli, main_db_data, uncles):
+    # given
+    block_hash = '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5'
+    uncle_hashes = [uncle['hash'] for uncle in uncles if uncle['block_hash'] == block_hash]
+    txs = TransactionFromDumpWrapper.from_dump(
+        main_db_data,
+        filters={"block_hash": block_hash},
+        bulk=True
+    )
+    block = BlockFromDumpWrapper.from_dump(
+        dump=main_db_data,
+        filters={'hash': block_hash},
+        uncles=uncle_hashes,
+        transactions=[tx.entity.hash for tx in txs]
+    )
+    # then
+    resp = await cli.get(f'/v1/blocks/{block_hash}')
+    assert resp.status == 200
+
+    payload = await resp.json()
+    assert payload['status'] == {'success': True, 'errors': []}
+    assert payload['data'] == block.as_dict()
+    assert payload['data']['uncles'] == uncle_hashes
 
 
 async def test_get_block_by_number_no_forked(cli, db):
@@ -76,7 +140,7 @@ async def test_get_block_by_hash_forked_404(cli, db):
                ])
     # then
     resp = await cli.get('/v1/blocks/ax')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
 
 async def test_get_block_by_hash(cli, main_db_data):
@@ -98,16 +162,14 @@ async def test_get_block_by_hash(cli, main_db_data):
         'parentHash': b['parent_hash'],
         'receiptsRoot': b['receipts_root'],
         'sha3Uncles': b['sha3_uncles'],
-        'size': b['size'],
         'stateRoot': b['state_root'],
         'timestamp': b['timestamp'],
-        'totalDifficulty': b['total_difficulty'],
         'transactions': [],
         'transactionsRoot': b['transactions_root'],
         'staticReward': hex(b['static_reward']),
         'txFees': hex(b['tx_fees']),
         'uncleInclusionReward': hex(b['uncle_inclusion_reward']),
-        'uncles': None
+        'uncles': []
     }
 
 
@@ -129,22 +191,20 @@ async def test_get_block_latest(cli, main_db_data):
         'parentHash': b['parent_hash'],
         'receiptsRoot': b['receipts_root'],
         'sha3Uncles': b['sha3_uncles'],
-        'size': b['size'],
         'stateRoot': b['state_root'],
         'timestamp': b['timestamp'],
-        'totalDifficulty': b['total_difficulty'],
         'transactions': [main_db_data['transactions'][-1]['hash']],
         'transactionsRoot': b['transactions_root'],
         'staticReward': hex(b['static_reward']),
         'txFees': hex(b['tx_fees']),
         'uncleInclusionReward': hex(b['uncle_inclusion_reward']),
-        'uncles': None
+        'uncles': []
     }
 
 
 async def test_get_account_404(cli):
     resp = await cli.get('/v1/accounts/x')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
 
 async def test_get_account(cli, main_db_data):
@@ -350,10 +410,8 @@ async def test_get_block_uncles(cli, main_db_data):
             'parentHash': '0x3cd0324c7ba14ba7cf6e4b664dea0360681458d76bd25dfc0d2207ce4e9abed4',
             'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
             'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-            'size': None,
             'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
             'timestamp': 1438270332,
-            'totalDifficulty': None,
             'reward': hex(3750000000000000000),
             'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
         }
@@ -466,10 +524,8 @@ async def test_get_uncles(cli, main_db_data):
          'parentHash': '0x5656b852baa80ce4db00c60998f5cf6e7a8d76f0339d3cf97955d933f731fecf',
          'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
          'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-         'size': None,
          'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
          'timestamp': 1438270505,
-         'totalDifficulty': None,
          'reward': hex(3750000000000000000),
          'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'},
         {'blockNumber': main_db_data['blocks'][1]['number'],
@@ -486,10 +542,8 @@ async def test_get_uncles(cli, main_db_data):
          'parentHash': '0x3cd0324c7ba14ba7cf6e4b664dea0360681458d76bd25dfc0d2207ce4e9abed4',
          'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
          'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-         'size': None,
          'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
          'timestamp': 1438270332,
-         'totalDifficulty': None,
          'reward': hex(3750000000000000000),
          'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}
     ]
@@ -516,9 +570,10 @@ async def test_get_uncles_offset_limit(cli):
 @pytest.mark.usefixtures('uncles')
 async def test_get_uncle_404(cli):
     resp = await cli.get('/v1/uncles/111')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
+
     resp = await cli.get('/v1/uncles/0x6a')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
 
 @pytest.mark.usefixtures('uncles')
@@ -540,10 +595,8 @@ async def test_get_uncle_by_hash(cli, main_db_data):
         'parentHash': '0x5656b852baa80ce4db00c60998f5cf6e7a8d76f0339d3cf97955d933f731fecf',
         'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
         'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-        'size': None,
         'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
         'timestamp': 1438270505,
-        'totalDifficulty': None,
         'reward': hex(3750000000000000000),
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
     }
@@ -568,10 +621,8 @@ async def test_get_uncle_by_number(cli, main_db_data):
         'parentHash': '0x5656b852baa80ce4db00c60998f5cf6e7a8d76f0339d3cf97955d933f731fecf',
         'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
         'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-        'size': None,
         'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
         'timestamp': 1438270505,
-        'totalDifficulty': None,
         'reward': hex(3750000000000000000),
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
     }
@@ -810,10 +861,10 @@ async def test_get_account_token_balance(cli, main_db_data):
     assert res == {'accountAddress': 'a3', 'decimals': 2, 'balance': 5000, 'tokenAddress': 't3'}
 
     resp = await cli.get(f'/v1/accounts/a3/token_balance/tX')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
     resp = await cli.get(f'/v1/accounts/aX/token_balance/t1')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
 
 async def test_get_blockchain_tip(cli, db):
@@ -858,9 +909,19 @@ async def test_get_blockchain_tip(cli, db):
 async def test_get_blockchain_tip_no_block(cli):
     resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=aa')
     assert resp.status == 404
-    assert (await resp.json()) == {'status': {'success': False, 'errors': [
-        {'field': 'tip', 'error_code': 'BLOCK_NOT_FOUND', 'error_message': 'Block with hash aa not found'}]},
-                                   'data': None}
+    assert (await resp.json()) == {
+        'status': {
+            'success': False,
+            'errors': [
+                {
+                    'field': 'tip',
+                    'error_code': 'BLOCK_NOT_FOUND',
+                    'error_message': 'Block with hash aa not found'
+                }
+            ]
+        },
+        'data': None
+    }
 
 
 async def test_get_wallet_transfers_no_addresses(cli, db):
