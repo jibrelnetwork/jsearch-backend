@@ -1,3 +1,4 @@
+import logging
 from unittest import mock
 
 import pytest
@@ -22,6 +23,8 @@ pytest_plugins = [
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.dumps',
 ]
+
+logger = logging.getLogger(__name__)
 
 
 async def assert_not_404_response(response: ClientResponse) -> None:
@@ -472,6 +475,70 @@ async def test_get_receipt(cli, main_db_data):
     }
 
 
+@pytest.mark.parametrize(
+    "block_hash, txs",
+    [
+        (
+                '0x4c99d417111714a2118b9f3e336c097c4acbdc45289ba7b3a02d078d00658a22',
+                []
+        ),
+        (
+                '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5',
+                [
+                    '0x8b6450741b7d1d5d5b37354e6b966dfff807346cdc575c7f0a10eeb3cd7717ba',
+                    '0x125fa8f17c970ff63db176860b94ea3d004ec42c1c446b99553e8bbfc2d2a892'
+                ]
+        )
+    ],
+    ids=[
+        "txs=not_transactions",
+        "txs=2_transactions"
+    ]
+)
+async def test_get_blocks_check_txs_hashes_list(cli, main_db_data, block_hash, txs):
+    resp = await cli.get('/v1/blocks')
+    assert resp.status == 200
+
+    data = await resp.json()
+    blocks = {block['hash']: block for block in data['data']}
+
+    assert blocks[block_hash]
+    assert isinstance(blocks[block_hash]['transactions'], list)
+    assert sorted(blocks[block_hash]['transactions']) == sorted(txs)
+
+
+@pytest.mark.parametrize(
+    "block_hash,uncles_hashes",
+    [
+        (
+                '0x4c99d417111714a2118b9f3e336c097c4acbdc45289ba7b3a02d078d00658a22',
+                []
+        ),
+        (
+                '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5',
+                [
+                    '0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc',
+                ]
+        ),
+    ],
+    ids=[
+        "uncles=no_uncles",
+        "uncles=1_uncles"
+    ]
+)
+@pytest.mark.usefixtures('uncles')
+async def test_get_blocks_check_uncles_hashes_list(cli, main_db_data, block_hash, uncles_hashes):
+    resp = await cli.get('/v1/blocks')
+    assert resp.status == 200
+
+    data = await resp.json()
+    blocks = {block['hash']: block for block in data['data']}
+
+    assert blocks[block_hash]
+    assert isinstance(blocks[block_hash]['uncles'], list)
+    assert sorted(blocks[block_hash]['uncles']) == sorted(uncles_hashes)
+
+
 async def test_get_blocks_def(cli, main_db_data):
     b = main_db_data['blocks']
     resp = await cli.get('/v1/blocks')
@@ -813,10 +880,13 @@ async def test_account_get_mined_blocks(cli, main_db_data):
 
     resp = await cli.get(f'/v1/accounts/{a1["address"]}/mined_blocks')
     assert resp.status == 200
+
     res = (await resp.json())['data']
     assert len(res) == len(main_db_data['blocks'])
+
     resp = await cli.get(f'/v1/accounts/{a2["address"]}/mined_blocks')
     res = (await resp.json())['data']
+
     assert len(res) == 0
 
 

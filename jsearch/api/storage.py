@@ -1,18 +1,73 @@
 import json
+from collections import defaultdict
 from itertools import groupby
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, DefaultDict
 
 import asyncpgsa
+from asyncpg import Connection
+from sqlalchemy.orm import Query
 
 from jsearch.api import models
-from jsearch.api.database_queries.blocks import get_block_by_hash_query, get_block_by_number_query, get_last_block_query
-from jsearch.api.database_queries.transactions import get_tx_hashes_by_block_hash
-from jsearch.api.database_queries.uncles import get_uncle_hashes_by_block_number
-from jsearch.api.helpers import Tag
+from jsearch.api.database_queries.blocks import (
+    get_block_by_hash_query,
+    get_block_by_number_query,
+    get_last_block_query,
+    get_blocks_query,
+    get_mined_blocks_query
+)
+from jsearch.api.database_queries.transactions import (
+    get_tx_hashes_by_block_hash_query,
+    get_tx_hashes_by_block_hashes_query
+)
+from jsearch.api.database_queries.uncles import (
+    get_uncle_hashes_by_block_hash_query,
+    get_uncle_hashes_by_block_hashes_query
+)
+from jsearch.api.helpers import Tag, fetch
 from jsearch.api.models.all import TokenTransfer
+from jsearch.common.tables import blocks_t
 
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
+
+
+def _group_by_block(items: List[Dict[str, Any]]) -> DefaultDict[str, List[Dict[str, Any]]]:
+    items_by_block = defaultdict(list)
+    for item in items:
+        item_hash = item['hash']
+        block_hash = item['block_hash']
+
+        items_by_block[block_hash].append(item_hash)
+    return items_by_block
+
+
+async def _fetch_blocks(connection: Connection, query: Query) -> List[Dict[str, Any]]:
+    rows = await fetch(connection=connection, query=query)
+
+    block_hashes = [row['hash'] for row in rows]
+
+    uncles_query = get_uncle_hashes_by_block_hashes_query(block_hashes)
+    uncles = await fetch(connection, uncles_query)
+    uncles_by_blocks = _group_by_block(uncles)
+
+    tx_query = get_tx_hashes_by_block_hashes_query(block_hashes)
+    txs = await fetch(connection, tx_query)
+    txs_by_block = _group_by_block(txs)
+
+    for row in rows:
+        block_hash = row['hash']
+
+        row_txs = txs_by_block.get(block_hash) or []
+        row_uncles = uncles_by_blocks.get(block_hash) or []
+
+        row.update({
+            'static_reward': int(row['static_reward']),
+            'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
+            'tx_fees': int(row['tx_fees']),
+            'transactions': row_txs,
+            'uncles': row_uncles
+        })
+    return rows
 
 
 class Storage:
@@ -117,6 +172,7 @@ class Storage:
         async with self.pool.acquire() as conn:
             query, params = asyncpgsa.compile_query(query)
             row = await conn.fetchrow(query, *params)
+
             if row is None:
                 return None
 
@@ -127,13 +183,13 @@ class Storage:
                 uncle_inclusion_reward=int(data['uncle_inclusion_reward']),
             )
 
-            tx_query = get_tx_hashes_by_block_hash(block_hash=data['hash'])
+            tx_query = get_tx_hashes_by_block_hash_query(block_hash=data['hash'])
             tx_query, params = asyncpgsa.compile_query(tx_query)
             txs = await conn.fetch(tx_query, *params)
 
             data['transactions'] = [tx['hash'] for tx in txs]
 
-            uncles_query = get_uncle_hashes_by_block_number(block_hash=data['hash'])
+            uncles_query = get_uncle_hashes_by_block_hash_query(block_hash=data['hash'])
             uncles_query, params = asyncpgsa.compile_query(uncles_query)
             uncles = await conn.fetch(uncles_query, *params)
 
@@ -143,38 +199,26 @@ class Storage:
 
     async def get_blocks(self, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = f"""SELECT * FROM blocks WHERE is_forked=false ORDER BY number {order} LIMIT $1 OFFSET $2"""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, limit, offset)
-            rows = [dict(r) for r in rows]
-            for r in rows:
-                del r['is_sequence_sync']
-                del r['is_forked']
 
-                r['static_reward'] = int(r['static_reward'])
-                r['uncle_inclusion_reward'] = int(r['uncle_inclusion_reward'])
-                r['tx_fees'] = int(r['tx_fees'])
-                r['transactions'] = None
-                r['uncles'] = None
+        query = get_blocks_query(limit=limit, offset=offset, order=[blocks_t.c.number], direction=order)
+        async with self.pool.acquire() as connection:
+            rows = await _fetch_blocks(connection, query)
 
-            return [models.Block(**row) for row in rows]
+        return [models.Block(**row) for row in rows]
 
     async def get_account_mined_blocks(self, address, limit, offset, order):
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = f"""SELECT * FROM blocks WHERE miner= $1 ORDER BY number {order} LIMIT $2 OFFSET $3"""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, address, limit, offset)
-            rows = [dict(r) for r in rows]
-            for r in rows:
-                del r['is_sequence_sync']
-                del r['is_forked']
-                r['transactions'] = None
-                r['uncles'] = None
-                r['static_reward'] = int(r['static_reward'])
-                r['uncle_inclusion_reward'] = int(r['uncle_inclusion_reward'])
-                r['tx_fees'] = int(r['tx_fees'])
+        query = get_mined_blocks_query(
+            miner=address,
+            limit=limit,
+            offset=offset,
+            order=[blocks_t.c.number],
+            direction=order
+        )
+        async with self.pool.acquire() as connection:
+            rows = await _fetch_blocks(connection, query)
 
-            return [models.Block(**row) for row in rows]
+        return [models.Block(**row) for row in rows]
 
     async def get_uncle(self, tag):
         if tag.is_hash():
@@ -302,11 +346,8 @@ class Storage:
         limit *= 2
         query = f"""
             SELECT transaction_hash,
-                    transaction_index,
                     log_index,
-                    block_number,
-                    block_hash,
-                    timestamp,
+                    "timestamp",
                     from_address,
                     to_address,
                     token_address,
@@ -328,10 +369,6 @@ class Storage:
                 if distinct_key in distinct_set:
                     continue
                 distinct_set.add(distinct_key)
-                del row['transaction_index']
-                del row['log_index']
-                del row['block_number']
-                del row['block_hash']
                 transfers.append(models.TokenTransfer(**row))
             return transfers
 
@@ -343,7 +380,7 @@ class Storage:
                     log_index,
                     block_number,
                     block_hash,
-                    timestamp,
+                    "timestamp",
                     from_address,
                     to_address,
                     token_address,
