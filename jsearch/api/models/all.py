@@ -139,7 +139,7 @@ class Block(Model):
     }
 
     int_to_hex = {'staticReward', 'uncleInclusionReward', 'txFees'}
-    to_str = {'difficulty', 'gasLimit', 'gasUsed'}
+    int_to_str = {'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Uncle(Model):
@@ -186,7 +186,7 @@ class Uncle(Model):
     }
 
     int_to_hex = {'reward'}
-    to_str = {'difficulty', 'gasLimit', 'gasUsed'}
+    int_to_str = {'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Receipt(Model):
@@ -194,9 +194,9 @@ class Receipt(Model):
         'block_hash': str,
         'block_number': int,
         'contract_address': str,
-        'cumulative_gas_used': int,
+        'cumulative_gas_used': str,
         'from': str,
-        'gas_used': int,
+        'gas_used': str,
         'logs': List[Log],
         'logs_bloom': str,
         'root': str,
@@ -221,6 +221,7 @@ class Receipt(Model):
         'transaction_index': 'transactionIndex',
         'status': 'status',
     }
+    int_to_str = {'cumulativeGasUsed', 'gasUsed'}
 
 
 class Reward(Model):
