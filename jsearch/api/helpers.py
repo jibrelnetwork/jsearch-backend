@@ -13,7 +13,7 @@ DEFAULT_ORDER = 'desc'
 
 class Tag:
     """
-    Block tag, can be block number, block hash or 'latest' lable
+    Block tag, can be block number, block hash or 'latest' label
     """
     LATEST = 'latest'
     NUMBER = 'number'
