@@ -236,10 +236,9 @@ async def verify_contract(request):
 
 
 async def get_token_transfers(request):
-    # todo: need to add validation. i'm worried about max size of limit
     storage = request.app['storage']
     params = validate_params(request)
-    contract_address = request.match_info['address']
+    contract_address = request.match_info['address'].lower()
 
     transfers = await storage.get_tokens_transfers(
         address=contract_address,
@@ -254,7 +253,7 @@ async def get_account_token_transfers(request):
     # todo: need to add validation. I'm worried about max size of limit
     storage = request.app['storage']
     params = validate_params(request)
-    account_address = request.match_info['address']
+    account_address = request.match_info['address'].lower()
 
     transfers = await storage.get_account_tokens_transfers(
         address=account_address,
@@ -268,7 +267,7 @@ async def get_account_token_transfers(request):
 async def get_token_holders(request):
     storage = request.app['storage']
     params = validate_params(request)
-    token_address = request.match_info['address']
+    token_address = request.match_info['address'].lower()
 
     holders = await storage.get_tokens_holders(
         address=token_address,
@@ -281,8 +280,8 @@ async def get_token_holders(request):
 
 async def get_account_token_balance(request):
     storage = request.app['storage']
-    token_address = request.match_info['token_address']
-    account_address = request.match_info['address']
+    token_address = request.match_info['token_address'].lower()
+    account_address = request.match_info['address'].lower()
 
     holder = await storage.get_account_token_balance(
         account_address=account_address,
@@ -325,6 +324,7 @@ async def send_raw_transaction(request):
 async def on_new_contracts_added(request):
     data = await request.json()
     address = data['address']
+    address = address and address.lower()
     if settings.ENABLE_RESET_POST_PROCESSING:
         tasks.on_new_contracts_added_task.delay(address)
     return api_success({})
