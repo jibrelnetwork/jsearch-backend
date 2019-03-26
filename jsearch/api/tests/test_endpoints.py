@@ -1,6 +1,7 @@
 from unittest import mock
 
 import pytest
+from aiohttp import ClientResponse
 from asynctest import CoroutineMock
 
 from jsearch.common.tables import (
@@ -23,9 +24,25 @@ pytest_plugins = [
 ]
 
 
+async def assert_not_404_response(response: ClientResponse) -> None:
+    from jsearch.api.error_code import ErrorCode
+
+    assert response.status == 404
+
+    data = await response.json()
+
+    assert data['status']['success'] is False
+    assert data['status']['errors'] == [
+        {
+            'code': ErrorCode.RESOURCE_NOT_FOUND,
+            'message': 'Resource not found'
+        }
+    ]
+
+
 async def test_get_block_404(cli):
     resp = await cli.get('/v1/blocks/1')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
 
 async def test_get_block_by_number(cli, main_db_data):
@@ -123,7 +140,7 @@ async def test_get_block_by_hash_forked_404(cli, db):
                ])
     # then
     resp = await cli.get('/v1/blocks/ax')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
 
 async def test_get_block_by_hash(cli, main_db_data):
@@ -187,7 +204,7 @@ async def test_get_block_latest(cli, main_db_data):
 
 async def test_get_account_404(cli):
     resp = await cli.get('/v1/accounts/x')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
 
 async def test_get_account(cli, main_db_data):
@@ -553,9 +570,10 @@ async def test_get_uncles_offset_limit(cli):
 @pytest.mark.usefixtures('uncles')
 async def test_get_uncle_404(cli):
     resp = await cli.get('/v1/uncles/111')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
+
     resp = await cli.get('/v1/uncles/0x6a')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
 
 @pytest.mark.usefixtures('uncles')
@@ -843,10 +861,10 @@ async def test_get_account_token_balance(cli, main_db_data):
     assert res == {'accountAddress': 'a3', 'decimals': 2, 'balance': 5000, 'tokenAddress': 't3'}
 
     resp = await cli.get(f'/v1/accounts/a3/token_balance/tX')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
     resp = await cli.get(f'/v1/accounts/aX/token_balance/t1')
-    assert resp.status == 404
+    await assert_not_404_response(resp)
 
 
 async def test_get_blockchain_tip(cli, db):
@@ -891,9 +909,19 @@ async def test_get_blockchain_tip(cli, db):
 async def test_get_blockchain_tip_no_block(cli):
     resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=aa')
     assert resp.status == 404
-    assert (await resp.json()) == {'status': {'success': False, 'errors': [
-        {'field': 'tip', 'error_code': 'BLOCK_NOT_FOUND', 'error_message': 'Block with hash aa not found'}]},
-                                   'data': None}
+    assert (await resp.json()) == {
+        'status': {
+            'success': False,
+            'errors': [
+                {
+                    'field': 'tip',
+                    'error_code': 'BLOCK_NOT_FOUND',
+                    'error_message': 'Block with hash aa not found'
+                }
+            ]
+        },
+        'data': None
+    }
 
 
 async def test_get_wallet_transfers_no_addresses(cli, db):

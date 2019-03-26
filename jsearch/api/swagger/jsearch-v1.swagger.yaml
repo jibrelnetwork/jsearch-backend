@@ -124,6 +124,11 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "tag", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
+        404:
+          description: not found
+          schema:
+            example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
+
   /v1/accounts/{address}/logs:
     get:
       summary: Get contract logs.
@@ -310,6 +315,8 @@ paths:
             example: {"success": false, "errors": [{"field": "contract_address", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
         404:
           description: Holder not found
+          schema:
+            example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
 
   /v1/accounts/{address}/token_transfers:
     get:
@@ -387,6 +394,11 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "tag", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
+        404:
+          description: not found
+          schema:
+            example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
+
   /v1/blocks/{tag}/transactions:
     get:
       summary: Get all transactions in block
@@ -411,6 +423,11 @@ paths:
           description: bad input parameter
           schema:
             example: {"success": false, "errors": [{"field": "tag", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
+        404:
+          description: not found
+          schema:
+            example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
 
   /v1/blocks/{tag}/uncles:
     get:
@@ -460,6 +477,11 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "txhash", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
+        404:
+          description: not found
+          schema:
+            example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
+
   /v1/transactions/internal/{txhash}:
     get:
       summary: Get Internal transactions by transaction hash
@@ -485,6 +507,11 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "txhash", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
+        404:
+          description: not found
+          schema:
+            example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
+
   /v1/receipts/{txhash}:
     get:
       summary: Get Receipt by transaction hash
@@ -507,6 +534,11 @@ paths:
           description: bad input parameter
           schema:
             example: {"success": false, "errors": [{"field": "txhash", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
+        404:
+          description: not found
+          schema:
+            example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
 
   /v1/uncles:
     get:
@@ -557,6 +589,11 @@ paths:
           description: bad input parameter
           schema:
             example: {"success": false, "errors": [{"field": "tag", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
+        404:
+          description: not found
+          schema:
+            example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
 
   /v1/verified_contracts:
     get:
@@ -661,6 +698,8 @@ paths:
             example: {"success": false, "errors": [{"field": "address", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
         404:
           description: Token not found
+          schema:
+            example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
 
   /v1/tokens/{address}/transfers:
     get:
