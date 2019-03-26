@@ -91,10 +91,10 @@ class Transaction(Model):
 
 class Block(Model):
     swagger_types = {
-        'difficulty': int,
+        'difficulty': str,
         'extra_data': str,
-        'gas_limit': int,
-        'gas_used': int,
+        'gas_limit': str,
+        'gas_used': str,
         'hash': str,
         'logs_bloom': str,
         'miner': str,
@@ -139,14 +139,15 @@ class Block(Model):
     }
 
     int_to_hex = {'staticReward', 'uncleInclusionReward', 'txFees'}
+    to_str = {'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Uncle(Model):
     swagger_types = {
-        'difficulty': int,
+        'difficulty': str,
         'extra_data': str,
-        'gas_limit': int,
-        'gas_used': int,
+        'gas_limit': str,
+        'gas_used': str,
         'hash': str,
         'logs_bloom': str,
         'miner': str,
@@ -185,6 +186,7 @@ class Uncle(Model):
     }
 
     int_to_hex = {'reward'}
+    to_str = {'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Receipt(Model):
