@@ -2,7 +2,13 @@ import json
 from itertools import groupby
 from typing import List, Optional
 
+import asyncpgsa
+
 from jsearch.api import models
+from jsearch.api.database_queries.blocks import get_block_by_hash_query, get_block_by_number_query, get_last_block_query
+from jsearch.api.database_queries.transactions import get_tx_hashes_by_block_hash
+from jsearch.api.database_queries.uncles import get_uncle_hashes_by_block_number
+from jsearch.api.helpers import Tag
 from jsearch.api.models.all import TokenTransfer
 
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
@@ -101,34 +107,41 @@ class Storage:
             rows = [dict(r) for r in rows]
             return [models.Transaction(**r) for r in rows]
 
-    async def get_block(self, tag):
-
+    async def get_block(self, tag: Tag):
         if tag.is_hash():
-            query = "SELECT * FROM blocks WHERE hash=$1 AND is_forked=false"
-        elif tag.is_number():
-            query = "SELECT * FROM blocks WHERE number=$1 AND is_forked=false"
-        else:
-            query = "SELECT * FROM blocks WHERE number=(SELECT max(number) FROM blocks) AND is_forked=false"
+            query = get_block_by_hash_query(block_hash=tag.value)
 
-        tx_query = "SELECT hash FROM transactions WHERE block_hash=$1 ORDER BY transaction_index"
+        elif tag.is_number():
+            query = get_block_by_number_query(number=tag.value)
+
+        else:
+            query = get_last_block_query()
+
         async with self.pool.acquire() as conn:
-            if tag.is_latest():
-                row = await conn.fetchrow(query)
-            else:
-                row = await conn.fetchrow(query, tag.value)
+            query, params = asyncpgsa.compile_query(query)
+            row = await conn.fetchrow(query, *params)
             if row is None:
                 return None
+
             data = dict(row)
-            del data['is_sequence_sync']
-            del data['is_forked']
+            data.update(
+                tx_fees=int(data['tx_fees']),
+                static_reward=int(data['static_reward']),
+                uncle_inclusion_reward=int(data['uncle_inclusion_reward']),
+            )
 
-            data['static_reward'] = int(data['static_reward'])
-            data['uncle_inclusion_reward'] = int(data['uncle_inclusion_reward'])
-            data['tx_fees'] = int(data['tx_fees'])
+            tx_query = get_tx_hashes_by_block_hash(block_hash=data['hash'])
+            tx_query, params = asyncpgsa.compile_query(tx_query)
+            txs = await conn.fetch(tx_query, *params)
 
-            txs = await conn.fetch(tx_query, data['hash'])
             data['transactions'] = [tx['hash'] for tx in txs]
-            data['uncles'] = None
+
+            uncles_query = get_uncle_hashes_by_block_number(block_hash=data['hash'])
+            uncles_query, params = asyncpgsa.compile_query(uncles_query)
+            uncles = await conn.fetch(uncles_query, *params)
+
+            data['uncles'] = [uncle['hash'] for uncle in uncles]
+
             return models.Block(**data)
 
     async def get_blocks(self, limit, offset, order):

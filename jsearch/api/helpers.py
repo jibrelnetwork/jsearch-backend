@@ -1,6 +1,8 @@
 import json
+from functools import partial
 
 from aiohttp import web
+
 from jsearch.api.error_code import ErrorCode
 
 DEFAULT_LIMIT = 20
@@ -11,7 +13,7 @@ DEFAULT_ORDER = 'desc'
 
 class Tag:
     """
-    Block tag, can be block number, block hash or 'latest' lable
+    Block tag, can be block number, block hash or 'latest' label
     """
     LATEST = 'latest'
     NUMBER = 'number'
@@ -111,10 +113,18 @@ def api_error(status, errors, data=None):
     return web.json_response(body, status=status)
 
 
+api_error_404 = partial(api_error, status=404, errors=[
+    {
+        'code': ErrorCode.RESOURCE_NOT_FOUND,
+        'message': 'Resource not found'
+    }
+])
+
+
 def proxy_response(resp):
     if 'error' in resp:
         err = {
-            'field': 'non_filed_error',
+            'field': 'non_field_error',
             'error_code': resp['error']['code'],
             'error_message': resp['error']['message']
         }

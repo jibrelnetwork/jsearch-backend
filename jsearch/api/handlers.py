@@ -1,11 +1,10 @@
 import asyncio
 
 import aiohttp
-from aiohttp import web
 
 from jsearch import settings
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.helpers import get_tag, validate_params, api_success, proxy_response, api_error
+from jsearch.api.helpers import get_tag, validate_params, api_success, proxy_response, api_error, api_error_404
 from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
@@ -21,7 +20,7 @@ async def get_account(request):
 
     account = await storage.get_account(address, tag)
     if account is None:
-        return web.json_response(status=404)
+        return api_error_404()
     return api_success(account.to_dict())
 
 
@@ -114,7 +113,7 @@ async def get_block(request):
     tag = get_tag(request)
     block = await storage.get_block(tag)
     if block is None:
-        return web.json_response(status=404)
+        return api_error_404()
     return api_success(block.to_dict())
 
 
@@ -138,7 +137,7 @@ async def get_transaction(request):
 
     transaction = await storage.get_transaction(txhash)
     if transaction is None:
-        return web.json_response(status=404)
+        return api_error_404()
     return api_success(transaction.to_dict())
 
 
@@ -164,7 +163,7 @@ async def get_receipt(request):
 
     receipt = await storage.get_receipt(txhash)
     if receipt is None:
-        return web.json_response(status=404)
+        return api_error_404()
     return api_success(receipt.to_dict())
 
 
@@ -186,7 +185,7 @@ async def get_uncle(request):
     tag = get_tag(request)
     uncle = await storage.get_uncle(tag)
     if uncle is None:
-        return web.json_response(status=404)
+        return api_error_404()
     return api_success(uncle.to_dict())
 
 
@@ -237,10 +236,9 @@ async def verify_contract(request):
 
 
 async def get_token_transfers(request):
-    # todo: need to add validation. i'm worried about max size of limit
     storage = request.app['storage']
     params = validate_params(request)
-    contract_address = request.match_info['address']
+    contract_address = request.match_info['address'].lower()
 
     transfers = await storage.get_tokens_transfers(
         address=contract_address,
@@ -255,7 +253,7 @@ async def get_account_token_transfers(request):
     # todo: need to add validation. I'm worried about max size of limit
     storage = request.app['storage']
     params = validate_params(request)
-    account_address = request.match_info['address']
+    account_address = request.match_info['address'].lower()
 
     transfers = await storage.get_account_tokens_transfers(
         address=account_address,
@@ -269,7 +267,7 @@ async def get_account_token_transfers(request):
 async def get_token_holders(request):
     storage = request.app['storage']
     params = validate_params(request)
-    token_address = request.match_info['address']
+    token_address = request.match_info['address'].lower()
 
     holders = await storage.get_tokens_holders(
         address=token_address,
@@ -282,15 +280,15 @@ async def get_token_holders(request):
 
 async def get_account_token_balance(request):
     storage = request.app['storage']
-    token_address = request.match_info['token_address']
-    account_address = request.match_info['address']
+    token_address = request.match_info['token_address'].lower()
+    account_address = request.match_info['address'].lower()
 
     holder = await storage.get_account_token_balance(
         account_address=account_address,
         token_address=token_address,
     )
     if holder is None:
-        return web.json_response(status=404)
+        return api_error_404()
     return api_success(holder.to_dict())
 
 
@@ -326,6 +324,7 @@ async def send_raw_transaction(request):
 async def on_new_contracts_added(request):
     data = await request.json()
     address = data['address']
+    address = address and address.lower()
     if settings.ENABLE_RESET_POST_PROCESSING:
         tasks.on_new_contracts_added_task.delay(address)
     return api_success({})

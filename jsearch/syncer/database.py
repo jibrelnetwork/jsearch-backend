@@ -239,12 +239,12 @@ class MainDB(DBWrapper):
         self.engine.close()
         await self.engine.wait_closed()
 
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
     async def execute(self, query, *params):
         async with self.engine.acquire() as connection:
             return await connection.execute(query, params)
 
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
     async def fetch_all(self, query, *params):
         async with self.engine.acquire() as connection:
             cursor = await connection.execute(query, params)
@@ -365,7 +365,7 @@ class MainDBSync(DBWrapperSync):
         engine = sync_create_engine(self.connection_string, poolclass=NullPool)
         self.conn = engine.connect()
 
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
     def execute(self, query, *args, **kwargs):
         return self.conn.execute(query, *args, **kwargs)
 

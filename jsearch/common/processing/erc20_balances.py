@@ -6,7 +6,7 @@ from typing import List, Optional
 from web3 import Web3
 
 from jsearch import settings
-from jsearch.common.contracts import NULL_ADDRESS
+from jsearch.common.contracts import NULL_ADDRESS, ERC20_ABI, ERC20_DEFAULT_DECIMALS
 from jsearch.common.last_block import LastBlock
 from jsearch.common.rpc import ContractCall, eth_call_batch, eth_call
 from jsearch.syncer.database import MainDBSync
@@ -177,9 +177,10 @@ def update_token_holder_balances(
         if contract:
             abi = contract.get('abi')
             decimals = contract.get('decimals')
-            updates |= logs_to_balance_updates(transfer, abi, decimals)
         else:
-            logger.info('[BALANCE UPDATE ERROR] Contract was not found %s', contract_address)
+            abi = ERC20_ABI
+            decimals = ERC20_DEFAULT_DECIMALS
+        updates |= logs_to_balance_updates(transfer, abi, decimals)
 
     for chunk in split(updates, batch_size):
         updates = fetch_erc20_balance_bulk(chunk, block=last_block)
