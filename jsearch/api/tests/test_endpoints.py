@@ -152,10 +152,10 @@ async def test_get_block_by_hash(cli, main_db_data):
     b = main_db_data['blocks'][0]
     rdata = await resp.json()
     assert rdata['data'] == {
-        'difficulty': b['difficulty'],
+        'difficulty': str(b['difficulty']),
         'extraData': b['extra_data'],
-        'gasLimit': b['gas_limit'],
-        'gasUsed': b['gas_used'],
+        'gasLimit': str(b['gas_limit']),
+        'gasUsed': str(b['gas_used']),
         'hash': b['hash'],
         'logsBloom': b['logs_bloom'],
         'miner': b['miner'],
@@ -181,10 +181,10 @@ async def test_get_block_latest(cli, main_db_data):
     assert resp.status == 200
     b = main_db_data['blocks'][-1]
     assert (await resp.json())['data'] == {
-        'difficulty': b['difficulty'],
+        'difficulty': str(b['difficulty']),
         'extraData': b['extra_data'],
-        'gasLimit': b['gas_limit'],
-        'gasUsed': b['gas_used'],
+        'gasLimit': str(b['gas_limit']),
+        'gasUsed': str(b['gas_used']),
         'hash': b['hash'],
         'logsBloom': b['logs_bloom'],
         'miner': b['miner'],
@@ -399,11 +399,11 @@ async def test_get_block_uncles(cli, main_db_data):
     assert resp.status == 200
     assert (await resp.json())['data'] == [
         {
-            'difficulty': 17578564779,
+            'difficulty': "17578564779",
             'blockNumber': 2,
             'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',
-            'gasLimit': 5000,
-            'gasUsed': 0,
+            'gasLimit': "5000",
+            'gasUsed': "0",
             'hash': '0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc',
             'logsBloom': '0x0',
             'miner': '0x0193d941b50d91be6567c7ee1c0fe7af498b4137',
@@ -452,9 +452,9 @@ async def test_get_receipt(cli, main_db_data):
         'blockHash': r['block_hash'],
         'blockNumber': r['block_number'],
         'contractAddress': r['contract_address'],
-        'cumulativeGasUsed': r['cumulative_gas_used'],
+        'cumulativeGasUsed': str(r['cumulative_gas_used']),
         'from': r['from'],
-        'gasUsed': r['gas_used'],
+        'gasUsed': str(r['gas_used']),
         'logs': [
             {'address': main_db_data['logs'][0]['address'],
              'blockHash': main_db_data['logs'][0]['block_hash'],
@@ -578,10 +578,10 @@ async def test_get_uncles(cli, main_db_data):
     assert resp.status == 200
     assert (await resp.json())['data'] == [
         {'blockNumber': main_db_data['blocks'][2]['number'],
-         'difficulty': 18180751616,
+         'difficulty': "18180751616",
          'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
-         'gasLimit': 5000,
-         'gasUsed': 0,
+         'gasLimit': "5000",
+         'gasUsed': "0",
          'hash': '0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff',
          'logsBloom': '0x0',
          'miner': '0x70137010922f2fc2964b3792907f79fbb75febe8',
@@ -596,10 +596,10 @@ async def test_get_uncles(cli, main_db_data):
          'reward': hex(3750000000000000000),
          'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'},
         {'blockNumber': main_db_data['blocks'][1]['number'],
-         'difficulty': 17578564779,
+         'difficulty': "17578564779",
          'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',
-         'gasLimit': 5000,
-         'gasUsed': 0,
+         'gasLimit': "5000",
+         'gasUsed': "0",
          'hash': '0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc',
          'logsBloom': '0x0',
          'miner': '0x0193d941b50d91be6567c7ee1c0fe7af498b4137',
@@ -649,10 +649,10 @@ async def test_get_uncle_by_hash(cli, main_db_data):
     assert resp.status == 200
     assert (await resp.json())['data'] == {
         'blockNumber': main_db_data['blocks'][2]['number'],
-        'difficulty': 18180751616,
+        'difficulty': "18180751616",
         'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
-        'gasLimit': 5000,
-        'gasUsed': 0,
+        'gasLimit': "5000",
+        'gasUsed': "0",
         'hash': '0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff',
         'logsBloom': '0x0',
         'miner': '0x70137010922f2fc2964b3792907f79fbb75febe8',
@@ -675,10 +675,10 @@ async def test_get_uncle_by_number(cli, main_db_data):
     assert resp.status == 200
     assert (await resp.json())['data'] == {
         'blockNumber': main_db_data['blocks'][2]['number'],
-        'difficulty': 18180751616,
+        'difficulty': "18180751616",
         'extraData': '0x476574682f76312e302e302d30636463373634372f6c696e75782f676f312e34',
-        'gasLimit': 5000,
-        'gasUsed': 0,
+        'gasLimit': "5000",
+        'gasUsed': "0",
         'hash': '0x6a5a801b12b94e1fb24e531b087719d699882a4f948564ba58706934bc5a19ff',
         'logsBloom': '0x0',
         'miner': '0x70137010922f2fc2964b3792907f79fbb75febe8',
