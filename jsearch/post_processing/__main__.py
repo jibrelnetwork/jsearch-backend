@@ -17,7 +17,7 @@ from jsearch.service_bus import (
     ROUTE_HANDLE_TRANSACTION_LOGS,
     service_bus,
 )
-from jsearch.utils import Singleton
+from jsearch.utils import Singleton, shutdown, add_gracefully_shutdown_handlers
 
 logger = logging.getLogger('post_processing')
 
@@ -56,7 +56,7 @@ class PostProcessingWorker(Singleton, Service):
     async def on_stop(self):
         await service_bus.stop()
 
-    def graceful_stop(self):
+    def gracefully_shutdown(self):
         self._is_need_to_stop = True
 
         loop = asyncio.get_event_loop()
@@ -78,26 +78,6 @@ class PostProcessingWorker(Singleton, Service):
         logging.info('Shutdown complete.')
 
 
-async def shutdown():
-    loop = asyncio.get_event_loop()
-
-    logging.info(f'Received exit signal ...')
-    tasks = [task for task in asyncio.Task.all_tasks() if task is not asyncio.Task.current_task()]
-
-    for task in tasks:
-        task.cancel()
-
-    logging.info('Canceling outstanding tasks')
-
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    for result in results:
-        if isinstance(result, Exception):
-            logging.info('finished awaiting cancelled tasks, results: {0}'.format(result))
-
-    loop.stop()
-    logging.info('Shutdown complete.')
-
-
 @click.command()
 @click.argument('action', type=click.Choice([ACTION_PROCESS_LOGS, ACTION_PROCESS_TRANSFERS]))
 @click.option('--log-level', default='INFO', help="Log level")
@@ -115,12 +95,10 @@ def main(action: str, log_level: str, workers: int, mode: str) -> None:
         last_block.mode = LastBlock.MODE_READ_ONLY
 
     coro = service.start()
-
     loop = asyncio.get_event_loop()
-    for signame in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig=signame, callback=service.graceful_stop)
-
     task = asyncio.ensure_future(coro)
+
+    add_gracefully_shutdown_handlers(service.gracefully_shutdown)
     try:
         loop.run_forever()
     finally:

@@ -1,30 +1,33 @@
 import asyncio
-import os
 
-import configargparse
+import click
 
 from jsearch.common import logs
+from jsearch.utils import parse_range, add_gracefully_shutdown_handlers
 from .service import Service
 
 
-def run():
-    p = configargparse.ArgParser(description='jSearch DBs sync service.')
-    p.add('--log-level', help='log level', default=os.getenv('LOG_LEVEL', 'INFO'))
-    p.add('--sync-range', help='blocks range to sync', default=None)
+@click.command()
+@click.option('--log-level', default='INFO', help="Log level")
+@click.option('--sync-range', default=None, help="Blocks range to sync")
+def run(log_level, sync_range):
+    logs.configure(log_level)
 
-    options = p.parse_args()
+    sync_range = parse_range(value=sync_range)
 
-    logs.configure(options.log_level)
-    service = Service(options)
-    service.run()
+    service = Service(sync_range)
+    coro = service.run()
 
     loop = asyncio.get_event_loop()
+    task = asyncio.ensure_future(coro)
+
+    add_gracefully_shutdown_handlers(service.gracefully_shutdown)
     try:
         loop.run_forever()
-    except KeyboardInterrupt:
-        service.stop()
-        loop.stop()
+    finally:
         loop.close()
+        if not task.cancelled():
+            task.result()
 
 
 if __name__ == '__main__':
