@@ -33,18 +33,39 @@ class Manager:
         self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
         self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
+
         self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
 
         self.latest_available_block_num = None
+        self.tasks = []
 
     async def run(self):
         logger.info("Starting Sync Manager, sync range: %s", self.sync_range)
         self._running = True
-        asyncio.ensure_future(self.sequence_sync_loop())
-        asyncio.ensure_future(self.reorg_loop())
 
-    def stop(self):
+        service_loops = [
+            self.sequence_sync_loop(),
+            self.reorg_loop()
+        ]
+        for coro in service_loops:
+            coro = asyncio.shield(coro)
+
+            task = asyncio.ensure_future(coro)
+            task.add_done_callback(self.tasks.remove)
+
+            self.tasks.append(task)
+
+    async def stop(self, timeout=60):
         self._running = False
+
+        done, pending = await asyncio.wait(self.tasks, timeout=timeout)
+
+        logging.warning('[SERVICE BUS] There are pending futures %s. Their will be cancel', len(pending))
+        for future in done:
+            future.result()
+
+        for future in pending:
+            future.cancel()
 
     async def sequence_sync_loop(self):
         logger.info("Entering Sequence Sync Loop")

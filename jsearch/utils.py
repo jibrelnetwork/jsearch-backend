@@ -1,5 +1,7 @@
+import asyncio
 import logging
-from typing import List, Any, Tuple, Optional
+import signal
+from typing import List, Any, Tuple, Optional, Callable
 
 log = logging.getLogger(__name__)
 
@@ -33,3 +35,32 @@ def parse_range(value: Optional[str] = None) -> Tuple[int, Optional[int]]:
         result = (value_from, value_until)
 
     return result
+
+
+def add_gracefully_shutdown_handlers(callback: Callable[..., Any]):
+    loop = asyncio.get_event_loop()
+    for signame in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig=signame, callback=callback)
+
+
+async def shutdown():
+    loop = asyncio.get_event_loop()
+
+    logging.info(f'Received exit signal ...')
+    tasks = [task for task in asyncio.Task.all_tasks() if task is not asyncio.Task.current_task()]
+
+    for task in tasks:
+        task.cancel()
+
+    logging.info('Canceling outstanding tasks')
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    for task, result in zip(tasks, results):
+        if isinstance(result, Exception):
+            logging.info('finished awaiting cancelled task %s with results: %s %s', task, type(result), result)
+
+    loop.stop()
+    logging.info('Shutdown complete.')
+
+
+from asyncio import Task
