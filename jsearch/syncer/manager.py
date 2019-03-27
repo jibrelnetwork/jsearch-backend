@@ -17,6 +17,9 @@ REORGS_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL / 2
 
 loop = asyncio.get_event_loop()
 
+SYNC_MODE_FAST = 'fast'
+SYNC_MODE_STRICT = 'strict'
+
 
 class Manager:
     """
@@ -33,18 +36,39 @@ class Manager:
         self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
         self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
+
         self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
 
         self.latest_available_block_num = None
+        self.tasks = []
 
     async def run(self):
         logger.info("Starting Sync Manager, sync range: %s", self.sync_range)
         self._running = True
-        asyncio.ensure_future(self.sequence_sync_loop())
-        asyncio.ensure_future(self.reorg_loop())
 
-    def stop(self):
+        service_loops = [
+            self.sequence_sync_loop(),
+            self.reorg_loop()
+        ]
+        for coro in service_loops:
+            coro = asyncio.shield(coro)
+
+            task = asyncio.ensure_future(coro)
+            task.add_done_callback(self.tasks.remove)
+
+            self.tasks.append(task)
+
+    async def stop(self, timeout=60):
         self._running = False
+
+        done, pending = await asyncio.wait(self.tasks, timeout=timeout)
+
+        logging.warning('[SERVICE BUS] There are pending futures %s. Their will be cancel', len(pending))
+        for future in done:
+            future.result()
+
+        for future in pending:
+            future.cancel()
 
     async def sequence_sync_loop(self):
         logger.info("Entering Sequence Sync Loop")
@@ -106,7 +130,7 @@ class Manager:
         latest_available_block_num = await self.raw_db.get_latest_available_block_number()
         if latest_available_block_num - (latest_synced_block_num or 0) < self.chunk_size:
             # syncer is almost reached the head of chain, can fetch missed blocks now
-            sync_mode = 'strict'
+            sync_mode = SYNC_MODE_STRICT
             blocks = await self.get_blocks_to_sync_strict()
             if len(blocks) < self.chunk_size:
                 start_num = latest_synced_block_num + 1
@@ -115,7 +139,7 @@ class Manager:
                 blocks += extra_blocks
         else:
             # syncer is far from chain head, need more speed, will skip missed blocks
-            sync_mode = 'fast'
+            sync_mode = SYNC_MODE_FAST
             blocks = await self.get_blocks_to_sync_fast(latest_synced_block_num, self.chunk_size)
 
         if self.latest_available_block_num != latest_available_block_num:
