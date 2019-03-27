@@ -17,6 +17,9 @@ REORGS_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL / 2
 
 loop = asyncio.get_event_loop()
 
+SYNC_MODE_FAST = 'fast'
+SYNC_MODE_STRICT = 'strict'
+
 
 class Manager:
     """
@@ -127,7 +130,7 @@ class Manager:
         latest_available_block_num = await self.raw_db.get_latest_available_block_number()
         if latest_available_block_num - (latest_synced_block_num or 0) < self.chunk_size:
             # syncer is almost reached the head of chain, can fetch missed blocks now
-            sync_mode = 'strict'
+            sync_mode = SYNC_MODE_STRICT
             blocks = await self.get_blocks_to_sync_strict()
             if len(blocks) < self.chunk_size:
                 start_num = latest_synced_block_num + 1
@@ -136,7 +139,7 @@ class Manager:
                 blocks += extra_blocks
         else:
             # syncer is far from chain head, need more speed, will skip missed blocks
-            sync_mode = 'fast'
+            sync_mode = SYNC_MODE_FAST
             blocks = await self.get_blocks_to_sync_fast(latest_synced_block_num, self.chunk_size)
 
         if self.latest_available_block_num != latest_available_block_num:
