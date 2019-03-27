@@ -61,6 +61,3 @@ async def shutdown():
 
     loop.stop()
     logging.info('Shutdown complete.')
-
-
-from asyncio import Task
