@@ -407,7 +407,7 @@ class MainDBSync(DBWrapperSync):
                 tx1 = copy(td)
                 tx1['address'] = tx1['from']
                 tx2 = copy(td)
-                tx2['address'] = tx2['from']
+                tx2['address'] = tx2['to']
                 transactions.append(tx1)
                 transactions.append(tx2)
             self.execute(transactions_t.insert(), *transactions)

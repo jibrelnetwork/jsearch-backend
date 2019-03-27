@@ -95,10 +95,11 @@ class BalanceUpdate:
             )
 
     def to_asset_update(self):
+        decimals = self.decimals or 18
         return {
             'asset_address': self.token_address,
             'address': self.account_address,
-            'balance': self.value / (10 ** self.decimals) if (self.value and self.decimals) else None}
+            'balance': self.value / (10 ** decimals)}
 
 
 BalanceUpdates = List[BalanceUpdate]

@@ -23,7 +23,8 @@ from jsearch.service_bus import (
     service_bus,
    ROUTE_WALLET_HANDLE_ASSETS_UPDATE,
 ROUTE_WALLET_HANDLE_TOKEN_TRANSFER,
-ROUTE_HANDLE_TRANSACTIONS
+ROUTE_HANDLE_TRANSACTIONS,
+ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE,
 )
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
 from jsearch.syncer.database_queries.token_transfers import get_token_address_and_accounts_for_block_q
@@ -67,6 +68,10 @@ class DatabaseService(Service, Singleton):
             await connection.execute(assets_transfers_t.insert(), **transfer)
 
     async def add_assets_transfer_token_transfer(self, transfer_data):
+        if transfer_data['token_decimals'] is None:
+            logger.warning('No decimals for token transfer %s TX: %s',
+                           transfer_data['token_address'], transfer_data['transaction_hash'])
+            transfer_data['token_decimals'] = 18
         async with self.engine.acquire() as connection:
             result = await connection.execute(transactions_t.select().where(
                 transactions_t.c.hash == transfer_data['transaction_hash']))
@@ -74,7 +79,7 @@ class DatabaseService(Service, Singleton):
             tx_data = dict(tx)
             tx_data.pop('address')
             amount = transfer_data['token_value'] / (10 ** transfer_data['token_decimals'])
-            print('AAAAAAA', amount, transfer_data['token_value'], transfer_data['token_decimals'])
+            #print('AAAAAAA', amount, transfer_data['token_value'], transfer_data['token_decimals'])
             transfer = {
                 'address': transfer_data['from_address'],
                 'type': 'erc20-transfer',
@@ -97,7 +102,7 @@ class DatabaseService(Service, Singleton):
         summary_data = {
             'address': asset_update['address'],
             'asset_address': asset_update['asset_address'],
-            'balance': hex(asset_update['balance']),
+            'balance': str(asset_update['balance']),
         }
         q = insert(assets_summary_t).values(tx_number=1, **summary_data)
 
@@ -112,7 +117,7 @@ class DatabaseService(Service, Singleton):
     async def add_or_update_asset_summary_transfer(self, asset_transfer):
         summary_data = {
             'address': asset_transfer['address'],
-            'asset_address': asset_transfer['asset_address'],
+            'asset_address': asset_transfer['token_address'],
         }
         q = insert(assets_summary_t).values(tx_number=1, **summary_data)
 
@@ -133,12 +138,24 @@ service = DatabaseService()
 async def handle_new_transaction(tx_data):
     logging.info("[WALLET] Handling new Transaction %s", tx_data['hash'])
     await service.add_assets_transafer_tx(tx_data)
+    update_data = {
+        'address': tx_data['to'],
+        'token_address': '',
+    }
+    await service.add_or_update_asset_summary_transfer(update_data)
 
 
-# @service_bus.listen_stream(WALLET_HANDLE_NEW_ACCOUNT)
-# async def handle_new_account(block_hash, block_number, account_data):
-#     logging.info("[WALLET] Handling new Account %s block %s %s", account_data['address'], block_number, block_hash)
-#
+@service_bus.listen_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE)
+async def handle_new_account(account_data):
+    logging.info("[WALLET] Handling  Account Update %s",
+                 account_data['address'])
+    update_data = {
+        'address': account_data['address'],
+        'asset_address': '',
+        'balance': account_data['balance']
+    }
+    await service.add_or_update_asset_summary_balance(update_data)
+
 
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_TOKEN_TRANSFER)
 async def handle_token_transfer(transfers):
@@ -154,6 +171,7 @@ async def handle_assets_update(updates):
     for update_data in updates:
         logging.info("[WALLET] Handling new Asset Update %s account %s",
                      update_data['asset_address'], update_data['address'])
+        await service.add_or_update_asset_summary_balance(update_data)
 
 
 

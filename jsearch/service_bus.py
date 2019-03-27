@@ -20,6 +20,7 @@ ROUTE_GET_CONTRACTS = f'{SERVICE_CONTRACT}.get_contracts'
 ROUTE_HANDLE_TRANSACTIONS = f'{SERVICE_JSEARCH}.transactions'
 ROUTE_WALLET_HANDLE_TOKEN_TRANSFER = f'{SERVICE_JSEARCH}.token_transfers'
 ROUTE_WALLET_HANDLE_ASSETS_UPDATE = f'{SERVICE_JSEARCH}.asset_updates'
+ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE = f'{SERVICE_JSEARCH}.account_update'
 
 
 
@@ -33,6 +34,9 @@ class JsearchSyncServiceBusClient(SyncServiceBusClient):
 
     def write_tx(self, tx):
         return self.send_to_stream(ROUTE_HANDLE_TRANSACTIONS, value=tx)
+
+    def write_account(self, account):
+        return self.send_to_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE, value=account)
 
     def write_transfers(self, transfers):
         return self.send_to_stream(ROUTE_WALLET_HANDLE_TOKEN_TRANSFER, value=transfers)

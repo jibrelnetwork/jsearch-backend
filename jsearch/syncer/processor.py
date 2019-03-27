@@ -79,6 +79,9 @@ class SyncProcessor:
             if tx['value'] != '0x0':
                 service_bus.sync_client.write_tx(tx)
 
+        for acc in block.accounts:
+            service_bus.sync_client.write_account(acc)
+
         sync_time = time.monotonic() - start_time
         logger.debug("Block %s #%s synced on %ss", block_hash, block_number, sync_time)
         self.main_db.disconnect()
