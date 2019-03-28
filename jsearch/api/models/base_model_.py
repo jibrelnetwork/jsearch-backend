@@ -5,7 +5,6 @@ from decimal import Decimal
 
 import six
 
-
 T = typing.TypeVar('T')
 
 
@@ -20,6 +19,9 @@ class Model(object):
 
     # integer fields that will be converted to hex for representation
     int_to_hex = set()
+
+    # integer fields that will be converted to string for representation
+    int_to_str = set()
 
     def __init__(self, **fields):
         for k, v in fields.items():
@@ -57,8 +59,12 @@ class Model(object):
                 result[nattr] = int(value)
             else:
                 result[nattr] = value
+
             if nattr in self.int_to_hex and isinstance(result[nattr], int):
                 result[nattr] = hex(result[nattr])
+
+            if nattr in self.int_to_str and isinstance(result[nattr], int):
+                result[nattr] = str(result[nattr])
 
         return result
 
@@ -75,7 +81,7 @@ class Model(object):
 
     def __repr__(self):
         """For `print` and `pprint`"""
-        return self.to_str()
+        return self.int_to_str()
 
     def __eq__(self, other):
         """Returns true if both objects are equal"""
