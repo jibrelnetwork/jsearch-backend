@@ -116,8 +116,20 @@ def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
     db_accounts_base = db.execute(t.accounts_base_t.select()).fetchall()
     db_accounts_state = db.execute(t.accounts_state_t.select()).fetchall()
 
+    result_transactions = []
+    for tx in transactions:
+        rt1 = {}
+        rt1.update(tx)
+        rt1['address'] = tx['from']
+        rt2 = {}
+        rt2.update(tx)
+        rt2['address'] = tx['to']
+        result_transactions.append(rt1)
+        result_transactions.append(rt2)
+
+
     assert dict(db_blocks[0]) == block
-    assert [dict(tx) for tx in db_transactions] == transactions
+    assert [dict(tx) for tx in db_transactions] == result_transactions
     assert [dict(r) for r in db_receipts] == receipts
     assert [dict(l) for l in db_logs] == logs
     assert [dict(a) for a in db_accounts_base] == [

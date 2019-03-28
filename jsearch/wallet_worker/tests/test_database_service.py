@@ -33,7 +33,7 @@ async def test_add_or_update_asset_summary_balance(db):
     assert len(res) == 1
     assert dict(res[0]) == {'address': asset_update['address'],
                             'asset_address': asset_update['asset_address'],
-                            'balance': hex(asset_update['balance']),
+                            'balance': str(asset_update['balance']),
                              'tx_number': 1,
                             'nonce': None
                             }
@@ -49,7 +49,7 @@ async def test_add_or_update_asset_summary_balance(db):
     assert len(res) == 1
     assert dict(res[0]) == {'address': asset_update['address'],
                             'asset_address': asset_update['asset_address'],
-                            'balance': hex(asset_update['balance']),
+                            'balance': str(asset_update['balance']),
                             'tx_number': 1,
                             'nonce': None
                             }
@@ -61,7 +61,7 @@ async def test_add_or_update_asset_summary_transfer(db):
     await s.on_start()
 
     asset_transfer = {
-        'asset_address': '0xc2',
+        'token_address': '0xc2',
         'address': '0xa2',
     }
     await s.add_or_update_asset_summary_transfer(asset_transfer)
@@ -69,7 +69,7 @@ async def test_add_or_update_asset_summary_transfer(db):
     res = db.execute(assets_summary_t.select()).fetchall()
     assert len(res) == 1
     assert dict(res[0]) == {'address': asset_transfer['address'],
-                            'asset_address': asset_transfer['asset_address'],
+                            'asset_address': asset_transfer['token_address'],
                             'balance': None,
                             'tx_number': 1,
                             'nonce': None
@@ -80,7 +80,7 @@ async def test_add_or_update_asset_summary_transfer(db):
     res = db.execute(assets_summary_t.select()).fetchall()
     assert len(res) == 1
     assert dict(res[0]) == {'address': asset_transfer['address'],
-                            'asset_address': asset_transfer['asset_address'],
+                            'asset_address': asset_transfer['token_address'],
                             'balance': None,
                             'tx_number': 2,
                             'nonce': None
