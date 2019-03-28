@@ -50,7 +50,9 @@ def get_tag(request):
     return Tag(type_, value)
 
 
-def validate_params(request):
+def validate_params(request, default_order=None):
+    default_order = default_order or DEFAULT_ORDER
+
     params = {}
     errors = []
 
@@ -86,7 +88,7 @@ def validate_params(request):
                        'error_message': 'Order value should be one of "asc", "desc", got "{}"'.format(order)
                        })
     else:
-        params['order'] = DEFAULT_ORDER
+        params['order'] = default_order
 
     if errors:
         body = {

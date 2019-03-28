@@ -165,9 +165,9 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/tagOptional'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
       responses:
         200:
           description: transactions for specific address
