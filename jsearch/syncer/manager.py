@@ -158,6 +158,8 @@ class Manager:
         end_block_num = start_block_num + chunk_size - 1
         if self.sync_range[1]:
             end_block_num = min(end_block_num, self.sync_range[1])
+
+        logging.debug("[SYNCER] Block range %s - %s", start_block_num, end_block_num)
         blocks = await self.raw_db.get_blocks_to_sync(start_block_num, end_block_num)
         return blocks
 
