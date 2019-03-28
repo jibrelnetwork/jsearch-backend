@@ -118,6 +118,7 @@ def api_error(status, errors, data=None):
     return web.json_response(body, status=status)
 
 
+api_error_400 = partial(api_error, status=400)
 api_error_404 = partial(api_error, status=404, errors=[
     {
         'code': ErrorCode.RESOURCE_NOT_FOUND,

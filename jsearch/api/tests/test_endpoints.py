@@ -5,6 +5,7 @@ import pytest
 from aiohttp import ClientResponse
 from asynctest import CoroutineMock
 
+from jsearch import settings
 from jsearch.common.tables import (
     blocks_t,
     reorgs_t,
@@ -1255,3 +1256,29 @@ async def test_get_wallet_assets_summary(cli, db):
                     'assetsSummary': [{'address': 'c2', 'balance': 200.0, 'transfersNumber': 2}],
                     'outgoingTransactionsNumber': 10},
                    ]
+
+
+async def test_get_accounts_balances_does_not_complain_on_addresses_count_less_than_limit(cli):
+    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH)]
+    addresses_str = ','.join(addresses)
+
+    resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
+
+    assert resp.status == 200
+
+
+async def test_get_accounts_balances_complains_on_addresses_count_more_than_limit(cli):
+    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH+1)]
+    addresses_str = ','.join(addresses)
+
+    resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
+    resp_json = await resp.json()
+
+    assert resp.status == 400
+    assert resp_json['status']['errors'] == [
+        {
+            'field': 'addresses',
+            'error_code': 'TOO_MANY_ITEMS',
+            'error_message': 'Too many addresses requested'
+        }
+    ]

@@ -4,6 +4,7 @@ from typing import Dict, List
 
 from jsearch import settings
 from jsearch.async_utils import do_parallel
+from jsearch.common.contracts import ERC20_DEFAULT_DECIMALS
 from jsearch.common.rpc import ContractCall, eth_call_batch
 from jsearch.service_bus import service_bus
 from jsearch.typing import Contract, Contracts
@@ -33,6 +34,10 @@ def fetch_erc20_token_decimal_bulk(contracts: Contracts) -> Contracts:
     calls_results = eth_call_batch(calls=calls)
     for call, contract in zip(calls, contracts):
         contract['decimals'] = calls_results.get(call.pk)
+
+    for contract in contracts:
+        if contract.get('decimals') is None:
+            contract['decimals'] = ERC20_DEFAULT_DECIMALS
 
     return contracts
 
