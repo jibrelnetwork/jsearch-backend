@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import aiohttp
 
@@ -16,6 +17,8 @@ from jsearch.api.helpers import (
 from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
+
+log = logging.getLogger(__name__)
 
 
 async def get_account(request):
@@ -38,9 +41,9 @@ async def get_account_transactions(request):
     """
     storage = request.app['storage']
     address = request.match_info.get('address').lower()
-    params = validate_params(request)
+    params = validate_params(request, default_order='asc')
 
-    txs = await storage.get_account_transactions(address, params['limit'], params['offset'])
+    txs = await storage.get_account_transactions(address, params['limit'], params['offset'], params['order'])
     return api_success([t.to_dict() for t in txs])
 
 
