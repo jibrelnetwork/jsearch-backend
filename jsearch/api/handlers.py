@@ -4,7 +4,15 @@ import aiohttp
 
 from jsearch import settings
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.helpers import get_tag, validate_params, api_success, proxy_response, api_error, api_error_404
+from jsearch.api.helpers import (
+    get_tag,
+    validate_params,
+    api_success,
+    proxy_response,
+    api_error,
+    api_error_400,
+    api_error_404
+)
 from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
@@ -90,8 +98,18 @@ async def get_accounts_balances(request):
     """
     storage = request.app['storage']
     addresses = request.query.get('addresses', '').lower().split(',')
-    ballances = await storage.get_accounts_balances(addresses)
-    return api_success([b.to_dict() for b in ballances])
+
+    if len(addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
+        return api_error_400(errors=[
+            {
+                'field': 'addresses',
+                'error_code': ErrorCode.TOO_MANY_ITEMS,
+                'error_message': 'Too many addresses requested'
+            }
+        ])
+
+    balances = await storage.get_accounts_balances(addresses)
+    return api_success([b.to_dict() for b in balances])
 
 
 async def get_blocks(request):
