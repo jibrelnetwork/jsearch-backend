@@ -1,5 +1,3 @@
-import time
-from random import randint
 
 import factory
 import pytest

@@ -1,34 +1,23 @@
-
-
-import asyncio
 import logging
-from collections import defaultdict
-from functools import partial
 from typing import List
 
 import backoff
 import click
 import psycopg2
 from aiopg.sa import Engine, create_engine
-from sqlalchemy.dialects.postgresql import insert
-from mode import Service, Worker
-
 from jsearch import settings
 from jsearch.common.logs import configure
 from jsearch.common.tables import assets_transfers_t, transactions_t, assets_summary_t
-from jsearch.common.processing.erc20_balances import fetch_erc20_token_balance
-from jsearch.multiprocessing import executor
-from jsearch.post_processing.metrics import Metrics
 from jsearch.service_bus import (
     service_bus,
-   ROUTE_WALLET_HANDLE_ASSETS_UPDATE,
-ROUTE_WALLET_HANDLE_TOKEN_TRANSFER,
-ROUTE_HANDLE_TRANSACTIONS,
-ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE,
+    ROUTE_WALLET_HANDLE_ASSETS_UPDATE,
+    ROUTE_WALLET_HANDLE_TOKEN_TRANSFER,
+    ROUTE_HANDLE_TRANSACTIONS,
+    ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE,
 )
-from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
-from jsearch.syncer.database_queries.token_transfers import get_token_address_and_accounts_for_block_q
 from jsearch.utils import Singleton
+from mode import Service, Worker
+from sqlalchemy.dialects.postgresql import insert
 
 
 logger = logging.getLogger('wallet_worker')
@@ -52,12 +41,12 @@ class DatabaseService(Service, Singleton):
         transfer = {
             'address': tx_data['from'],
             'type': 'eth-transfer',
-            'from':  tx_data['from'],
-            'to':  tx_data['to'],
-            'asset_address':  None,
-            'amount':  tx_data['value'],
+            'from': tx_data['from'],
+            'to': tx_data['to'],
+            'asset_address': None,
+            'amount': tx_data['value'],
             'tx_data': tx_data,
-            'is_forked':  False,
+            'is_forked': False,
             'block_number': tx_data['block_number'],
             'block_hash': tx_data['block_hash'],
             'ordering': '0',  # FIXME !!!
@@ -79,16 +68,16 @@ class DatabaseService(Service, Singleton):
             tx_data = dict(tx)
             tx_data.pop('address')
             amount = transfer_data['token_value'] / (10 ** transfer_data['token_decimals'])
-            #print('AAAAAAA', amount, transfer_data['token_value'], transfer_data['token_decimals'])
+            # print('AAAAAAA', amount, transfer_data['token_value'], transfer_data['token_decimals'])
             transfer = {
                 'address': transfer_data['from_address'],
                 'type': 'erc20-transfer',
-                'from':  transfer_data['from_address'],
-                'to':  transfer_data['to_address'],
-                'asset_address':  transfer_data['token_address'],
-                'amount':  str(amount),
+                'from': transfer_data['from_address'],
+                'to': transfer_data['to_address'],
+                'asset_address': transfer_data['token_address'],
+                'amount': str(amount),
                 'tx_data': tx_data,
-                'is_forked':  False,
+                'is_forked': False,
                 'block_number': transfer_data['block_number'],
                 'block_hash': transfer_data['block_hash'],
                 'ordering': '0',  # FIXME !!!
@@ -128,7 +117,6 @@ class DatabaseService(Service, Singleton):
 
         async with self.engine.acquire() as connection:
             await connection.execute(upsert)
-
 
 
 service = DatabaseService()
@@ -172,7 +160,6 @@ async def handle_assets_update(updates):
         logging.info("[WALLET] Handling new Asset Update %s account %s",
                      update_data['asset_address'], update_data['address'])
         await service.add_or_update_asset_summary_balance(update_data)
-
 
 
 @click.command()

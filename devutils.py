@@ -22,7 +22,8 @@ def copy_raw_db_sample(src, dst, block_from, block_to):
     for t in meta.sorted_tables:
         if t.name in ('goose_db_version', 'chain_splits', 'pending_transactions'):
             continue
-        table_data = source_engine.execute(t.select().where(and_(t.c.block_number >= block_from, t.c.block_number <= block_to))).fetchall()
+        table_data = source_engine.execute(t.select().where(
+            and_(t.c.block_number >= block_from, t.c.block_number <= block_to))).fetchall()
         dst_engine.execute(t.insert(), *table_data)
         sample_data[t.name] = table_data
     reorgs_t = meta.tables['reorgs']

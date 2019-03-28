@@ -187,4 +187,3 @@ def update_token_holder_balances(
         for update in updates:
             update.apply(db, last_block)
         sync_client.write_assets_updates([u.to_asset_update() for u in updates if u.value])
-

@@ -1,6 +1,7 @@
 import json
 from itertools import groupby
 from typing import List, Optional
+import logging
 
 import asyncpgsa
 
@@ -14,7 +15,7 @@ from jsearch.api.models.all import TokenTransfer
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
 
-import logging
+
 logger = logging.getLogger(__name__)
 
 

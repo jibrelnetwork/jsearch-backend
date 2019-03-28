@@ -8,7 +8,6 @@ from jsearch.common.tables import (
 
 from jsearch.wallet_worker.__main__ import DatabaseService
 
-
 pytest_plugins = [
     'jsearch.tests.plugins.service_bus',
     'jsearch.tests.plugins.databases.main_db',
@@ -34,7 +33,7 @@ async def test_add_or_update_asset_summary_balance(db):
     assert dict(res[0]) == {'address': asset_update['address'],
                             'asset_address': asset_update['asset_address'],
                             'balance': str(asset_update['balance']),
-                             'tx_number': 1,
+                            'tx_number': 1,
                             'nonce': None
                             }
 
@@ -97,31 +96,31 @@ async def test_add_assets_transfer_tx(db, transaction_factory):
     res = db.execute(assets_transfers_t.select()).fetchall()
     assert len(res) == 2
     assert dict(res[0]) == {
-            'address': tx_data['from'],
-            'type': 'eth-transfer',
-            'from':  tx_data['from'],
-            'to':  tx_data['to'],
-            'asset_address':  None,
-            'amount':  tx_data['value'],
-            'tx_data': tx_data,
-            'is_forked':  False,
-            'block_number': tx_data['block_number'],
-            'block_hash': tx_data['block_hash'],
-            'ordering': 0
-        }
+        'address': tx_data['from'],
+        'type': 'eth-transfer',
+        'from': tx_data['from'],
+        'to': tx_data['to'],
+        'asset_address': None,
+        'amount': tx_data['value'],
+        'tx_data': tx_data,
+        'is_forked': False,
+        'block_number': tx_data['block_number'],
+        'block_hash': tx_data['block_hash'],
+        'ordering': 0
+    }
     assert dict(res[1]) == {
-            'address': tx_data['to'],
-            'type': 'eth-transfer',
-            'from':  tx_data['from'],
-            'to':  tx_data['to'],
-            'asset_address':  None,
-            'amount':  tx_data['value'],
-            'tx_data': tx_data,
-            'is_forked':  False,
-            'block_number': tx_data['block_number'],
-            'block_hash': tx_data['block_hash'],
-            'ordering': 0
-        }
+        'address': tx_data['to'],
+        'type': 'eth-transfer',
+        'from': tx_data['from'],
+        'to': tx_data['to'],
+        'asset_address': None,
+        'amount': tx_data['value'],
+        'tx_data': tx_data,
+        'is_forked': False,
+        'block_number': tx_data['block_number'],
+        'block_hash': tx_data['block_hash'],
+        'ordering': 0
+    }
 
 
 async def test_add_assets_transfer_token_transfer(db, transfer_factory, transaction_factory):
@@ -131,30 +130,30 @@ async def test_add_assets_transfer_token_transfer(db, transfer_factory, transact
     tx_data = tx.to_dict()
     del tx_data['address']
     transfer_data = factory.build(dict, FACTORY_CLASS=transfer_factory,
-                                  transaction_hash=tx.hash, token_value=5*10**18, token_decimals=18)
+                                  transaction_hash=tx.hash, token_value=5 * 10 ** 18, token_decimals=18)
     await s.add_assets_transfer_token_transfer(transfer_data)
 
     res = db.execute(assets_transfers_t.select()).fetchall()
     assert len(res) == 2
     assert dict(res[0]) == {'address': transfer_data['from_address'],
-         'amount': '5.0',
-         'asset_address': transfer_data['token_address'],
-         'block_hash': transfer_data['block_hash'],
-         'block_number': transfer_data['block_number'],
-         'from': transfer_data['from_address'],
-         'is_forked': False,
-         'ordering': 0,
-         'to': transfer_data['to_address'],
-         'tx_data': tx_data,
-         'type': 'erc20-transfer'}
+                            'amount': '5.0',
+                            'asset_address': transfer_data['token_address'],
+                            'block_hash': transfer_data['block_hash'],
+                            'block_number': transfer_data['block_number'],
+                            'from': transfer_data['from_address'],
+                            'is_forked': False,
+                            'ordering': 0,
+                            'to': transfer_data['to_address'],
+                            'tx_data': tx_data,
+                            'type': 'erc20-transfer'}
     assert dict(res[1]) == {'address': transfer_data['to_address'],
-         'amount': '5.0',
-         'asset_address': transfer_data['token_address'],
-         'block_hash': transfer_data['block_hash'],
-         'block_number': transfer_data['block_number'],
-         'from': transfer_data['from_address'],
-         'is_forked': False,
-         'ordering': 0,
-         'to': transfer_data['to_address'],
-         'tx_data': tx_data,
-         'type': 'erc20-transfer'}
+                            'amount': '5.0',
+                            'asset_address': transfer_data['token_address'],
+                            'block_hash': transfer_data['block_hash'],
+                            'block_number': transfer_data['block_number'],
+                            'from': transfer_data['from_address'],
+                            'is_forked': False,
+                            'ordering': 0,
+                            'to': transfer_data['to_address'],
+                            'tx_data': tx_data,
+                            'type': 'erc20-transfer'}

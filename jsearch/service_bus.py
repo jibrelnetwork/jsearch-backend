@@ -23,7 +23,6 @@ ROUTE_WALLET_HANDLE_ASSETS_UPDATE = f'{SERVICE_JSEARCH}.asset_updates'
 ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE = f'{SERVICE_JSEARCH}.account_update'
 
 
-
 class JsearchSyncServiceBusClient(SyncServiceBusClient):
 
     def write_logs(self, logs):

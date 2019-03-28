@@ -21,7 +21,6 @@ from jsearch.common.tables import (
     receipts_t,
     transactions_t,
     uncles_t,
-    uncles_t,
     reorgs_t,
     token_transfers_t,
     chain_splits_t,
@@ -411,7 +410,6 @@ class MainDBSync(DBWrapperSync):
                 transactions.append(tx1)
                 transactions.append(tx2)
             self.execute(transactions_t.insert(), *transactions)
-
 
     def insert_receipts(self, receipts_data):
         if receipts_data:

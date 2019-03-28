@@ -127,7 +127,6 @@ def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
         result_transactions.append(rt1)
         result_transactions.append(rt2)
 
-
     assert dict(db_blocks[0]) == block
     assert [dict(tx) for tx in db_transactions] == result_transactions
     assert [dict(r) for r in db_receipts] == receipts
