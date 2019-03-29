@@ -12,6 +12,7 @@ from jsearch.api.database_queries.transactions import get_tx_hashes_by_block_has
 from jsearch.api.database_queries.uncles import get_uncle_hashes_by_block_number
 from jsearch.api.helpers import Tag
 from jsearch.api.models.all import TokenTransfer
+from jsearch.common import queries
 
 log = logging.getLogger(__name__)
 
@@ -77,16 +78,10 @@ class Storage:
         query = query.limit(limit)
         query = query.offset(offset)
 
-        async with self.pool.acquire() as conn:
-            query, params = asyncpgsa.compile_query(query)
+        rows = await queries.fetch(self.pool, query)
+        txs = [models.Transaction(**r) for r in rows]
 
-            log.debug(query)
-            log.debug(params)
-
-            rows = await conn.fetch(query, *params)
-            rows = [dict(r) for r in rows]
-
-        return [models.Transaction(**r) for r in rows]
+        return txs
 
     async def get_block_transactions(self, tag):
         fields = models.Transaction.select_fields()
@@ -288,8 +283,7 @@ class Storage:
             return [models.Balance(balance=int(addr_map[a]['balance']), address=addr_map[a]['address'])
                     for a in addresses if a in addr_map]
 
-    async def _fetch_token_transfers(self, query: str, address: str, limit: int, offset: int) \
-            -> List[TokenTransfer]:
+    async def _fetch_token_transfers(self, query: str, address: str, limit: int, offset: int) -> List[TokenTransfer]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address, limit, offset)
             transfers: List[models.TokenTransfer] = []
