@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy import select, or_, Column
+from sqlalchemy import select, Column
 from sqlalchemy.orm import Query
 
 from jsearch.common.tables import transactions_t
@@ -37,10 +37,7 @@ def get_tx_hashes_by_block_hash(block_hash: str) -> Query:
 def get_tx_by_address(address: str, order: str, columns: List[Column] = None) -> Query:
     query = select(
         columns=columns or get_default_fields(),
-        whereclause=or_(
-            getattr(transactions_t.c, 'from') == address,
-            getattr(transactions_t.c, 'to') == address,
-        )
+        whereclause=transactions_t.c.address == address
     )
 
     return _order_tx_query(query, order)

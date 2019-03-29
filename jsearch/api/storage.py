@@ -1,6 +1,5 @@
 import json
 import logging
-
 from itertools import groupby
 from typing import List, Optional, Dict, Any
 
@@ -94,6 +93,8 @@ class Storage:
         query = query.offset(offset)
 
         rows = await queries.fetch(self.pool, query)
+        rows = in_app_distinct(rows)
+
         txs = [models.Transaction(**r) for r in rows]
 
         return txs
