@@ -21,6 +21,9 @@ DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
 
 
+logger = logging.getLogger(__name__)
+
+
 def _rows_to_token_transfers(rows: List[Dict[str, Any]]) -> List[models.TokenTransfer]:
     token_transfers = list()
 
@@ -432,6 +435,7 @@ class Storage:
             for row in rows:
                 t = dict(row)
                 t['tx_data'] = json.loads(t['tx_data'])
+                t['amount'] = str(t['value'] / 10 ** t['decimals'])
                 items.append(t)
             return [models.AssetTransfer(**t) for t in items]
 
@@ -484,7 +488,7 @@ class Storage:
                 nonce = 0
                 for row in addr_map.get(addr, []):
                     assets_summary.append({
-                        'balance': float(row['balance']),
+                        'balance': float(row['value'] / 10 ** row['decimals']),
                         'address': row['asset_address'],
                         'transfersNumber': row['tx_number'],
                     })
