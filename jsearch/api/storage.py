@@ -330,7 +330,7 @@ class Storage:
         query = query.offset(offset)
 
         rows = await queries.fetch(self.pool, query)
-        transfers = self._rows_to_token_transfers(rows)
+        transfers = _rows_to_token_transfers(rows)
 
         return transfers
 

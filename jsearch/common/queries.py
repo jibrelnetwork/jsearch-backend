@@ -41,4 +41,4 @@ def in_app_distinct(rows: Rows) -> Rows:
         distinct_keys.add(distinct_key)
         rows_distinct.append(row)
 
-    return rows
+    return rows_distinct

@@ -277,7 +277,7 @@ class TokenTransfer(Model):
         "token_symbol": "tokenSymbol",
     }
 
-    int_to_str = {"token_value"}
+    int_to_str = {"amount"}
 
 
 class TokenHolder(Model):
