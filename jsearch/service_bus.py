@@ -17,6 +17,11 @@ ROUTE_HANDLE_LAST_BLOCK = f'{SERVICE_JSEARCH}.last_block'
 
 ROUTE_GET_CONTRACTS = f'{SERVICE_CONTRACT}.get_contracts'
 
+ROUTE_HANDLE_TRANSACTIONS = f'{SERVICE_JSEARCH}.transactions'
+ROUTE_WALLET_HANDLE_TOKEN_TRANSFER = f'{SERVICE_JSEARCH}.token_transfers'
+ROUTE_WALLET_HANDLE_ASSETS_UPDATE = f'{SERVICE_JSEARCH}.asset_updates'
+ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE = f'{SERVICE_JSEARCH}.account_update'
+
 
 class JsearchSyncServiceBusClient(SyncServiceBusClient):
 
@@ -25,6 +30,18 @@ class JsearchSyncServiceBusClient(SyncServiceBusClient):
 
     def get_contracts(self, addresses, fields=None) -> Contracts:
         return self.rpc_call(ROUTE_GET_CONTRACTS, value={'addresses': addresses, 'fields': fields})
+
+    def write_tx(self, tx):
+        return self.send_to_stream(ROUTE_HANDLE_TRANSACTIONS, value=tx)
+
+    def write_account(self, account):
+        return self.send_to_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE, value=account)
+
+    def write_transfers(self, transfers):
+        return self.send_to_stream(ROUTE_WALLET_HANDLE_TOKEN_TRANSFER, value=transfers)
+
+    def write_assets_updates(self, updates):
+        return self.send_to_stream(ROUTE_WALLET_HANDLE_ASSETS_UPDATE, value=updates)
 
 
 class JsearchServiceBus(ServiceBus):

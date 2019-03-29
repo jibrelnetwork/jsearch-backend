@@ -11,7 +11,7 @@ from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.utils import fetch_contracts, prefetch_decimals
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics, Metric
-from jsearch.service_bus import service_bus, ROUTE_HANDLE_LAST_BLOCK, ROUTE_HANDLE_ERC20_TRANSFERS
+from jsearch.service_bus import service_bus, sync_client, ROUTE_HANDLE_LAST_BLOCK, ROUTE_HANDLE_ERC20_TRANSFERS
 from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Contracts, Transfers, Logs
 
@@ -21,6 +21,7 @@ logger = logging.getLogger('worker')
 
 
 def worker(contracts: Contracts, transfer_logs: Logs, last_block: Union[int, str]) -> None:
+    sync_client.start()
     with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
         start_at = time.time()
         contracts = prefetch_decimals(contracts)
@@ -30,7 +31,7 @@ def worker(contracts: Contracts, transfer_logs: Logs, last_block: Union[int, str
 
         transfers = logs_to_transfers(transfer_logs, blocks, contracts)
         db.insert_or_update_transfers(transfers)
-
+        sync_client.write_transfers(transfers)
         logger.info('[WORKER] transfer insert speed %0.2f', len(transfers) / (time.time() - start_at))
 
         start_at = time.time()
