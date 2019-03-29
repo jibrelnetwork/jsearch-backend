@@ -1220,3 +1220,61 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
             'error_message': 'Too many addresses requested'
         }
     ]
+
+
+async def test_get_account_transactions_supports_asc_and_desc_ordering(cli, db):
+    values = {
+        'hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+        'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+        'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+    }
+
+    for block_number in ('7400000', '7500000'):
+        for transaction_index in range(5):
+            db.execute(
+                transactions_t.insert().values(
+                    {
+                        **values,
+                        **{
+                            'transaction_index': str(transaction_index),
+                            'block_number': block_number,
+                        },
+                    }
+                )
+            )
+
+    resp = await cli.get(f'/v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/transactions?order=asc')
+    resp_json = await resp.json()
+    resp_order_indicators = [(entry['blockNumber'], entry['transactionIndex']) for entry in resp_json['data']]
+
+    assert resp.status == 200
+    assert resp_order_indicators == [
+        (7400000, 0),
+        (7400000, 1),
+        (7400000, 2),
+        (7400000, 3),
+        (7400000, 4),
+        (7500000, 0),
+        (7500000, 1),
+        (7500000, 2),
+        (7500000, 3),
+        (7500000, 4),
+    ]
+
+    resp = await cli.get(f'/v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/transactions?order=desc')
+    resp_json = await resp.json()
+    resp_order_indicators = [(entry['blockNumber'], entry['transactionIndex']) for entry in resp_json['data']]
+
+    assert resp.status == 200
+    assert resp_order_indicators == [
+        (7500000, 4),
+        (7500000, 3),
+        (7500000, 2),
+        (7500000, 1),
+        (7500000, 0),
+        (7400000, 4),
+        (7400000, 3),
+        (7400000, 2),
+        (7400000, 1),
+        (7400000, 0),
+    ]

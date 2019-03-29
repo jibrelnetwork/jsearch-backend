@@ -1,4 +1,6 @@
 import json
+import logging
+
 from itertools import groupby
 from typing import List, Optional
 import logging
@@ -7,10 +9,12 @@ import asyncpgsa
 
 from jsearch.api import models
 from jsearch.api.database_queries.blocks import get_block_by_hash_query, get_block_by_number_query, get_last_block_query
-from jsearch.api.database_queries.transactions import get_tx_hashes_by_block_hash
+from jsearch.api.database_queries.transactions import get_tx_hashes_by_block_hash, get_tx_by_address
 from jsearch.api.database_queries.uncles import get_uncle_hashes_by_block_number
 from jsearch.api.helpers import Tag
 from jsearch.api.models.all import TokenTransfer
+
+log = logging.getLogger(__name__)
 
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
@@ -70,20 +74,23 @@ class Storage:
 
             return models.Account(**row)
 
-    async def get_account_transactions(self, address, limit, offset):
-        fields = models.Transaction.select_fields()
-
-        query = f"""
-            SELECT {fields} FROM transactions
-            WHERE "to"=$1 OR "from"=$1
-            ORDER BY block_number, transaction_index LIMIT $2 OFFSET $3
-        """
-
+    async def get_account_transactions(self, address, limit, offset, order):
         limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
+
+        query = get_tx_by_address(address.lower(), order)
+        query = query.limit(limit)
+        query = query.offset(offset)
+
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, address.lower(), limit, offset)
+            query, params = asyncpgsa.compile_query(query)
+
+            log.debug(query)
+            log.debug(params)
+
+            rows = await conn.fetch(query, *params)
             rows = [dict(r) for r in rows]
-            return [models.Transaction(**r) for r in rows]
+
+        return [models.Transaction(**r) for r in rows]
 
     async def get_block_transactions(self, tag):
         fields = models.Transaction.select_fields()
