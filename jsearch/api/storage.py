@@ -459,13 +459,13 @@ class Storage:
             for row in rows:
                 t = dict(row)
                 t['tx_data'] = json.loads(t['tx_data'])
+                t['amount'] = str(t['value'] / 10 ** t['decimals'])
                 items.append(t)
             return [models.AssetTransfer(**t) for t in items]
 
     async def get_wallet_transactions(self, address: str, limit: int, offset: int) -> List:
         offset *= 2
         limit *= 2
-        print("TXS %s", address)
         query = """SELECT * FROM transactions
                         WHERE address = $1
                         ORDER BY block_number, transaction_index DESC
@@ -512,7 +512,7 @@ class Storage:
                 nonce = 0
                 for row in addr_map.get(addr, []):
                     assets_summary.append({
-                        'balance': float(row['balance']),
+                        'balance': float(row['value'] / 10 ** row['decimals']),
                         'address': row['asset_address'],
                         'transfersNumber': row['tx_number'],
                     })
@@ -536,7 +536,6 @@ class Storage:
         """
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, address)
-            print("NONS %s %s", address, row)
             if row:
                 return row['nonce']
             return 0

@@ -44,7 +44,8 @@ class DatabaseService(Service, Singleton):
             'from': tx_data['from'],
             'to': tx_data['to'],
             'asset_address': None,
-            'amount': tx_data['value'],
+            'value': int(tx_data['value'], 16),
+            'decimals': 0,
             'tx_data': tx_data,
             'is_forked': False,
             'block_number': tx_data['block_number'],
@@ -67,15 +68,14 @@ class DatabaseService(Service, Singleton):
             tx = await result.fetchone()
             tx_data = dict(tx)
             tx_data.pop('address')
-            amount = transfer_data['token_value'] / (10 ** transfer_data['token_decimals'])
-            # print('AAAAAAA', amount, transfer_data['token_value'], transfer_data['token_decimals'])
             transfer = {
                 'address': transfer_data['from_address'],
                 'type': 'erc20-transfer',
                 'from': transfer_data['from_address'],
                 'to': transfer_data['to_address'],
                 'asset_address': transfer_data['token_address'],
-                'amount': str(amount),
+                'value': transfer_data['token_value'],
+                'decimals': transfer_data['token_decimals'],
                 'tx_data': tx_data,
                 'is_forked': False,
                 'block_number': transfer_data['block_number'],
@@ -91,13 +91,14 @@ class DatabaseService(Service, Singleton):
         summary_data = {
             'address': asset_update['address'],
             'asset_address': asset_update['asset_address'],
-            'balance': str(asset_update['balance']),
+            'value': asset_update['value'],
+            'decimals': asset_update['decimals'],
         }
         q = insert(assets_summary_t).values(tx_number=1, **summary_data)
 
         upsert = q.on_conflict_do_update(
             index_elements=['address', 'asset_address'],
-            set_=dict(balance=summary_data['balance'])
+            set_=dict(value=summary_data['value'], decimals=summary_data['decimals'])
         )
 
         async with self.engine.acquire() as connection:
@@ -140,7 +141,8 @@ async def handle_new_account(account_data):
     update_data = {
         'address': account_data['address'],
         'asset_address': '',
-        'balance': account_data['balance']
+        'value': account_data['balance'],
+        'decimals': 0
     }
     await service.add_or_update_asset_summary_balance(update_data)
 

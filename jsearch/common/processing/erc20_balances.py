@@ -99,7 +99,9 @@ class BalanceUpdate:
         return {
             'asset_address': self.token_address,
             'address': self.account_address,
-            'balance': self.value / (10 ** decimals)}
+            'value': self.value,
+            'decimals': decimals
+        }
 
 
 BalanceUpdates = List[BalanceUpdate]
