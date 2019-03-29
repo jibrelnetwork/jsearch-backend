@@ -513,6 +513,6 @@ class Storage:
             del row['block_number']
             del row['block_hash']
 
-            token_transfers.append(model.TokenTransfer(**row))
+            token_transfers.append(models.TokenTransfer(**row))
 
         return token_transfers

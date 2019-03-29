@@ -1,4 +1,4 @@
-from sqlalchemy import Column, select, and_, false
+from sqlalchemy import Column, select, and_, false, cast, String
 from sqlalchemy.orm import Query
 from typing import List
 
@@ -16,7 +16,10 @@ def get_default_fields() -> List[Column]:
         token_transfers_t.c.from_address,
         token_transfers_t.c.to_address,
         token_transfers_t.c.token_address,
-        token_transfers_t.c.token_value,
+
+        # JSEARCH-218: `token_value` must be a string.
+        cast(token_transfers_t.c.token_value, String()).label('token_value'),
+
         token_transfers_t.c.token_decimals,
         token_transfers_t.c.token_name,
         token_transfers_t.c.token_symbol,
