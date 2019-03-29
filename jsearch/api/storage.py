@@ -13,11 +13,29 @@ from jsearch.api.database_queries.transactions import get_tx_hashes_by_block_has
 from jsearch.api.database_queries.uncles import get_uncle_hashes_by_block_number
 from jsearch.api.helpers import Tag
 from jsearch.common import queries
+from jsearch.common.queries import in_app_distinct
 
 log = logging.getLogger(__name__)
 
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
+
+
+def _rows_to_token_transfers(rows: List[Dict[str, Any]]) -> List[models.TokenTransfer]:
+    token_transfers = list()
+
+    for row in rows:
+        # JSEARCH-218: `token_value` must be a string.
+        row['token_value'] = str(row['token_value'])
+
+        del row['transaction_index']
+        del row['log_index']
+        del row['block_number']
+        del row['block_hash']
+
+        token_transfers.append(models.TokenTransfer(**row))
+
+    return token_transfers
 
 
 class Storage:
@@ -288,7 +306,9 @@ class Storage:
                                    limit: int,
                                    offset: int,
                                    order: str) -> List[models.TokenTransfer]:
-        # HACK: In-app distinct outperforms `SELECT DISTINCT`.
+        # HACK: There're 2 times more entries due to denormalization, see
+        # `log_to_transfers`. Because of this, `offset` and `limit` should be
+        # multiplied first and rows should be deduped second.
         offset *= 2
         limit *= 2
 
@@ -296,21 +316,12 @@ class Storage:
         query = query.limit(limit)
         query = query.offset(offset)
 
-        # HACK: In-app distinct outperforms `SELECT DISTINCT`.
         rows = await queries.fetch(self.pool, query)
-        rows_distinct = list()
-        distinct_keys = set()
+        # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
+        # `in_app_distinct` instead.
+        rows_distinct = in_app_distinct(rows)
 
-        for row in rows:
-            distinct_key = tuple(row.values())
-
-            if distinct_key in distinct_keys:
-                continue
-
-            distinct_keys.add(distinct_key)
-            rows_distinct.append(row)
-
-        return self._rows_to_token_transfers(rows_distinct)
+        return _rows_to_token_transfers(rows_distinct)
 
     async def get_account_tokens_transfers(self,
                                            address: str,
@@ -503,16 +514,3 @@ class Storage:
             if row:
                 return row['nonce']
             return 0
-
-    def _rows_to_token_transfers(self, rows: List[Dict[str, Any]]) -> List[models.TokenTransfer]:
-        token_transfers = list()
-
-        for row in rows:
-            del row['transaction_index']
-            del row['log_index']
-            del row['block_number']
-            del row['block_hash']
-
-            token_transfers.append(models.TokenTransfer(**row))
-
-        return token_transfers

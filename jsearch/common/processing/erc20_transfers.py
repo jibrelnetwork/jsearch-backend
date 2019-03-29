@@ -41,6 +41,12 @@ def log_to_transfers(log: Log, block: Block, contract: Contract) -> Transfers:
         'transaction_index': log['transaction_index'],
         'is_forked': block['is_forked']
     }
+
+    # FAQ: Construct 2 entries for every transfer event to optimize performance.
+    # In a `SELECT * FROM t WHERE c1={address} or c2={address}` `or` clause hits
+    # performance too hard, so add two entries with denormalized `address`. That
+    # way, we can fetch all transfers with a simple query without `or`:
+    # `SELECT * FROM t WHERE address={address}`.
     return [
         {'address': log['token_transfer_to'], **transfer_body},
         {'address': log['token_transfer_from'], **transfer_body}
