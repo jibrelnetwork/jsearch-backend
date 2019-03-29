@@ -277,6 +277,8 @@ class TokenTransfer(Model):
         "token_symbol": "tokenSymbol",
     }
 
+    int_to_str = {"token_value"}
+
 
 class TokenHolder(Model):
     swagger_types = {

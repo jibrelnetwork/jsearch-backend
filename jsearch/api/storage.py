@@ -25,9 +25,6 @@ def _rows_to_token_transfers(rows: List[Dict[str, Any]]) -> List[models.TokenTra
     token_transfers = list()
 
     for row in rows:
-        # JSEARCH-218: `token_value` must be a string.
-        row['token_value'] = str(row['token_value'])
-
         del row['transaction_index']
         del row['log_index']
         del row['block_number']
