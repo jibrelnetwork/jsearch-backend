@@ -1,12 +1,9 @@
-import logging
 from typing import List
 
 from sqlalchemy import select, Column
 from sqlalchemy.orm import Query
 
 from jsearch.common.tables import transactions_t
-
-logger = logging.getLogger(__name__)
 
 
 def get_default_fields():
@@ -42,7 +39,6 @@ def get_tx_by_address(address: str, order: str, columns: List[Column] = None) ->
         columns=columns or get_default_fields(),
         whereclause=transactions_t.c.address == address
     )
-    logger.info("[QUERY] %s", str(query))
 
     return _order_tx_query(query, order)
 
@@ -50,11 +46,15 @@ def get_tx_by_address(address: str, order: str, columns: List[Column] = None) ->
 def _order_tx_query(query: Query, direction: str) -> Query:
     if direction == 'asc':
         return query.order_by(
+            transactions_t.c.address.asc(),
+            transactions_t.c.is_forked.asc(),
             transactions_t.c.block_number.asc(),
             transactions_t.c.transaction_index.asc(),
         )
 
     return query.order_by(
+        transactions_t.c.address.desc(),
+        transactions_t.c.is_forked.desc(),
         transactions_t.c.block_number.desc(),
         transactions_t.c.transaction_index.desc(),
     )
