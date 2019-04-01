@@ -174,6 +174,7 @@ class Manager:
 
     async def get_new_chain_splits(self):
         last_chain_split_num = await self.main_db.get_last_chain_split()
+        logger.info('Last chain split is %s', last_chain_split_num)
         new_chain_splits = await self.raw_db.get_chain_splits_from(last_chain_split_num, REORGS_BATCH_SIZE)
         return new_chain_splits
 

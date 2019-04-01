@@ -1,4 +1,4 @@
-from sqlalchemy import Column, select, and_, false, cast, String
+from sqlalchemy import Column, select, and_, false
 from sqlalchemy.orm import Query
 from typing import List
 

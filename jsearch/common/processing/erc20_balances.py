@@ -12,6 +12,7 @@ from jsearch.common.rpc import ContractCall, eth_call_batch, eth_call
 from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Log, Abi, Contract, Transfers
 from jsearch.utils import split
+from jsearch.service_bus import sync_client
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,15 @@ class BalanceUpdate:
                 '[BALANCE UPDATE ERROR] %s on block %s token %s address %s -> %30s + %30s : %30s',
                 self.block, last_block, self.token_address, self.account_address, self.value, changes, balance
             )
+
+    def to_asset_update(self):
+        decimals = self.decimals or 18
+        return {
+            'asset_address': self.token_address,
+            'address': self.account_address,
+            'value': self.value,
+            'decimals': decimals
+        }
 
 
 BalanceUpdates = List[BalanceUpdate]
@@ -178,3 +188,4 @@ def update_token_holder_balances(
         updates = fetch_erc20_balance_bulk(chunk, block=last_block)
         for update in updates:
             update.apply(db, last_block)
+        sync_client.write_assets_updates([u.to_asset_update() for u in updates if u.value])
