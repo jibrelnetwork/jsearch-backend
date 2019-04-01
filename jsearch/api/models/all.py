@@ -115,7 +115,7 @@ class InternalTransaction(Model):
         'to': 'to',
         'value': 'value',
         'gas_limit': 'gasLimit',
-        'input': 'payload',
+        'payload': 'input',
         'status': 'status',
         'transaction_index': 'transactionIndex',
     }

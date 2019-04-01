@@ -1338,9 +1338,9 @@ async def test_get_account_internal_transactions(cli, internal_transaction_facto
                 'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
                 'value': '1000',
                 'gasLimit': '2000',
-                'payload': '0x',
+                'input': '0x',
                 'status': 'success',
-                'transactionIndex': 7,
+                'transactionIndex': 8,
             },
             {
                 'blockNumber': 42,
@@ -1352,9 +1352,9 @@ async def test_get_account_internal_transactions(cli, internal_transaction_facto
                 'to': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
                 'value': '1000',
                 'gasLimit': '2000',
-                'payload': '0x',
+                'input': '0x',
                 'status': 'success',
-                'transactionIndex': 8,
+                'transactionIndex': 7,
             }
         ]
     }
@@ -1409,9 +1409,9 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
                 'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
                 'value': '1000',
                 'gasLimit': '2000',
-                'payload': '0x',
+                'input': '0x',
                 'status': 'success',
-                'transactionIndex': 42,
+                'transactionIndex': 43,
             },
             {
                 'blockNumber': 42,
@@ -1423,9 +1423,9 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
                 'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
                 'value': '1000',
                 'gasLimit': '2000',
-                'payload': '0x',
+                'input': '0x',
                 'status': 'success',
-                'transactionIndex': 43,
+                'transactionIndex': 42,
             }
         ]
     }

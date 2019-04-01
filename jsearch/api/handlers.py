@@ -166,8 +166,21 @@ async def get_internal_transactions(request):
     """
     Get internal transactions by transaction hash
     """
-    # todo: implement it
-    return api_success([])
+    storage = request.app['storage']
+    tx_hash = request.match_info.get('txhash').lower()
+    params = validate_params(request)
+
+    internal_txs = await storage.get_internal_transactions(
+        tx_hash,
+        limit=params['limit'],
+        offset=params['offset'],
+        order=params['order'],
+    )
+
+    response_data = [it.to_dict() for it in internal_txs]
+    response = api_success(response_data)
+
+    return response
 
 
 async def get_pending_transactions(request):
