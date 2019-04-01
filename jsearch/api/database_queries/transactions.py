@@ -42,7 +42,7 @@ def get_tx_by_address(address: str, order: str, columns: List[Column] = None) ->
         columns=columns or get_default_fields(),
         whereclause=transactions_t.c.address == address
     )
-    logger.debug("[QUERY] %s", str(query))
+    logger.info("[QUERY] %s", str(query))
 
     return _order_tx_query(query, order)
 

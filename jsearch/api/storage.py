@@ -19,7 +19,6 @@ log = logging.getLogger(__name__)
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
 
-
 logger = logging.getLogger(__name__)
 
 
