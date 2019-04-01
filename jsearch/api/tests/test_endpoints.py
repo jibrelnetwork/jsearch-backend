@@ -260,7 +260,9 @@ async def test_get_account_block_hash(cli, main_db_data):
 
 
 async def test_get_account_transactions(cli, main_db_data):
-    resp = await cli.get('/v1/accounts/' + main_db_data['accounts_state'][0]['address'] + '/transactions')
+    address = main_db_data['accounts_state'][0]['address']
+
+    resp = await cli.get(f'/v1/accounts/{address}/transactions')
     assert resp.status == 200
     txs = main_db_data['transactions']
     res = (await resp.json())['data']
