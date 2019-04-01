@@ -22,6 +22,7 @@ from jsearch.tests.entities import (
 pytest_plugins = [
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.dumps',
+    'jsearch.tests.plugins.databases.factories.internal_transactions',
 ]
 
 
@@ -1278,3 +1279,153 @@ async def test_get_account_transactions_supports_asc_and_desc_ordering(cli, db):
         (7400000, 1),
         (7400000, 0),
     ]
+
+
+async def test_get_account_internal_transactions(cli, internal_transaction_factory):
+    internal_transaction_data = {
+        'block_number': 42,
+        'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+        'parent_tx_hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+        'op': 'suicide',
+        'call_depth': 3,
+        'from_': NotImplemented,
+        'to': NotImplemented,
+        'value': 1000,
+        'gas_limit': 2000,
+        'payload': '0x',
+        'status': 'success',
+        'transaction_index': NotImplemented,
+    }
+
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{
+                'from_': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+                'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                'transaction_index': 7,
+            }
+        }
+    )
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{
+                'from_': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                'to': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+                'transaction_index': 8,
+            }
+        }
+    )
+
+    resp = await cli.get(f'v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/internal_transactions')
+    resp_json = await resp.json()
+
+    assert resp.status == 200
+    assert resp_json == {
+        'status': {
+            'success': True,
+            'errors': [],
+        },
+        'data': [
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 3,
+                'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+                'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                'value': '1000',
+                'gasLimit': '2000',
+                'payload': '0x',
+                'status': 'success',
+                'transactionIndex': 7,
+            },
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 3,
+                'from': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                'to': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+                'value': '1000',
+                'gasLimit': '2000',
+                'payload': '0x',
+                'status': 'success',
+                'transactionIndex': 8,
+            }
+        ]
+    }
+
+
+async def test_get_internal_transactions(cli, internal_transaction_factory):
+    internal_transaction_data = {
+        'block_number': 42,
+        'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+        'parent_tx_hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+        'op': 'suicide',
+        'call_depth': 3,
+        'from_': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+        'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+        'value': 1000,
+        'gas_limit': 2000,
+        'payload': '0x',
+        'status': 'success',
+        'transaction_index': NotImplemented,
+    }
+
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{'transaction_index': 42},
+        }
+    )
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{'transaction_index': 43},
+        }
+    )
+
+    resp = await cli.get(f'v1/transactions/internal/0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e')
+    resp_json = await resp.json()
+
+    assert resp.status == 200
+    assert resp_json == {
+        'status': {
+            'success': True,
+            'errors': [],
+        },
+        'data': [
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 3,
+                'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+                'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                'value': '1000',
+                'gasLimit': '2000',
+                'payload': '0x',
+                'status': 'success',
+                'transactionIndex': 42,
+            },
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 3,
+                'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+                'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                'value': '1000',
+                'gasLimit': '2000',
+                'payload': '0x',
+                'status': 'success',
+                'transactionIndex': 43,
+            }
+        ]
+    }
