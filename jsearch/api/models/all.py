@@ -89,6 +89,40 @@ class Transaction(Model):
     }
 
 
+class InternalTransaction(Model):
+    swagger_types = {
+        'block_number': int,
+        'block_hash': str,
+        'parent_tx_hash': str,
+        'op': str,
+        'call_depth': int,
+        'from': str,
+        'to': str,
+        'value': str,
+        'gas_limit': str,
+        'payload': str,
+        'status': str,
+        'transaction_index': int,
+    }
+
+    attribute_map = {
+        'block_number': 'blockNumber',
+        'block_hash': 'blockHash',
+        'parent_tx_hash': 'parentTxHash',
+        'op': 'op',
+        'call_depth': 'callDepth',
+        'from': 'from',
+        'to': 'to',
+        'value': 'value',
+        'gas_limit': 'gasLimit',
+        'input': 'payload',
+        'status': 'status',
+        'transaction_index': 'transactionIndex',
+    }
+
+    int_to_str = {'value', 'gasLimit'}
+
+
 class Block(Model):
     swagger_types = {
         'difficulty': str,
