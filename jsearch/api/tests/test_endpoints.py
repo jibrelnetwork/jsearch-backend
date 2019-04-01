@@ -1103,6 +1103,22 @@ async def test_get_wallet_transactions(cli, db):
             {
                 'blockHash': '0xb1',
                 'blockNumber': 1,
+                'from': 'a1',
+                'gas': '0xf4240',
+                'gasPrice': '0x430e23400',
+                'hash': '0xt2',
+                'input': '0x6060',
+                'nonce': '0x0',
+                'r': None,
+                's': None,
+                'to': 'a2',
+                'transactionIndex': 0,
+                'v': None,
+                'value': '0x0'
+            },
+            {
+                'blockHash': '0xb1',
+                'blockNumber': 1,
                 'from': '0xa1',
                 'gas': '0xf4240',
                 'gasPrice': '0x430e23400',
@@ -1116,22 +1132,6 @@ async def test_get_wallet_transactions(cli, db):
                 'v': None,
                 'value': '0x0'
             },
-            {
-                'blockHash': '0xb1',
-                'blockNumber': 1,
-                'from': 'a1',
-                'gas': '0xf4240',
-                'gasPrice': '0x430e23400',
-                'hash': '0xt2',
-                'input': '0x6060',
-                'nonce': '0x0',
-                'r': None,
-                's': None,
-                'to': 'a2',
-                'transactionIndex': 0,
-                'v': None,
-                'value': '0x0'
-            }
         ],
         'pendingTransactions': [
 
