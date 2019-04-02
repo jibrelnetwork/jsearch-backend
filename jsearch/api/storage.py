@@ -55,6 +55,15 @@ def _group_by_block(items: List[Dict[str, Any]]) -> DefaultDict[str, List[Dict[s
 
 
 async def _fetch_blocks(connection: Connection, query: Query) -> List[Dict[str, Any]]:
+    """
+    fetch blocks with included transactions and uncles hashes.
+
+    HACK: to get included transactions ans hashes we make
+        a query for each 10 block hashes. Because if we do
+        a query with `in` clause contains more then 10 entities -
+        query will be very slow.
+
+    """
     rows = await fetch(connection=connection, query=query)
 
     block_hashes = [row['hash'] for row in rows]
