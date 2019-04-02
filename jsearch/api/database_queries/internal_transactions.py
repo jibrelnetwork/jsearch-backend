@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy import select, Column
 from sqlalchemy.orm import Query
 
-from jsearch.common.tables import internal_transactions_t
+from jsearch.common.tables import internal_transactions_t, transactions_t
 
 
 def get_default_fields() -> List[Column]:
@@ -28,6 +28,20 @@ def get_internal_txs_by_parent(parent_tx_hash: str, order: str, columns: List[Co
     query = select(
         columns=columns or get_default_fields(),
         whereclause=internal_transactions_t.c.parent_tx_hash == parent_tx_hash,
+    )
+
+    return _order_query(query, order)
+
+
+def get_internal_txs_by_account(account: str, order: str, columns: List[Column] = None) -> Query:
+    query = select(
+        columns=columns or get_default_fields(),
+        whereclause=transactions_t.c.address == account,
+    ).select_from(
+        internal_transactions_t.join(
+            transactions_t,
+            internal_transactions_t.c.parent_tx_hash == transactions_t.c.hash
+        )
     )
 
     return _order_query(query, order)

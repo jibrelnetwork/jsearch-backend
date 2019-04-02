@@ -8,7 +8,7 @@ import asyncpgsa
 
 from jsearch.api import models
 from jsearch.api.database_queries.blocks import get_block_by_hash_query, get_block_by_number_query, get_last_block_query
-from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent
+from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
 from jsearch.api.database_queries.token_transfers import get_token_transfers_by_token, get_token_transfers_by_account
 from jsearch.api.database_queries.transactions import get_tx_hashes_by_block_hash, get_tx_by_address
 from jsearch.api.database_queries.uncles import get_uncle_hashes_by_block_number
@@ -524,6 +524,21 @@ class Storage:
                                         order: str):
 
         query = get_internal_txs_by_parent(parent_tx_hash, order)
+        query = query.limit(limit)
+        query = query.offset(offset)
+
+        rows = await queries.fetch(self.pool, query)
+        internal_txs = [models.InternalTransaction(**r) for r in rows]
+
+        return internal_txs
+
+    async def get_account_internal_transactions(self,
+                                                account: str,
+                                                limit: int,
+                                                offset: int,
+                                                order: str):
+
+        query = get_internal_txs_by_account(account, order)
         query = query.limit(limit)
         query = query.offset(offset)
 
