@@ -753,7 +753,7 @@ _token_1_transfers = [{'from': 'a1',
                        'tokenDecimals': 2,
                        'tokenName': 'A Token',
                        'tokenSymbol': 'TKN',
-                       'amount': 300,
+                       'amount': '300',
                        'transactionHash': 't1'},
                       {'from': 'a2',
                        'timestamp': 1529159847,
@@ -762,7 +762,7 @@ _token_1_transfers = [{'from': 'a1',
                        'tokenDecimals': 2,
                        'tokenName': 'A Token',
                        'tokenSymbol': 'TKN',
-                       'amount': 100,
+                       'amount': '100',
                        'transactionHash': 't1'}]
 
 
@@ -797,7 +797,7 @@ _account_1_transfers = [{'from': 'a3',
                          'tokenDecimals': 2,
                          'tokenName': 'A Token 2',
                          'tokenSymbol': 'TKN2',
-                         'amount': 500,
+                         'amount': '500',
                          'transactionHash': 't2'},
                         {'from': 'a1',
                          'timestamp': 1529159847,
@@ -806,7 +806,7 @@ _account_1_transfers = [{'from': 'a3',
                          'tokenDecimals': 2,
                          'tokenName': 'A Token',
                          'tokenSymbol': 'TKN',
-                         'amount': 300,
+                         'amount': '300',
                          'transactionHash': 't1'},
                         {'from': 'a2',
                          'timestamp': 1529159847,
@@ -815,7 +815,7 @@ _account_1_transfers = [{'from': 'a3',
                          'tokenDecimals': 2,
                          'tokenName': 'A Token 2',
                          'tokenSymbol': 'TKN2',
-                         'amount': 200,
+                         'amount': '200',
                          'transactionHash': 't1'},
                         {'from': 'a2',
                          'timestamp': 1529159847,
@@ -824,7 +824,7 @@ _account_1_transfers = [{'from': 'a3',
                          'tokenDecimals': 2,
                          'tokenName': 'A Token',
                          'tokenSymbol': 'TKN',
-                         'amount': 100,
+                         'amount': '100',
                          'transactionHash': 't1'}]
 
 
@@ -862,7 +862,7 @@ async def test_get_account_token_transfers_a2(cli, main_db_data):
                                             'tokenDecimals': 2,
                                             'tokenName': 'A Token 2',
                                             'tokenSymbol': 'TKN2',
-                                            'amount': 200,
+                                            'amount': '200',
                                             'transactionHash': 't1'},
                                            {'from': 'a2',
                                             'timestamp': 1529159847,
@@ -871,7 +871,7 @@ async def test_get_account_token_transfers_a2(cli, main_db_data):
                                             'tokenDecimals': 2,
                                             'tokenName': 'A Token',
                                             'tokenSymbol': 'TKN',
-                                            'amount': 100,
+                                            'amount': '100',
                                             'transactionHash': 't1'}]
 
 
@@ -1009,18 +1009,20 @@ async def test_get_wallet_transfers(cli, db):
          'from': 'a1',
          'to': 'a2',
          'asset_address': 'ca1',
-         'amount': 100,
+         'value': 1000,
+         'decimals': 1,
          'tx_data': {'hash': 'f1'},
          'is_forked': False,
          'block_number': 100,
          'block_hash': 'b1',
          'ordering': 2},
         {'address': 'a1',
-         'type': 'eth',
+         'type': 'eth-transfer',
          'from': 'a3',
          'to': 'a1',
          'asset_address': '',
-         'amount': 200,
+         'value': 200,
+         'decimals': 0,
          'tx_data': {'hash': 'f2'},
          'is_forked': False,
          'block_number': 101,
@@ -1031,18 +1033,20 @@ async def test_get_wallet_transfers(cli, db):
          'from': 'a1',
          'to': 'a2',
          'asset_address': 'ca1',
-         'amount': 100,
+         'value': 1000,
+         'decimals': 1,
          'tx_data': {'hash': 'f1'},
          'is_forked': False,
          'block_number': 100,
          'block_hash': 'b1',
          'ordering': 1},
         {'address': 'a2',
-         'type': 'eth',
+         'type': 'eth-transfer',
          'from': 'a3',
          'to': 'a1',
          'asset_address': '',
-         'amount': 300,
+         'value': 100,
+         'decimals': 0,
          'tx_data': {'hash': 'f2'},
          'is_forked': True,
          'block_number': 100,
@@ -1056,19 +1060,19 @@ async def test_get_wallet_transfers(cli, db):
     resp = await cli.get(f'/v1/wallet/transfers?addresses=a1,a2')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == [{'amount': 100,
+    assert res == [{'amount': '100',
                     'assetAddress': 'ca1',
                     'from': 'a1',
                     'to': 'a2',
                     'txData': {"hash": "f1"},
                     'type': 'erc20-transfer'},
-                   {'amount': 200,
+                   {'amount': '200',
                     'assetAddress': '',
                     'from': 'a3',
                     'to': 'a1',
                     'txData': {"hash": "f2"},
-                    'type': 'eth'},
-                   {'amount': 100,
+                    'type': 'eth-transfer'},
+                   {'amount': '100',
                     'assetAddress': 'ca1',
                     'from': 'a1',
                     'to': 'a2',
@@ -1078,7 +1082,7 @@ async def test_get_wallet_transfers(cli, db):
     resp = await cli.get(f'/v1/wallet/transfers?addresses=a1&assets=ca1')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == [{'amount': 100,
+    assert res == [{'amount': '100',
                     'assetAddress': 'ca1',
                     'from': 'a1',
                     'to': 'a2',
@@ -1209,28 +1213,32 @@ async def test_get_wallet_assets_summary(cli, db):
         {
             'address': 'a1',
             'asset_address': 'c1',
-            'balance': 100,
+            'value': 100,
+            'decimals': 0,
             'tx_number': 1,
             'nonce': 10,
         },
         {
             'address': 'a1',
             'asset_address': 'c2',
-            'balance': 200,
+            'value': 20000,
+            'decimals': 2,
             'tx_number': 2,
             'nonce': 10,
         },
         {
             'address': 'a1',
             'asset_address': '',
-            'balance': 300,
+            'value': 300,
+            'decimals': 0,
             'tx_number': 3,
             'nonce': 10,
         },
         {
             'address': 'a2',
             'asset_address': 'c1',
-            'balance': 100,
+            'value': 1000,
+            'decimals': 1,
             'tx_number': 1,
             'nonce': 5,
         },
@@ -1281,4 +1289,62 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
             'error_code': 'TOO_MANY_ITEMS',
             'error_message': 'Too many addresses requested'
         }
+    ]
+
+
+async def test_get_account_transactions_supports_asc_and_desc_ordering(cli, db):
+    values = {
+        'hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+        'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+        'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+    }
+
+    for block_number in ('7400000', '7500000'):
+        for transaction_index in range(5):
+            db.execute(
+                transactions_t.insert().values(
+                    {
+                        **values,
+                        **{
+                            'transaction_index': str(transaction_index),
+                            'block_number': block_number,
+                        },
+                    }
+                )
+            )
+
+    resp = await cli.get(f'/v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/transactions?order=asc')
+    resp_json = await resp.json()
+    resp_order_indicators = [(entry['blockNumber'], entry['transactionIndex']) for entry in resp_json['data']]
+
+    assert resp.status == 200
+    assert resp_order_indicators == [
+        (7400000, 0),
+        (7400000, 1),
+        (7400000, 2),
+        (7400000, 3),
+        (7400000, 4),
+        (7500000, 0),
+        (7500000, 1),
+        (7500000, 2),
+        (7500000, 3),
+        (7500000, 4),
+    ]
+
+    resp = await cli.get(f'/v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/transactions?order=desc')
+    resp_json = await resp.json()
+    resp_order_indicators = [(entry['blockNumber'], entry['transactionIndex']) for entry in resp_json['data']]
+
+    assert resp.status == 200
+    assert resp_order_indicators == [
+        (7500000, 4),
+        (7500000, 3),
+        (7500000, 2),
+        (7500000, 1),
+        (7500000, 0),
+        (7400000, 4),
+        (7400000, 3),
+        (7400000, 2),
+        (7400000, 1),
+        (7400000, 0),
     ]

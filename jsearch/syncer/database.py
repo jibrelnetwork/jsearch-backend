@@ -1,4 +1,5 @@
 import logging
+from copy import copy
 from typing import List, Dict, Any
 
 import aiopg
@@ -400,7 +401,15 @@ class MainDBSync(DBWrapperSync):
 
     def insert_transactions(self, transactions_data):
         if transactions_data:
-            self.execute(transactions_t.insert(), *transactions_data)
+            transactions = []
+            for td in transactions_data:
+                tx1 = copy(td)
+                tx1['address'] = tx1['from']
+                tx2 = copy(td)
+                tx2['address'] = tx2['to']
+                transactions.append(tx1)
+                transactions.append(tx2)
+            self.execute(transactions_t.insert(), *transactions)
 
     def insert_receipts(self, receipts_data):
         if receipts_data:

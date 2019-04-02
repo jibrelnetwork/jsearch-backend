@@ -2,7 +2,8 @@ import json
 import logging
 from collections import defaultdict
 from itertools import groupby
-from typing import List, Optional, Dict, Any, DefaultDict
+from typing import DefaultDict
+from typing import List, Optional, Dict, Any
 
 import asyncpgsa
 from asyncpg import Connection
@@ -12,11 +13,16 @@ from jsearch.api import models
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
-    get_last_block_query,
     get_blocks_query,
-    get_mined_blocks_query
+    get_last_block_query,
+    get_mined_blocks_query,
+)
+from jsearch.api.database_queries.token_transfers import (
+    get_token_transfers_by_token,
+    get_token_transfers_by_account
 )
 from jsearch.api.database_queries.transactions import (
+    get_tx_by_address,
     get_tx_hashes_by_block_hash_query,
     get_tx_hashes_by_block_hashes_query
 )
@@ -24,12 +30,13 @@ from jsearch.api.database_queries.uncles import (
     get_uncle_hashes_by_block_hash_query,
     get_uncle_hashes_by_block_hashes_query
 )
-from jsearch.api.helpers import Tag, fetch
-from jsearch.api.models.all import TokenTransfer
+from jsearch.api.helpers import Tag
+from jsearch.api.helpers import fetch
+from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import blocks_t
 from jsearch.utils import split
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
@@ -79,6 +86,20 @@ async def _fetch_blocks(connection: Connection, query: Query) -> List[Dict[str, 
             'uncles': row_uncles
         })
     return rows
+
+
+def _rows_to_token_transfers(rows: List[Dict[str, Any]]) -> List[models.TokenTransfer]:
+    token_transfers = list()
+
+    for row in rows:
+        del row['transaction_index']
+        del row['log_index']
+        del row['block_number']
+        del row['block_hash']
+
+        token_transfers.append(models.TokenTransfer(**row))
+
+    return token_transfers
 
 
 class Storage:
@@ -132,20 +153,17 @@ class Storage:
 
             return models.Account(**row)
 
-    async def get_account_transactions(self, address, limit, offset):
-        fields = models.Transaction.select_fields()
-
-        query = f"""
-            SELECT {fields} FROM transactions
-            WHERE "to"=$1 OR "from"=$1
-            ORDER BY block_number, transaction_index LIMIT $2 OFFSET $3
-        """
-
+    async def get_account_transactions(self, address, limit, offset, order):
         limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, address.lower(), limit, offset)
-            rows = [dict(r) for r in rows]
-            return [models.Transaction(**r) for r in rows]
+
+        query = get_tx_by_address(address.lower(), order)
+        query = query.limit(limit)
+        query = query.offset(offset)
+
+        rows = await fetch(self.pool, query)
+        txs = [models.Transaction(**r) for r in rows]
+
+        return txs
 
     async def get_block_transactions(self, tag):
         fields = models.Transaction.select_fields()
@@ -336,74 +354,41 @@ class Storage:
             return [models.Balance(balance=int(addr_map[a]['balance']), address=addr_map[a]['address'])
                     for a in addresses if a in addr_map]
 
-    async def _fetch_token_transfers(self, query: str, address: str, limit: int, offset: int) \
-            -> List[TokenTransfer]:
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, address, limit, offset)
-            transfers: List[models.TokenTransfer] = []
-            for row in rows:
-                row = dict(row)
-                del row['transaction_index']
-                del row['log_index']
-                del row['block_number']
-                del row['block_hash']
-                transfers.append(models.TokenTransfer(**row))
-            return transfers
-
-    async def get_tokens_transfers(self, address: str, limit: int, offset: int, order: str) \
-            -> List[models.TokenTransfer]:
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+    async def get_tokens_transfers(self,
+                                   address: str,
+                                   limit: int,
+                                   offset: int,
+                                   order: str) -> List[models.TokenTransfer]:
+        # HACK: There're 2 times more entries due to denormalization, see
+        # `log_to_transfers`. Because of this, `offset` and `limit` should be
+        # multiplied first and rows should be deduped second.
         offset *= 2
         limit *= 2
-        query = f"""
-            SELECT transaction_hash,
-                    log_index,
-                    "timestamp",
-                    from_address,
-                    to_address,
-                    token_address,
-                    token_value,
-                    token_decimals,
-                    token_name,
-                    token_symbol
-            FROM token_transfers
-            WHERE token_address = $1 AND is_forked = false
-            ORDER BY block_number {order}, transaction_index {order}, log_index {order} LIMIT $2 OFFSET $3;
-        """
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, address, limit, offset)
-            transfers: List[models.TokenTransfer] = []
-            distinct_set = set()
-            for row in rows:
-                row = dict(row)
-                distinct_key = tuple(row.values())
-                if distinct_key in distinct_set:
-                    continue
-                distinct_set.add(distinct_key)
-                transfers.append(models.TokenTransfer(**row))
-            return transfers
 
-    async def get_account_tokens_transfers(self, address, limit, offset, order):
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = f"""
-            SELECT transaction_hash,
-                    transaction_index,
-                    log_index,
-                    block_number,
-                    block_hash,
-                    "timestamp",
-                    from_address,
-                    to_address,
-                    token_address,
-                    token_value,
-                    token_decimals,
-                    token_name,
-                    token_symbol
-            FROM token_transfers
-            WHERE address = $1 AND is_forked = false
-            ORDER BY block_number {order}, transaction_index {order}, log_index {order} LIMIT $2 OFFSET $3;
-        """
-        return await self._fetch_token_transfers(query, address, limit, offset)
+        query = get_token_transfers_by_token(address.lower(), order)
+        query = query.limit(limit)
+        query = query.offset(offset)
+
+        rows = await fetch(self.pool, query)
+        # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
+        # `in_app_distinct` instead.
+        rows_distinct = in_app_distinct(rows)
+
+        return _rows_to_token_transfers(rows_distinct)
+
+    async def get_account_tokens_transfers(self,
+                                           address: str,
+                                           limit: int,
+                                           offset: int,
+                                           order: str) -> List[models.TokenTransfer]:
+        query = get_token_transfers_by_account(address.lower(), order)
+        query = query.limit(limit)
+        query = query.offset(offset)
+
+        rows = await fetch(self.pool, query)
+        transfers = _rows_to_token_transfers(rows)
+
+        return transfers
 
     async def get_contact_creation_code(self, address: str) -> str:
         query = """
@@ -503,6 +488,7 @@ class Storage:
             for row in rows:
                 t = dict(row)
                 t['tx_data'] = json.loads(t['tx_data'])
+                t['amount'] = str(t['value'] / 10 ** t['decimals'])
                 items.append(t)
             return [models.AssetTransfer(**t) for t in items]
 
@@ -555,7 +541,7 @@ class Storage:
                 nonce = 0
                 for row in addr_map.get(addr, []):
                     assets_summary.append({
-                        'balance': float(row['balance']),
+                        'balance': float(row['value'] / 10 ** row['decimals']),
                         'address': row['asset_address'],
                         'transfersNumber': row['tx_number'],
                     })
