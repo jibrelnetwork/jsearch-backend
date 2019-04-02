@@ -38,10 +38,8 @@ def get_tx_by_address(address: str, order: str, columns: List[Column] = None) ->
     query = select(
         columns=columns or get_default_fields(),
         whereclause=and_(
-            transactions_t.c.address == address,
             transactions_t.c.is_forked == false(),
-            transactions_t.c.block_number >= 0,
-            transactions_t.c.transaction_index >= 0,
+            transactions_t.c.address == address,
         )
     )
     return _order_tx_query(query, order)
@@ -52,11 +50,9 @@ def _order_tx_query(query: Query, direction: str) -> Query:
         return query.order_by(
             transactions_t.c.block_number.asc(),
             transactions_t.c.transaction_index.asc(),
-            transactions_t.c.address.asc(),
         )
 
     return query.order_by(
         transactions_t.c.block_number.desc(),
         transactions_t.c.transaction_index.desc(),
-        transactions_t.c.address.desc()
     )
