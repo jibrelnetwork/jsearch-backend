@@ -19,4 +19,4 @@ def get_tx_hashes_by_block_hashes_query(block_hashes: List[str]) -> Query:
     return select(
         columns=[transactions_t.c.block_hash, transactions_t.c.hash],
         whereclause=transactions_t.c.block_hash.in_(block_hashes),
-    ).order_by(transactions_t.c.block_hash)
+    ).order_by(transactions_t.c.block_hash).distinct()

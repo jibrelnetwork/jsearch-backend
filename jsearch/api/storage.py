@@ -27,11 +27,14 @@ from jsearch.api.database_queries.uncles import (
 from jsearch.api.helpers import Tag, fetch
 from jsearch.api.models.all import TokenTransfer
 from jsearch.common.tables import blocks_t
+from jsearch.utils import split
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
+
+BLOCKS_IN_QUERY = 10
 
 
 def _group_by_block(items: List[Dict[str, Any]]) -> DefaultDict[str, List[Dict[str, Any]]]:
@@ -49,29 +52,24 @@ async def _fetch_blocks(connection: Connection, query: Query) -> List[Dict[str, 
 
     block_hashes = [row['hash'] for row in rows]
 
-    import time
-    started_at = time.time()
+    txs_by_block = {}
+    uncles_by_block = {}
 
-    logger.info('[QUERY UNCLES] start query')
-    uncles_query = get_uncle_hashes_by_block_hashes_query(block_hashes)
-    uncles = await fetch(connection, uncles_query)
+    for hashes in split(block_hashes, BLOCKS_IN_QUERY):
+        uncles_query = get_uncle_hashes_by_block_hashes_query(hashes)
+        uncles = await fetch(connection, uncles_query)
 
-    logger.info('[QUERY UNCLES] query %s', started_at - time.time())
-    uncles_by_blocks = _group_by_block(uncles)
-    logger.info('[QUERY UNCLES] group %s', started_at - time.time())
+        uncles_by_block.update(_group_by_block(uncles))
 
-    logger.info('[QUERY TXS] start query')
-    tx_query = get_tx_hashes_by_block_hashes_query(block_hashes)
-    txs = await fetch(connection, tx_query)
-    logger.info('[QUERY TXS] query %s', started_at - time.time())
-    txs_by_block = _group_by_block(txs)
-    logger.info('[QUERY TXS] group %s', started_at - time.time())
+        tx_query = get_tx_hashes_by_block_hashes_query(hashes)
+        txs = await fetch(connection, tx_query)
+        txs_by_block.update(_group_by_block(txs))
 
     for row in rows:
         block_hash = row['hash']
 
         row_txs = txs_by_block.get(block_hash) or []
-        row_uncles = uncles_by_blocks.get(block_hash) or []
+        row_uncles = uncles_by_block.get(block_hash) or []
 
         row.update({
             'static_reward': int(row['static_reward']),
@@ -80,7 +78,6 @@ async def _fetch_blocks(connection: Connection, query: Query) -> List[Dict[str, 
             'transactions': row_txs,
             'uncles': row_uncles
         })
-    logger.info('[QUERY] end %s', started_at - time.time())
     return rows
 
 

@@ -17,4 +17,4 @@ def get_uncle_hashes_by_block_hashes_query(block_hashes: List[str]) -> Query:
     return select(
         columns=[uncles_t.c.block_hash, uncles_t.c.hash],
         whereclause=uncles_t.c.block_hash.in_(block_hashes),
-    ).order_by(uncles_t.c.block_hash)
+    ).order_by(uncles_t.c.block_hash).distinct()
