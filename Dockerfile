@@ -10,7 +10,8 @@ ENV LOG_LEVEL=INFO \
     JSEARCH_CONTRACTS_API="http://contracts:8080" \
     JSEARCH_COMPILER_API="http://compiler" \
     JSEARCH_API_ENABLE_RESET_LOGS_PROCESSING="1" \
-    ENH_NODE_URL="https://main-node.jwallet.network"
+    ENH_NODE_URL="https://main-node.jwallet.network" \
+    KAFKA_BOOTSTRAP_SERVERS=""
 
 
 RUN groupadd -g 999 app \
@@ -19,6 +20,9 @@ RUN groupadd -g 999 app \
  && chown -R app:app /app
 
 WORKDIR /app
+
+COPY --chown=app:app ./jsearch-service-bus /app/jsearch-service-bus/
+RUN cd jsearch-service-bus && pip install --no-cache-dir . && cd ..
 
 COPY --chown=app:app requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt

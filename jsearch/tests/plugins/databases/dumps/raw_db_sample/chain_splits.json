@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "common_block_number": 6000002,
+    "common_block_hash": "0x6b855d4ca375a859bb00ee9a70b0e51bcefac0b075e5855a39bc9e361005af89",
+    "drop_length": 2,
+    "drop_block_hash": "0xb9c83e79b22f1fb05f32309b1277c5b789995e603612785cc914339cc9f7b000",
+    "add_length": 2,
+    "add_block_hash": "0xb9c83e79b22f1fb05f32309b1277c5b789995e603612785cc914339cc9f7bb43",
+    "node_id": "a"
+  },
+  {
+    "id": 2,
+    "common_block_number": 6000004,
+    "common_block_hash": "0xb9c83e79b22f1fb05f32309b1277c5b789995e603612785cc914339cc9f7bb43",
+    "drop_length": 1,
+    "drop_block_hash": "0x43fe51b771bede814e59f9e3b204ba470f193d66e907827a642c9f243a0c2000",
+    "add_length": 1,
+    "add_block_hash": "0x43fe51b771bede814e59f9e3b204ba470f193d66e907827a642c9f243a0c2115",
+    "node_id": "a"
+  }
+]
+

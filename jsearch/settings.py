@@ -3,6 +3,16 @@ import os
 JSEARCH_MAIN_DB = os.getenv('JSEARCH_MAIN_DB', 'postgres://localhost/jsearch_main')
 JSEARCH_RAW_DB = os.getenv('JSEARCH_RAW_DB', 'postgres://localhost/jsearch_raw')
 
+# can get list of connection.
+# examples:
+# kafka-1:19092, kafka-2:192092
+# kafka:9092
+KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092,')
+if ',' in KAFKA_BOOTSTRAP_SERVERS:
+    KAFKA_BOOTSTRAP_SERVERS = [server.strip() for server in KAFKA_BOOTSTRAP_SERVERS.split(',')]
+
+ETH_BALANCE_BLOCK_OFFSET = os.getenv('ETH_BALANCE_BLOCK_OFFSET', 6)
+
 ETH_NODE_URL = os.getenv('ETH_NODE_URL', 'https://main-node.jwallet.network')
 ETH_NODE_BATCH_REQUEST_SIZE = int(os.getenv('ETH_NODE_BATCH_REQUEST_SIZE', '50'))
 
@@ -14,3 +24,7 @@ JSEARCH_SYNC_PARALLEL = int(os.getenv('JSEARCH_SYNC_PARALLEL', '10'))
 
 ENABLE_RESET_POST_PROCESSING = bool(os.getenv('JSEARCH_API_ENABLE_RESET_LOGS_PROCESSING', True))
 RAVEN_DSN = os.getenv('RAVEN_DSN')
+
+SERVICE_BUS_WORKER_NAME = 'jsearch_backend'
+
+API_QUERY_ARRAY_MAX_LENGTH = 25

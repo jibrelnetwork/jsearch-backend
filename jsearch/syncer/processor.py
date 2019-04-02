@@ -1,13 +1,25 @@
 import logging
 import re
 import time
-from typing import Optional
+from typing import Optional, NamedTuple, Dict, Any, List, Tuple
 
+from jsearch import service_bus
 from jsearch import settings
 from jsearch.common import contracts
 from jsearch.syncer.database import MainDBSync, RawDBSync
 
+
 logger = logging.getLogger(__name__)
+
+
+class BlockData(NamedTuple):
+    block: Dict[str, Any]
+    txs: List[Dict[str, Any]]
+    logs: List[Dict[str, Any]]
+    uncles: List[Dict[str, Any]]
+    receipts: List[Dict[str, Any]]
+    accounts: List[Dict[str, Any]]
+    internal_txs: List[Dict[str, Any]]
 
 
 class SyncProcessor:
@@ -19,12 +31,14 @@ class SyncProcessor:
         self.raw_db = RawDBSync(raw_db_dsn or settings.JSEARCH_RAW_DB)
         self.main_db = MainDBSync(main_db_dsn or settings.JSEARCH_MAIN_DB)
 
+        service_bus.sync_client.allow_rpc = False
+        service_bus.sync_client.start()
+
     def sync_block(self, block_hash: str, block_number: int = None) -> bool:
         """
         :param block_number: number of block to sync
         :return: True if sync is successfull, False if syn fails or block already synced
         """
-
         logger.debug("Syncing Block %s #%s", block_hash, block_number)
 
         self.main_db.connect()
@@ -50,45 +64,77 @@ class SyncProcessor:
         internal_transactions = self.raw_db.get_internal_transactions(block_hash)
         self.raw_db.disconnect()
 
-        self.write_block(header=header, body=body, accounts=accounts,
-                         receipts=receipts, reward=reward,
-                         internal_transactions=internal_transactions)
+        block = self.process_block(
+            header=header,
+            body=body,
+            accounts=accounts,
+            receipts=receipts,
+            reward=reward,
+            internal_transactions=internal_transactions
+        )
+        self.write_block(block)
+        service_bus.sync_client.write_logs(logs=block.logs)
+
+        for tx in block.txs:
+            if tx['value'] != '0x0':
+                service_bus.sync_client.write_tx(tx)
+
+        for acc in block.accounts:
+            service_bus.sync_client.write_account(acc)
 
         sync_time = time.monotonic() - start_time
         logger.debug("Block %s #%s synced on %ss", block_hash, block_number, sync_time)
         self.main_db.disconnect()
         return True
 
-    def write_block(self, header, body, reward, receipts, accounts, internal_transactions):
+    def write_block(self, block: BlockData):
         """
         Preprocess and write block data fetched from Raw DB to Main DB
-
-        :param header:
-        :param body:
-        :param reward:
-        :param receipts:
-        :param accounts:
-        :param internal_transactions:
-        :return: None
         """
-        uncles = body['fields']['Uncles'] or []
-        transactions = body['fields']['Transactions'] or []
-        block_number = header['block_number']
-        block_hash = header['block_hash']
+        self.main_db.write_block_data(
+            block_data=block.block,
+            uncles_data=block.uncles,
+            transactions_data=block.txs,
+            receipts_data=block.receipts,
+            logs_data=block.logs,
+            accounts_data=block.accounts,
+            internal_txs_data=block.internal_txs
+        )
+
+    def process_block(self, header, body, reward, receipts, accounts, internal_transactions) -> BlockData:
+        """
+        Preprocess and write block data fetched from Raw DB to Main DB
+        """
+        uncles: List[Dict[str, Any]] = body['fields']['Uncles'] or []
+        transactions: List[Dict[str, Any]] = body['fields']['Transactions'] or []
+        block_number: int = header['block_number']
+        block_hash: str = header['block_hash']
 
         block_reward, uncles_rewards = self.process_rewards(reward, block_number)
         block_data = self.process_header(header, block_reward)
         uncles_data = self.process_uncles(uncles, uncles_rewards, block_number, block_hash)
         transactions_data = self.process_transactions(transactions, block_number, block_hash)
-        receipts_data, logs_data = self.process_receipts(receipts, transactions_data,
-                                                         block_number, block_hash)
+        receipts_data, logs_data = self.process_receipts(
+            receipts=receipts,
+            transactions=transactions_data,
+            block_number=block_number,
+            block_hash=block_hash
+        )
         accounts_data = self.process_accounts(accounts, block_number, block_hash)
-        internal_txs_data = self.process_internal_txs(internal_transactions, block_number, block_hash)
+        internal_txs_data = self.process_internal_txs(internal_transactions)
+        return BlockData(
+            block=block_data,
+            uncles=uncles_data,
+            receipts=receipts_data,
+            logs=logs_data,
+            accounts=accounts_data,
+            txs=transactions_data,
+            internal_txs=internal_txs_data
+        )
 
-        self.main_db.write_block_data(block_data, uncles_data, transactions_data, receipts_data,
-                                      logs_data, accounts_data, internal_txs_data)
-
-    def process_rewards(self, reward, block_number):
+    def process_rewards(self,
+                        reward: Dict[str, Any],
+                        block_number: int) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
         if block_number == 0:
             block_reward = {'static_reward': 0, 'uncle_inclusion_reward': 0, 'tx_fees': 0}
             uncles_rewards = []
@@ -102,13 +148,17 @@ class SyncProcessor:
             uncles_rewards = reward_data['Uncles']
         return block_reward, uncles_rewards
 
-    def process_header(self, header, reward):
+    def process_header(self, header: Dict[str, Any], reward: Dict[str, Any]) -> Dict[str, Any]:
         data = dict_keys_case_convert(header['fields'])
         data.update(reward)
         hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
         return data
 
-    def process_uncles(self, uncles, rewards, block_number, block_hash):
+    def process_uncles(self,
+                       uncles: List[Dict[str, Any]],
+                       rewards: List[Dict[str, Any]],
+                       block_number: int,
+                       block_hash: str) -> List[Dict[str, Any]]:
         items = []
         for i, uncle in enumerate(uncles):
             rwd = rewards[i]
@@ -133,8 +183,12 @@ class SyncProcessor:
             items.append(tx_data)
         return items
 
-    def process_receipts(self, receipts, transactions, block_number, block_hash):
-        rdata = receipts['fields']['Receipts'] or []
+    def process_receipts(self,
+                         receipts: Dict[str, Any],
+                         transactions: List[Dict[str, Any]],
+                         block_number: int,
+                         block_hash: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        rdata: List[Dict[str, Any]] = receipts['fields']['Receipts'] or []
         recpt_items = []
         logs_items = []
         for i, receipt in enumerate(rdata):
@@ -168,7 +222,10 @@ class SyncProcessor:
             items.append(data)
         return items
 
-    def process_accounts(self, accounts, block_number, block_hash):
+    def process_accounts(self,
+                         accounts: List[Dict[str, Any]],
+                         block_number: int,
+                         block_hash: str) -> List[Dict[str, Any]]:
         items = []
         for account in accounts:
             data = dict_keys_case_convert(account['fields'])
@@ -178,7 +235,7 @@ class SyncProcessor:
             items.append(data)
         return items
 
-    def process_internal_txs(self, internal_txs, block_number, block_hash):
+    def process_internal_txs(self, internal_txs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         items = []
         for i, tx in enumerate(internal_txs, 1):
             data = dict_keys_case_convert(tx['fields'])

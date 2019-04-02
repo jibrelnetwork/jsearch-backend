@@ -1,8 +1,12 @@
 import logging
 import os
+from asyncio import AbstractEventLoop
 from functools import partial
 
+import aiopg
+import dsnparse
 import pytest
+from aiopg.sa import Engine
 from sqlalchemy import create_engine
 
 log = logging.getLogger(__name__)
@@ -15,6 +19,19 @@ def setup_database(connection_string):
 
 def teardown_database(connection_string):
     from jsearch.common.alembic_utils import downgrade
+
+    parsed_dsn = dsnparse.parse(connection_string)
+
+    engine = create_engine(connection_string)
+    with engine.connect() as db:
+        db.execute(
+            f"""
+            SELECT pg_terminate_backend(pg_stat_activity.pid)
+            FROM pg_stat_activity
+            WHERE pg_stat_activity.datname = '{parsed_dsn.dbname}'
+            AND pid <> pg_backend_pid();
+            """
+        )
     downgrade(connection_string, 'base')
 
 
@@ -29,7 +46,7 @@ def db_name(db_connection_string):
 
 
 @pytest.fixture(scope='session', autouse=True)
-def setup_database_fixture(request, db_connection_string, pytestconfig):
+def setup_database_migrations(request, db_connection_string, pytestconfig):
     setup_database(db_connection_string)
 
     finalizer = partial(teardown_database, db_connection_string)
@@ -42,6 +59,12 @@ def db(db_connection_string):
     conn = engine.connect()
     yield conn
     conn.close()
+
+
+@pytest.mark.asyncio
+@pytest.fixture
+async def sa_engine(db_connection_string, loop: AbstractEventLoop) -> Engine:
+    return await aiopg.sa.create_engine(db_connection_string)
 
 
 @pytest.fixture(scope='function')

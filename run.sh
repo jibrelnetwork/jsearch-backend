@@ -16,6 +16,6 @@ elif [ "${RUNMODE}" = "celerybeat" ]; then
 elif [ "${RUNMODE}" = "celeryworker" ]; then
     celery worker -A jsearch.common.celery -l info
 else
-    echo "Wrong RUNMODE supplied, exiting"
-    exit 1
+    echo "Executing script: $@"
+    exec "$@"
 fi

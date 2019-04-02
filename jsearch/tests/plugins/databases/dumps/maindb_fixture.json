@@ -715,7 +715,8 @@
       "v": "0xac",
       "value": "0x0",
       "is_forked": false,
-      "contract_call_description": null
+      "contract_call_description": null,
+      "address": ""
     },
     {
       "hash": "0x125fa8f17c970ff63db176860b94ea3d004ec42c1c446b99553e8bbfc2d2a892",
@@ -733,7 +734,8 @@
       "v": "0xac",
       "value": "0xde0b6b3a7640000",
       "is_forked": false,
-      "contract_call_description": null
+      "contract_call_description": null,
+      "address": ""
     },
     {
       "hash": "0xa05ccbfa4b39af30042a49a579d07c5086065523dfaa8745e8ab35cb6568dafb",
@@ -757,7 +759,8 @@
           1000
         ],
         "function": "transfer"
-      }
+      },
+      "address": ""
     },
     {
       "hash": "0x9286f83f96c8ebd793db6fc8f933b75e6e6f881d74bb3f3c7fea206f272ad8b1",
@@ -781,7 +784,8 @@
           500
         ],
         "function": "approve"
-      }
+      },
+      "address": ""
     },
     {
       "hash": "0x7ab17da91db3682480a65af664d2039e78b064bc8abfd0053c6666a209087f95",
@@ -806,7 +810,8 @@
           400
         ],
         "function": "transferFrom"
-      }
+      },
+      "address": ""
     }
   ],
   "uncles": [],
@@ -877,7 +882,7 @@
       "from_address": "a2",
       "to_address": "a1",
       "token_address": "c1",
-      "token_value": 100.0,
+      "token_value": 100,
       "token_decimals": 2,
       "token_name": "A Token",
       "token_symbol": "TKN",
@@ -894,7 +899,7 @@
       "from_address": "a2",
       "to_address": "a1",
       "token_address": "c1",
-      "token_value": 100.0,
+      "token_value": 100,
       "token_decimals": 2,
       "token_name": "A Token",
       "token_symbol": "TKN",
@@ -912,7 +917,7 @@
       "from_address": "a2",
       "to_address": "a1",
       "token_address": "c2",
-      "token_value": 200.0,
+      "token_value": 200,
       "token_decimals": 2,
       "token_name": "A Token 2",
       "token_symbol": "TKN2",
@@ -929,7 +934,7 @@
       "from_address": "a2",
       "to_address": "a1",
       "token_address": "c2",
-      "token_value": 200.0,
+      "token_value": 200,
       "token_decimals": 2,
       "token_name": "A Token 2",
       "token_symbol": "TKN2",
@@ -947,7 +952,7 @@
       "from_address": "a1",
       "to_address": "a3",
       "token_address": "c1",
-      "token_value": 300.0,
+      "token_value": 300,
       "token_decimals": 2,
       "token_name": "A Token",
       "token_symbol": "TKN",
@@ -964,7 +969,7 @@
       "from_address": "a1",
       "to_address": "a3",
       "token_address": "c1",
-      "token_value": 300.0,
+      "token_value": 300,
       "token_decimals": 2,
       "token_name": "A Token",
       "token_symbol": "TKN",
@@ -982,7 +987,7 @@
       "from_address": "a1",
       "to_address": "a3",
       "token_address": "c1",
-      "token_value": 400.0,
+      "token_value": 400,
       "token_decimals": 2,
       "token_name": "A Token",
       "token_symbol": "TKN",
@@ -998,7 +1003,7 @@
       "from_address": "a1",
       "to_address": "a3",
       "token_address": "c1",
-      "token_value": 400.0,
+      "token_value": 400,
       "token_decimals": 2,
       "token_name": "A Token",
       "token_symbol": "TKN",
@@ -1017,7 +1022,7 @@
       "from_address": "a3",
       "to_address": "a1",
       "token_address": "c2",
-      "token_value": 500.0,
+      "token_value": 500,
       "token_decimals": 2,
       "token_name": "A Token 2",
       "token_symbol": "TKN2",
@@ -1034,7 +1039,7 @@
       "from_address": "a3",
       "to_address": "a1",
       "token_address": "c2",
-      "token_value": 500.0,
+      "token_value": 500,
       "token_decimals": 2,
       "token_name": "A Token 2",
       "token_symbol": "TKN2",

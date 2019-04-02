@@ -2,7 +2,7 @@ import logging
 from functools import partial
 from pprint import pformat
 from random import randint
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import backoff
 import requests
@@ -99,15 +99,26 @@ class ContractCall:
         'silent'
     )
 
-    def __init__(self, abi: Abi, address: str, method: str, pk: Optional[int] = None,
-                 args: Any = None, kwargs: Any = None, block: str = 'latest', silent: bool = False):
+    def __init__(self, abi: Abi,
+                 address: str,
+                 method: str,
+                 pk: Optional[int] = None,
+                 args: Any = None,
+                 kwargs: Any = None,
+                 block: Optional[Union[str, int]] = None,
+                 silent: bool = False) -> None:
         self.pk = pk if pk is not None else randint(1, 100)
         self.abi = abi
         self.address = address
         self.method = method
         self.args = args
         self.kwargs = kwargs
-        self.block = block
+
+        if block:
+            self.block = isinstance(block, int) and to_hex(block) or block
+        else:
+            self.block = 'latest'
+
         self.silent = silent
 
     def encode(self) -> Dict[str, Any]:
@@ -122,7 +133,7 @@ class ContractCall:
             if fn_arguments:
                 data += encode_abi(abi=fn_abi, arguments=fn_arguments)
             data = to_hex(data)
-            return {
+            value = {
                 "jsonrpc": "2.0",
                 "method": 'eth_call',
                 "params": [
@@ -134,6 +145,7 @@ class ContractCall:
                 ],
                 "id": self.pk,
             }
+            return value
         except web3.exceptions.ValidationError:
             if not self.silent:
                 raise
@@ -159,23 +171,30 @@ class ContractCall:
 ContractCalls = List[ContractCall]
 
 
-@backoff.on_exception(backoff.fibo, max_tries=10, exception=(EthRequestException, requests.RequestException))
-def eth_call_batch_request(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    response = requests.post(settings.ETH_NODE_URL, json=data)
+@backoff.on_exception(
+    backoff.fibo,
+    max_tries=10,
+    exception=(EthRequestException, requests.exceptions.RequestException)
+)
+def eth_call_request(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    response = requests.post(url=settings.ETH_NODE_URL, json=data)
     if response.status_code != 200:
         raise EthRequestException(f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}")
 
     data = response.json()
     if any('error' in item for item in data):
         msg = pformat(data)
-        raise EthCallException(f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}: {msg}")
+        raise EthCallException(
+            f"[REQUEST] {settings.ETH_NODE_URL}: "
+            f"{response.status_code}, {response.reason}: {msg}"
+        )
 
     return data
 
 
 def eth_call(call: ContractCall) -> Any:
     data = [call.encode()]
-    response = eth_call_batch_request(data)
+    response = eth_call_request(data)
     results = {result["id"]: HexBytes(result["result"]) for result in response}
     return call.decode(results[call.pk])
 
@@ -184,7 +203,7 @@ def eth_call_batch(calls: ContractCalls) -> Dict[str, Any]:
     data = [call.encode() for call in calls]
     data = [item for item in data if item]
 
-    response = eth_call_batch_request(data)
+    response = eth_call_request(data)
     results = {result["id"]: HexBytes(result["result"]) for result in response}
 
     return {call.pk: call.decode(results[call.pk]) for call in calls if call.pk in results}

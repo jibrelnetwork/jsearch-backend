@@ -91,10 +91,10 @@ class Transaction(Model):
 
 class Block(Model):
     swagger_types = {
-        'difficulty': int,
+        'difficulty': str,
         'extra_data': str,
-        'gas_limit': int,
-        'gas_used': int,
+        'gas_limit': str,
+        'gas_used': str,
         'hash': str,
         'logs_bloom': str,
         'miner': str,
@@ -104,10 +104,8 @@ class Block(Model):
         'parent_hash': str,
         'receipts_root': str,
         'sha3_uncles': str,
-        'size': int,
         'state_root': str,
         'timestamp': int,
-        'total_difficulty': int,
         'transactions': List[str],
         'transactions_root': str,
         'uncles': List[str],
@@ -130,10 +128,8 @@ class Block(Model):
         'parent_hash': 'parentHash',
         'receipts_root': 'receiptsRoot',
         'sha3_uncles': 'sha3Uncles',
-        'size': 'size',
         'state_root': 'stateRoot',
         'timestamp': 'timestamp',
-        'total_difficulty': 'totalDifficulty',
         'transactions': 'transactions',
         'transactions_root': 'transactionsRoot',
         'uncles': 'uncles',
@@ -143,14 +139,15 @@ class Block(Model):
     }
 
     int_to_hex = {'staticReward', 'uncleInclusionReward', 'txFees'}
+    int_to_str = {'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Uncle(Model):
     swagger_types = {
-        'difficulty': int,
+        'difficulty': str,
         'extra_data': str,
-        'gas_limit': int,
-        'gas_used': int,
+        'gas_limit': str,
+        'gas_used': str,
         'hash': str,
         'logs_bloom': str,
         'miner': str,
@@ -160,10 +157,8 @@ class Uncle(Model):
         'parent_hash': str,
         'receipts_root': str,
         'sha3_uncles': str,
-        'size': int,
         'state_root': str,
         'timestamp': int,
-        'total_difficulty': int,
         'transactions_root': str,
         'block_number': int,
         'reward': int,
@@ -183,16 +178,15 @@ class Uncle(Model):
         'parent_hash': 'parentHash',
         'receipts_root': 'receiptsRoot',
         'sha3_uncles': 'sha3Uncles',
-        'size': 'size',
         'state_root': 'stateRoot',
         'timestamp': 'timestamp',
-        'total_difficulty': 'totalDifficulty',
         'transactions_root': 'transactionsRoot',
         'block_number': 'blockNumber',
         'reward': 'reward',
     }
 
     int_to_hex = {'reward'}
+    int_to_str = {'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Receipt(Model):
@@ -200,9 +194,9 @@ class Receipt(Model):
         'block_hash': str,
         'block_number': int,
         'contract_address': str,
-        'cumulative_gas_used': int,
+        'cumulative_gas_used': str,
         'from': str,
-        'gas_used': int,
+        'gas_used': str,
         'logs': List[Log],
         'logs_bloom': str,
         'root': str,
@@ -227,6 +221,7 @@ class Receipt(Model):
         'transaction_index': 'transactionIndex',
         'status': 'status',
     }
+    int_to_str = {'cumulativeGasUsed', 'gasUsed'}
 
 
 class Reward(Model):
@@ -282,6 +277,8 @@ class TokenTransfer(Model):
         "token_symbol": "tokenSymbol",
     }
 
+    int_to_str = {"amount"}
+
 
 class TokenHolder(Model):
     swagger_types = {
@@ -296,4 +293,24 @@ class TokenHolder(Model):
         'token_address': 'tokenAddress',
         'balance': 'balance',
         'decimals': 'decimals'
+    }
+
+
+class AssetTransfer(Model):
+    swagger_types = {
+        'type': str,
+        'from': str,
+        'to': str,
+        'asset_address': str,
+        'amount': float,
+        'tx_data': Transaction
+    }
+    attribute_map = {
+
+        'type': 'type',
+        'from': 'from',
+        'to': 'to',
+        'asset_address': 'assetAddress',
+        'amount': 'amount',
+        'tx_data': 'txData',
     }

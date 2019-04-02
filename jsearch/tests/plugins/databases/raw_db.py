@@ -1,8 +1,8 @@
+import json
 import logging
 import os
 from functools import partial
 from pathlib import Path
-import json
 
 import pytest
 from sqlalchemy import create_engine, MetaData
@@ -36,6 +36,7 @@ def truncate(db):
         "accounts",
         "rewards",
         "reorgs",
+        "chain_splits",
         "internal_transactions"
     ]
     for table in tables:
