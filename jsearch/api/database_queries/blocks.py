@@ -1,8 +1,9 @@
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import and_, false, func, Column, select
 from sqlalchemy.orm import Query
 
+from jsearch.api.helpers import get_order
 from jsearch.common.tables import blocks_t
 
 
@@ -28,6 +29,39 @@ def get_default_fields():
         blocks_t.c.uncle_inclusion_reward,
         blocks_t.c.tx_fees,
     ]
+
+
+def get_blocks_query(limit: int,
+                     offset: int,
+                     order: List[Column],
+                     direction: Optional[str] = None,
+                     columns: List[Column] = None):
+    columns = columns or get_default_fields()
+    order = get_order(order, direction)
+    return select(
+        columns=columns,
+        whereclause=blocks_t.c.is_forked == false(),
+    ) \
+        .order_by(*order) \
+        .offset(offset) \
+        .limit(limit)
+
+
+def get_mined_blocks_query(miner: str,
+                           limit: int,
+                           offset: int,
+                           order: List[Column],
+                           direction: Optional[str] = None,
+                           columns: List[Column] = None):
+    columns = columns or get_default_fields()
+    order = get_order(order, direction)
+    return select(
+        columns=columns,
+        whereclause=blocks_t.c.miner == miner,
+    ) \
+        .order_by(*order) \
+        .offset(offset) \
+        .limit(limit)
 
 
 def get_block_by_hash_query(block_hash: str, columns: List[Column] = None) -> Query:
