@@ -4,6 +4,8 @@ from typing import List
 import backoff
 import click
 import psycopg2
+from mode import Service, Worker
+from sqlalchemy.dialects.postgresql import insert
 from aiopg.sa import Engine, create_engine
 from jsearch import settings
 from jsearch.common.logs import configure
@@ -16,11 +18,17 @@ from jsearch.service_bus import (
     ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE,
 )
 from jsearch.utils import Singleton
-from mode import Service, Worker
-from sqlalchemy.dialects.postgresql import insert
+from jsearch.common.contracts import ERC20_METHODS_IDS
 
 
 logger = logging.getLogger('wallet_worker')
+
+
+class AssetTransferType:
+    ERC20_TRANSFER = 'erc20-transfer'
+    ERC20_TRANSFER_FROM = 'erc20-transferFrom'
+    ETH_TRANSFER = 'eth-transfer'
+    ETH_TRANSFER_INTERNAL = 'eth-transfer-internal'
 
 
 class DatabaseService(Service, Singleton):
@@ -37,10 +45,12 @@ class DatabaseService(Service, Singleton):
         self.engine.close()
         await self.engine.wait_closed()
 
-    async def add_assets_transafer_tx(self, tx_data):
+    async def add_assets_transfer_tx(self, tx_data):
+        if tx_data['value'] == '0x0':  # contract call
+            return
         transfer = {
             'address': tx_data['from'],
-            'type': 'eth-transfer',
+            'type': AssetTransferType.ETH_TRANSFER,
             'from': tx_data['from'],
             'to': tx_data['to'],
             'asset_address': None,
@@ -50,14 +60,45 @@ class DatabaseService(Service, Singleton):
             'is_forked': False,
             'block_number': tx_data['block_number'],
             'block_hash': tx_data['block_hash'],
-            'ordering': '0',  # FIXME !!!
+            'ordering': '0',  # FIXME !!!,
+            'status': tx_data['receipt_status'],
         }
         async with self.engine.acquire() as connection:
             await connection.execute(assets_transfers_t.insert(), **transfer)
             transfer['address'] = tx_data['to']
             await connection.execute(assets_transfers_t.insert(), **transfer)
 
+    async def add_assets_transfer_tx_internal(self, tx_data, internal_tx_data):
+        if tx_data['receipt_status'] == 0 or internal_tx_data['status'] != 'success':
+            status = 0
+        else:
+            status = 1
+
+        if internal_tx_data['value'] == 0:  # no value transfered
+            return
+
+        transfer = {
+            'address': internal_tx_data['from'],
+            'type': AssetTransferType.ETH_TRANSFER_INTERNAL,
+            'from': internal_tx_data['from'],
+            'to': internal_tx_data['to'],
+            'asset_address': None,
+            'value': internal_tx_data['value'],
+            'decimals': 0,
+            'tx_data': tx_data,
+            'is_forked': False,
+            'block_number': tx_data['block_number'],
+            'block_hash': tx_data['block_hash'],
+            'ordering': '0',  # FIXME !!!,
+            'status': status
+        }
+        async with self.engine.acquire() as connection:
+            await connection.execute(assets_transfers_t.insert(), **transfer)
+            transfer['address'] = internal_tx_data['to']
+            await connection.execute(assets_transfers_t.insert(), **transfer)
+
     async def add_assets_transfer_token_transfer(self, transfer_data):
+        transfer_from_id = ERC20_METHODS_IDS['transferFrom']
         if transfer_data['token_decimals'] is None:
             logger.warning('No decimals for token transfer %s TX: %s',
                            transfer_data['token_address'], transfer_data['transaction_hash'])
@@ -68,9 +109,13 @@ class DatabaseService(Service, Singleton):
             tx = await result.fetchone()
             tx_data = dict(tx)
             tx_data.pop('address')
+            if tx_data['input'].startswith(transfer_from_id):
+                transfer_type = AssetTransferType.ERC20_TRANSFER_FROM
+            else:
+                transfer_type = AssetTransferType.ERC20_TRANSFER
             transfer = {
                 'address': transfer_data['from_address'],
-                'type': 'erc20-transfer',
+                'type': transfer_type,
                 'from': transfer_data['from_address'],
                 'to': transfer_data['to_address'],
                 'asset_address': transfer_data['token_address'],
@@ -80,7 +125,8 @@ class DatabaseService(Service, Singleton):
                 'is_forked': False,
                 'block_number': transfer_data['block_number'],
                 'block_hash': transfer_data['block_hash'],
-                'ordering': '0',  # FIXME !!!
+                'ordering': '0',  # FIXME !!!,
+                'status': 1  # FIXME!!! real status from stream or DB?
             }
 
             await connection.execute(assets_transfers_t.insert(), **transfer)
@@ -126,12 +172,16 @@ service = DatabaseService()
 @service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS)
 async def handle_new_transaction(tx_data):
     logging.info("[WALLET] Handling new Transaction %s", tx_data['hash'])
+
     await service.add_assets_transafer_tx(tx_data)
     update_data = {
         'address': tx_data['to'],
         'token_address': '',
     }
     await service.add_or_update_asset_summary_transfer(update_data)
+    for itx in tx_data['internal_transactions']:
+        if itx['value'] > 0:
+            await service.add_assets_transfer_tx_internal(tx_data, itx)
 
 
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE)

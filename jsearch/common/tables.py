@@ -264,6 +264,7 @@ assets_transfers_t = sa.Table(
     sa.Column('block_number', sa.BigInteger),
     sa.Column('block_hash', sa.String),
     sa.Column('ordering', sa.String),
+    sa.Column('status', sa.Integer),
 )
 
 assets_summary_t = sa.Table(
