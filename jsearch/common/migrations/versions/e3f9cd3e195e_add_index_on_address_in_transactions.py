@@ -19,7 +19,7 @@ CREATE INDEX IF NOT EXISTS transactions_address_idx_partial ON public.transactio
     USING btree (address, block_number, transaction_index) where is_forked = false;
 """
 
-DOWN_SQL = """DROP INDEX IF EXISTS transactions_address_ids;"""
+DOWN_SQL = """DROP INDEX IF EXISTS transactions_address_idx_partial;"""
 
 
 def upgrade():
