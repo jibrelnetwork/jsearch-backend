@@ -15,8 +15,8 @@ branch_labels = None
 depends_on = None
 
 UP_SQL = """
-CREATE INDEX IF NOT EXISTS transactions_address_idx ON public.transactions
-    USING btree (address, is_forked, block_number, transaction_index);
+CREATE INDEX IF NOT EXISTS transactions_address_idx_partial ON public.transactions
+    USING btree (address, block_number, transaction_index) where is_forked = false;
 """
 
 DOWN_SQL = """DROP INDEX IF EXISTS transactions_address_ids;"""
