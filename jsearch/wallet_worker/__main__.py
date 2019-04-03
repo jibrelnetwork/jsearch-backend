@@ -173,7 +173,7 @@ service = DatabaseService()
 async def handle_new_transaction(tx_data):
     logging.info("[WALLET] Handling new Transaction %s", tx_data['hash'])
 
-    await service.add_assets_transafer_tx(tx_data)
+    await service.add_assets_transfer_tx(tx_data)
     update_data = {
         'address': tx_data['to'],
         'token_address': '',
