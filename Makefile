@@ -47,3 +47,9 @@ kafka_read_topic:
 
 kafka_reset_offset:
 	docker-compose exec kafka kafka-consumer-groups.sh --bootstrap-server kafka:9092 --group ${group} --topic ${topic} --reset-offsets --to-earliest --execute
+
+new_db_migration:
+	docker-compose run --entrypoint python tests manage.py revision -db=postgres://postgres:postgres@main_db/jsearch_main -m "$(msg)"
+
+db_migrate:
+	docker-compose run --entrypoint python tests manage.py upgrade head -db=postgres://postgres:postgres@main_db/jsearch_main
