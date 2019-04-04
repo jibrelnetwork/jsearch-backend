@@ -97,7 +97,7 @@ async def test_add_assets_transfer_tx(db, transaction_factory):
     await s.on_start()
 
     tx_data = factory.build(dict, FACTORY_CLASS=transaction_factory, value='0xab')
-    await s.add_assets_transafer_tx(tx_data)
+    await s.add_assets_transfer_tx(tx_data)
 
     res = db.execute(assets_transfers_t.select()).fetchall()
     assert len(res) == 2
