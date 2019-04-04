@@ -591,7 +591,7 @@ class Storage:
         query = query.limit(limit)
         query = query.offset(offset)
 
-        rows = await queries.fetch(self.pool, query)
+        rows = await fetch(self.pool, query)
         internal_txs = [models.InternalTransaction(**r) for r in rows]
 
         return internal_txs
@@ -606,7 +606,7 @@ class Storage:
         query = query.limit(limit)
         query = query.offset(offset)
 
-        rows = await queries.fetch(self.pool, query)
+        rows = await fetch(self.pool, query)
         internal_txs = [models.InternalTransaction(**r) for r in rows]
 
         return internal_txs

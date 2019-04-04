@@ -1,8 +1,9 @@
 from typing import List
 
-from sqlalchemy import select, Column
+from sqlalchemy import select, Column, and_, false
 from sqlalchemy.orm import Query
 
+from jsearch.api.helpers import get_order
 from jsearch.common.tables import internal_transactions_t, transactions_t
 
 
@@ -27,34 +28,45 @@ def get_default_fields() -> List[Column]:
 def get_internal_txs_by_parent(parent_tx_hash: str, order: str, columns: List[Column] = None) -> Query:
     query = select(
         columns=columns or get_default_fields(),
-        whereclause=internal_transactions_t.c.parent_tx_hash == parent_tx_hash,
+        whereclause=and_(
+            internal_transactions_t.c.parent_tx_hash == parent_tx_hash,
+            internal_transactions_t.c.is_forked == false,
+        )
     )
 
-    return _order_query(query, order)
+    return query.order_by(
+        *get_order(
+            [
+                internal_transactions_t.c.block_hash,
+                internal_transactions_t.c.parent_tx_hash,
+                internal_transactions_t.c.transaction_index,
+            ],
+            order
+        )
+    )
 
 
 def get_internal_txs_by_account(account: str, order: str, columns: List[Column] = None) -> Query:
     query = select(
         columns=columns or get_default_fields(),
-        whereclause=transactions_t.c.address == account,
     ).select_from(
         internal_transactions_t.join(
             transactions_t,
-            internal_transactions_t.c.parent_tx_hash == transactions_t.c.hash
+            and_(
+                internal_transactions_t.c.parent_tx_hash == transactions_t.c.hash,
+                transactions_t.c.address == account,
+            ),
+            isouter=True,
         )
     )
 
-    return _order_query(query, order)
-
-
-def _order_query(query: Query, direction: str) -> Query:
-    if direction == 'asc':
-        return query.order_by(
-            internal_transactions_t.c.block_number.asc(),
-            internal_transactions_t.c.transaction_index.asc(),
-        )
-
     return query.order_by(
-        internal_transactions_t.c.block_number.desc(),
-        internal_transactions_t.c.transaction_index.desc(),
+        *get_order(
+            [
+                internal_transactions_t.c.block_number,
+                internal_transactions_t.c.parent_tx_hash,
+                internal_transactions_t.c.transaction_index,
+            ],
+            order
+        )
     )
