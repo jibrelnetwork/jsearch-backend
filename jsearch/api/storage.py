@@ -13,8 +13,8 @@ from jsearch.api import models
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
-    get_blocks_query,
     get_last_block_query,
+    get_blocks_query,
     get_mined_blocks_query,
 )
 from jsearch.api.database_queries.token_transfers import (
@@ -23,12 +23,12 @@ from jsearch.api.database_queries.token_transfers import (
 )
 from jsearch.api.database_queries.transactions import (
     get_tx_by_address,
+    get_tx_hashes_by_block_hashes_query,
     get_tx_hashes_by_block_hash_query,
-    get_tx_hashes_by_block_hashes_query
 )
 from jsearch.api.database_queries.uncles import (
+    get_uncle_hashes_by_block_hashes_query,
     get_uncle_hashes_by_block_hash_query,
-    get_uncle_hashes_by_block_hashes_query
 )
 from jsearch.api.helpers import Tag
 from jsearch.api.helpers import fetch
@@ -170,6 +170,8 @@ class Storage:
         query = query.offset(offset)
 
         rows = await fetch(self.pool, query)
+        rows = in_app_distinct(rows)
+
         txs = [models.Transaction(**r) for r in rows]
 
         return txs

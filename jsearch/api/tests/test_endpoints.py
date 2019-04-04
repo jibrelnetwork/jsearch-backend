@@ -263,7 +263,9 @@ async def test_get_account_block_hash(cli, main_db_data):
 
 
 async def test_get_account_transactions(cli, main_db_data):
-    resp = await cli.get('/v1/accounts/' + main_db_data['accounts_state'][0]['address'] + '/transactions')
+    address = main_db_data['accounts_state'][0]['address']
+
+    resp = await cli.get(f'/v1/accounts/{address}/transactions')
     assert resp.status == 200
     txs = main_db_data['transactions']
     res = (await resp.json())['data']
@@ -1276,7 +1278,7 @@ async def test_get_accounts_balances_does_not_complain_on_addresses_count_less_t
 
 
 async def test_get_accounts_balances_complains_on_addresses_count_more_than_limit(cli):
-    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH+1)]
+    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH + 1)]
     addresses_str = ','.join(addresses)
 
     resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
@@ -1292,59 +1294,64 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
     ]
 
 
-async def test_get_account_transactions_supports_asc_and_desc_ordering(cli, db):
-    values = {
-        'hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
-        'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
-        'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
-    }
+@pytest.mark.parametrize(
+    "direction, expected_order",
+    (
+            (
+                    'asc',
+                    [
+                        (7400000, 0),
+                        (7400000, 1),
+                        (7400000, 2),
+                        (7400000, 3),
+                        (7400000, 4),
+                        (7500000, 0),
+                        (7500000, 1),
+                        (7500000, 2),
+                        (7500000, 3),
+                        (7500000, 4),
+                    ]
+            ),
+            (
+                    'desc',
+                    [
+                        (7500000, 4),
+                        (7500000, 3),
+                        (7500000, 2),
+                        (7500000, 1),
+                        (7500000, 0),
+                        (7400000, 4),
+                        (7400000, 3),
+                        (7400000, 2),
+                        (7400000, 1),
+                        (7400000, 0),
+                    ]
+            ),
+    ),
+    ids=[
+        "direction=asc",
+        "direction=desc"
+    ]
+)
+async def test_get_account_transactions_ordering(cli, db, direction, expected_order, transaction_factory):
+    address = '0x3e20a5fe4eb128156c51e310f0391799beccf0c1'
 
+    # given - unordered transactions
     for block_number in ('7400000', '7500000'):
         for transaction_index in range(5):
-            db.execute(
-                transactions_t.insert().values(
-                    {
-                        **values,
-                        **{
-                            'transaction_index': str(transaction_index),
-                            'block_number': block_number,
-                        },
-                    }
-                )
+            transaction_factory.create(
+                **{
+                    'transaction_index': str(transaction_index),
+                    'block_number': block_number,
+                    'address': address
+                },
             )
 
-    resp = await cli.get(f'/v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/transactions?order=asc')
+    # when - get transactions with default order
+    resp = await cli.get(f'/v1/accounts/{address}/transactions?order={direction}')
     resp_json = await resp.json()
     resp_order_indicators = [(entry['blockNumber'], entry['transactionIndex']) for entry in resp_json['data']]
 
+    # then - check order
     assert resp.status == 200
-    assert resp_order_indicators == [
-        (7400000, 0),
-        (7400000, 1),
-        (7400000, 2),
-        (7400000, 3),
-        (7400000, 4),
-        (7500000, 0),
-        (7500000, 1),
-        (7500000, 2),
-        (7500000, 3),
-        (7500000, 4),
-    ]
-
-    resp = await cli.get(f'/v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/transactions?order=desc')
-    resp_json = await resp.json()
-    resp_order_indicators = [(entry['blockNumber'], entry['transactionIndex']) for entry in resp_json['data']]
-
-    assert resp.status == 200
-    assert resp_order_indicators == [
-        (7500000, 4),
-        (7500000, 3),
-        (7500000, 2),
-        (7500000, 1),
-        (7500000, 0),
-        (7400000, 4),
-        (7400000, 3),
-        (7400000, 2),
-        (7400000, 1),
-        (7400000, 0),
-    ]
+    assert resp_order_indicators == expected_order
