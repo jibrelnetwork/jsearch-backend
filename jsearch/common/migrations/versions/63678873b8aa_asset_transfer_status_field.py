@@ -1,7 +1,7 @@
 """asset_transfer status field
 
 Revision ID: 63678873b8aa
-Revises: 51ea839484a7
+Revises: e3f9cd3e195e
 Create Date: 2019-04-02 18:24:11.423492
 
 """
@@ -12,7 +12,7 @@ from jsearch.common import tables
 
 # revision identifiers, used by Alembic.
 revision = '63678873b8aa'
-down_revision = '51ea839484a7'
+down_revision = 'e3f9cd3e195e'
 branch_labels = None
 depends_on = None
 
