@@ -30,7 +30,7 @@ def get_internal_txs_by_parent(parent_tx_hash: str, order: str, columns: List[Co
         columns=columns or get_default_fields(),
         whereclause=and_(
             internal_transactions_t.c.parent_tx_hash == parent_tx_hash,
-            internal_transactions_t.c.is_forked == false,
+            internal_transactions_t.c.is_forked == false(),
         )
     )
 
@@ -49,6 +49,7 @@ def get_internal_txs_by_parent(parent_tx_hash: str, order: str, columns: List[Co
 def get_internal_txs_by_account(account: str, order: str, columns: List[Column] = None) -> Query:
     query = select(
         columns=columns or get_default_fields(),
+        whereclause=internal_transactions_t.c.is_forked == false(),
     ).select_from(
         internal_transactions_t.join(
             transactions_t,
