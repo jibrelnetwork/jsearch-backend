@@ -5,6 +5,9 @@ import backoff
 import click
 import psycopg2
 from aiopg.sa import Engine, create_engine
+from mode import Service, Worker
+from sqlalchemy.dialects.postgresql import insert
+
 from jsearch import settings
 from jsearch.common.logs import configure
 from jsearch.common.tables import assets_transfers_t, transactions_t, assets_summary_t
@@ -15,10 +18,8 @@ from jsearch.service_bus import (
     ROUTE_HANDLE_TRANSACTIONS,
     ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE,
 )
+from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
 from jsearch.utils import Singleton
-from mode import Service, Worker
-from sqlalchemy.dialects.postgresql import insert
-
 
 logger = logging.getLogger('wallet_worker')
 
@@ -37,7 +38,7 @@ class DatabaseService(Service, Singleton):
         self.engine.close()
         await self.engine.wait_closed()
 
-    async def add_assets_transafer_tx(self, tx_data):
+    async def add_assets_transfer_tx(self, tx_data):
         transfer = {
             'address': tx_data['from'],
             'type': 'eth-transfer',
@@ -88,19 +89,12 @@ class DatabaseService(Service, Singleton):
             await connection.execute(assets_transfers_t.insert(), **transfer)
 
     async def add_or_update_asset_summary_balance(self, asset_update):
-        summary_data = {
-            'address': asset_update['address'],
-            'asset_address': asset_update['asset_address'],
-            'value': asset_update['value'],
-            'decimals': asset_update['decimals'],
-        }
-        q = insert(assets_summary_t).values(tx_number=1, **summary_data)
-
-        upsert = q.on_conflict_do_update(
-            index_elements=['address', 'asset_address'],
-            set_=dict(value=summary_data['value'], decimals=summary_data['decimals'])
+        upsert = insert_or_update_assets_summary(
+            address=asset_update['address'],
+            asset_address=asset_update['asset_address'],
+            value=asset_update['value'],
+            decimals=asset_update['decimals']
         )
-
         async with self.engine.acquire() as connection:
             await connection.execute(upsert)
 
@@ -136,8 +130,8 @@ async def handle_new_transaction(tx_data):
 
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE)
 async def handle_new_account(account_data):
-    logging.info("[WALLET] Handling  Account Update %s",
-                 account_data['address'])
+    logging.info("[WALLET] Handling  Account Update %s", account_data['address'])
+
     update_data = {
         'address': account_data['address'],
         'asset_address': '',

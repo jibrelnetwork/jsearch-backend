@@ -103,7 +103,7 @@ class SyncProcessor:
 
     def process_block(self, header, body, reward, receipts, accounts, internal_transactions) -> BlockData:
         """
-        Preprocess and write block data fetched from Raw DB to Main DB
+        Preprocess data fetched from Raw DB to Main DB
         """
         uncles: List[Dict[str, Any]] = body['fields']['Uncles'] or []
         transactions: List[Dict[str, Any]] = body['fields']['Transactions'] or []
@@ -122,6 +122,7 @@ class SyncProcessor:
         )
         accounts_data = self.process_accounts(accounts, block_number, block_hash)
         internal_txs_data = self.process_internal_txs(internal_transactions)
+
         return BlockData(
             block=block_data,
             uncles=uncles_data,
