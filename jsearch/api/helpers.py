@@ -1,7 +1,12 @@
 import json
 from functools import partial
+from typing import Any, Dict, List, Optional
 
+import asyncpgsa
 from aiohttp import web
+from asyncpg import Connection
+from sqlalchemy import asc, desc, Column
+from sqlalchemy.orm import Query
 
 from jsearch.api.error_code import ErrorCode
 
@@ -137,3 +142,30 @@ def proxy_response(resp):
 
     body = {'status': status, 'data': resp.pop('result', None)}
     return web.json_response(body)
+
+
+def get_order(columns: List[Column], direction: Optional[str]) -> List[Column]:
+    operator = None
+
+    if direction == 'asc':
+        operator = asc
+
+    if direction == 'desc':
+        operator = desc
+
+    if operator:
+        columns = [operator(column) for column in columns]
+
+    return columns
+
+
+async def fetch(connection: Connection, query: Query) -> List[Dict[str, Any]]:
+    query, params = asyncpgsa.compile_query(query)
+    result = await connection.fetch(query, *params)
+    return [dict(item) for item in result]
+
+
+async def fetch_row(connection: Connection, query: Query) -> Optional[Dict[str, Any]]:
+    query, params = asyncpgsa.compile_query(query)
+    result = await connection.fetchrow(query, *params)
+    return result is not None and dict(result)
