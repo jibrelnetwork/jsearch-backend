@@ -2,6 +2,7 @@ import logging
 import re
 import time
 from typing import Optional, NamedTuple, Dict, Any, List, Tuple
+from collections import defaultdict
 
 from jsearch import service_bus
 from jsearch import settings
@@ -75,9 +76,19 @@ class SyncProcessor:
         self.write_block(block)
         service_bus.sync_client.write_logs(logs=block.logs)
 
+        internal_tx_parent_map = defaultdict(list)
+        for t in block.internal_txs:
+            internal_tx_parent_map[t['parent_tx_hash']].append(t)
+
+        tx_status_map = dict()
+        for r in block.receipts:
+            tx_status_map[r['transaction_hash']] = r['status']
+        assert len(tx_status_map) == len(block.txs)
+
         for tx in block.txs:
-            if tx['value'] != '0x0':
-                service_bus.sync_client.write_tx(tx)
+            tx['internal_transactions'] = internal_tx_parent_map[tx['hash']]
+            tx['receipt_status'] = tx_status_map[tx['hash']]
+            service_bus.sync_client.write_tx(tx)
 
         for acc in block.accounts:
             service_bus.sync_client.write_account(acc)
