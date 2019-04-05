@@ -1,11 +1,10 @@
-import pytest
 import factory
+import pytest
 
 from jsearch.common.tables import (
     assets_summary_t,
     assets_transfers_t,
 )
-
 from jsearch.wallet_worker.__main__ import DatabaseService
 
 pytest_plugins = [
@@ -207,6 +206,7 @@ async def test_add_assets_transfer_tx_internal(db, transaction_factory):
         'status': 1
     }
 
+
 async def test_add_assets_transfer_tx_internal_status_tx(db, transaction_factory):
     s = DatabaseService()
     await s.on_start()
@@ -225,6 +225,7 @@ async def test_add_assets_transfer_tx_internal_status_tx(db, transaction_factory
     assert len(res) == 2
     assert res[0]['status'] == 0
     assert res[1]['status'] == 0
+
 
 async def test_add_assets_transfer_tx_internal_status_itx(db, transaction_factory):
     s = DatabaseService()
@@ -262,6 +263,7 @@ async def test_add_assets_transfer_tx_internal_zero_value(db, transaction_factor
 
     res = db.execute(assets_transfers_t.select()).fetchall()
     assert len(res) == 0
+
 
 async def test_add_assets_transfer_token_transfer(db, transfer_factory, transaction_factory):
     s = DatabaseService()
