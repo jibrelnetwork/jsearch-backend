@@ -23,6 +23,8 @@ from jsearch.tests.entities import (
 pytest_plugins = [
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.dumps',
+    'jsearch.tests.plugins.databases.factories.transactions',
+    'jsearch.tests.plugins.databases.factories.internal_transactions',
 ]
 
 logger = logging.getLogger(__name__)
@@ -1355,3 +1357,162 @@ async def test_get_account_transactions_ordering(cli, db, direction, expected_or
     # then - check order
     assert resp.status == 200
     assert resp_order_indicators == expected_order
+
+
+async def test_get_account_internal_transactions(cli, transaction_factory, internal_transaction_factory):
+    transaction_factory.create(
+        hash='0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+        address='0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+        from_='0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+        to='0x70137010922f2fc2964b3792907f79fbb75febe8',
+    )
+
+    internal_transaction_data = {
+        'block_number': 42,
+        'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+        'parent_tx_hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+        'op': 'suicide',
+        'call_depth': NotImplemented,
+        'from_': NotImplemented,
+        'to': NotImplemented,
+        'value': 1000,
+        'gas_limit': 2000,
+        'payload': '0x',
+        'status': 'success',
+        'transaction_index': NotImplemented,
+    }
+
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{
+                'call_depth': 1,
+                'from_': '0x1111111111111111111111111111111111111111',
+                'to':    '0x2222222222222222222222222222222222222222',
+                'transaction_index': 7,
+            }
+        }
+    )
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{
+                'call_depth': 2,
+                'from_': '0x2222222222222222222222222222222222222222',
+                'to': '0x3333333333333333333333333333333333333333',
+                'transaction_index': 8,
+            }
+        }
+    )
+
+    resp = await cli.get(f'v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/internal_transactions')
+    resp_json = await resp.json()
+
+    assert resp.status == 200
+    assert resp_json == {
+        'status': {
+            'success': True,
+            'errors': [],
+        },
+        'data': [
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 2,
+                'from': '0x2222222222222222222222222222222222222222',
+                'to': '0x3333333333333333333333333333333333333333',
+                'value': '1000',
+                'gasLimit': '2000',
+                'input': '0x',
+                'status': 'success',
+                'transactionIndex': 8,
+            },
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 1,
+                'from': '0x1111111111111111111111111111111111111111',
+                'to': '0x2222222222222222222222222222222222222222',
+                'value': '1000',
+                'gasLimit': '2000',
+                'input': '0x',
+                'status': 'success',
+                'transactionIndex': 7,
+            }
+        ]
+    }
+
+
+async def test_get_internal_transactions(cli, internal_transaction_factory):
+    internal_transaction_data = {
+        'block_number': 42,
+        'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+        'parent_tx_hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+        'op': 'suicide',
+        'call_depth': 3,
+        'from_': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+        'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+        'value': 1000,
+        'gas_limit': 2000,
+        'payload': '0x',
+        'status': 'success',
+        'transaction_index': NotImplemented,
+    }
+
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{'transaction_index': 42},
+        }
+    )
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{'transaction_index': 43},
+        }
+    )
+
+    resp = await cli.get(f'v1/transactions/internal/0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e')
+    resp_json = await resp.json()
+
+    assert resp.status == 200
+    assert resp_json == {
+        'status': {
+            'success': True,
+            'errors': [],
+        },
+        'data': [
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 3,
+                'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+                'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                'value': '1000',
+                'gasLimit': '2000',
+                'input': '0x',
+                'status': 'success',
+                'transactionIndex': 43,
+            },
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 3,
+                'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+                'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                'value': '1000',
+                'gasLimit': '2000',
+                'input': '0x',
+                'status': 'success',
+                'transactionIndex': 42,
+            }
+        ]
+    }
