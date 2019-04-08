@@ -1,5 +1,12 @@
+from jsearch.common.tables import pending_transactions_t
 from jsearch.syncer.database import MainDB
 from jsearch.syncer.manager import Manager
+
+
+pytest_plugins = (
+    'jsearch.tests.plugins.databases.main_db',
+    'jsearch.tests.plugins.databases.factories.pending_transactions',
+)
 
 
 pending_tx_fields = {
@@ -20,8 +27,8 @@ pending_tx_fields = {
 }
 
 
-async def test_pending_tx_is_saved_to_main_db(db):
-    main_db_wrapper = await MainDB(db.url).connect()
+async def test_pending_tx_is_saved_to_main_db(db, db_connection_string):
+    main_db_wrapper = await MainDB(db_connection_string).connect()
     manager = Manager(None, main_db_wrapper, None, None)
 
     await manager.process_pending_txs(
@@ -43,7 +50,7 @@ async def test_pending_tx_is_saved_to_main_db(db):
 
     assert pending_txs == [
         {
-            'latest_id': 48283958,
+            'last_synced_id': 48283958,
             'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
             'status': '',
             'timestamp': '2019-04-05 12:23:22.321599',
@@ -63,13 +70,13 @@ async def test_pending_tx_is_saved_to_main_db(db):
     ]
 
 
-async def test_pending_tx_is_marked_as_removed(db, pending_transaction_factory):
-    main_db_wrapper = await MainDB(db.url).connect()
+async def test_pending_tx_is_marked_as_removed(db, db_connection_string, pending_transaction_factory):
+    main_db_wrapper = await MainDB(db_connection_string).connect()
     manager = Manager(None, main_db_wrapper, None, None)
 
     pending_transaction_factory.create(
-        {
-            'latest_id': 48283958,
+        **{
+            'last_synced_id': 48283958,
             'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
             'status': '',
             'timestamp': '2019-04-05 12:23:22.321599',
@@ -107,7 +114,7 @@ async def test_pending_tx_is_marked_as_removed(db, pending_transaction_factory):
 
     assert pending_txs == [
         {
-            'latest_id': 48285272,
+            'last_synced_id': 48285272,
             'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
             'status': '',
             'timestamp': '2019-04-05 12:23:22.321599',

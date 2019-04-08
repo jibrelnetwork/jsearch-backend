@@ -81,6 +81,27 @@ internal_transactions_t = sa.Table(
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
 )
 
+pending_transactions_t = sa.Table(
+    'pending_transactions',
+    metadata,
+    sa.Column('last_synced_id', sa.BigInteger),
+    sa.Column('hash', sa.String, primary_key=True),
+    sa.Column('status', sa.String),
+    sa.Column('timestamp', postgresql.TIMESTAMP),
+    sa.Column('removed', sa.Boolean),
+    sa.Column('node_id', sa.Integer),
+    sa.Column('r', sa.String),
+    sa.Column('s', sa.String),
+    sa.Column('v', sa.String),
+    sa.Column('to', sa.String),
+    sa.Column('from', sa.String),
+    sa.Column('gas', sa.String),
+    sa.Column('gas_price', sa.String),
+    sa.Column('input', sa.String),
+    sa.Column('nonce', sa.String),
+    sa.Column('value', sa.String),
+)
+
 transactions_t = sa.Table(
     'transactions',
     metadata,
