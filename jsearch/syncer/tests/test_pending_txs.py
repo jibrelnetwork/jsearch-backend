@@ -76,8 +76,6 @@ async def test_pending_tx_is_saved_to_main_db(db, raw_db, db_connection_string, 
         },
     ]
 
-    db.execute(pending_transactions_t.delete())
-
 
 async def test_pending_tx_is_marked_as_removed(
         db,
@@ -151,5 +149,3 @@ async def test_pending_tx_is_marked_as_removed(
             'value': pending_tx_fields['value'],
         },
     ]
-
-    db.execute(pending_transactions_t.delete())

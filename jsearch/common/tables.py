@@ -310,6 +310,7 @@ TABLES = (
     accounts_base_t,
     token_holders_t,
     internal_transactions_t,
+    pending_transactions_t,
     reorgs_t,
     token_transfers_t,
     chain_splits_t,
