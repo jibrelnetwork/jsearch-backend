@@ -138,7 +138,8 @@ class Manager:
                 await asyncio.sleep(self.sleep_on_no_blocks)
                 return
 
-            await self.process_pending_txs(new_pending_txs)
+            for pending_tx in new_pending_txs:
+                await self.main_db.insert_or_update_pending_tx(pending_tx)
 
             proc_time = time.monotonic() - start_time
             logger.info("%s pending txs processed on %0.2fs", len(new_pending_txs), proc_time)
@@ -146,6 +147,7 @@ class Manager:
             logger.exception("Pending Tx Loop Error accured:")
             await asyncio.sleep(self.sleep_on_error)
             self.sleep_on_error = self.sleep_on_error * 2
+            raise
         else:
             self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
             await asyncio.sleep(0.1)
@@ -155,10 +157,6 @@ class Manager:
         await self.process_reorgs(new_reorgs)
         await self.main_db.insert_chain_split(split)
         await asyncio.sleep(0.1)
-
-    async def process_pending_txs(self, pending_txs):
-        for pending_tx in pending_txs:
-            await self.main_db.insert_or_update_pending_tx(pending_tx)
 
     async def get_blocks_to_sync(self):
         latest_synced_block_num = await self.main_db.get_latest_synced_block_number(blocks_range=self.sync_range)

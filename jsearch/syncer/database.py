@@ -370,8 +370,8 @@ class MainDB(DBWrapper):
         return await self.fetch_all(query)
 
     async def get_pending_tx_last_synced_id(self) -> int:
-        q = pending_transactions_t.select([pending_transactions_t.c.last_synced_id])
-        q = q.order_by(pending_transactions_t.c.last_synced_id.desc)
+        q = pending_transactions_t.select()
+        q = q.order_by(pending_transactions_t.c.last_synced_id.desc())
         q = q.limit(1)
 
         async with self.engine.acquire() as conn:

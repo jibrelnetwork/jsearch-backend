@@ -1,4 +1,5 @@
 import datetime
+from psycopg2._json import Json
 
 from jsearch.common.tables import pending_transactions_t
 from jsearch.syncer.database import RawDB, MainDB
@@ -30,6 +31,22 @@ pending_tx_fields = {
 }
 
 
+async def test_pending_tx_is_not_saved_if_there_is_none(db, db_connection_string, raw_db_connection_string):
+    raw_db_wrapper = RawDB(raw_db_connection_string)
+    main_db_wrapper = MainDB(db_connection_string)
+    manager = Manager(None, main_db_wrapper, raw_db_wrapper, None)
+
+    await raw_db_wrapper.connect()
+    await main_db_wrapper.connect()
+
+    await manager.get_and_process_pending_txs()
+
+    pending_txs = db.execute(pending_transactions_t.select()).fetchall()
+    pending_txs = [dict(tx) for tx in pending_txs]
+
+    assert pending_txs == []
+
+
 async def test_pending_tx_is_saved_to_main_db(db, raw_db, db_connection_string, raw_db_connection_string):
     raw_db_wrapper = RawDB(raw_db_connection_string)
     main_db_wrapper = MainDB(db_connection_string)
@@ -38,19 +55,31 @@ async def test_pending_tx_is_saved_to_main_db(db, raw_db, db_connection_string, 
     await raw_db_wrapper.connect()
     await main_db_wrapper.connect()
 
-    await manager.process_pending_txs(
-        [
-            {
-                'id': 48283958,
-                'tx_hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
-                'status': '',
-                'fields': pending_tx_fields,
-                'timestamp': datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
-                'removed': False,
-                'node_id': 1
-            }
+    raw_db.execute(
+        """
+        INSERT INTO pending_transactions (
+          "id",
+          "tx_hash",
+          "status",
+          "fields",
+          "timestamp",
+          "removed",
+          "node_id"
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, [
+            (
+                48283958,
+                '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
+                '',
+                Json(pending_tx_fields),
+                datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
+                False,
+                1,
+            ),
         ]
     )
+
+    await manager.get_and_process_pending_txs()
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
@@ -112,19 +141,40 @@ async def test_pending_tx_is_marked_as_removed(
         }
     )
 
-    await manager.process_pending_txs(
-        [
-            {
-                'id': 48285272,
-                'tx_hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
-                'status': '',
-                'fields': dict(),
-                'timestamp': datetime.datetime(2019, 4, 5, 12, 24, 29, 112052),
-                'removed': True,
-                'node_id': 1
-            }
+    raw_db.execute(
+        """
+        INSERT INTO pending_transactions (
+          "id",
+          "tx_hash",
+          "status",
+          "fields",
+          "timestamp",
+          "removed",
+          "node_id"
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, [
+            (
+                48283958,
+                '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
+                '',
+                Json(pending_tx_fields),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                1,
+            ),
+            (
+                48285272,
+                '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
+                '',
+                Json({}),
+                datetime.datetime(2019, 4, 5, 12, 24, 29, 112052),
+                True,
+                1,
+            ),
         ]
     )
+
+    await manager.get_and_process_pending_txs()
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
