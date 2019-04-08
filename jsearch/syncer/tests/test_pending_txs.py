@@ -1,9 +1,12 @@
+import datetime
+
 from jsearch.common.tables import pending_transactions_t
-from jsearch.syncer.database import MainDB
+from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.manager import Manager
 
 
 pytest_plugins = (
+    'jsearch.tests.plugins.databases.raw_db',
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.factories.pending_transactions',
 )
@@ -27,9 +30,13 @@ pending_tx_fields = {
 }
 
 
-async def test_pending_tx_is_saved_to_main_db(db, db_connection_string):
-    main_db_wrapper = await MainDB(db_connection_string).connect()
-    manager = Manager(None, main_db_wrapper, None, None)
+async def test_pending_tx_is_saved_to_main_db(db, raw_db, db_connection_string, raw_db_connection_string):
+    raw_db_wrapper = RawDB(raw_db_connection_string)
+    main_db_wrapper = MainDB(db_connection_string)
+    manager = Manager(None, main_db_wrapper, raw_db_wrapper, None)
+
+    await raw_db_wrapper.connect()
+    await main_db_wrapper.connect()
 
     await manager.process_pending_txs(
         [
@@ -38,7 +45,7 @@ async def test_pending_tx_is_saved_to_main_db(db, db_connection_string):
                 'tx_hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
                 'status': '',
                 'fields': pending_tx_fields,
-                'timestamp': '2019-04-05 12:23:22.321599',
+                'timestamp': datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
                 'removed': False,
                 'node_id': 1
             }
@@ -53,7 +60,7 @@ async def test_pending_tx_is_saved_to_main_db(db, db_connection_string):
             'last_synced_id': 48283958,
             'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
             'status': '',
-            'timestamp': '2019-04-05 12:23:22.321599',
+            'timestamp': datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
             'removed': False,
             'node_id': 1,
             'r': pending_tx_fields['r'],
@@ -69,24 +76,36 @@ async def test_pending_tx_is_saved_to_main_db(db, db_connection_string):
         },
     ]
 
+    db.execute(pending_transactions_t.delete())
 
-async def test_pending_tx_is_marked_as_removed(db, db_connection_string, pending_transaction_factory):
-    main_db_wrapper = await MainDB(db_connection_string).connect()
-    manager = Manager(None, main_db_wrapper, None, None)
+
+async def test_pending_tx_is_marked_as_removed(
+        db,
+        raw_db,
+        db_connection_string,
+        raw_db_connection_string,
+        pending_transaction_factory,
+):
+    raw_db_wrapper = RawDB(raw_db_connection_string)
+    main_db_wrapper = MainDB(db_connection_string)
+    manager = Manager(None, main_db_wrapper, raw_db_wrapper, None)
+
+    await raw_db_wrapper.connect()
+    await main_db_wrapper.connect()
 
     pending_transaction_factory.create(
         **{
             'last_synced_id': 48283958,
             'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
             'status': '',
-            'timestamp': '2019-04-05 12:23:22.321599',
+            'timestamp': datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
             'removed': False,
             'node_id': 1,
             'r': pending_tx_fields['r'],
             's': pending_tx_fields['s'],
             'v': pending_tx_fields['v'],
             'to': pending_tx_fields['to'],
-            'from': pending_tx_fields['from'],
+            'from_': pending_tx_fields['from'],
             'gas': pending_tx_fields['gas'],
             'gas_price': pending_tx_fields['gasPrice'],
             'input': pending_tx_fields['input'],
@@ -102,7 +121,7 @@ async def test_pending_tx_is_marked_as_removed(db, db_connection_string, pending
                 'tx_hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
                 'status': '',
                 'fields': dict(),
-                'timestamp': '2019-04-05 12:24:29.112052',
+                'timestamp': datetime.datetime(2019, 4, 5, 12, 24, 29, 112052),
                 'removed': True,
                 'node_id': 1
             }
@@ -117,7 +136,7 @@ async def test_pending_tx_is_marked_as_removed(db, db_connection_string, pending
             'last_synced_id': 48285272,
             'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
             'status': '',
-            'timestamp': '2019-04-05 12:23:22.321599',
+            'timestamp': datetime.datetime(2019, 4, 5, 12, 24, 29, 112052),
             'removed': True,
             'node_id': 1,
             'r': pending_tx_fields['r'],
@@ -132,3 +151,5 @@ async def test_pending_tx_is_marked_as_removed(db, db_connection_string, pending
             'value': pending_tx_fields['value'],
         },
     ]
+
+    db.execute(pending_transactions_t.delete())

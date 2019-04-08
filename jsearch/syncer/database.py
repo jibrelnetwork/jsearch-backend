@@ -24,6 +24,7 @@ from jsearch.common.tables import (
     reorgs_t,
     token_transfers_t,
     chain_splits_t,
+    pending_transactions_t,
 )
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
@@ -147,6 +148,17 @@ class RawDB(DBWrapper):
                 await cur.execute(q, [split_from_num, limit])
                 rows = await cur.fetchall()
                 cur.close()
+        return rows
+
+    async def get_pending_txs_from(self, last_synced_id, limit):
+        q = """SELECT * FROM pending_transactions WHERE id > %s ORDER BY id LIMIT %s"""
+
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [last_synced_id, limit])
+                rows = await cur.fetchall()
+                cur.close()
+
         return rows
 
 
@@ -356,6 +368,53 @@ class MainDB(DBWrapper):
     async def get_blocks(self, hashes: List[str]):
         query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
         return await self.fetch_all(query)
+
+    async def get_pending_tx_last_synced_id(self) -> int:
+        q = pending_transactions_t.select([pending_transactions_t.c.last_synced_id])
+        q = q.order_by(pending_transactions_t.c.last_synced_id.desc)
+        q = q.limit(1)
+
+        async with self.engine.acquire() as conn:
+            res = await conn.execute(q)
+            row = await res.fetchone()
+
+        return row['last_synced_id'] if row else 0
+
+    async def insert_or_update_pending_tx(self, pending_tx: Dict[str, Any]) -> None:
+        insert_query = insert(pending_transactions_t)
+        insert_query = insert_query.values(
+            **{
+                'last_synced_id': pending_tx['id'],
+                'hash': pending_tx['tx_hash'],
+                'status': pending_tx['status'],
+                'timestamp': pending_tx['timestamp'],
+                'removed': pending_tx['removed'],
+                'node_id': pending_tx['node_id'],
+                'r': pending_tx['fields'].get('r'),
+                's': pending_tx['fields'].get('s'),
+                'v': pending_tx['fields'].get('v'),
+                'to': pending_tx['fields'].get('to'),
+                'from': pending_tx['fields'].get('from'),
+                'gas': pending_tx['fields'].get('gas'),
+                'gas_price': pending_tx['fields'].get('gasPrice'),
+                'input': pending_tx['fields'].get('input'),
+                'nonce': pending_tx['fields'].get('nonce'),
+                'value': pending_tx['fields'].get('value'),
+            }
+        ).on_conflict_do_update(
+            index_elements=[
+                pending_transactions_t.c.hash,
+            ],
+            set_={
+                'last_synced_id': pending_tx['id'],
+                'status': pending_tx['status'],
+                'timestamp': pending_tx['timestamp'],
+                'removed': pending_tx['removed'],
+                'node_id': pending_tx['node_id'],
+            }
+        )
+
+        await self.execute(insert_query)
 
 
 class MainDBSync(DBWrapperSync):
