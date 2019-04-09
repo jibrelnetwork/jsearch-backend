@@ -18,7 +18,7 @@ class PendingTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     status = ''
     timestamp = factory.LazyFunction(datetime.time)
     removed = False
-    node_id = 1
+    node_id = '1'
     r = '0xaa'
     s = '0xbb'
     v = '0xcc'

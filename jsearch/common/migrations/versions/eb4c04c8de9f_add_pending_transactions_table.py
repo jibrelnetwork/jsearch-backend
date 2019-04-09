@@ -19,11 +19,11 @@ depends_on = None
 UP_SQL = """
 CREATE TABLE pending_transactions (
     "last_synced_id" BIGINT NOT NULL,
-    "hash" CHARACTER VARYING NOT NULL,
+    "hash" CHARACTER VARYING (70) NOT NULL,
     "status" CHARACTER VARYING,
     "timestamp" TIMESTAMP NOT NULL,
     "removed" BOOLEAN NOT NULL,
-    "node_id" INTEGER,
+    "node_id" CHARACTER VARYING (70),
     "r" CHARACTER VARYING,
     "s" CHARACTER VARYING,
     "v" CHARACTER VARYING,
@@ -39,12 +39,13 @@ CREATE TABLE pending_transactions (
 ALTER TABLE ONLY pending_transactions ADD CONSTRAINT pending_transactions_pkey
      PRIMARY KEY (hash);
 
-CREATE INDEX ix_pending_transactions_last_synced_id ON pending_transactions(last_synced_id);
+CREATE INDEX ix_pending_transactions_last_synced_id ON pending_transactions("last_synced_id");
+CREATE INDEX ix_pending_transactions_from_partial ON pending_transactions("from") WHERE "removed" IS FALSE;
+CREATE INDEX ix_pending_transactions_to_partial ON pending_transactions("to") WHERE "removed" IS FALSE;
 """
 
 DOWN_SQL = """
 DROP TABLE pending_transactions;
-DROP INDEX ix_pending_transactions_last_synced_id;
 """
 
 
