@@ -111,7 +111,6 @@ async def test_pending_tx_is_marked_as_removed(
         raw_db,
         db_connection_string,
         raw_db_connection_string,
-        pending_transaction_factory,
 ):
     raw_db_wrapper = RawDB(raw_db_connection_string)
     main_db_wrapper = MainDB(db_connection_string)
@@ -119,27 +118,6 @@ async def test_pending_tx_is_marked_as_removed(
 
     await raw_db_wrapper.connect()
     await main_db_wrapper.connect()
-
-    pending_transaction_factory.create(
-        **{
-            'last_synced_id': 48283958,
-            'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
-            'status': '',
-            'timestamp': datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
-            'removed': False,
-            'node_id': 1,
-            'r': pending_tx_fields['r'],
-            's': pending_tx_fields['s'],
-            'v': pending_tx_fields['v'],
-            'to': pending_tx_fields['to'],
-            'from_': pending_tx_fields['from'],
-            'gas': pending_tx_fields['gas'],
-            'gas_price': pending_tx_fields['gasPrice'],
-            'input': pending_tx_fields['input'],
-            'nonce': pending_tx_fields['nonce'],
-            'value': pending_tx_fields['value'],
-        }
-    )
 
     raw_db.execute(
         """
@@ -154,7 +132,7 @@ async def test_pending_tx_is_marked_as_removed(
         ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, [
             (
-                48283958,
+                1,
                 '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
                 '',
                 Json(pending_tx_fields),
@@ -163,7 +141,7 @@ async def test_pending_tx_is_marked_as_removed(
                 1,
             ),
             (
-                48285272,
+                2,
                 '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
                 '',
                 Json({}),
@@ -181,7 +159,7 @@ async def test_pending_tx_is_marked_as_removed(
 
     assert pending_txs == [
         {
-            'last_synced_id': 48285272,
+            'last_synced_id': 2,
             'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
             'status': '',
             'timestamp': datetime.datetime(2019, 4, 5, 12, 24, 29, 112052),

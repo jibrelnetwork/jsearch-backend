@@ -92,3 +92,8 @@ def raw_db_sample(raw_db_connection_string):
         sample_data[t.name] = table_data
     yield sample_data
     truncate(engine)
+
+
+@pytest.fixture(scope='function', autouse=True)
+def truncate_raw_db(raw_db):
+    truncate(raw_db)

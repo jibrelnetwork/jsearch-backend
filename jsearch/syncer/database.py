@@ -27,6 +27,7 @@ from jsearch.common.tables import (
     pending_transactions_t,
 )
 from jsearch.common.utils import as_dicts
+from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
 from jsearch.syncer.database_queries.token_transfers import (
     get_transfers_from_query,
@@ -159,7 +160,7 @@ class RawDB(DBWrapper):
                 rows = await cur.fetchall()
                 cur.close()
 
-        return rows
+        return [dict(row) for row in rows]
 
 
 class RawDBSync(DBWrapperSync):
@@ -380,41 +381,9 @@ class MainDB(DBWrapper):
 
         return row['last_synced_id'] if row else 0
 
-    async def insert_or_update_pending_tx(self, pending_tx: Dict[str, Any]) -> None:
-        insert_query = insert(pending_transactions_t)
-        insert_query = insert_query.values(
-            **{
-                'last_synced_id': pending_tx['id'],
-                'hash': pending_tx['tx_hash'],
-                'status': pending_tx['status'],
-                'timestamp': pending_tx['timestamp'],
-                'removed': pending_tx['removed'],
-                'node_id': pending_tx['node_id'],
-                'r': pending_tx['fields'].get('r'),
-                's': pending_tx['fields'].get('s'),
-                'v': pending_tx['fields'].get('v'),
-                'to': pending_tx['fields'].get('to'),
-                'from': pending_tx['fields'].get('from'),
-                'gas': pending_tx['fields'].get('gas'),
-                'gas_price': pending_tx['fields'].get('gasPrice'),
-                'input': pending_tx['fields'].get('input'),
-                'nonce': pending_tx['fields'].get('nonce'),
-                'value': pending_tx['fields'].get('value'),
-            }
-        ).on_conflict_do_update(
-            index_elements=[
-                pending_transactions_t.c.hash,
-            ],
-            set_={
-                'last_synced_id': pending_tx['id'],
-                'status': pending_tx['status'],
-                'timestamp': pending_tx['timestamp'],
-                'removed': pending_tx['removed'],
-                'node_id': pending_tx['node_id'],
-            }
-        )
-
-        await self.execute(insert_query)
+    async def insert_or_update_pending_txs(self, pending_txs: List[Dict[str, Any]]) -> None:
+        for pending_tx in pending_txs:
+            await self.execute(insert_or_update_pending_tx_q(pending_tx))
 
 
 class MainDBSync(DBWrapperSync):

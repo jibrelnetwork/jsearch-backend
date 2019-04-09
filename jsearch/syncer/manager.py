@@ -14,7 +14,7 @@ SLEEP_ON_ERROR_DEFAULT = 0.1
 SLEEP_ON_DB_ERROR_DEFAULT = 5
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
 REORGS_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL / 2
-PENDING_TX_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL / 2
+PENDING_TX_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL * 2
 
 loop = asyncio.get_event_loop()
 
@@ -138,8 +138,7 @@ class Manager:
                 await asyncio.sleep(self.sleep_on_no_blocks)
                 return
 
-            for pending_tx in new_pending_txs:
-                await self.main_db.insert_or_update_pending_tx(pending_tx)
+            await self.main_db.insert_or_update_pending_txs(new_pending_txs)
 
             proc_time = time.monotonic() - start_time
             logger.info("%s pending txs processed on %0.2fs", len(new_pending_txs), proc_time)
