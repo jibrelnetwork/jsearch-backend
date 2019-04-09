@@ -38,10 +38,13 @@ CREATE TABLE pending_transactions (
 
 ALTER TABLE ONLY pending_transactions ADD CONSTRAINT pending_transactions_pkey
      PRIMARY KEY (hash);
+
+CREATE INDEX ix_pending_transactions_last_synced_id ON pending_transactions(last_synced_id);
 """
 
 DOWN_SQL = """
 DROP TABLE pending_transactions;
+DROP INDEX ix_pending_transactions_last_synced_id;
 """
 
 
