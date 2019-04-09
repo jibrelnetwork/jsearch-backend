@@ -44,4 +44,3 @@ def _prepare_pending_tx(raw_data: Dict[str, Any]) -> Dict[str, Any]:
         'nonce': raw_data['fields'].get('nonce'),
         'value': raw_data['fields'].get('value'),
     }
-
