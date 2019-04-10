@@ -40,7 +40,7 @@ def truncate(db):
         "internal_transactions"
     ]
     for table in tables:
-        db.execute(f"TRUNCATE {table};")
+        db.execute(f"DROP {table};")
 
 
 @pytest.fixture(scope="session")
