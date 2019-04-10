@@ -95,11 +95,11 @@ pending_transactions_t = sa.Table(
     sa.Column('v', sa.String),
     sa.Column('to', sa.String, index=True),
     sa.Column('from', sa.String, index=True),
-    sa.Column('gas', sa.String),
-    sa.Column('gas_price', sa.String),
+    sa.Column('gas', HexBigInteger),
+    sa.Column('gas_price', HexBigInteger),
     sa.Column('input', sa.String),
-    sa.Column('nonce', sa.String),
-    sa.Column('value', sa.String),
+    sa.Column('nonce', HexBigInteger),
+    sa.Column('value', HexBigInteger),
 )
 
 transactions_t = sa.Table(
