@@ -166,6 +166,15 @@ cd ./docker/geth-fork
 ./build.sh
 ```
 
+### Git hooks
+
+Add a pre push hook to validate the code before each push:
+
+```bash
+$ ln -s pre-push.sh ../.git/modules/jsearch-backend/hooks/pre-push  # jsearch-backend as a git submodule.
+$ ln -s pre-push.sh .git/hooks/pre-push  # jsearch-backend as a standalone repo.
+```
+
 ## Author
 
 dev@jibrel.network
