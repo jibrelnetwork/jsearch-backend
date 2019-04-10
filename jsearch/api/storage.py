@@ -7,10 +7,10 @@ from typing import List, Optional, Dict, Any
 
 import asyncpgsa
 from asyncpg import Connection
+from sqlalchemy import select, func, between
 from sqlalchemy.orm import Query
 
 from jsearch.api import models
-from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
@@ -18,6 +18,7 @@ from jsearch.api.database_queries.blocks import (
     get_blocks_query,
     get_mined_blocks_query,
 )
+from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_token,
     get_token_transfers_by_account
@@ -33,8 +34,8 @@ from jsearch.api.database_queries.uncles import (
 )
 from jsearch.api.helpers import Tag
 from jsearch.api.helpers import fetch
-from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import blocks_t
+from jsearch.common.queries import in_app_distinct, fetch_row
+from jsearch.common.tables import blocks_t, reorgs_t, chain_splits_t
 from jsearch.utils import split
 
 log = logging.getLogger(__name__)
@@ -437,44 +438,43 @@ class Storage:
             row = await conn.fetchrow(query, account_address, token_address)
             return models.TokenHolder(**row) if row else None
 
-    async def get_blockchain_tip_status(self, last_known_block_hash: str):
+    async def get_blockchain_tip_status(self, last_known_block_hash: str, fork_id: str):
         """
-        Retruns status of client's last known block
+        Returns status of client's last known block
         """
-        split_query = """SELECT common_block_number FROM chain_splits
-                            WHERE id=(SELECT  split_id FROM  reorgs where block_hash=$1)"""
-        block_query = "SELECT number FROM blocks WHERE hash=$1"
+        split_query = select(chain_splits_t.c.common_block_number).where(
+            chain_splits_t.c.id == select(reorgs_t.c.split_id, where=reorgs_t.c.hash == last_known_block_hash)
+        )
+        last_block_query = select(blocks_t.c.number).where(blocks_t.c.hash == last_known_block_hash)
+        latest_reorg_query = select(func.max(reorgs_t.c.id))
 
         async with self.pool.acquire() as conn:
-            split = await conn.fetchrow(split_query, last_known_block_hash)
-            block = await conn.fetchrow(block_query, last_known_block_hash)
+            split = await fetch_row(conn, split_query)
+            block = await fetch_row(conn, last_block_query)
+            latest_reorg = await fetch_row(conn, latest_reorg_query)
+
+            latest_reorg_id = latest_reorg.get('id')
+            affected_blocks_query = select(reorgs_t.c.block_hash).where(
+                between(reorgs_t.c.id, fork_id, latest_reorg_id)
+            )
+            affected_blocks = await fetch(conn, affected_blocks_query)
 
         if block is None:
             return None
 
-        if split is None:
-            result = {
-                'blockchainTip': {
-                    'blockHash': last_known_block_hash,
-                    'blockNumber': block['number']
-                },
-                'forkData': {
-                    'isInFork': False,
-                    'lastUnchangedBlock': block['number']
-                }
+        is_block_in_fork = split is None
+        return {
+            'blockchainTip': {
+                'blockHash': last_known_block_hash,
+                'blockNumber': block['number']
+            },
+            'forkData': {
+                'isInFork': is_block_in_fork,
+                'forkId': latest_reorg_id,
+                'blockHashes': [block['hash'] for block in affected_blocks],
+                'lastUnchangedBlock': block['number']
             }
-        else:
-            result = {
-                'blockchainTip': {
-                    'blockHash': last_known_block_hash,
-                    'blockNumber': block['number']
-                },
-                'forkData': {
-                    'isInFork': True,
-                    'lastUnchangedBlock': split['common_block_number']
-                }
-            }
-        return result
+        }
 
     async def get_wallet_assets_transfers(self, addresses: List[str], limit: int, offset: int,
                                           assets: Optional[List[str]] = None) -> List:

@@ -284,41 +284,47 @@ class MainDB(DBWrapper):
     async def apply_reorg(self, reorg):
         reorg = dict(reorg)
 
+        reorg.pop('header')
+        reorg['raw_id'] = reorg.pop('id')
+
+        block_hash = reorg['block_hash']
+        is_forked = not reorg['reinserted']
+
         update_block_q = blocks_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(blocks_t.c.hash == reorg['block_hash']) \
+            .values(is_forked=is_forked) \
+            .where(blocks_t.c.hash == block_hash) \
             .returning(blocks_t.c.hash)
 
         update_txs_q = transactions_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(transactions_t.c.block_hash == reorg['block_hash'])
+            .values(is_forked=is_forked) \
+            .where(transactions_t.c.block_hash == block_hash)
 
         update_receipts_q = receipts_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(receipts_t.c.block_hash == reorg['block_hash'])
+            .values(is_forked=is_forked) \
+            .where(receipts_t.c.block_hash == block_hash)
 
         update_logs_q = logs_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(logs_t.c.block_hash == reorg['block_hash'])
+            .values(is_forked=is_forked) \
+            .where(logs_t.c.block_hash == block_hash)
 
         update_token_transfers_q = token_transfers_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(token_transfers_t.c.block_hash == reorg['block_hash'])
+            .values(is_forked=is_forked) \
+            .where(token_transfers_t.c.block_hash == block_hash)
 
         update_internal_transactions_q = internal_transactions_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(internal_transactions_t.c.block_hash == reorg['block_hash'])
+            .values(is_forked=is_forked) \
+            .where(internal_transactions_t.c.block_hash == block_hash)
 
         update_accounts_state_q = accounts_state_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(accounts_state_t.c.block_hash == reorg['block_hash'])
+            .values(is_forked=is_forked) \
+            .where(accounts_state_t.c.block_hash == block_hash)
 
         update_uncles_q = uncles_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(uncles_t.c.block_hash == reorg['block_hash'])
+            .values(is_forked=is_forked) \
+            .where(uncles_t.c.block_hash == block_hash)
 
-        reorg.pop('header')
         add_reorg_q = reorgs_t.insert().values(**reorg)
+
         async with self.engine.acquire() as conn:
             async with conn.begin() as tx:
                 res = await conn.execute(update_block_q)

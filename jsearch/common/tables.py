@@ -208,7 +208,8 @@ token_holders_t = sa.Table(
 reorgs_t = sa.Table(
     'reorgs',
     metadata,
-    sa.Column('id', sa.BigInteger, primary_key=True),
+    sa.Column('id', sa.BigInteger, primary_key=True, autoincrement=True),
+    sa.Column('raw_id', sa.BigInteger),
     sa.Column('block_hash', sa.String),
     sa.Column('block_number', sa.Integer),
     sa.Column('reinserted', sa.Boolean),
