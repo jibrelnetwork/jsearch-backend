@@ -39,7 +39,10 @@ def get_pending_txs_by_account(account: str, order: str, columns: List[Column] =
 
     return query.order_by(
         *get_order(
-            [pending_transactions_t.c.timestamp],
+            [
+                pending_transactions_t.c.nonce,
+                pending_transactions_t.c.timestamp,
+            ],
             order,
         )
     )

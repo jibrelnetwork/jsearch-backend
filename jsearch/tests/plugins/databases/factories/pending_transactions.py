@@ -22,8 +22,8 @@ class PendingTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     v = '0xcc'
     to = factory.LazyFunction(generate_address)
     from_ = factory.LazyFunction(generate_address)
-    gas = '0xabc'
-    gas_price = '0x123'
+    gas = factory.Faker('pyint')
+    gas_price = factory.Faker('pyint')
     input = '0x00'
     nonce = factory.Sequence(lambda n: hex(n))
     value = factory.Sequence(lambda n: hex(n))

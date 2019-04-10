@@ -156,6 +156,8 @@ class PendingTransaction(Model):
         'value': 'value',
     }
 
+    int_to_str = {'gas', 'gasPrice', 'nonce', 'value'}
+
 
 class Block(Model):
     swagger_types = {
