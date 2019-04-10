@@ -29,11 +29,11 @@ CREATE TABLE pending_transactions (
     "v" CHARACTER VARYING,
     "to" CHARACTER VARYING,
     "from" CHARACTER VARYING,
-    "gas" CHARACTER VARYING,
-    "gas_price" CHARACTER VARYING,
+    "gas" BIGINT,
+    "gas_price" BIGINT,
     "input" CHARACTER VARYING,
-    "nonce" CHARACTER VARYING,
-    "value" CHARACTER VARYING
+    "nonce" BIGINT,
+    "value" BIGINT
 );
 
 ALTER TABLE ONLY pending_transactions ADD CONSTRAINT pending_transactions_pkey
