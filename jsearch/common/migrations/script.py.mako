@@ -17,9 +17,18 @@ branch_labels = ${repr(branch_labels)}
 depends_on = ${repr(depends_on)}
 
 
+UP_SQL = """
+
+"""
+
+DOWN_SQL = """
+
+"""
+
+
 def upgrade():
-    ${upgrades if upgrades else "pass"}
+    op.execute(UP_SQL)
 
 
 def downgrade():
-    ${downgrades if downgrades else "pass"}
+    op.execute(DOWN_SQL)
