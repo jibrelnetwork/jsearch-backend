@@ -10,6 +10,7 @@ from asyncpg import Connection
 from sqlalchemy.orm import Query
 
 from jsearch.api import models
+from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
@@ -579,3 +580,33 @@ class Storage:
             if row:
                 return row['nonce']
             return 0
+
+    async def get_internal_transactions(self,
+                                        parent_tx_hash: str,
+                                        limit: int,
+                                        offset: int,
+                                        order: str):
+
+        query = get_internal_txs_by_parent(parent_tx_hash, order)
+        query = query.limit(limit)
+        query = query.offset(offset)
+
+        rows = await fetch(self.pool, query)
+        internal_txs = [models.InternalTransaction(**r) for r in rows]
+
+        return internal_txs
+
+    async def get_account_internal_transactions(self,
+                                                account: str,
+                                                limit: int,
+                                                offset: int,
+                                                order: str):
+
+        query = get_internal_txs_by_account(account, order)
+        query = query.limit(limit)
+        query = query.offset(offset)
+
+        rows = await fetch(self.pool, query)
+        internal_txs = [models.InternalTransaction(**r) for r in rows]
+
+        return internal_txs
