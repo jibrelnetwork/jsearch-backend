@@ -2,8 +2,7 @@ import json
 import logging
 from collections import defaultdict
 from itertools import groupby
-from typing import DefaultDict
-from typing import List, Optional, Dict, Any
+from typing import DefaultDict, List, Optional, Dict, Any
 
 import asyncpgsa
 from asyncpg import Connection
@@ -438,7 +437,7 @@ class Storage:
             row = await conn.fetchrow(query, account_address, token_address)
             return models.TokenHolder(**row) if row else None
 
-    async def get_blockchain_tip_status(self, last_known_block_hash: str, fork_id: str):
+    async def get_blockchain_tip_status(self, last_known_block_hash: str, fork_id: Optional[str]):
         """
         Returns status of client's last known block
         """
@@ -451,13 +450,17 @@ class Storage:
         async with self.pool.acquire() as conn:
             split = await fetch_row(conn, split_query)
             block = await fetch_row(conn, last_block_query)
-            latest_reorg = await fetch_row(conn, latest_reorg_query)
 
+            latest_reorg = await fetch_row(conn, latest_reorg_query)
             latest_reorg_id = latest_reorg.get('id')
-            affected_blocks_query = select(reorgs_t.c.block_hash).where(
-                between(reorgs_t.c.id, fork_id, latest_reorg_id)
-            )
-            affected_blocks = await fetch(conn, affected_blocks_query)
+
+            if fork_id is not None:
+                affected_blocks_query = select(reorgs_t.c.block_hash).where(
+                    between(reorgs_t.c.id, fork_id, latest_reorg_id)
+                )
+                affected_blocks = await fetch(conn, affected_blocks_query)
+            else:
+                affected_blocks = []
 
         if block is None:
             return None

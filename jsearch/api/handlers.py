@@ -379,7 +379,7 @@ async def on_new_contracts_added(request):
 
 async def get_blockchain_tip(request):
     tip = request.query.get('tip')
-    fork_id = request.query.get('forkId')
+    fork_id = request.query.get('forkId', None)
     storage = request.app['storage']
     block_status = await storage.get_blockchain_tip_status(tip, fork_id=fork_id)
     if block_status is None:
