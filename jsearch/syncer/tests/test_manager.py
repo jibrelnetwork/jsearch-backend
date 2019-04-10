@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import and_
 
-from jsearch.common.tables import blocks_t, chain_splits_t
+from jsearch.common.tables import blocks_t, chain_splits_t, assets_transfers_t
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.manager import Manager
 from jsearch.syncer.processor import SyncProcessor
@@ -12,6 +12,7 @@ pytest_plugins = (
     'jsearch.tests.plugins.databases.raw_db',
     'jsearch.tests.plugins.service_bus',
     'jsearch.tests.plugins.databases.main_db',
+    'jsearch.tests.plugins.databases.factories.assets_transfers',
     'jsearch.tests.plugins.databases.factories.token_holder',
     'jsearch.tests.plugins.databases.factories.accounts',
     'jsearch.tests.plugins.databases.factories.blocks',
@@ -190,6 +191,78 @@ async def test_reorganization_for_token_transfers_is_forked_state(
         token_transfers_t.c.address == from_account.address,
         token_transfers_t.c.to_address == to_account.address,
         token_transfers_t.c.from_address == from_account.address
+    ))).fetchone()
+
+    assert result['is_forked'] == is_forked
+
+
+@pytest.mark.usefixtures('mock_service_bus_sync_client', 'mock_service_bus')
+@pytest.mark.parametrize("is_forked", [True, False])
+async def test_reorganization_for_assets_transfers_is_forked_state(
+        db,
+        account_factory,
+        assets_transfers_factory,
+        token_factory,
+        block_factory,
+        reorg_factory,
+        raw_db_connection_string,
+        db_connection_string,
+        is_forked,
+):
+    # given
+    # create reorganization event
+    token = token_factory.create()
+    block = block_factory.create()
+
+    from_account = account_factory.create()
+    to_account = account_factory.create()
+
+    assets_transfers_factory.create(
+        address=from_account.address,
+        from_=from_account.address,
+        to=to_account.address,
+        block_hash=block.hash,
+        block_number=block.number,
+        asset_address=token.address,
+    )
+    assets_transfers_factory.create(
+        address=to_account.address,
+        from_=from_account.address,
+        to=to_account.address,
+        block_hash=block.hash,
+        block_number=block.number,
+        asset_address=token.address,
+    )
+
+    reorg = reorg_factory.stub(block_hash=block.hash, block_number=block.number, reinserted=not is_forked)
+
+    # when
+    # apply reorganization record
+    async with RawDB(raw_db_connection_string) as raw_db, MainDB(db_connection_string) as main_db:
+        manager = Manager(None, main_db, raw_db, '6000000-')
+        await manager.process_reorgs([{
+            'block_hash': reorg.block_hash,
+            'block_number': reorg.block_number,
+            'reinserted': reorg.reinserted,
+            'id': reorg.id,
+            'node_id': reorg.node_id,
+            'header': 'header'  # why do we need pop header?
+        }])
+
+    # then
+    # check transfer fork status
+    result = db.execute(assets_transfers_t.select(whereclause=and_(
+        assets_transfers_t.c.address == to_account.address,
+        assets_transfers_t.c.to == to_account.address,
+        getattr(assets_transfers_t.c, 'from') == from_account.address
+    ))).fetchone()
+
+    assert result['is_forked'] == is_forked
+
+    result = db.execute(assets_transfers_t.select(whereclause=and_(
+        assets_transfers_t.c.address == from_account.address,
+        assets_transfers_t.c.to == to_account.address,
+        getattr(assets_transfers_t.c, 'from') == from_account.address
     ))).fetchone()
 
     assert result['is_forked'] == is_forked

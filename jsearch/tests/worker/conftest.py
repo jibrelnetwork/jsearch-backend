@@ -29,7 +29,7 @@ def mock_fetch_erc20_balance_bulk(mocker):
 
         return chunk
 
-    mocker.patch('jsearch.worker.__main__.fetch_erc20_balance_bulk', fetch_erc20_balance_bulk)
+    mocker.patch('jsearch.worker.token_balances.fetch_erc20_balance_bulk', fetch_erc20_balance_bulk)
 
     return store
 
