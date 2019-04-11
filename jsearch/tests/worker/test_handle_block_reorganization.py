@@ -1,8 +1,9 @@
 from decimal import Decimal
 
-import factory
 import pytest
 from sqlalchemy import and_
+
+from jsearch.common.tables import assets_summary_t
 
 pytest_plugins = (
     'jsearch.tests.plugins.databases.main_db',
@@ -12,6 +13,8 @@ pytest_plugins = (
     'jsearch.tests.plugins.databases.factories.token_transfers',
     'jsearch.tests.plugins.databases.factories.contracts',
     'jsearch.tests.plugins.databases.factories.reorgs',
+    'jsearch.tests.plugins.databases.factories.assets_summary',
+    'jsearch.tests.plugins.databases.factories.assets_transfers',
     'jsearch.tests.plugins.last_block',
 )
 
@@ -20,9 +23,11 @@ pytest_plugins = (
 async def test_handle_reorganization(db,
                                      account_factory,
                                      block_factory,
-                                     token_holder_factory: factory.Factory,
+                                     token_holder_factory,
                                      token_factory,
                                      transfer_factory,
+                                     assets_summary_factory,
+                                     assets_transfers_factory,
                                      reorg_factory,
                                      mock_last_block_consumer,
                                      mock_fetch_erc20_balance_bulk,
@@ -63,8 +68,28 @@ async def test_handle_reorganization(db,
         is_forked=False
     )
 
+    assets_transfers_factory.create(
+        address=from_account.address,
+        from_=from_account.address,
+        to=to_account.address,
+        block_hash=block.hash,
+        block_number=block.number,
+        asset_address=token.address,
+    )
+    assets_transfers_factory.create(
+        address=to_account.address,
+        from_=from_account.address,
+        to=to_account.address,
+        block_hash=block.hash,
+        block_number=block.number,
+        asset_address=token.address,
+    )
+
     token_holder_factory.create(token_address=token.address, account_address=to_account.address)
     token_holder_factory.create(token_address=token.address, account_address=from_account.address)
+
+    assets_summary_factory.create(asset_address=token.address, address=to_account.address)
+    assets_summary_factory.create(asset_address=token.address, address=from_account.address)
 
     reorg = reorg_factory.create(block_hash=block.hash, block_number=block.number)
 
@@ -87,7 +112,7 @@ async def test_handle_reorganization(db,
     })
 
     # then
-    # check what balance was updated
+    # check what balances were updated
     to_account_balance = db.execute(
         token_holders_t.select(whereclause=and_(
             token_holders_t.c.token_address == token.address,
@@ -102,4 +127,22 @@ async def test_handle_reorganization(db,
             token_holders_t.c.account_address == from_account.address
         ))
     ).fetchone()
-    assert from_account_balance['balance'] == Decimal(150), "balance wasn't updated due to reorg event applying"
+    assert from_account_balance['balance'] == Decimal(150), "asset wasn't updated due to reorg event applying"
+
+    # then
+    # check what assets balances were updated
+    to_account_balance = db.execute(
+        assets_summary_t.select(whereclause=and_(
+            assets_summary_t.c.asset_address == token.address,
+            assets_summary_t.c.address == to_account.address
+        ))
+    ).fetchone()
+    assert to_account_balance['value'] == Decimal(100), "asset wasn't updated due to reorg event applying"
+
+    to_account_balance = db.execute(
+        assets_summary_t.select(whereclause=and_(
+            assets_summary_t.c.asset_address == token.address,
+            assets_summary_t.c.address == from_account.address
+        ))
+    ).fetchone()
+    assert to_account_balance['value'] == Decimal(150), "asset wasn't updated due to reorg event applying"
