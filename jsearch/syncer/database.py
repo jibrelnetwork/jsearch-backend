@@ -25,6 +25,7 @@ from jsearch.common.tables import (
     token_transfers_t,
     chain_splits_t,
     pending_transactions_t,
+    assets_transfers_t,
 )
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
@@ -380,6 +381,10 @@ class MainDB(DBWrapper):
             .values(is_forked=not reorg['reinserted']) \
             .where(token_transfers_t.c.block_hash == reorg['block_hash'])
 
+        update_assets_transfers_q = assets_transfers_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(assets_transfers_t.c.block_hash == reorg['block_hash'])
+
         update_internal_transactions_q = internal_transactions_t.update() \
             .values(is_forked=not reorg['reinserted']) \
             .where(internal_transactions_t.c.block_hash == reorg['block_hash'])
@@ -411,6 +416,7 @@ class MainDB(DBWrapper):
                 await conn.execute(update_uncles_q)
                 await conn.execute(add_reorg_q)
                 await conn.execute(update_token_transfers_q)
+                await conn.execute(update_assets_transfers_q)
                 logger.debug('Reorg applyed for block %s %s', reorg['block_number'], reorg['block_hash'])
                 return True
 
