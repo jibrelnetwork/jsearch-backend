@@ -13,6 +13,18 @@ log = logging.getLogger(__name__)
 SQL_FOLDER = Path(__file__).parent / "sql"
 DUMPS_FOLDER = Path(__file__).parent / "dumps"
 
+tables = [
+    "headers",
+    "bodies",
+    "pending_transactions",
+    "receipts",
+    "accounts",
+    "rewards",
+    "reorgs",
+    "chain_splits",
+    "internal_transactions"
+]
+
 
 def setup_database(connection_string):
     engine = create_engine(connection_string)
@@ -24,21 +36,11 @@ def setup_database(connection_string):
 def teardown_database(connection_string):
     engine = create_engine(connection_string)
     with engine.connect() as db:
-        truncate(db)
+        for table in tables:
+            db.execute(f"DROP TABLE IF EXISTS {table}")
 
 
 def truncate(db):
-    tables = [
-        "headers",
-        "bodies",
-        "pending_transactions",
-        "receipts",
-        "accounts",
-        "rewards",
-        "reorgs",
-        "chain_splits",
-        "internal_transactions"
-    ]
     for table in tables:
         db.execute(f"TRUNCATE {table};")
 
@@ -92,3 +94,8 @@ def raw_db_sample(raw_db_connection_string):
         sample_data[t.name] = table_data
     yield sample_data
     truncate(engine)
+
+
+@pytest.fixture(scope='function', autouse=True)
+def truncate_raw_db(raw_db):
+    truncate(raw_db)

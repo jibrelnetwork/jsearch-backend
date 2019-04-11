@@ -14,6 +14,7 @@ SLEEP_ON_ERROR_DEFAULT = 0.1
 SLEEP_ON_DB_ERROR_DEFAULT = 5
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
 REORGS_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL / 2
+PENDING_TX_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL * 2
 
 loop = asyncio.get_event_loop()
 
@@ -48,8 +49,10 @@ class Manager:
 
         service_loops = [
             self.sequence_sync_loop(),
-            self.reorg_loop()
+            self.reorg_loop(),
+            self.pending_tx_loop(),
         ]
+
         for coro in service_loops:
             coro = asyncio.shield(coro)
 
@@ -119,6 +122,35 @@ class Manager:
                 self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
                 await asyncio.sleep(0.1)
 
+    async def pending_tx_loop(self):
+        logger.info("Entering Pending Tx Loop")
+
+        while self._running is True:
+            await self.get_and_process_pending_txs()
+
+    async def get_and_process_pending_txs(self):
+        try:
+            start_time = time.monotonic()
+            new_pending_txs = await self.get_new_pending_txs()
+
+            if len(new_pending_txs) == 0:
+                logger.info("No pending txs, sleeping")
+                await asyncio.sleep(self.sleep_on_no_blocks)
+                return
+
+            await self.main_db.insert_or_update_pending_txs(new_pending_txs)
+
+            proc_time = time.monotonic() - start_time
+            logger.info("%s pending txs processed on %0.2fs", len(new_pending_txs), proc_time)
+        except Exception:
+            logger.exception("Pending Tx Loop Error accured:")
+            await asyncio.sleep(self.sleep_on_error)
+            self.sleep_on_error = self.sleep_on_error * 2
+            raise
+        else:
+            self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
+            await asyncio.sleep(0.1)
+
     async def process_chain_split(self, split):
         new_reorgs = await self.get_reorgs(split['id'])
         await self.process_reorgs(new_reorgs)
@@ -177,6 +209,12 @@ class Manager:
         logger.info('Last chain split is %s', last_chain_split_num)
         new_chain_splits = await self.raw_db.get_chain_splits_from(last_chain_split_num, REORGS_BATCH_SIZE)
         return new_chain_splits
+
+    async def get_new_pending_txs(self):
+        last_synced_id = await self.main_db.get_pending_tx_last_synced_id()
+        logger.info("Last 'pending_transactions_t.last_synced_id' is %s" % last_synced_id)
+
+        return await self.raw_db.get_pending_txs_from(last_synced_id, PENDING_TX_BATCH_SIZE)
 
     async def process_reorgs(self, reorgs):
         c = 0

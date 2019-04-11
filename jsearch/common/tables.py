@@ -81,6 +81,27 @@ internal_transactions_t = sa.Table(
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
 )
 
+pending_transactions_t = sa.Table(
+    'pending_transactions',
+    metadata,
+    sa.Column('last_synced_id', sa.BigInteger, index=True),
+    sa.Column('hash', sa.String(70), primary_key=True),
+    sa.Column('status', sa.String),
+    sa.Column('timestamp', postgresql.TIMESTAMP),
+    sa.Column('removed', sa.Boolean),
+    sa.Column('node_id', sa.String(70)),
+    sa.Column('r', sa.String),
+    sa.Column('s', sa.String),
+    sa.Column('v', sa.String),
+    sa.Column('to', sa.String, index=True),
+    sa.Column('from', sa.String, index=True),
+    sa.Column('gas', HexBigInteger),
+    sa.Column('gas_price', HexBigInteger),
+    sa.Column('input', sa.String),
+    sa.Column('nonce', HexBigInteger),
+    sa.Column('value', HexBigInteger),
+)
+
 transactions_t = sa.Table(
     'transactions',
     metadata,
@@ -289,6 +310,7 @@ TABLES = (
     accounts_base_t,
     token_holders_t,
     internal_transactions_t,
+    pending_transactions_t,
     reorgs_t,
     token_transfers_t,
     chain_splits_t,
