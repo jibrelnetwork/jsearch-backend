@@ -1,10 +1,8 @@
-import datetime
-
 import factory
 import pytest
 
 from jsearch.common.tables import pending_transactions_t
-from jsearch.tests.plugins.databases.factories.common import generate_address
+from jsearch.tests.plugins.databases.factories.common import generate_address, generate_psql_timestamp
 from .common import session, Base
 
 
@@ -16,7 +14,7 @@ class PendingTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     last_synced_id = factory.Faker('pyint')  # 0..9999
     hash = factory.LazyFunction(generate_address)
     status = ''
-    timestamp = factory.LazyFunction(datetime.time)
+    timestamp = factory.LazyFunction(generate_psql_timestamp)
     removed = False
     node_id = '1'
     r = '0xaa'
@@ -24,8 +22,8 @@ class PendingTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     v = '0xcc'
     to = factory.LazyFunction(generate_address)
     from_ = factory.LazyFunction(generate_address)
-    gas = '0xabc'
-    gas_price = '0x123'
+    gas = factory.Faker('pyint')
+    gas_price = factory.Faker('pyint')
     input = '0x00'
     nonce = factory.Sequence(lambda n: hex(n))
     value = factory.Sequence(lambda n: hex(n))

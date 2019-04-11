@@ -1,3 +1,4 @@
+import datetime
 import os
 from uuid import uuid4
 
@@ -16,3 +17,7 @@ Base = declarative_base()
 
 def generate_address():
     return to_normalized_address(keccak(text=str(uuid4()))[-20:])
+
+
+def generate_psql_timestamp():
+    return datetime.time().strftime('%Y-%m-%d %H:%M:%S')
