@@ -99,7 +99,7 @@ class Metrics(Singleton):
                     'Metrics',
                     extra={
                         'tag': 'METRICS',
-                        'name': name,
+                        'metrics_name': name,
                         'total_items_count': value,
                         'total_time': worked_time,
                         'per_worker_speed': speed,
@@ -113,7 +113,7 @@ class Metrics(Singleton):
                 'Metrics by values',
                 extra={
                     'tag': 'METRICS',
-                    'name': name,
+                    'metrics_name': name,
                     'total_items_count': value,
                 }
             )

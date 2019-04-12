@@ -71,7 +71,15 @@ async def handle_block_reorganization(record):
     block_hash = record['block_hash']
     block_number = record['block_number']
 
-    logging.info("[REORG] Block number %s, hash %s with reinsert status (%s)", block_number, block_hash, reinserted)
+    logger.info(
+        'Handling block reorganization...',
+        extra={
+            'tag': 'REORG',
+            'block_number': block_number,
+            'block_hash': block_hash,
+            'reinserted': reinserted,
+        }
+    )
 
     loop = asyncio.get_event_loop()
     last_block = await LastBlock().get()
@@ -79,9 +87,15 @@ async def handle_block_reorganization(record):
     async with service.engine.acquire() as connection:
         updates = await get_balance_updates(connection, block_hash, block_number)
 
-    logging.info(
-        "[REORG] Block number %s, hash %s with reinsert status (%s): %s updates",
-        block_number, block_hash, reinserted, len(updates)
+    logger.info(
+        'Fetched balance updates',
+        extra={
+            'tag': 'REORG',
+            'block_number': block_number,
+            'block_hash': block_hash,
+            'reinserted': reinserted,
+            'balance_updates_count': len(updates),
+        }
     )
 
     updates = await loop.run_in_executor(executor.get(), update_balances, updates, last_block)

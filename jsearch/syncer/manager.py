@@ -66,7 +66,13 @@ class Manager:
 
         done, pending = await asyncio.wait(self.tasks, timeout=timeout)
 
-        logging.warning('[SERVICE BUS] There are pending futures %s. Their will be cancel', len(pending))
+        logger.warning(
+            'There are pending futures, that will be canceled',
+            extra={
+                'tag': 'SERVICE BUS',
+                'count': len(pending)
+            }
+        )
         for future in done:
             future.result()
 

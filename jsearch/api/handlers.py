@@ -18,7 +18,7 @@ from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 async def get_account(request):
