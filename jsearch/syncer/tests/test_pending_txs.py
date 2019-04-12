@@ -101,7 +101,7 @@ async def test_pending_tx_is_saved_to_main_db(db, raw_db, db_connection_string, 
             'gas_price': int(pending_tx_fields['gasPrice'], 16),
             'input': pending_tx_fields['input'],
             'nonce': int(pending_tx_fields['nonce'], 16),
-            'value': int(pending_tx_fields['value'], 16),
+            'value': str(int(pending_tx_fields['value'], 16)),
         },
     ]
 
@@ -174,6 +174,70 @@ async def test_pending_tx_is_marked_as_removed(
             'gas_price': int(pending_tx_fields['gasPrice'], 16),
             'input': pending_tx_fields['input'],
             'nonce': int(pending_tx_fields['nonce'], 16),
-            'value': int(pending_tx_fields['value'], 16),
+            'value': str(int(pending_tx_fields['value'], 16)),
+        },
+    ]
+
+
+async def test_pending_tx_can_be_saved_with_a_big_value(
+        db,
+        raw_db,
+        db_connection_string,
+        raw_db_connection_string,
+):
+    raw_db_wrapper = RawDB(raw_db_connection_string)
+    main_db_wrapper = MainDB(db_connection_string)
+    manager = Manager(None, main_db_wrapper, raw_db_wrapper, None)
+
+    await raw_db_wrapper.connect()
+    await main_db_wrapper.connect()
+
+    raw_db.execute(
+        """
+        INSERT INTO pending_transactions (
+          "id",
+          "tx_hash",
+          "status",
+          "fields",
+          "timestamp",
+          "removed",
+          "node_id"
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, [
+            (
+                1,
+                '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
+                '',
+                Json({**pending_tx_fields, **{'value': '0x314dc6448d9338c15b0a00000000'}}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+        ]
+    )
+
+    await manager.get_and_process_pending_txs()
+
+    pending_txs = db.execute(pending_transactions_t.select()).fetchall()
+    pending_txs = [dict(tx) for tx in pending_txs]
+
+    assert pending_txs == [
+        {
+            'last_synced_id': 1,
+            'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
+            'status': '',
+            'timestamp': datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
+            'removed': False,
+            'node_id': '1',
+            'r': pending_tx_fields['r'],
+            's': pending_tx_fields['s'],
+            'v': pending_tx_fields['v'],
+            'to': pending_tx_fields['to'],
+            'from': pending_tx_fields['from'],
+            'gas': int(pending_tx_fields['gas'], 16),
+            'gas_price': int(pending_tx_fields['gasPrice'], 16),
+            'input': pending_tx_fields['input'],
+            'nonce': int(pending_tx_fields['nonce'], 16),
+            'value': '1000000000000000000000000000000000',
         },
     ]

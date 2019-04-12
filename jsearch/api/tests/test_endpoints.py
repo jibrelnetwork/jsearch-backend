@@ -1546,7 +1546,7 @@ async def test_get_account_pending_transactions(cli, from_, to, pending_transact
         gas_price=10000000000,
         input='0x0',
         nonce=42,
-        value=0,
+        value='1111111111111111111111111111111111111111',
     )
 
     resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/pending_transactions')
@@ -1572,7 +1572,7 @@ async def test_get_account_pending_transactions(cli, from_, to, pending_transact
                 'gasPrice': '10000000000',
                 'input': '0x0',
                 'nonce': '42',
-                'value': '0',
+                'value': '1111111111111111111111111111111111111111',
             },
         ]
     }

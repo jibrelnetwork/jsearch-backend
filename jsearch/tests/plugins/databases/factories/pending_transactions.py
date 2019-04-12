@@ -25,8 +25,8 @@ class PendingTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     gas = factory.Faker('pyint')
     gas_price = factory.Faker('pyint')
     input = '0x00'
-    nonce = factory.Sequence(lambda n: hex(n))
-    value = factory.Sequence(lambda n: hex(n))
+    nonce = factory.Sequence(lambda n: n)
+    value = factory.Sequence(lambda n: str(n))
 
     class Meta:
         model = PendingTransactionModel
