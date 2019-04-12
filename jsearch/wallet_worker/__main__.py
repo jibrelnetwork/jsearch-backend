@@ -101,9 +101,16 @@ class DatabaseService(Service, Singleton):
     async def add_assets_transfer_token_transfer(self, transfer_data):
         transfer_from_id = ERC20_METHODS_IDS['transferFrom']
         if transfer_data['token_decimals'] is None:
-            logger.warning('No decimals for token transfer %s TX: %s',
-                           transfer_data['token_address'], transfer_data['transaction_hash'])
+            logger.warning(
+                'No decimals for token transfer',
+                extra={
+                    'token_address': transfer_data['token_address'],
+                    'transaction_hash': transfer_data['transaction_hash'],
+                }
+            )
+
             transfer_data['token_decimals'] = 18
+
         async with self.engine.acquire() as connection:
             result = await connection.execute(transactions_t.select().where(
                 transactions_t.c.hash == transfer_data['transaction_hash']))

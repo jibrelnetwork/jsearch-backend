@@ -103,7 +103,7 @@ async def handle_block_reorganization(record):
 async def receive_last_block(record: Dict[str, int]):
     number = record.get('number')
 
-    logger.info("[LAST BLOCK] Receive new last block number %s", number)
+    logger.info("Received new last block", extra={'tag': 'LAST BLOCK', 'number': number})
 
     last_block = LastBlock()
     last_block.update(number=number)

@@ -40,7 +40,7 @@ class SyncProcessor:
         :param block_number: number of block to sync
         :return: True if sync is successfull, False if syn fails or block already synced
         """
-        logger.debug("Syncing Block %s #%s", block_hash, block_number)
+        logger.debug("Syncing Block", extra={'hash': block_hash, 'number': block_number})
 
         self.main_db.connect()
         self.raw_db.connect()
@@ -48,15 +48,15 @@ class SyncProcessor:
         start_time = time.monotonic()
         is_block_exist = self.main_db.is_block_exist(block_hash)
         if is_block_exist is True:
-            logger.debug("Block #%s exist", block_hash)
+            logger.debug("Block already exists", extra={'hash': block_hash})
             return False
         receipts = self.raw_db.get_block_receipts(block_hash)
         if receipts is None:
-            logger.debug("Block #%s not ready: no receipts", block_hash)
+            logger.debug("Block is not ready, no receipts", extra={'hash': block_hash})
             return False
         reward = self.raw_db.get_reward(block_hash)
         if reward is None:
-            logger.debug("Block #%s not ready: no reward", block_hash)
+            logger.debug("Block is not ready, no reward", extra={'hash': block_hash})
             return False
 
         header = self.raw_db.get_header_by_hash(block_hash)
@@ -94,7 +94,7 @@ class SyncProcessor:
             service_bus.sync_client.write_account(acc)
 
         sync_time = time.monotonic() - start_time
-        logger.debug("Block %s #%s synced on %ss", block_hash, block_number, sync_time)
+        logger.debug("Block is synced", extra={'hash': block_hash, 'number': block_number, 'sync_time': sync_time})
         self.main_db.disconnect()
         return True
 
