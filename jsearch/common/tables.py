@@ -1,3 +1,5 @@
+import logging
+
 import sqlalchemy as sa
 import sqlalchemy.types as types
 from sqlalchemy.dialects import postgresql
@@ -31,6 +33,25 @@ class HexBigInteger(types.TypeDecorator):
         if isinstance(value, str) and value.startswith('0x'):
             return int(value, 16)
         return int(value)
+
+
+class HexToDecString(types.TypeDecorator):
+    """
+    Converts hex string to dec string
+    """
+
+    impl = types.String
+
+    def process_bind_param(self, value, dialect):
+        logging.debug({'value': value})
+
+        if value is None:
+            return None
+
+        if isinstance(value, str) and value.startswith('0x'):
+            return str(int(value, 16))
+
+        return str(int(value))
 
 
 metadata = sa.MetaData()
@@ -99,7 +120,7 @@ pending_transactions_t = sa.Table(
     sa.Column('gas_price', HexBigInteger),
     sa.Column('input', sa.String),
     sa.Column('nonce', HexBigInteger),
-    sa.Column('value', HexBigInteger),
+    sa.Column('value', HexToDecString),
 )
 
 transactions_t = sa.Table(
