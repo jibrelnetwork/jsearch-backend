@@ -49,9 +49,6 @@ class HexToDecString(types.TypeDecorator):
             return None
 
         if isinstance(value, str) and value.startswith('0x'):
-            logging.info('is string')
-            logging.info(f'morphed: {str(int(value, 16))}')
-
             return str(int(value, 16))
 
         return str(int(value))
