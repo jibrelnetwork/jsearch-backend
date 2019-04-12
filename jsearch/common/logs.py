@@ -15,7 +15,7 @@ def configure(log_level):
         'formatters': {
             'default': {
                 'class': 'pythonjsonlogger.jsonlogger.JsonFormatter',
-                'format': '%(message)s',
+                'format': '%(asctime)-15s %(levelname)-8s %(name)s: %(message)s',
             }
         },
         'handlers': {
