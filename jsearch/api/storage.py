@@ -11,6 +11,7 @@ from sqlalchemy.orm import Query
 
 from jsearch.api import models
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
+from jsearch.api.database_queries.pending_transactions import get_pending_txs_by_account
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
@@ -608,5 +609,20 @@ class Storage:
 
         rows = await fetch(self.pool, query)
         internal_txs = [models.InternalTransaction(**r) for r in rows]
+
+        return internal_txs
+
+    async def get_account_pending_transactions(self,
+                                               account: str,
+                                               limit: int,
+                                               offset: int,
+                                               order: str):
+
+        query = get_pending_txs_by_account(account, order)
+        query = query.limit(limit)
+        query = query.offset(offset)
+
+        rows = await fetch(self.pool, query)
+        internal_txs = [models.PendingTransaction(**r) for r in rows]
 
         return internal_txs

@@ -123,6 +123,42 @@ class InternalTransaction(Model):
     int_to_str = {'value', 'gasLimit'}
 
 
+class PendingTransaction(Model):
+    swagger_types = {
+        'hash': str,
+        'status': str,
+        'removed': str,
+        'r': str,
+        's': str,
+        'v': str,
+        'to': str,
+        'from': str,
+        'gas': str,
+        'gas_price': str,
+        'input': str,
+        'nonce': str,
+        'value': str,
+    }
+
+    attribute_map = {
+        'hash': 'hash',
+        'status': 'status',
+        'removed': 'removed',
+        'r': 'r',
+        's': 's',
+        'v': 'v',
+        'to': 'to',
+        'from': 'from',
+        'gas': 'gas',
+        'gas_price': 'gasPrice',
+        'input': 'input',
+        'nonce': 'nonce',
+        'value': 'value',
+    }
+
+    int_to_str = {'gas', 'gasPrice', 'nonce', 'value'}
+
+
 class Block(Model):
     swagger_types = {
         'difficulty': str,
