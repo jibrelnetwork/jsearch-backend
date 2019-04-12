@@ -76,6 +76,12 @@ class SyncProcessor:
         self.write_block(block)
         service_bus.sync_client.write_logs(logs=block.logs)
 
+        contracts_set = set()
+        for acc in block.accounts:
+            if acc['code'] != '':
+                contracts_set.add(acc['address'])
+
+
         internal_tx_parent_map = defaultdict(list)
         for t in block.internal_txs:
             internal_tx_parent_map[t['parent_tx_hash']].append(t)
@@ -88,6 +94,7 @@ class SyncProcessor:
         for tx in block.txs:
             tx['internal_transactions'] = internal_tx_parent_map[tx['hash']]
             tx['receipt_status'] = tx_status_map[tx['hash']]
+            tx['to_contract'] = tx['to'] in contracts_set
             service_bus.sync_client.write_tx(tx)
 
         for acc in block.accounts:

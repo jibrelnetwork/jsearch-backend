@@ -279,6 +279,21 @@ assets_summary_t = sa.Table(
 )
 
 
+wallet_events_t = sa.Table(
+    'wallet_events',
+    metadata,
+    sa.Column('address', sa.String),
+    sa.Column('type', sa.String),
+    sa.Column('tx_hash', sa.String),
+    sa.Column('block_hash', sa.String),
+    sa.Column('block_number', sa.BigInteger),
+    sa.Column('event_index', sa.BigInteger),
+    sa.Column('is_forked', sa.Boolean, default=False),
+    sa.Column('tx_data', postgresql.JSONB),
+    sa.Column('event_data', postgresql.JSONB),
+)
+
+
 TABLES = (
     blocks_t,
     uncles_t,
@@ -294,4 +309,5 @@ TABLES = (
     chain_splits_t,
     assets_transfers_t,
     assets_summary_t,
+    wallet_events_t,
 )
