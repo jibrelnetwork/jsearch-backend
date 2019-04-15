@@ -91,5 +91,5 @@ async def make_app():
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    app_ = loop.run_until_complete(make_app())
-    web.run_app(app_)
+    application = loop.run_until_complete(make_app())
+    web.run_app(application)
