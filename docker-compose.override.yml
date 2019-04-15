@@ -8,7 +8,9 @@ services:
     - kafka
     build:
       context: .
-      dockerfile: ./docker/tests/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        - POETRY_FLAGS=
     tmpfs:
     - /tmp
     - /home/root/.ethash
@@ -24,6 +26,7 @@ services:
     - JSEARCH_MAIN_DB=postgres://postgres:postgres@test_db/jsearch_main_test
     env_file:
     - config/dev.env
+    user: root
 
   test_db:
     image: postgres:9.6-alpine

@@ -9,6 +9,9 @@ shell_tests:
 build:
 	docker-compose build api
 
+lock:
+	docker-compose run --rm --entrypoint "poetry lock" tests
+
 build_tests:
 	docker-compose build api
 	docker-compose build tests
