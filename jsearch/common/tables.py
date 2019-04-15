@@ -276,6 +276,7 @@ token_transfers_t = sa.Table(
     sa.Column('token_name', sa.String),
     sa.Column('token_symbol', sa.String),
     sa.Column('is_forked', sa.Boolean),
+    sa.Column('status', sa.Integer),
 )
 
 chain_splits_t = sa.Table(

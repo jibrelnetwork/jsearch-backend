@@ -39,7 +39,8 @@ def log_to_transfers(log: Log, block: Block, contract: Contract) -> Transfers:
         'token_value': log['token_amount'],
         'transaction_hash': log['transaction_hash'],
         'transaction_index': log['transaction_index'],
-        'is_forked': block['is_forked']
+        'is_forked': block['is_forked'],
+        'status': log['status']
     }
 
     # FAQ: Construct 2 entries for every transfer event to optimize performance.
