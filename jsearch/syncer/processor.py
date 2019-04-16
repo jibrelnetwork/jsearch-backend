@@ -1,8 +1,13 @@
 import logging
 import re
+import time
+from collections import defaultdict
 from typing import Optional, NamedTuple, Dict, Any, List, Tuple
 
-from jsearch.syncer.database import MainDBSync
+from jsearch import service_bus
+from jsearch import settings
+from jsearch.common import contracts
+from jsearch.syncer.database import MainDBSync, RawDBSync
 from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
@@ -49,7 +54,7 @@ class BlockData(NamedTuple):
         for account in self.accounts:
             service_bus.sync_client.write_account(account)
 
-        logs = [dict(**log, status=tx_status_map[log['transaction_hash']]) for log in self.logs]
+        logs = [dict(log, **{'status': tx_status_map[log['transaction_hash']]}) for log in self.logs]
         service_bus.sync_client.write_logs(logs=logs)
 
 
@@ -259,6 +264,10 @@ class SyncProcessor:
         return items
 
 
+first_cap_re = re.compile('(.)([A-Z][a-z]+)')
+all_cap_re = re.compile('([a-z0-9])([A-Z])')
+
+
 def case_convert(name):
     s1 = first_cap_re.sub(r'\1_\2', name)
     return all_cap_re.sub(r'\1_\2', s1).lower()
@@ -271,17 +280,3 @@ def dict_keys_case_convert(d):
 def hex_vals_to_int(d, keys):
     for k in keys:
         d[k] = int(d[k], 16)
-
-
-first_cap_re = re.compile('(.)([A-Z][a-z]+)')
-import logging
-import time
-from collections import defaultdict
-from typing import Dict, Any, List
-
-from jsearch import service_bus
-from jsearch import settings
-from jsearch.common import contracts
-from jsearch.syncer.database import MainDBSync, RawDBSync
-
-logger = logging.getLogger(__name__)
