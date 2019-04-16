@@ -3,6 +3,8 @@ import os
 JSEARCH_MAIN_DB = os.getenv('JSEARCH_MAIN_DB', 'postgres://localhost/jsearch_main')
 JSEARCH_RAW_DB = os.getenv('JSEARCH_RAW_DB', 'postgres://localhost/jsearch_raw')
 
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+
 # can get list of connection.
 # examples:
 # kafka-1:19092, kafka-2:192092

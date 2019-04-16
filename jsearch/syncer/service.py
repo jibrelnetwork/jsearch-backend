@@ -54,11 +54,11 @@ class Service:
         while not self._is_need_to_stop:
             await asyncio.sleep(0.5)
 
-        logging.info(f'Received exit signal ...')
-        logging.info('Stop service bus...')
+        logger.info('Received exit signal ...')
+        logger.info('Stop service bus...')
 
         await self.stop()
 
         asyncio.ensure_future(shutdown())
 
-        logging.info('Shutdown complete.')
+        logger.info('Shutdown complete.')

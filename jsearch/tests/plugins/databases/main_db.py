@@ -9,7 +9,7 @@ import pytest
 from aiopg.sa import Engine
 from sqlalchemy import create_engine
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def setup_database(connection_string):
@@ -77,9 +77,9 @@ def fill_db(db, do_truncate_db):
             records = dump.get(table.name)
             if records:
                 db.execute(table.insert(), records)
-                logging.info('Fill %s table', table.name)
+                logger.info('Fill table', extra={'table_name': table.name})
             else:
-                logging.info('Empty data for %s table', table.name)
+                logger.info('Table has empty data', extra={'table_name': table.name})
 
     return _wrapper
 

@@ -44,7 +44,7 @@ class Manager:
         self.tasks = []
 
     async def run(self):
-        logger.info("Starting Sync Manager, sync range: %s", self.sync_range)
+        logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
         self._running = True
 
         service_loops = [
@@ -66,7 +66,13 @@ class Manager:
 
         done, pending = await asyncio.wait(self.tasks, timeout=timeout)
 
-        logging.warning('[SERVICE BUS] There are pending futures %s. Their will be cancel', len(pending))
+        logger.warning(
+            'There are pending futures, that will be canceled',
+            extra={
+                'tag': 'SERVICE BUS',
+                'count': len(pending)
+            }
+        )
         for future in done:
             future.result()
 
@@ -88,7 +94,14 @@ class Manager:
 
                 sync_time = time.monotonic() - start_time
                 avg_time = sync_time / synced_blocks_cnt if synced_blocks_cnt else 0
-                logger.info("%s blocks synced on %0.2fs, avg time %0.2fs", synced_blocks_cnt, sync_time, avg_time)
+                logger.info(
+                    "Synced batch of blocks",
+                    extra={
+                        'amount': synced_blocks_cnt,
+                        'total_time': sync_time,
+                        'average_time': avg_time,
+                    }
+                )
             except DatabaseError:
                 logger.exception("Database Error raised:")
                 await asyncio.sleep(self.sleep_on_db_error)
@@ -113,9 +126,16 @@ class Manager:
                     await self.process_chain_split(split)
 
                 proc_time = time.monotonic() - start_time
-                logger.info("%s chain splits processed on %0.2fs", len(new_splits), proc_time)
+                logger.info(
+                    "Processed batch of chain splits",
+                    extra={
+                        'amount': len(new_splits),
+                        'total_time': proc_time,
+                    }
+                )
+
             except Exception:
-                logger.exception("Reorg Loop Error accured:")
+                logger.exception("Reorg Loop Error occured:")
                 await asyncio.sleep(self.sleep_on_error)
                 self.sleep_on_error = self.sleep_on_error * 2
             else:
@@ -141,9 +161,16 @@ class Manager:
             await self.main_db.insert_or_update_pending_txs(new_pending_txs)
 
             proc_time = time.monotonic() - start_time
-            logger.info("%s pending txs processed on %0.2fs", len(new_pending_txs), proc_time)
+            logger.info(
+                "Processed batch of pending txs",
+                extra={
+                    'amount': len(new_pending_txs),
+                    'total_time': proc_time,
+                }
+            )
+
         except Exception:
-            logger.exception("Pending Tx Loop Error accured:")
+            logger.exception("Pending Tx Loop Error occured:")
             await asyncio.sleep(self.sleep_on_error)
             self.sleep_on_error = self.sleep_on_error * 2
             raise
@@ -178,8 +205,15 @@ class Manager:
             self.latest_available_block_num = latest_available_block_num
             await service_bus.emit_last_block_event(number=self.latest_available_block_num)
 
-        logger.info("Latest synced block num is %s, %s blocks to sync, sync mode: %s",
-                    latest_synced_block_num, len(blocks), sync_mode)
+        logger.info(
+            "Fetched new blocks to sync",
+            extra={
+                'latest_synced_block_number': latest_synced_block_num,
+                'blocks_to_sync': len(blocks),
+                'sync_mode': sync_mode,
+            }
+        )
+
         return blocks
 
     async def get_blocks_to_sync_fast(self, latest_synced_block_num, chunk_size):
@@ -206,13 +240,14 @@ class Manager:
 
     async def get_new_chain_splits(self):
         last_chain_split_num = await self.main_db.get_last_chain_split()
-        logger.info('Last chain split is %s', last_chain_split_num)
+
+        logger.info("Fetched last chain split", extra={'number': last_chain_split_num})
         new_chain_splits = await self.raw_db.get_chain_splits_from(last_chain_split_num, REORGS_BATCH_SIZE)
         return new_chain_splits
 
     async def get_new_pending_txs(self):
         last_synced_id = await self.main_db.get_pending_tx_last_synced_id()
-        logger.info("Last 'pending_transactions_t.last_synced_id' is %s" % last_synced_id)
+        logger.info("Fetched last pending tx synced ID", extra={'number': last_synced_id})
 
         return await self.raw_db.get_pending_txs_from(last_synced_id, PENDING_TX_BATCH_SIZE)
 

@@ -405,7 +405,13 @@ class MainDB(DBWrapper):
                 rows = await res.fetchall()
                 if len(rows) == 0:
                     # no updates, block is not synced - aborting reorg
-                    logger.debug('Aborting reorg for block %s %s', reorg['block_number'], reorg['block_hash'])
+                    logger.debug(
+                        'Aborting reorg for a block',
+                        extra={
+                            'block_hash': reorg['block_hash'],
+                            'block_number': reorg['block_number'],
+                        },
+                    )
                     await tx.rollback()
                     return False
                 await conn.execute(update_txs_q)
@@ -417,7 +423,13 @@ class MainDB(DBWrapper):
                 await conn.execute(add_reorg_q)
                 await conn.execute(update_token_transfers_q)
                 await conn.execute(update_assets_transfers_q)
-                logger.debug('Reorg applyed for block %s %s', reorg['block_number'], reorg['block_hash'])
+                logger.debug(
+                    'Reord is applied for a block',
+                    extra={
+                        'block_hash': reorg['block_hash'],
+                        'block_number': reorg['block_number'],
+                    },
+                )
                 return True
 
     async def get_last_chain_split(self):
