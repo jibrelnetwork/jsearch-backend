@@ -101,6 +101,7 @@ async def test_add_wallet_event_token_transfer(db, transfer_factory, transaction
     tx_data['receipt_status'] = 1
     transfer_data = factory.build(dict, FACTORY_CLASS=transfer_factory,
                                   transaction_hash=tx.hash, token_value=5 * 10 ** 18, token_decimals=18)
+    transfer_data['status'] = 1
     await s.add_wallet_event_token_transfer(transfer_data)
 
     res = db.execute(wallet_events_t.select()).fetchall()

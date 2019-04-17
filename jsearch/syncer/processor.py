@@ -81,7 +81,6 @@ class SyncProcessor:
             if acc['code'] != '':
                 contracts_set.add(acc['address'])
 
-
         internal_tx_parent_map = defaultdict(list)
         for t in block.internal_txs:
             internal_tx_parent_map[t['parent_tx_hash']].append(t)

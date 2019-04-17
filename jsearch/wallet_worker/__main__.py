@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from aiopg.sa import Engine, create_engine
 from jsearch import settings
 from jsearch.common.logs import configure
-from jsearch.common.tables import assets_transfers_t, transactions_t, assets_summary_t, wallet_events_t
+from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t
 from jsearch.service_bus import (
     service_bus,
     ROUTE_WALLET_HANDLE_ASSETS_UPDATE,
@@ -125,16 +125,14 @@ service = DatabaseService()
 @service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS)
 async def handle_new_transaction(tx_data):
     logging.info("[WALLET] Handling new Transaction %s", tx_data['hash'])
-
-    await service.add_wallet_event_tx(event_data)
+    await service.add_wallet_event_tx(tx_data)
     update_data = {
         'address': tx_data['to'],
         'token_address': '',
     }
     await service.add_or_update_asset_summary_transfer(update_data)
     for itx in tx_data['internal_transactions']:
-        if itx['value'] > 0:
-            await service.add_assets_transfer_tx_internal(tx_data, itx)
+        await service.add_wallet_event_tx_internal(tx_data, itx)
 
 
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE)
@@ -155,7 +153,7 @@ async def handle_token_transfer(transfers):
     for transfer_data in transfers:
         logging.info("[WALLET] Handling new Token Transfer %s block %s %s",
                      transfer_data['address'], transfer_data['block_number'], transfer_data['block_hash'])
-        await service.add_assets_transfer_token_transfer(transfer_data)
+        await service.add_wallet_event_token_transfer(transfer_data)
         await service.add_or_update_asset_summary_transfer(transfer_data)
 
 
@@ -248,7 +246,7 @@ def event_from_token_transfer(address, transfer_data, tx_data):
                        'recipient': transfer_data['to_address'],
                        'amount': amount,
                        'asset': transfer_data['token_address'],
-                       'status': 1}  # FIXME!!! real status from stream or DB?
+                       'status': transfer_data['status']}
     }
     return event_data
 
