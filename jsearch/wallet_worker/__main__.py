@@ -101,9 +101,16 @@ class DatabaseService(Service, Singleton):
     async def add_assets_transfer_token_transfer(self, transfer_data):
         transfer_from_id = ERC20_METHODS_IDS['transferFrom']
         if transfer_data['token_decimals'] is None:
-            logger.warning('No decimals for token transfer %s TX: %s',
-                           transfer_data['token_address'], transfer_data['transaction_hash'])
+            logger.warning(
+                'No decimals for token transfer',
+                extra={
+                    'token_address': transfer_data['token_address'],
+                    'transaction_hash': transfer_data['transaction_hash'],
+                }
+            )
+
             transfer_data['token_decimals'] = 18
+
         async with self.engine.acquire() as connection:
             result = await connection.execute(transactions_t.select().where(
                 transactions_t.c.hash == transfer_data['transaction_hash']))
@@ -165,7 +172,13 @@ service = DatabaseService()
 
 @service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS)
 async def handle_new_transaction(tx_data):
-    logging.info("[WALLET] Handling new Transaction %s", tx_data['hash'])
+    logger.info(
+        "Handling new Transaction",
+        extra={
+            'tag': 'WALLET',
+            'tx_hash': tx_data['hash'],
+        }
+    )
 
     await service.add_assets_transfer_tx(tx_data)
     update_data = {
@@ -180,7 +193,13 @@ async def handle_new_transaction(tx_data):
 
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE)
 async def handle_new_account(account_data):
-    logging.info("[WALLET] Handling  Account Update %s", account_data['address'])
+    logger.info(
+        "Handling  Account Update",
+        extra={
+            'tag': 'WALLET',
+            'address': account_data['address'],
+        }
+    )
 
     update_data = {
         'address': account_data['address'],
@@ -194,8 +213,15 @@ async def handle_new_account(account_data):
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_TOKEN_TRANSFER)
 async def handle_token_transfer(transfers):
     for transfer_data in transfers:
-        logging.info("[WALLET] Handling new Token Transfer %s block %s %s",
-                     transfer_data['address'], transfer_data['block_number'], transfer_data['block_hash'])
+        logger.info(
+            "Handling new Token Transfer",
+            extra={
+                'tag': 'WALLET',
+                'address': transfer_data['address'],
+                'block_number': transfer_data['block_number'],
+                'block_hash': transfer_data['block_hash'],
+            },
+        )
         await service.add_assets_transfer_token_transfer(transfer_data)
         await service.add_or_update_asset_summary_transfer(transfer_data)
 
@@ -203,8 +229,15 @@ async def handle_token_transfer(transfers):
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_ASSETS_UPDATE)
 async def handle_assets_update(updates):
     for update_data in updates:
-        logging.info("[WALLET] Handling new Asset Update %s account %s",
-                     update_data['asset_address'], update_data['address'])
+        logger.info(
+            "Handling new Asset Update",
+            extra={
+                'tag': 'WALLET',
+                'address': update_data['address'],
+                'asset_address': update_data['asset_address'],
+            },
+        )
+
         await service.add_or_update_asset_summary_balance(update_data)
 
 

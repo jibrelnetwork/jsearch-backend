@@ -38,7 +38,7 @@ from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import blocks_t
 from jsearch.utils import split
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200

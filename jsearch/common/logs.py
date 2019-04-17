@@ -14,8 +14,8 @@ def configure(log_level):
         'disable_existing_loggers': False,
         'formatters': {
             'default': {
-                'class': 'logging.Formatter',
-                'format': '%(asctime)-15s %(levelname)-8s %(name)s: %(message)s'
+                'class': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+                'format': '%(asctime)-15s %(levelname)-8s %(name)s: %(message)s',
             }
         },
         'handlers': {

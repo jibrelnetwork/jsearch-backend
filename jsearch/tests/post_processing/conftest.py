@@ -16,7 +16,15 @@ def transaction(main_db_data):
 @pytest.fixture()
 def logs(main_db_data):
     tx_hash = main_db_data['transactions'][2]['hash']
-    return [log for log in main_db_data['logs'] if log['transaction_hash'] == tx_hash]
+
+    logs = []
+    for item in main_db_data['logs']:
+        if item['transaction_hash'] == tx_hash:
+            item = dict(item, **{
+                'status': 1,
+            })
+            logs.append(item)
+    return logs
 
 
 @pytest.fixture()

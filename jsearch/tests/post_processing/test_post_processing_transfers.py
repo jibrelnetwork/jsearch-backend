@@ -1,4 +1,5 @@
 from decimal import Decimal
+from functools import partial
 
 import pytest
 from sqlalchemy import select
@@ -36,10 +37,12 @@ async def test_post_processing_logs_to_transfer_transition(transaction,
     for transfer in loaded_transfers:
         assert transfer['token_value'] == 1000
 
-    transfers = sorted(transfers, key=lambda x: x['address'])
+    sort_items = partial(sorted, key=lambda x: x['address'])
 
-    items = sorted(loaded_transfers, key=lambda x: x['address'])
-    assert items == transfers
+    result = sort_items(loaded_transfers)
+    expected_transfers = sort_items(transfers)
+
+    assert result == expected_transfers
 
 
 @pytest.mark.usefixtures('mock_service_bus', 'mock_executor')
@@ -49,7 +52,7 @@ async def test_post_processing_account_balance(mocker,
                                                main_db_data,
                                                post_processing_transfers,
                                                token_address,
-                                               logs):
+                                               processed_logs):
     from jsearch.common.tables import token_holders_t
     from jsearch.syncer.database import MainDBSync
     # given
@@ -58,7 +61,7 @@ async def test_post_processing_account_balance(mocker,
     mocker.patch('time.sleep')
 
     # when run system under test
-    await post_processing_transfers(logs)
+    await post_processing_transfers(processed_logs)
 
     # then
     with MainDBSync(db_connection_string) as db:
