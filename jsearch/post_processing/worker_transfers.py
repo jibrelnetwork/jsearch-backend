@@ -20,7 +20,7 @@ metrics = Metrics()
 logger = logging.getLogger('worker')
 
 
-async def write_transfers_to_bus(transfers: Transfers):
+def write_transfers_to_bus(transfers: Transfers):
     transfers_by_blocks = groupby(
         iterable=sorted(transfers, key=lambda x: x['block_number']),
         key=lambda x: x['block_number']
