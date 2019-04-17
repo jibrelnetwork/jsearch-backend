@@ -96,14 +96,27 @@ class Metrics(Singleton):
                 worked_time = sum([metric.worked_time for metric in metrics], 0)
                 speed = value / worked_time
                 logger.info(
-                    "[METRICS] %s: handled %0.2f, time %0.2f speed %0.2f %s/second for each worker",
-                    name, value, worked_time, speed, name
+                    'Metrics',
+                    extra={
+                        'tag': 'METRICS',
+                        'metrics_name': name,
+                        'total_items_count': value,
+                        'total_time': worked_time,
+                        'per_worker_speed': speed,
+                    }
                 )
 
             self.metrics[name].clear()
 
         for name, value in self.values.items():
-            logger.info("[METRICS] %s is %s", name, value)
+            logger.info(
+                'Metrics by values',
+                extra={
+                    'tag': 'METRICS',
+                    'metrics_name': name,
+                    'total_items_count': value,
+                }
+            )
 
     async def task(self):
         while True:

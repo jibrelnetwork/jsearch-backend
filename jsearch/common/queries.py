@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 import asyncpgsa
 from sqlalchemy.orm import Query
 
-log = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 Rows = List[Dict[str, Any]]
 
@@ -15,8 +15,7 @@ async def fetch(pool: Pool, saquery: Query) -> Rows:
     async with pool.acquire() as conn:
         query, params = asyncpgsa.compile_query(saquery)
 
-        log.debug(query)
-        log.debug(params)
+        logger.debug('Compiled a query', extra={'query': query, 'params': params})
 
         rows = await conn.fetch(query, *params)
         rows = [dict(r) for r in rows]

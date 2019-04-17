@@ -10,7 +10,7 @@ from typing import List, Optional
 import attr
 import pytest
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 pytest_plugings = (
     'jsearch.tests.plugins.databases.raw_db',
@@ -84,7 +84,7 @@ class KeyStore:
             path = keystore_path / filename
             path.write_text(content)
 
-            logging.info("Create new keystore %s", path)
+            logger.info("Created new keystore", extra={'path': path})
 
 
 @attr.s
@@ -148,7 +148,7 @@ class Node:
 
     def clean(self):
         if self.data_dir.exists():
-            logging.info('Clean %s', self.root)
+            logger.info('Cleaning data dir', extra={'path': self.root})
             shutil.rmtree(path=str(self.data_dir))
 
     def init_chain(self):
@@ -162,16 +162,26 @@ class Node:
 
         cmd = ["geth", "--datadir", self.data_dir, "init", genesis_path]
 
-        logging.info("Chain root: %s", self.root)
-        logging.info("Command to init chain: %s", " ".join(map(str, cmd)))
+        logger.info(
+            "Initializing chain",
+            extra={
+                'chain_root': self.root,
+                'init_cmd': " ".join(map(str, cmd)),
+            },
+        )
 
         execute(cmd=cmd, cwd=self.root, wait=True, log_filename=f"{chain_id}_init_{self.node_id}.txt")
 
     def run(self):
         cmd = self.get_cmd()
 
-        logging.info("Geth command: %s", " ".join(map(str, cmd)))
-        logging.info("Current working directory: %s", self.root)
+        logger.info(
+            "Running.",
+            extra={
+                'geth_cmd': " ".join(map(str, cmd)),
+                'working_directory': self.root,
+            },
+        )
 
         self.node_process = execute(cmd=cmd, cwd=self.root, log_filename=f"node_{self.node_id}_logs.txt")
 

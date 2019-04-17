@@ -6,7 +6,7 @@ from functools import partial
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def get_dump(connection_string):
@@ -25,8 +25,7 @@ def get_dump(connection_string):
         except subprocess.TimeoutExpired:
             outs, errs = process.communicate()
 
-        log.info("STDOUT: %s", outs)
-        log.info("STDERR: %s", errs)
+        logger.info('Stats', extra={'stdout': outs, 'stderr': errs})
 
         if process.returncode != 0:
             raise RuntimeError('Process was exited with return code: %s', process.returncode)
