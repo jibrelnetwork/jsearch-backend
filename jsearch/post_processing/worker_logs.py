@@ -64,7 +64,7 @@ async def write_transfers_logs_bus(transfer_logs: Logs):
     futures = []
     for block, items in transfers_by_blocks:
         transfers_by_blocks = list(items)
-        future = await service_bus.send_transfers(value=transfers_by_blocks)
+        future = service_bus.send_transfers(value=transfers_by_blocks)
         futures.append(future)
 
     if futures:

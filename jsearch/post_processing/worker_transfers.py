@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from itertools import chain
+from itertools import chain, groupby
 from typing import List, Dict, Union
 
 from jsearch import settings
@@ -20,6 +20,16 @@ metrics = Metrics()
 logger = logging.getLogger('worker')
 
 
+def write_transfers_to_bus(transfers: Transfers):
+    transfers_by_blocks = groupby(
+        iterable=sorted(transfers, key=lambda x: x['block_number']),
+        key=lambda x: x['block_number']
+    )
+
+    for block, items in transfers_by_blocks:
+        sync_client.write_transfers(list(items))
+
+
 def worker(contracts: Contracts, transfer_logs: Logs, last_block: Union[int, str]) -> None:
     sync_client.start()
     with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
@@ -31,7 +41,7 @@ def worker(contracts: Contracts, transfer_logs: Logs, last_block: Union[int, str
 
         transfers = logs_to_transfers(transfer_logs, blocks, contracts)
         db.insert_or_update_transfers(transfers)
-        sync_client.write_transfers(transfers)
+        write_transfers_to_bus(transfers)
         logger.info(
             'Insert batch of token transfers',
             extra={
