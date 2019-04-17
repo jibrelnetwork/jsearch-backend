@@ -47,7 +47,15 @@ def process_tx_logs(logs: Logs) -> Logs:
                     'event_args': log.get('event_args'),
                 }
             )
-        logger.info('[WORKER] log update speed %0.2f', len(logs) / (time.time() - start_at))
+
+        logger.info(
+            'Updated batch of logs',
+            extra={
+                'tag': 'WORKER',
+                'average_speed': len(logs) / (time.time() - start_at),
+            },
+        )
+
         return [item for item in logs if item['is_token_transfer']]
 
 

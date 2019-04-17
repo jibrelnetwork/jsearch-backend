@@ -57,7 +57,7 @@ class LastBlock(Singleton):
         return self.LATEST_BLOCK
 
     async def _load(self):
-        logging.info('[LAST BLOCK] load last from the topic...')
+        logger.info('Loading last block from the topic...', extra={'tag': 'LAST BLOCK'})
         consumer = _get_consumer()
         await consumer.start()
 
@@ -82,4 +82,4 @@ class LastBlock(Singleton):
 
         if self.number is None or self.number < number:
             self.number = number
-            logging.info("[LAST BLOCK] updated to %s", self.number)
+            logger.info('Last block has been updated', extra={'tag': 'LAST BLOCK', 'number': number})

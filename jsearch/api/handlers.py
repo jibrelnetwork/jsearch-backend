@@ -18,7 +18,7 @@ from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 async def get_account(request):
@@ -72,8 +72,21 @@ async def get_account_pending_transactions(request):
     """
     Get account pending transactions
     """
-    # todo: implement it
-    return api_success([])
+    storage = request.app['storage']
+    address = request.match_info.get('address').lower()
+    params = validate_params(request)
+
+    pending_txs = await storage.get_account_pending_transactions(
+        address,
+        limit=params['limit'],
+        offset=params['offset'],
+        order=params['order'],
+    )
+
+    response_data = [pt.to_dict() for pt in pending_txs]
+    response = api_success(response_data)
+
+    return response
 
 
 async def get_account_logs(request):

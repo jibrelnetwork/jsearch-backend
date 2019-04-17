@@ -21,7 +21,7 @@ from web3.utils.normalizers import BASE_RETURN_NORMALIZERS, abi_bytes_to_bytes, 
 from jsearch import settings
 from jsearch.typing import Abi
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 post = partial(request, 'POST')
 
@@ -149,7 +149,14 @@ class ContractCall:
         except web3.exceptions.ValidationError:
             if not self.silent:
                 raise
-            logging.error('[JSON RPC] Contract %s does not contain method %s', self.address, self.method)
+            logger.error(
+                'Contract does not contain method',
+                extra={
+                    'tag': 'JSON RPC',
+                    'address': self.address,
+                    'method': self.method,
+                }
+            )
 
     def decode(self, value) -> Any:
         try:
@@ -161,11 +168,25 @@ class ContractCall:
                 kwargs=self.kwargs
             )
         except BadFunctionCallOutput:
-            logging.error('[JSON RPC] Contract %s was destroyed and cannot by read at last block', self.address)
+            logger.error(
+                'Contract has been destroyed and cannot by read at last block',
+                extra={
+                    'tag': 'JSON RPC',
+                    'address': self.address,
+                }
+            )
         except web3.exceptions.ValidationError:
             if not self.silent:
                 raise
-            logging.error('[JSON RPC] Contract %s does not contain method %s', self.address, self.method)
+
+            logger.error(
+                'Contract does not contain method',
+                extra={
+                    'tag': 'JSON RPC',
+                    'address': self.address,
+                    'method': self.method,
+                }
+            )
 
 
 ContractCalls = List[ContractCall]

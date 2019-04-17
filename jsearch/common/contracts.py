@@ -390,13 +390,13 @@ def cut_contract_metadata_hash(byte_code):
 
     m = re.match('.*({}).*'.format(sig_1), byte_code)
     if m:
-        logger.debug('Metadata signature found: %s', m.groups()[0])
+        logger.debug('Metadata signature found', extra={'signature': m.groups()[0]})
         swarm_hash = m.groups()[1]
         return re.sub(swarm_hash, '', byte_code), swarm_hash
 
     m = re.match('.*({}).*'.format(sig_2), byte_code)
     if m:
-        logger.debug('Metadata experimental signature found: %s', m.groups()[0])
+        logger.debug('Metadata experimental signature found: %s', extra={'signature': m.groups()[0]})
         swarm_hash = m.groups()[1]
         return re.sub(swarm_hash, '', byte_code), swarm_hash
     logger.debug('No metadata hash found')

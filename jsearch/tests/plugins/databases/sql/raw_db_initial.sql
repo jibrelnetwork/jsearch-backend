@@ -11,9 +11,13 @@ CREATE TABLE IF NOT EXISTS bodies (
 );
 
 CREATE TABLE IF NOT EXISTS pending_transactions (
-    tx_hash varchar(70) UNIQUE,
+    tx_hash varchar(70) NOT NULL,
     status varchar,
-    fields jsonb
+    fields jsonb,
+    id bigint NOT NULL,
+    "timestamp" timestamp,
+    removed boolean,
+    node_id varchar(70)
 );
 
 CREATE TABLE IF NOT EXISTS receipts (

@@ -4,10 +4,12 @@ from typing import List
 import backoff
 import click
 import psycopg2
+from aiopg.sa import Engine, create_engine
 from mode import Service, Worker
 from sqlalchemy.dialects.postgresql import insert
-from aiopg.sa import Engine, create_engine
+
 from jsearch import settings
+from jsearch.common.contracts import ERC20_METHODS_IDS
 from jsearch.common.logs import configure
 from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t
 from jsearch.service_bus import (
@@ -17,7 +19,9 @@ from jsearch.service_bus import (
     ROUTE_HANDLE_TRANSACTIONS,
     ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE,
 )
+from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
 from jsearch.utils import Singleton
+
 from jsearch.common.contracts import ERC20_METHODS_IDS, NULL_ADDRESS
 
 
@@ -64,7 +68,6 @@ class DatabaseService(Service, Singleton):
         await self.insert_event(event_data_from, event_data_to)
 
     async def add_wallet_event_token_transfer(self, transfer_data):
-
         async with self.engine.acquire() as connection:
             result = await connection.execute(transactions_t.select().where(
                 transactions_t.c.hash == transfer_data['transaction_hash']))
@@ -80,19 +83,12 @@ class DatabaseService(Service, Singleton):
                 await connection.execute(q.values(**event_data_to))
 
     async def add_or_update_asset_summary_balance(self, asset_update):
-        summary_data = {
-            'address': asset_update['address'],
-            'asset_address': asset_update['asset_address'],
-            'value': asset_update['value'],
-            'decimals': asset_update['decimals'],
-        }
-        q = insert(assets_summary_t).values(tx_number=1, **summary_data)
-
-        upsert = q.on_conflict_do_update(
-            index_elements=['address', 'asset_address'],
-            set_=dict(value=summary_data['value'], decimals=summary_data['decimals'])
+        upsert = insert_or_update_assets_summary(
+            address=asset_update['address'],
+            asset_address=asset_update['asset_address'],
+            value=asset_update['value'],
+            decimals=asset_update['decimals']
         )
-
         async with self.engine.acquire() as connection:
             await connection.execute(upsert)
 
@@ -124,7 +120,13 @@ service = DatabaseService()
 
 @service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS)
 async def handle_new_transaction(tx_data):
-    logging.info("[WALLET] Handling new Transaction %s", tx_data['hash'])
+    logger.info(
+        "Handling new Transaction",
+        extra={
+            'tag': 'WALLET',
+            'tx_hash': tx_data['hash'],
+        }
+    )
     await service.add_wallet_event_tx(tx_data)
     update_data = {
         'address': tx_data['to'],
@@ -137,8 +139,14 @@ async def handle_new_transaction(tx_data):
 
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE)
 async def handle_new_account(account_data):
-    logging.info("[WALLET] Handling  Account Update %s",
-                 account_data['address'])
+    logger.info(
+        "Handling  Account Update",
+        extra={
+            'tag': 'WALLET',
+            'address': account_data['address'],
+        }
+    )
+
     update_data = {
         'address': account_data['address'],
         'asset_address': '',
@@ -151,8 +159,15 @@ async def handle_new_account(account_data):
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_TOKEN_TRANSFER)
 async def handle_token_transfer(transfers):
     for transfer_data in transfers:
-        logging.info("[WALLET] Handling new Token Transfer %s block %s %s",
-                     transfer_data['address'], transfer_data['block_number'], transfer_data['block_hash'])
+        logger.info(
+            "Handling new Token Transfer",
+            extra={
+                'tag': 'WALLET',
+                'address': transfer_data['address'],
+                'block_number': transfer_data['block_number'],
+                'block_hash': transfer_data['block_hash'],
+            },
+        )
         await service.add_wallet_event_token_transfer(transfer_data)
         await service.add_or_update_asset_summary_transfer(transfer_data)
 
@@ -160,8 +175,15 @@ async def handle_token_transfer(transfers):
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_ASSETS_UPDATE)
 async def handle_assets_update(updates):
     for update_data in updates:
-        logging.info("[WALLET] Handling new Asset Update %s account %s",
-                     update_data['asset_address'], update_data['address'])
+        logger.info(
+            "Handling new Asset Update",
+            extra={
+                'tag': 'WALLET',
+                'address': update_data['address'],
+                'asset_address': update_data['asset_address'],
+            },
+        )
+
         await service.add_or_update_asset_summary_balance(update_data)
 
 
