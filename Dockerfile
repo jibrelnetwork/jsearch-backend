@@ -1,8 +1,9 @@
 FROM python:3.6
 
-ARG POETRY_FLAGS="--no-dev"
+ARG ENVIRONMENT="production"
 
-ENV LOG_LEVEL=INFO \
+ENV ENVIRONMENT=${ENVIRONMENT} \
+    LOG_LEVEL=INFO \
     RAVEN_DSN="" \
     JSEARCH_SYNC_PARALLEL="10" \
     JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_main" \
@@ -23,18 +24,16 @@ RUN groupadd -g 999 app \
 
 WORKDIR /app
 
-COPY --chown=app:app ./jsearch-service-bus /app/jsearch-service-bus/
-RUN cd jsearch-service-bus && pip install --no-cache-dir . && cd ..
-
+RUN pip install --no-cache-dir poetry==$POETRY_VERSION \
+ && poetry config settings.virtualenvs.create false
 
 COPY --chown=app:app pyproject.toml poetry.lock /app/
+COPY --chown=app:app ./jsearch-service-bus /app/jsearch-service-bus/
 
-RUN pip install --no-cache-dir poetry==$POETRY_VERSION \
- && poetry config settings.virtualenvs.create false \
- && poetry install $POETRY_FLAGS
+RUN poetry install $(test "$ENVIRONMENT" = production && echo "--no-dev") --no-interaction --no-ansi
 
 COPY --chown=app:app . /app
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir --editable .
 
 USER app
 ENTRYPOINT ["/app/run.sh"]

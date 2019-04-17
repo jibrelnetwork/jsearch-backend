@@ -10,7 +10,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        - POETRY_FLAGS=
+        - ENVIRONMENT=development
     tmpfs:
     - /tmp
     - /home/root/.ethash
