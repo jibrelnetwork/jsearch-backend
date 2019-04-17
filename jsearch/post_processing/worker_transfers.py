@@ -32,11 +32,23 @@ def worker(contracts: Contracts, transfer_logs: Logs, last_block: Union[int, str
         transfers = logs_to_transfers(transfer_logs, blocks, contracts)
         db.insert_or_update_transfers(transfers)
         sync_client.write_transfers(transfers)
-        logger.info('[WORKER] transfer insert speed %0.2f', len(transfers) / (time.time() - start_at))
+        logger.info(
+            'Insert batch of token transfers',
+            extra={
+                'tag': 'WORKER',
+                'average_speed': len(transfers) / (time.time() - start_at),
+            },
+        )
 
         start_at = time.time()
         update_token_holder_balances(db, transfers, contracts, last_block)
-        logger.info('[WORKER] update token holder balance speed %0.2f', len(transfers) / (time.time() - start_at))
+        logger.info(
+            'Updated batch of token holder balances',
+            extra={
+                'tag': 'WORKER',
+                'average_speed': len(transfers) / (time.time() - start_at),
+            },
+        )
 
 
 @service_bus.listen_stream(ROUTE_HANDLE_ERC20_TRANSFERS, task_limit=30, batch_size=20, batch_timeout=5)
@@ -71,7 +83,7 @@ async def handle_new_transfers(blocks: List[Transfers]):
 async def receive_last_block(record: Dict[str, int]):
     number = record.get('number')
 
-    logger.info("[LAST BLOCK] Receive new last block number %s", number)
+    logger.info("Received new last block", extra={'tag': 'LAST BLOCK', 'number': number})
 
     last_block = LastBlock()
     last_block.update(number=number)

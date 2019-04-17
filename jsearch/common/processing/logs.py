@@ -18,9 +18,8 @@ class EventTypes:
 def decode_erc20_tx_log(log: Log) -> Log:
     try:
         event = contracts.decode_event(ERC20_ABI, log)
-    except Exception as e:
-        logger.debug(e)
-        logger.debug('Log decode error: <%s>\n ', log)
+    except Exception:  # NOQA: Logged by 'exc_info'.
+        logger.debug('Log decode error', extra={'log': log}, exc_info=True)
     else:
         event_type = event.pop('_event_type')
         log.update({

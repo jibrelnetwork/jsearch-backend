@@ -10,6 +10,7 @@ from jsearch import settings
 from jsearch.api import handlers
 from jsearch.api.storage import Storage
 from jsearch.api.node_proxy import NodeProxy
+from jsearch.common import logs
 
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
 swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
@@ -83,11 +84,12 @@ async def make_app():
 
     app.router.add_static('/docs', swagger_ui_path)
     setup_swagger(app, swagger_from_file=swagger_file)
+    logs.configure(settings.LOG_LEVEL)
 
     return app
 
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    app = loop.run_until_complete(make_app())
-    web.run_app(app)
+    application = loop.run_until_complete(make_app())
+    web.run_app(application)

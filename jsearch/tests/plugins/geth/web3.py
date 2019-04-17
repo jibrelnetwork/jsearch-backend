@@ -6,7 +6,7 @@ from requests.exceptions import ConnectionError
 from web3 import Web3
 
 logging.basicConfig(level=logging.DEBUG)
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 pytest_plugins = (
     "jsearch.tests.plugins.geth.node",
@@ -36,28 +36,27 @@ class Web3ClientWrapper:
     def mine_block(self):
         block_on_start = self.last_block_number
 
-        logging.info('Start mining...')
-        logging.info('Last block number: %s', block_on_start)
+        logger.info('Start mining...', extra={'last_block_number': block_on_start})
 
         self.start_miner()
         start_time = time.time()
         try:
             while block_on_start == self.last_block_number:
                 time.sleep(self.wait_interval)
-                logging.info('Still mining... %0.2fs seconds', time.time() - start_time)
+                logger.info('Still mining...', extra={'time_elapsed': time.time() - start_time})
         except Exception as e:
             print(e)
 
-        logging.info('stop mining')
+        logger.info('Stop mining')
         self.stop_miner()
 
     def wait_node(self, attempts=5, waiting_interval=2):
         for i in range(0, attempts):
             try:
-                logging.info('Last block is %s', self.last_block_number)
+                logger.info('Waiting node...', extra={'last_block_number': self.last_block_number})
                 return
             except ConnectionError:
-                logging.info("Still waiting node...")
+                logger.info("Still waiting node...")
                 time.sleep(waiting_interval)
 
 
@@ -66,16 +65,16 @@ def w3(geth_rpc: str, geth_fork_rpc: str):
     client = Web3ClientWrapper(url=geth_rpc)
     client.wait_node()
 
-    logging.info("[Web3] Geth node is up")
+    logger.info("[Web3] Geth node is up")
 
     fork_client = Web3ClientWrapper(url=geth_fork_rpc)
     fork_client.wait_node()
 
-    logging.info("[Web3] Geth fork node is up")
+    logger.info("[Web3] Geth fork node is up")
 
     enode = client.client.admin.nodeInfo['enode']
     fork_client.client.admin.addPeer(enode)
 
-    logging.info("[Web3] Nodes are linked")
+    logger.info("[Web3] Nodes are linked")
 
     return client

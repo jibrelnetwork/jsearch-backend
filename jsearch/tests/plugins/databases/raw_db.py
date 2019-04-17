@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import create_engine, MetaData
 
 logging.basicConfig(level=logging.DEBUG)
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 SQL_FOLDER = Path(__file__).parent / "sql"
 DUMPS_FOLDER = Path(__file__).parent / "dumps"
