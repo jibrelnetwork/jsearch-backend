@@ -3,27 +3,27 @@ PROJECT_NAME=jsearch
 shell:
 	docker-compose run --rm --entrypoint bash syncer
 
-shell_tests:
-	docker-compose run --rm --entrypoint bash tests
+shell_dev:
+	docker-compose run --rm --entrypoint bash dev
 
 build:
 	docker-compose build api
 
 lock:
-	docker-compose run --rm --entrypoint "poetry lock" tests
+	docker-compose run --rm --entrypoint "poetry lock" dev
 
-build_tests:
+build_dev:
 	docker-compose build api
-	docker-compose build tests
+	docker-compose build dev
 
 lint:
-	docker-compose run --rm --entrypoint flake8 tests
+	docker-compose run --rm --entrypoint flake8 dev
 
 test:
-	docker-compose run --rm --entrypoint pytest tests 
+	docker-compose run --rm --entrypoint pytest dev
 
 validate:
-	make build_tests
+	make build_dev
 	make lint
 	make test
 
@@ -52,7 +52,7 @@ kafka_reset_offset:
 	docker-compose exec kafka kafka-consumer-groups.sh --bootstrap-server kafka:9092 --group ${group} --topic ${topic} --reset-offsets --to-earliest --execute
 
 new_db_migration:
-	docker-compose run --entrypoint python tests manage.py revision -db=postgres://postgres:postgres@main_db/jsearch_main -m "$(msg)"
+	docker-compose run --entrypoint python dev manage.py revision -db=postgres://postgres:postgres@main_db/jsearch_main -m "$(msg)"
 
 db_migrate:
-	docker-compose run --entrypoint python tests manage.py upgrade head -db=postgres://postgres:postgres@main_db/jsearch_main
+	docker-compose run --entrypoint python dev manage.py upgrade head -db=postgres://postgres:postgres@main_db/jsearch_main

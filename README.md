@@ -2,26 +2,18 @@
 
 This is a core of jSearch 
 
-# Description
+## Description
 
-jSearch backend services includes following components: 
+jSearch Backend services includes following components: 
 
-- Main DB
-- syncer
-- post-processing
-- jSearch api
+- **Main DB** — PostgreSQL database, stores processed and structured blockchain data
+- **syncer** — grabs blockchain data from RAW database and puts it into MAIN database
+- **post-processing** — performs raw blockchain data processing - transaction and
+logs decoding, token transfers detection, token holders balances updates
+- **API** — provides access to blockchain data stored in main database and acts as
+Web3 API proxy
 
-Main DB - PostgreSQL database, stores processed and structured blockchain data
-
-Syncer component grabs blockchain data from RAW database and puts it into MAIN database
-
-Postprocessing component performs raw blockchain data processing - transaction and logs decoding,
-token transfers detection, token holders balances updates 
-
-API component is public web API server - provides access to blockchain data stored in main database and acts as Web3 API proxy
-
-
-# Dependencies
+## Dependencies
 
 jSearch Backend depends on following services:
 - jSearch Raw DB (geth fork) [https://github.com/jibrelnetwork/go-ethereum]
@@ -29,98 +21,66 @@ jSearch Backend depends on following services:
 - jSearch Compiler [https://github.com/jibrelnetwork/jsearch-compiler]
 
 
-# Install
-
-
 ## Prerequisites
 
-Ubuntu 16.04, git installed
+* [Docker](https://docs.docker.com/install/)
+* [Docker Compose](https://docs.docker.com/compose/install/)
 
+## Installation
 ```
-sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt-get update
-sudo apt-get install python3.6 python3.6-dev postgresql-client-9.5 libssl-dev python3-pip
-```
-
-
-## Build
-
-```
-git clone git@github.com:jibrelnetwork/jsearch-contracts.git
-cd jsearch-contracts
-pip install -r requirements.txt
-pip install -e .
+docker-compose build
 ```
 
 ## Configuration
 
-List of environ vars:
-```
-JSEARCH_MAIN_DB (default postgres://localhost/jsearch_main)
-JSEARCH_RAW_DB (default postgres://localhost/jsearch_raw)
-ETH_NODE_URL (default https://main-node.jwallet.network)
-JSEARCH_COMPILER_API (default http://localhost:8101)
-JSEARCH_CONTRACTS_API (default http://localhost:8101)
-JSEARCH_SYNC_PARALLEL (default 10) - number of blocks to sync in parallel
-```
+Following environmental variables are used by the project and can be configured:
+* `LOG_LEVEL=INFO`
+* `RAVEN_DSN=""`
+* `JSEARCH_SYNC_PARALLEL="10"`
+* `JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_main"`
+* `JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw"`
+* `JSEARCH_CELERY_BROKER="redis://redis/0"`
+* `JSEARCH_CELERY_BACKEND="redis://redis/1"`
+* `JSEARCH_CONTRACTS_API="http://contracts:8080"`
+* `JSEARCH_COMPILER_API="http://compiler"`
+* `JSEARCH_API_ENABLE_RESET_LOGS_PROCESSING="1"`
+* `ENH_NODE_URL="https://main-node.jwallet.network"`
+* `KAFKA_BOOTSTRAP_SERVERS=""`
+* `POETRY_VERSION="0.12.12"`
 
-# Run components
+## API
 
-## Before run
-Apply database migrations:
-```
-python manage.py upgrade head -db=postgresql://dbuser@localhost:5433/jsearch_main
-```
-
-## Run Syncer:
-```
-jsearch-syncer
-```
-
-## Run Post processing:
-```
-jsearch-post-processing logs  # run logs processing/decoding
-jsearch-post-processing transfers  # run operations (Token Transfers) processing - will update token balances
-```
-
-## Run API server:
-```
-gunicorn  --bind 0.0.0.0:8081 jsearch.api.app:make_app --worker-class aiohttp.worker.GunicornWebWorker
-```
+Swagger docs for API is available by `{hostname}/docs/index.html` URL.
 
 
-# API
+## Development
 
-Swagger docs for API is available by {hostname}/docs/index.html URL
-
-
-# Development
-
-Use docker-compose to create and run development environment:
-## Docker compose
+Use `docker-compose` and `make` to create and run development environment:
 
 ### Running components 
 
 ```
 docker-compose up -d api
 docker-copmose up -d syncer
+docker-copmose up -d post_processing
 ```
 
 ### Running migrations
 ```
-docker-compose run --entrypoint python syncer manage.py revision -db=postgres://postgres:postgres@main_db/jsearch_main -m "Initial"
-docker-compose run --entrypoint python syncer manage.py upgrade head -db=postgres://postgres:postgres@main_db/jsearch_main
+make new_db_migration
+make db_migrate
 ```
 
 ### Test data
-To fill project from raw_db dump need to do:
-```
-# Download dump of rawdb from https://drive.google.com/drive/folders/1W6Hn4Xwfg-S1kSdrp5MGibOVjjT9rT6T?usp=sharing
-# There are two files: 
-# - 001-initial.sql
-# - rawdata.tar
-# to folder ./backups
+To fill project from `raw_db` dump, you'll need to do download dump of rawdb
+from https://drive.google.com/drive/folders/1W6Hn4Xwfg-S1kSdrp5MGibOVjjT9rT6T?usp=sharing
+to folder `./backups`. There are two files: 
 
+- 001-initial.sql
+- rawdata.tar
+
+Populate local `raw_db`:
+```
 cd ./backups && gunzip -c rawdata.tar | tar xopf - && cd ..;
 docker-compose up -d raw_db;
 docker-compose exec -T -u postgres raw_db psql jsearch_raw;
@@ -132,38 +92,79 @@ echo "COPY accounts FROM '/backups/accounts.tsv';" | docker-compose exec -T -u p
 echo "COPY internal_transactions FROM '/backups/internal_transactions.tsv';" | docker-compose exec -T -u postgres raw_db psql jsearch_raw;
 echo "COPY receipts FROM '/backups/receipts.tsv';" | docker-compose exec -T -u postgres raw_db psql jsearch_raw;
 ```
-After need to sync main database.
-Before do it - need to up contracts services.
+
+Then, run contracts services...
 ```
 cd ..
 git clone https://github.com/jibrelnetwork/jsearch-contracts
 cd jsearch-contracts
 docker-compose up -d contracts
 ```
-After it - run syncer.
+
+...and syncer:
 ```
 docker-compose run -d syncer --sync-range=5000000-
 ```
 
-### Running tests
+### Kafka inspection
 
-#### From docker-compose:
+To inspect Kafka, there're several `make` rules, namely:
+* `kafka_shell`
+* `kafka_groups`
+* `kafka_group_stat`
+* `kafka_topics`
+* `kafka_read_topic`
+* `kafka_reset_offset`
+
+### PostgreSQL inspection
+
+You can spawn `psql` shell with following shortcuts:
+* `make raw_db_shell`
+* `make main_db_shell`
+
+## Devtools
+
+### Shell
+
+To spawn a dev shell, execute:
 ```
-docker-compose rm --rm tests
+make shell_dev
 ```
 
-#### From shell:
+### Dependencies
+
+*poetry* is a dependency manager of choice. To add a new dependency or update an
+old one, you can either spawn a dev shell with a *poetry* installed and work
+from here (see the [docs](http://poetry.eustace.io/)) or you can manipulate
+`pyproject.toml` directly. After you've updated requirements of a project, run
+`make lock` to lock dependencies.
+
+### Code validation
+To check the code, you can execute the following:
 ```
-pytest # all test
-pytest -m "live_chain" #only end to end tests
-pytest -v -m "live_chain" #only unit tests with
+make validate
 ```
 
-#### Notes:
- - ensure to build docker image for geth-fork 
+The `validate` rule checks the code style, typechecks it and runs tests. If you
+want to execute commands separately, check the "Code validation subrules"
+section below.
+
+### Code validation subrules
+
+#### Linters
+To run [flake8](http://flake8.pycqa.org/en/latest/), execute the following
+command:
 ```
-cd ./docker/geth-fork
-./build.sh
+make lint
+```
+
+The all settings connected with a `flake8` you can customize in `.flake8`.
+
+#### Running tests
+[pytest](https://pytest.org) is used as a testing framework. To run test suite,
+execute: 
+```
+make test
 ```
 
 ### Git hooks
@@ -175,7 +176,9 @@ $ ln -s $(pwd)/pre-push.sh ../.git/modules/jsearch-backend/hooks/pre-push  # jse
 $ ln -s $(pwd)/pre-push.sh .git/hooks/pre-push  # jsearch-backend as a standalone repo.
 ```
 
+To push the code without a hook, `git push --no-verify` can be used (e.g.
+you've already run `make validate` before push).
+
 ## Author
 
 dev@jibrel.network
-
