@@ -27,7 +27,7 @@ def write_transfers_to_bus(transfers: Transfers):
     )
 
     for block, items in transfers_by_blocks:
-        sync_client.write_transfers(items)
+        sync_client.write_transfers(list(items))
 
 
 def worker(contracts: Contracts, transfer_logs: Logs, last_block: Union[int, str]) -> None:
