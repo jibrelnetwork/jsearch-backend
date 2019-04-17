@@ -8,6 +8,7 @@ from aiohttp_swagger import setup_swagger
 
 from jsearch import settings
 from jsearch.api import handlers
+from jsearch.api.middlewares import cors_middleware
 from jsearch.api.storage import Storage
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.common import logs
@@ -26,7 +27,7 @@ async def make_app():
     """
     Create and initialize the application instance.
     """
-    app = web.Application()
+    app = web.Application(middlewares=(cors_middleware,))
     app.on_shutdown.append(on_shutdown)
     # Create a database connection pool
     app['db_pool'] = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
