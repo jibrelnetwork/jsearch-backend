@@ -29,7 +29,8 @@ def test_log_to_transfer():
             '0x00000000000000000000000018134528f87f786c7b30e9a20fa3d9797eaa0776'
         ],
         'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
-        'transaction_index': 114
+        'transaction_index': 114,
+        'status': 1
     }
     block = {
         'difficulty': 3033008076446112,
@@ -91,7 +92,8 @@ def test_log_to_transfer():
             'token_symbol': 'ICAP',
             'token_value': Decimal('228000000000000000000'),
             'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
-            'transaction_index': 114
+            'transaction_index': 114,
+            'status': 1
         },
         {
             'address': '0xfac652fb819674245a96c264f0a79e9157533347',
@@ -108,7 +110,8 @@ def test_log_to_transfer():
             'token_symbol': 'ICAP',
             'token_value': Decimal('228000000000000000000'),
             'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
-            'transaction_index': 114
+            'transaction_index': 114,
+            'status': 1
         }
     ]
 
@@ -142,7 +145,8 @@ def test_logs_to_transfer():
                 '0x00000000000000000000000018134528f87f786c7b30e9a20fa3d9797eaa0776'
             ],
             'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
-            'transaction_index': 114
+            'transaction_index': 114,
+            'status': 1
         },
         {
             'address': '0x7cbc8ee27ffdba230dd316160ea01d565f17aacb',
@@ -170,7 +174,8 @@ def test_logs_to_transfer():
                 '0x00000000000000000000000035047d681920f66e4ad32c6d6c2a7091fa15a209'
             ],
             'transaction_hash': '0x90bfe01af4b1f7959b03dcb9b41a78525d481697fcce27fea4af767d57d37451',
-            'transaction_index': 129
+            'transaction_index': 129,
+            'status': 0
         }
     ]
     blocks = {
@@ -237,7 +242,8 @@ def test_logs_to_transfer():
             'token_symbol': 'ICAP',
             'token_value': Decimal('228000000000000000000'),
             'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
-            'transaction_index': 114
+            'transaction_index': 114,
+            'status': 1,
         },
         {
             'address': '0xfac652fb819674245a96c264f0a79e9157533347',
@@ -254,7 +260,8 @@ def test_logs_to_transfer():
             'token_symbol': 'ICAP',
             'token_value': Decimal('228000000000000000000'),
             'transaction_hash': '0x5ffd0917e263c98e7fcacb9b87aff5f584b40b2015c18afd7a7ed8a06bbc05f1',
-            'transaction_index': 114
+            'transaction_index': 114,
+            'status': 1
         },
         {
             'address': '0x35047d681920f66e4ad32c6d6c2a7091fa15a209',
@@ -271,7 +278,8 @@ def test_logs_to_transfer():
             'token_symbol': 'ICAP',
             'token_value': Decimal('2234000000000000000000'),
             'transaction_hash': '0x90bfe01af4b1f7959b03dcb9b41a78525d481697fcce27fea4af767d57d37451',
-            'transaction_index': 129
+            'transaction_index': 129,
+            'status': 0
         },
         {
             'address': '0x85429f986a5cc38f90de7b4ffa44d570eef04066',
@@ -288,7 +296,8 @@ def test_logs_to_transfer():
             'token_symbol': 'ICAP',
             'token_value': Decimal('2234000000000000000000'),
             'transaction_hash': '0x90bfe01af4b1f7959b03dcb9b41a78525d481697fcce27fea4af767d57d37451',
-            'transaction_index': 129
+            'transaction_index': 129,
+            'status': 0
         }]
 
 
