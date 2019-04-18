@@ -1,8 +1,11 @@
+from concurrent.futures import ProcessPoolExecutor
+
 import pytest
 
 from aiohttp import web
 
 from jsearch.api.app import make_app
+from jsearch.common.rpc import eth_call_request
 
 pytest_plugins = (
     'jsearch.tests.plugins.settings',
@@ -51,3 +54,11 @@ async def test_node_via_proxy_recieves_correct_user_agent(method, path, override
     resp_json = await resp.json()
 
     assert resp_json['data']['userAgent'] == 'jsearch-backend/test hostname'
+
+
+@pytest.mark.asyncio
+async def test_node_via_eth_call_request_recieves_correct_user_agent(event_loop, node_server, cli_with_node, override_settings):
+    override_settings('HTTP_USER_AGENT', 'jsearch-backend/test hostname')
+    response = await event_loop.run_in_executor(ProcessPoolExecutor(), eth_call_request, list())
+
+    assert response['result']['userAgent'] == 'jsearch-backend/test hostname'
