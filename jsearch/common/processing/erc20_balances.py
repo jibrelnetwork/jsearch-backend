@@ -206,4 +206,4 @@ def update_token_holder_balances(
         updates = fetch_erc20_balance_bulk(chunk, block=last_block)
         for update in updates:
             update.apply(db, last_block)
-        sync_client.write_assets_updates([u.to_asset_update() for u in updates if u.value])
+        sync_client.write_assets_updates([u.to_asset_update() for u in updates if u.value is not None])

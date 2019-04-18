@@ -34,6 +34,11 @@ class BlockData(NamedTuple):
         )
 
     def write_to_bus(self):
+        contracts_set = set()
+        for acc in self.accounts:
+            if acc['code'] != '':
+                contracts_set.add(acc['address'])
+
         internal_tx_parent_map = defaultdict(list)
         for internal_tx in self.internal_txs:
             internal_tx_parent_map[internal_tx['parent_tx_hash']].append(internal_tx)
@@ -44,9 +49,11 @@ class BlockData(NamedTuple):
         for tx in self.txs:
             receipt_status = tx_status_map[tx['hash']]
             internal_txs = internal_tx_parent_map[tx['hash']]
+            to_contract = tx['to'] in contracts_set
             tx.update(
                 internal_transactions=internal_txs,
-                receipt_status=receipt_status
+                receipt_status=receipt_status,
+                to_contract=to_contract,
             )
 
             service_bus.sync_client.write_tx(tx)
@@ -108,6 +115,7 @@ class SyncProcessor:
             reward=reward,
             internal_transactions=internal_transactions
         )
+
         block.write_to_database(self.main_db)
         block.write_to_bus()
 
