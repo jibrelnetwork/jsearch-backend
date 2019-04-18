@@ -1,4 +1,4 @@
-
+from jsearch import settings
 from typing import Any, List
 
 import aiohttp
@@ -26,8 +26,9 @@ class NodeProxy:
     async def _request(self, method: str, params: List = None):
         params = params or []
         message = {'jsonrpc': '2.0', 'method': method, 'params': params, 'id': 1}
+        headers = {'User-Agent': settings.HTTP_USER_AGENT}
         async with aiohttp.ClientSession() as session:
-            async with session.post(self.node_url, json=message) as resp:
+            async with session.post(self.node_url, json=message, headers=headers) as resp:
                 return await resp.json()
 
     async def gas_price(self) -> str:
