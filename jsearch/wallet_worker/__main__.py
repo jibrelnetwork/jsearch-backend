@@ -5,13 +5,13 @@ import backoff
 import click
 import psycopg2
 from aiopg.sa import Engine, create_engine
-from mode import Service, Worker
+from mode import Service
 from sqlalchemy.dialects.postgresql import insert
 
 from jsearch import settings
-from jsearch.common.contracts import ERC20_METHODS_IDS
 from jsearch.common.logs import configure
 from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t
+from jsearch.common.worker import NoLoggingOverrideWorker
 from jsearch.service_bus import (
     service_bus,
     ROUTE_WALLET_HANDLE_ASSETS_UPDATE,
@@ -191,7 +191,7 @@ async def handle_assets_update(updates):
 @click.option('--log-level', default='INFO')
 def main(log_level: str) -> None:
     configure(log_level)
-    Worker(service, loglevel=log_level).execute_from_commandline()
+    NoLoggingOverrideWorker(service).execute_from_commandline()
 
 
 def get_event_type(tx_data):
