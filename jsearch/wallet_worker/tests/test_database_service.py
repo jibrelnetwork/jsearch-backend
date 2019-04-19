@@ -3,7 +3,6 @@ import pytest
 
 from jsearch.common.tables import (
     assets_summary_t,
-    assets_transfers_t,
     wallet_events_t,
 )
 from jsearch.wallet_worker.__main__ import DatabaseService
