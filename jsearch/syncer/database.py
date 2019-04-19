@@ -26,7 +26,7 @@ from jsearch.common.tables import (
     chain_splits_t,
     pending_transactions_t,
     assets_transfers_t,
-)
+    wallet_events_t)
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
@@ -393,6 +393,10 @@ class MainDB(DBWrapper):
             .values(is_forked=not reorg['reinserted']) \
             .where(accounts_state_t.c.block_hash == reorg['block_hash'])
 
+        update_events_q = wallet_events_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(wallet_events_t.c.block_hash == reorg['block_hash'])
+
         update_uncles_q = uncles_t.update() \
             .values(is_forked=not reorg['reinserted']) \
             .where(uncles_t.c.block_hash == reorg['block_hash'])
@@ -423,6 +427,8 @@ class MainDB(DBWrapper):
                 await conn.execute(add_reorg_q)
                 await conn.execute(update_token_transfers_q)
                 await conn.execute(update_assets_transfers_q)
+                await conn.execute(update_events_q)
+
                 logger.debug(
                     'Reord is applied for a block',
                     extra={
