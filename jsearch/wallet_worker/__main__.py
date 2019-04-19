@@ -5,13 +5,13 @@ import backoff
 import click
 import psycopg2
 from aiopg.sa import Engine, create_engine
-from mode import Service, Worker
+from mode import Service
 from sqlalchemy.dialects.postgresql import insert
 
 from jsearch import settings
-from jsearch.common.contracts import ERC20_METHODS_IDS
 from jsearch.common.logs import configure
-from jsearch.common.tables import assets_transfers_t, transactions_t, assets_summary_t
+from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t
+from jsearch.common.worker import NoLoggingOverrideWorker
 from jsearch.service_bus import (
     service_bus,
     ROUTE_WALLET_HANDLE_ASSETS_UPDATE,
@@ -22,14 +22,21 @@ from jsearch.service_bus import (
 from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
 from jsearch.utils import Singleton
 
+from jsearch.common.contracts import ERC20_METHODS_IDS, NULL_ADDRESS
+
+
 logger = logging.getLogger('wallet_worker')
 
 
-class AssetTransferType:
+class WalletEventType:
     ERC20_TRANSFER = 'erc20-transfer'
-    ERC20_TRANSFER_FROM = 'erc20-transferFrom'
     ETH_TRANSFER = 'eth-transfer'
-    ETH_TRANSFER_INTERNAL = 'eth-transfer-internal'
+    CONTRACT_CALL = 'contract-call'
+    TX_CANCELLATION = 'tx-cancellation'
+
+
+CANCELLATION_ADDRESS = '0x000000000000000000000063616e63656c6c6564'
+TOKEN_DECIMALS_DEFAULT = 18
 
 
 class DatabaseService(Service, Singleton):
@@ -46,100 +53,34 @@ class DatabaseService(Service, Singleton):
         self.engine.close()
         await self.engine.wait_closed()
 
-    async def add_assets_transfer_tx(self, tx_data):
-        if tx_data['value'] == '0x0':  # contract call
-            return
-        transfer = {
-            'address': tx_data['from'],
-            'type': AssetTransferType.ETH_TRANSFER,
-            'from': tx_data['from'],
-            'to': tx_data['to'],
-            'asset_address': None,
-            'value': int(tx_data['value'], 16),
-            'decimals': 0,
-            'tx_data': tx_data,
-            'is_forked': False,
-            'block_number': tx_data['block_number'],
-            'block_hash': tx_data['block_hash'],
-            'ordering': '0',  # FIXME !!!,
-            'status': tx_data['receipt_status'],
-        }
+    async def insert_event(self, event_data_from, event_data_to):
+        q = wallet_events_t.insert()
         async with self.engine.acquire() as connection:
-            await connection.execute(assets_transfers_t.insert(), **transfer)
-            transfer['address'] = tx_data['to']
-            await connection.execute(assets_transfers_t.insert(), **transfer)
+            async with connection.begin():
+                await connection.execute(q, **event_data_from)
+                await connection.execute(q, **event_data_to)
 
-    async def add_assets_transfer_tx_internal(self, tx_data, internal_tx_data):
-        if tx_data['receipt_status'] == 0 or internal_tx_data['status'] != 'success':
-            status = 0
-        else:
-            status = 1
-
-        if internal_tx_data['value'] == 0:  # no value transfered
+    async def add_wallet_event_tx_internal(self, tx_data, internal_tx_data):
+        event_data_from = event_from_internal_tx(internal_tx_data['from'], internal_tx_data, tx_data)
+        if event_data_from is None:
             return
+        event_data_to = event_from_internal_tx(internal_tx_data['to'], internal_tx_data, tx_data)
+        await self.insert_event(event_data_from, event_data_to)
 
-        transfer = {
-            'address': internal_tx_data['from'],
-            'type': AssetTransferType.ETH_TRANSFER_INTERNAL,
-            'from': internal_tx_data['from'],
-            'to': internal_tx_data['to'],
-            'asset_address': None,
-            'value': internal_tx_data['value'],
-            'decimals': 0,
-            'tx_data': tx_data,
-            'is_forked': False,
-            'block_number': tx_data['block_number'],
-            'block_hash': tx_data['block_hash'],
-            'ordering': '0',  # FIXME !!!,
-            'status': status
-        }
-        async with self.engine.acquire() as connection:
-            await connection.execute(assets_transfers_t.insert(), **transfer)
-            transfer['address'] = internal_tx_data['to']
-            await connection.execute(assets_transfers_t.insert(), **transfer)
-
-    async def add_assets_transfer_token_transfer(self, transfer_data):
-        transfer_from_id = ERC20_METHODS_IDS['transferFrom']
-        if transfer_data['token_decimals'] is None:
-            logger.warning(
-                'No decimals for token transfer',
-                extra={
-                    'token_address': transfer_data['token_address'],
-                    'transaction_hash': transfer_data['transaction_hash'],
-                }
-            )
-
-            transfer_data['token_decimals'] = 18
-
+    async def add_wallet_event_token_transfer(self, transfer_data):
         async with self.engine.acquire() as connection:
             result = await connection.execute(transactions_t.select().where(
                 transactions_t.c.hash == transfer_data['transaction_hash']))
             tx = await result.fetchone()
             tx_data = dict(tx)
             tx_data.pop('address')
-            if tx_data['input'].startswith(transfer_from_id):
-                transfer_type = AssetTransferType.ERC20_TRANSFER_FROM
-            else:
-                transfer_type = AssetTransferType.ERC20_TRANSFER
-            transfer = {
-                'address': transfer_data['from_address'],
-                'type': transfer_type,
-                'from': transfer_data['from_address'],
-                'to': transfer_data['to_address'],
-                'asset_address': transfer_data['token_address'],
-                'value': transfer_data['token_value'],
-                'decimals': transfer_data['token_decimals'],
-                'tx_data': tx_data,
-                'is_forked': False,
-                'block_number': transfer_data['block_number'],
-                'block_hash': transfer_data['block_hash'],
-                'ordering': '0',  # FIXME !!!,
-                'status': 1  # FIXME!!! real status from stream or DB?
-            }
+            event_data_from = event_from_token_transfer(transfer_data['from_address'], transfer_data, tx_data)
+            event_data_to = event_from_token_transfer(transfer_data['to_address'], transfer_data, tx_data)
+            q = wallet_events_t.insert()
 
-            await connection.execute(assets_transfers_t.insert(), **transfer)
-            transfer['address'] = transfer_data['to_address']
-            await connection.execute(assets_transfers_t.insert(), **transfer)
+            async with connection.begin():
+                await connection.execute(q.values(**event_data_from))
+                await connection.execute(q.values(**event_data_to))
 
     async def add_or_update_asset_summary_balance(self, asset_update):
         upsert = insert_or_update_assets_summary(
@@ -166,6 +107,13 @@ class DatabaseService(Service, Singleton):
         async with self.engine.acquire() as connection:
             await connection.execute(upsert)
 
+    async def add_wallet_event_tx(self, tx_data):
+        event_data_from = event_from_tx(tx_data['from'], tx_data)
+        event_data_to = event_from_tx(tx_data['to'], tx_data)
+        if event_data_to is None:
+            return
+        await self.insert_event(event_data_from, event_data_to)
+
 
 service = DatabaseService()
 
@@ -179,16 +127,14 @@ async def handle_new_transaction(tx_data):
             'tx_hash': tx_data['hash'],
         }
     )
-
-    await service.add_assets_transfer_tx(tx_data)
+    await service.add_wallet_event_tx(tx_data)
     update_data = {
         'address': tx_data['to'],
         'token_address': '',
     }
     await service.add_or_update_asset_summary_transfer(update_data)
     for itx in tx_data['internal_transactions']:
-        if itx['value'] > 0:
-            await service.add_assets_transfer_tx_internal(tx_data, itx)
+        await service.add_wallet_event_tx_internal(tx_data, itx)
 
 
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE)
@@ -222,7 +168,7 @@ async def handle_token_transfer(transfers):
                 'block_hash': transfer_data['block_hash'],
             },
         )
-        await service.add_assets_transfer_token_transfer(transfer_data)
+        await service.add_wallet_event_token_transfer(transfer_data)
         await service.add_or_update_asset_summary_transfer(transfer_data)
 
 
@@ -245,4 +191,117 @@ async def handle_assets_update(updates):
 @click.option('--log-level', default='INFO')
 def main(log_level: str) -> None:
     configure(log_level)
-    Worker(service, loglevel=log_level).execute_from_commandline()
+    NoLoggingOverrideWorker(service).execute_from_commandline()
+
+
+def get_event_type(tx_data):
+    if int(tx_data['value'], 16) != 0:
+        return WalletEventType.ETH_TRANSFER
+
+    if tx_data['to'] == NULL_ADDRESS:
+        return WalletEventType.CONTRACT_CALL
+
+    if tx_data['to_contract'] is True:
+        method_id = tx_data['input'][:10]
+        if method_id in (ERC20_METHODS_IDS['transferFrom'], ERC20_METHODS_IDS['transfer']):
+            return WalletEventType.CONTRACT_CALL
+        else:
+            return None
+    else:
+        if tx_data['to'] == CANCELLATION_ADDRESS:
+            return WalletEventType.TX_CANCELLATION
+    return None
+
+
+def event_from_tx(address, tx_data):
+    """
+    Make wallet event object from TX data
+
+    :param  address: from address of to address of Transaction - explicitly
+    :param tx_data: full TX data object
+
+    :return: event data object
+    """
+    event_type = get_event_type(tx_data)
+    if event_type is None:
+        return None
+    event_data = {
+        'is_forked': False,
+        'address': address,
+        'type': event_type,
+        'block_number': tx_data['block_number'],
+        'block_hash': tx_data['block_hash'],
+        'tx_hash': tx_data['hash'],
+        'event_index': tx_data['transaction_index'] + tx_data['block_number'] * 1000,
+        'tx_data': tx_data,
+        'event_data': {'sender': tx_data['from'],
+                       'recipient': tx_data['to'],
+                       'amount': str(int(tx_data['value'], 16)),
+                       'status': tx_data['receipt_status']}
+    }
+    return event_data
+
+
+def event_from_token_transfer(address, transfer_data, tx_data):
+    """
+    Make wallet event object from Transfer and TX data
+
+    :param  address: from address or to address of Transrer - explicitly
+    :param tx_data: full TX data object
+    :param transfer_data: full Token Transfer data object
+
+    :return: event data object
+    """
+    event_type = WalletEventType.ERC20_TRANSFER
+    decimals = transfer_data['token_decimals'] or TOKEN_DECIMALS_DEFAULT
+    amount = str(transfer_data['token_value'] / 10 ** decimals)
+    event_data = {
+        'is_forked': False,
+        'address': address,
+        'type': event_type,
+        'block_number': tx_data['block_number'],
+        'block_hash': tx_data['block_hash'],
+        'tx_hash': tx_data['hash'],
+        'event_index': tx_data['transaction_index'] + tx_data['block_number'] * 1000,
+        'tx_data': tx_data,
+        'event_data': {'sender': transfer_data['from_address'],
+                       'recipient': transfer_data['to_address'],
+                       'amount': amount,
+                       'asset': transfer_data['token_address'],
+                       'status': transfer_data['status']}
+    }
+    return event_data
+
+
+def event_from_internal_tx(address, internal_tx_data, tx_data):
+    """
+    Make wallet event object from internal TX data and Root TX data
+
+    :param  address: from address or to address of Transaction - explicitly
+    :param internal_tx_data: internal TX data object
+    :param tx_data: full TX data object
+
+    :return: event data object
+    """
+    if internal_tx_data['value'] == 0:
+        return None
+    event_type = WalletEventType.ETH_TRANSFER
+    if tx_data['receipt_status'] == 0 or internal_tx_data['status'] != 'success':
+        event_status = 0
+    else:
+        event_status = 1
+    event_data = {
+        'is_forked': False,
+        'address': address,
+        'type': event_type,
+        'block_number': tx_data['block_number'],
+        'block_hash': tx_data['block_hash'],
+        'tx_hash': tx_data['hash'],
+        'event_index': tx_data['transaction_index'] + tx_data['block_number'] * 1000,
+        'tx_data': tx_data,
+        'event_data': {'sender': internal_tx_data['from'],
+                       'recipient': internal_tx_data['to'],
+                       'amount': str(internal_tx_data['value']),
+                       'status': event_status}
+    }
+    return event_data

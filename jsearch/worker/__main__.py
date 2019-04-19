@@ -30,11 +30,12 @@ import backoff
 import click
 import psycopg2
 from aiopg.sa import Engine, create_engine
-from mode import Service, Worker
+from mode import Service
 
 from jsearch import settings
 from jsearch.common.last_block import LastBlock
 from jsearch.common.logs import configure
+from jsearch.common.worker import NoLoggingOverrideWorker
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.metrics import Metrics
 from jsearch.service_bus import service_bus, ROUTE_HANDLE_REORGANIZATION_EVENTS, ROUTE_HANDLE_LAST_BLOCK
@@ -127,4 +128,4 @@ async def receive_last_block(record: Dict[str, int]):
 @click.option('--log-level', default='INFO')
 def main(log_level: str) -> None:
     configure(log_level)
-    Worker(service, loglevel=log_level).execute_from_commandline()
+    NoLoggingOverrideWorker(service).execute_from_commandline()
