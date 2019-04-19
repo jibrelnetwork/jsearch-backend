@@ -118,7 +118,7 @@ class DatabaseService(Service, Singleton):
 service = DatabaseService()
 
 
-@service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS, service_name='jsearch_wallet_worker', task_limit=1000)
+@service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS, service_name='jsearch_wallet_worker', task_limit=100)
 async def handle_new_transaction(tx_data):
     logger.info(
         "Handling new Transaction",
@@ -137,7 +137,7 @@ async def handle_new_transaction(tx_data):
         await service.add_wallet_event_tx_internal(tx_data, itx)
 
 
-@service_bus.listen_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE, service_name='jsearch_wallet_worker', task_limit=1000)
+@service_bus.listen_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE, service_name='jsearch_wallet_worker', task_limit=100)
 async def handle_new_account(account_data):
     logger.info(
         "Handling  Account Update",
@@ -156,7 +156,7 @@ async def handle_new_account(account_data):
     await service.add_or_update_asset_summary_balance(update_data)
 
 
-@service_bus.listen_stream(ROUTE_WALLET_HANDLE_TOKEN_TRANSFER, service_name='jsearch_wallet_worker', task_limit=1000)
+@service_bus.listen_stream(ROUTE_WALLET_HANDLE_TOKEN_TRANSFER, service_name='jsearch_wallet_worker', task_limit=100)
 async def handle_token_transfer(transfers):
     for transfer_data in transfers:
         logger.info(
@@ -172,7 +172,7 @@ async def handle_token_transfer(transfers):
         await service.add_or_update_asset_summary_transfer(transfer_data)
 
 
-@service_bus.listen_stream(ROUTE_WALLET_HANDLE_ASSETS_UPDATE, service_name='jsearch_wallet_worker', task_limit=1000)
+@service_bus.listen_stream(ROUTE_WALLET_HANDLE_ASSETS_UPDATE, service_name='jsearch_wallet_worker', task_limit=100)
 async def handle_assets_update(updates):
     for update_data in updates:
         logger.info(
