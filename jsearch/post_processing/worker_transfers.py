@@ -63,7 +63,7 @@ def worker(contracts: Contracts, transfer_logs: Logs, last_block: Union[int, str
 
 @service_bus.listen_stream(
     ROUTE_HANDLE_ERC20_TRANSFERS,
-    task_limit=30, batch_size=20, batch_timeout=5,
+    task_limit=30, batch_size=20, batch_timeout=1,
     service_name='jsearch_post_processing_transfers'
 )
 async def handle_new_transfers(blocks: List[Transfers]):

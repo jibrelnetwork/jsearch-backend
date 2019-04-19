@@ -73,7 +73,7 @@ async def write_transfers_logs_bus(transfer_logs: Logs):
 
 @service_bus.listen_stream(
     ROUTE_HANDLE_TRANSACTION_LOGS,
-    task_limit=30, batch_size=10, batch_timeout=5,
+    task_limit=30, batch_size=10, batch_timeout=1,
     service_name='jsearch_post_processing_logs'
 )
 async def handle_transaction_logs(blocks: List[Logs]):
