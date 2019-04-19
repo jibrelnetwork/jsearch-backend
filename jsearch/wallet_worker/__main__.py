@@ -1,6 +1,8 @@
+import asyncio
 import logging
 from typing import List
 
+import aiomonitor
 import backoff
 import click
 import psycopg2
@@ -9,6 +11,7 @@ from mode import Service
 from sqlalchemy.dialects.postgresql import insert
 
 from jsearch import settings
+from jsearch.common.contracts import ERC20_METHODS_IDS, NULL_ADDRESS
 from jsearch.common.logs import configure
 from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t
 from jsearch.common.worker import NoLoggingOverrideWorker
@@ -21,9 +24,6 @@ from jsearch.service_bus import (
 )
 from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
 from jsearch.utils import Singleton
-
-from jsearch.common.contracts import ERC20_METHODS_IDS, NULL_ADDRESS
-
 
 logger = logging.getLogger('wallet_worker')
 
@@ -47,7 +47,7 @@ class DatabaseService(Service, Singleton):
 
     @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
     async def on_start(self) -> None:
-       self.engine = await create_engine(settings.JSEARCH_MAIN_DB)
+        self.engine = await create_engine(settings.JSEARCH_MAIN_DB)
 
     async def on_stop(self) -> None:
         self.engine.close()
@@ -187,13 +187,6 @@ async def handle_assets_update(updates):
         await service.add_or_update_asset_summary_balance(update_data)
 
 
-@click.command()
-@click.option('--log-level', default='INFO')
-def main(log_level: str) -> None:
-    configure(log_level)
-    NoLoggingOverrideWorker(service).execute_from_commandline()
-
-
 def get_event_type(tx_data):
     if int(tx_data['value'], 16) != 0:
         return WalletEventType.ETH_TRANSFER
@@ -305,3 +298,12 @@ def event_from_internal_tx(address, internal_tx_data, tx_data):
                        'status': event_status}
     }
     return event_data
+
+
+@click.command()
+@click.option('--log-level', default='INFO')
+def main(log_level: str) -> None:
+    configure(log_level)
+    loop = asyncio.get_event_loop()
+    with aiomonitor.start_monitor(loop=loop):
+        NoLoggingOverrideWorker(service, loop=loop).execute_from_commandline()
