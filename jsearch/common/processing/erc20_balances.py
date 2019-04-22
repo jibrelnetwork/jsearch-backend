@@ -79,11 +79,6 @@ class BalanceUpdate:
                 changes = 0
 
             balance = self.value + changes
-
-            is_valid = balance >= 0
-            if not is_valid:
-                raise RuntimeError(balance)
-
             if is_valid:
                 db.update_token_holder_balance(self.token_address, self.account_address, balance, self.decimals)
                 logger.info(
