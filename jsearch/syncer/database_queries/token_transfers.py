@@ -23,7 +23,8 @@ def get_transfers_to_query(token: str, account: str, from_block: int) -> Query:
             token_transfers_t.c.address == account,
             token_transfers_t.c.to_address == account,
             token_transfers_t.c.block_number > from_block,
-            token_transfers_t.c.is_forked == false()
+            token_transfers_t.c.is_forked == false(),
+            token_transfers_t.c.status == 1,
         )
     )
 
@@ -37,6 +38,7 @@ def get_transfers_from_query(token: str, account: str, from_block: int) -> Query
             token_transfers_t.c.address == account,
             token_transfers_t.c.from_address == account,
             token_transfers_t.c.block_number > from_block,
-            token_transfers_t.c.is_forked == false()
+            token_transfers_t.c.is_forked == false(),
+            token_transfers_t.c.status == 1,
         )
     )
