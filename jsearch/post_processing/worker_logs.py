@@ -71,7 +71,11 @@ async def write_transfers_logs_bus(transfer_logs: Logs):
         await asyncio.gather(*futures)
 
 
-@service_bus.listen_stream(ROUTE_HANDLE_TRANSACTION_LOGS, task_limit=30, batch_size=10, batch_timeout=5)
+@service_bus.listen_stream(
+    ROUTE_HANDLE_TRANSACTION_LOGS,
+    task_limit=30, batch_size=10, batch_timeout=1,
+    service_name='jsearch_post_processing_logs'
+)
 async def handle_transaction_logs(blocks: List[Logs]):
     if not blocks:
         return
