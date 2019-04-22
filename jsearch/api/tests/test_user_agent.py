@@ -57,7 +57,10 @@ async def test_node_via_proxy_recieves_correct_user_agent(method, path, override
 
 
 @pytest.mark.asyncio
-async def test_node_via_eth_call_request_recieves_correct_user_agent(event_loop, node_server, cli_with_node, override_settings):
+async def test_node_via_eth_call_request_recieves_correct_user_agent(event_loop,
+                                                                     node_server,
+                                                                     cli_with_node,
+                                                                     override_settings):
     override_settings('HTTP_USER_AGENT', 'jsearch-backend/test hostname')
     response = await event_loop.run_in_executor(ProcessPoolExecutor(), eth_call_request, list())
 
