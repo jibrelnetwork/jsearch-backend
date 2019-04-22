@@ -1,6 +1,8 @@
+import asyncio
 import logging
 from typing import List
 
+import aiomonitor
 import backoff
 import click
 import psycopg2
@@ -9,6 +11,7 @@ from mode import Service
 from sqlalchemy.dialects.postgresql import insert
 
 from jsearch import settings
+from jsearch.common.contracts import ERC20_METHODS_IDS, NULL_ADDRESS
 from jsearch.common.logs import configure
 from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t
 from jsearch.common.worker import NoLoggingOverrideWorker
@@ -21,9 +24,6 @@ from jsearch.service_bus import (
 )
 from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
 from jsearch.utils import Singleton
-
-from jsearch.common.contracts import ERC20_METHODS_IDS, NULL_ADDRESS
-
 
 logger = logging.getLogger('wallet_worker')
 
@@ -118,7 +118,7 @@ class DatabaseService(Service, Singleton):
 service = DatabaseService()
 
 
-@service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS)
+@service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS, service_name='jsearch_wallet_worker', task_limit=100)
 async def handle_new_transaction(tx_data):
     logger.info(
         "Handling new Transaction",
@@ -137,7 +137,7 @@ async def handle_new_transaction(tx_data):
         await service.add_wallet_event_tx_internal(tx_data, itx)
 
 
-@service_bus.listen_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE)
+@service_bus.listen_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE, service_name='jsearch_wallet_worker', task_limit=100)
 async def handle_new_account(account_data):
     logger.info(
         "Handling  Account Update",
@@ -156,7 +156,7 @@ async def handle_new_account(account_data):
     await service.add_or_update_asset_summary_balance(update_data)
 
 
-@service_bus.listen_stream(ROUTE_WALLET_HANDLE_TOKEN_TRANSFER)
+@service_bus.listen_stream(ROUTE_WALLET_HANDLE_TOKEN_TRANSFER, service_name='jsearch_wallet_worker', task_limit=100)
 async def handle_token_transfer(transfers):
     for transfer_data in transfers:
         logger.info(
@@ -172,7 +172,7 @@ async def handle_token_transfer(transfers):
         await service.add_or_update_asset_summary_transfer(transfer_data)
 
 
-@service_bus.listen_stream(ROUTE_WALLET_HANDLE_ASSETS_UPDATE)
+@service_bus.listen_stream(ROUTE_WALLET_HANDLE_ASSETS_UPDATE, service_name='jsearch_wallet_worker', task_limit=100)
 async def handle_assets_update(updates):
     for update_data in updates:
         logger.info(
@@ -185,13 +185,6 @@ async def handle_assets_update(updates):
         )
 
         await service.add_or_update_asset_summary_balance(update_data)
-
-
-@click.command()
-@click.option('--log-level', default='INFO')
-def main(log_level: str) -> None:
-    configure(log_level)
-    NoLoggingOverrideWorker(service).execute_from_commandline()
 
 
 def get_event_type(tx_data):
@@ -305,3 +298,12 @@ def event_from_internal_tx(address, internal_tx_data, tx_data):
                        'status': event_status}
     }
     return event_data
+
+
+@click.command()
+@click.option('--log-level', default='INFO')
+def main(log_level: str) -> None:
+    configure(log_level)
+    loop = asyncio.get_event_loop()
+    with aiomonitor.start_monitor(loop=loop):
+        NoLoggingOverrideWorker(service, loop=loop).execute_from_commandline()
