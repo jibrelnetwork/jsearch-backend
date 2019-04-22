@@ -1,12 +1,13 @@
 # !/usr/bin/env python
 import asyncio
 import logging
-import signal
 
 import click
+import signal
 from mode import Service
 
 from jsearch.common import logs
+from jsearch.post_processing.database import db_service
 from jsearch.common.last_block import LastBlock
 from jsearch.multiprocessing import executor
 from jsearch.post_processing.worker_logs import handle_transaction_logs
@@ -47,7 +48,10 @@ class PostProcessingWorker(Singleton, Service):
 
     def on_init_dependencies(self):
         service_bus.streams = {k: v for k, v in service_bus.streams.items() if WORKER_MAP[k] == self.action}
-        return [service_bus]
+        return [
+            service_bus,
+            db_service,
+        ]
 
     async def on_start(self):
         self._is_need_to_stop = False
