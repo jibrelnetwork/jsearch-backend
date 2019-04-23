@@ -187,7 +187,12 @@ class Manager:
     async def get_blocks_to_sync(self):
         latest_synced_block_num = await self.main_db.get_latest_synced_block_number(blocks_range=self.sync_range)
         latest_available_block_num = await self.raw_db.get_latest_available_block_number()
-        if latest_available_block_num - (latest_synced_block_num or 0) < self.chunk_size:
+
+        is_need_strict_mode = (
+            isinstance(latest_available_block_num, int) and
+            (latest_synced_block_num or 0) < self.chunk_size
+        )
+        if is_need_strict_mode:
             # syncer is almost reached the head of chain, can fetch missed blocks now
             sync_mode = SYNC_MODE_STRICT
             blocks = await self.get_blocks_to_sync_strict()
@@ -200,11 +205,9 @@ class Manager:
                 if end_num >= latest_available_block_num:
                     end_num = latest_available_block_num
 
-                if start_num >= end_num:
-                    start_num = end_num
-
-                extra_blocks = await self.raw_db.get_blocks_to_sync(start_num, end_num)
-                blocks += extra_blocks
+                if start_num < end_num:
+                    extra_blocks = await self.raw_db.get_blocks_to_sync(start_num, end_num)
+                    blocks += extra_blocks
         else:
             # syncer is far from chain head, need more speed, will skip missed blocks
             sync_mode = SYNC_MODE_FAST
