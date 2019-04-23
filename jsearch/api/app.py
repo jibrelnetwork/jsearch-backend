@@ -35,6 +35,7 @@ async def make_app():
     app['node_proxy'] = NodeProxy(settings.ETH_NODE_URL)
 
     # Configure service routes
+    app.router.add_route('GET', '/healthcheck', handlers.healthcheck)
     app.router.add_route('GET', '/v1/accounts/balances', handlers.get_accounts_balances)
     app.router.add_route('GET', '/v1/accounts/{address}', handlers.get_account)
     app.router.add_route('GET', '/v1/accounts/{address}/transactions', handlers.get_account_transactions)

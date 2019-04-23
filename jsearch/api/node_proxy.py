@@ -30,6 +30,10 @@ class NodeProxy:
             async with session.post(self.node_url, json=message) as resp:
                 return await resp.json()
 
+    async def client_version(self) -> str:
+        res = await self._request('web3_clientVersion')
+        return res
+
     async def gas_price(self) -> str:
         res = await self._request('eth_gasPrice')
         res = _decimal_result(res)
