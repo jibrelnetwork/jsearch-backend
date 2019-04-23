@@ -35,6 +35,7 @@ from jsearch.syncer.database_queries.token_transfers import (
     get_transfers_to_query
 )
 
+LAST_BLOCK_OFFSET = 6
 MAIN_DB_POOL_SIZE = 22
 
 logger = logging.getLogger(__name__)
@@ -147,7 +148,12 @@ class RawDB(DBWrapper):
                 row = await cur.fetchone()
                 cur.close()
 
-        return row['max_block'] or None
+        number = row['max_block']
+        if number is not None:
+            number = int(number) - LAST_BLOCK_OFFSET
+            number = number if number > 0 else 0
+
+        return number or None
 
     async def get_reorgs_by_chain_split_id(self, chain_split_id):
         q = """

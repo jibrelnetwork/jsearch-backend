@@ -193,7 +193,17 @@ class Manager:
             blocks = await self.get_blocks_to_sync_strict()
             if len(blocks) < self.chunk_size:
                 start_num = latest_synced_block_num + 1
+
                 end_num = start_num + self.chunk_size - len(blocks)
+
+                # limit syncer to create offset from last available block
+                if end_num >= latest_available_block_num:
+                    end_num = latest_available_block_num
+
+                if start_num >= end_num:
+                    start_num = end_num
+
+                print(start_num, end_num)
                 extra_blocks = await self.raw_db.get_blocks_to_sync(start_num, end_num)
                 blocks += extra_blocks
         else:
