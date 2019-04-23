@@ -38,3 +38,5 @@ SERVICE_BUS_WORKER_NAME = 'jsearch_backend'
 API_QUERY_ARRAY_MAX_LENGTH = 25
 
 HTTP_USER_AGENT = f'jsearch-backend/{VERSION} {socket.gethostname()}'
+
+LAST_BLOCK_OFFSET = int(os.getenv('BLOCKCHAIN_OFFSET', 6))

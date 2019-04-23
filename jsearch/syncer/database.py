@@ -1,6 +1,5 @@
 import logging
 from copy import copy
-from typing import List, Dict, Any
 
 import aiopg
 import backoff
@@ -10,7 +9,9 @@ from psycopg2.extras import DictCursor
 from sqlalchemy import create_engine as sync_create_engine, and_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.pool import NullPool
+from typing import List, Dict, Any
 
+from jsearch import settings
 from jsearch.common import contracts
 from jsearch.common.tables import (
     accounts_base_t,
@@ -35,7 +36,6 @@ from jsearch.syncer.database_queries.token_transfers import (
     get_transfers_to_query
 )
 
-LAST_BLOCK_OFFSET = 6
 MAIN_DB_POOL_SIZE = 22
 
 logger = logging.getLogger(__name__)
@@ -150,7 +150,7 @@ class RawDB(DBWrapper):
 
         number = row['max_block']
         if number is not None:
-            number = int(number) - LAST_BLOCK_OFFSET
+            number = int(number) - settings.LAST_BLOCK_OFFSET
             number = number if number > 0 else 0
 
         return number or None
