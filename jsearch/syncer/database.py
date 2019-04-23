@@ -153,7 +153,7 @@ class RawDB(DBWrapper):
             number = int(number) - settings.LAST_BLOCK_OFFSET
             number = number if number > 0 else 0
 
-        return number or None
+        return number or 0
 
     async def get_reorgs_by_chain_split_id(self, chain_split_id):
         q = """
