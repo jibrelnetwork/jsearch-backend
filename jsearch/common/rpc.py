@@ -198,7 +198,7 @@ ContractCalls = List[ContractCall]
     exception=(EthRequestException, requests.exceptions.RequestException)
 )
 def eth_call_request(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    response = requests.post(url=settings.ETH_NODE_URL, json=data)
+    response = requests.post(url=settings.ETH_NODE_URL, json=data, headers={'User-Agent': settings.HTTP_USER_AGENT})
     if response.status_code != 200:
         raise EthRequestException(f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}")
 
