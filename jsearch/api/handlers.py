@@ -460,7 +460,13 @@ async def healthcheck(request: web.Request) -> web.Response:
     node_stats = await stats.get_node_stats(request.app['node_proxy'])
     loop_stats = await stats.get_loop_stats()
 
-    healthy = main_db_stats.is_healthy and node_stats.is_healthy and loop_stats.is_healthy
+    healthy = all(
+        (
+            main_db_stats.is_healthy,
+            node_stats.is_healthy,
+            loop_stats.is_healthy,
+        )
+    )
     status = 200 if healthy else 400
 
     data = {
