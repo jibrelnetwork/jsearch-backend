@@ -61,7 +61,11 @@ def worker(contracts: Contracts, transfer_logs: Logs, last_block: Union[int, str
         )
 
 
-@service_bus.listen_stream(ROUTE_HANDLE_ERC20_TRANSFERS, task_limit=30, batch_size=20, batch_timeout=5)
+@service_bus.listen_stream(
+    ROUTE_HANDLE_ERC20_TRANSFERS,
+    task_limit=30, batch_size=20, batch_timeout=1,
+    service_name='jsearch_post_processing_transfers'
+)
 async def handle_new_transfers(blocks: List[Transfers]):
     loop = asyncio.get_event_loop()
     last_block = LastBlock()
@@ -89,7 +93,10 @@ async def handle_new_transfers(blocks: List[Transfers]):
     )
 
 
-@service_bus.listen_stream(ROUTE_HANDLE_LAST_BLOCK)
+@service_bus.listen_stream(
+    ROUTE_HANDLE_LAST_BLOCK,
+    service_name='jsearch_post_processing_transfers'
+)
 async def receive_last_block(record: Dict[str, int]):
     number = record.get('number')
 
