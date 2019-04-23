@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from asyncpg.pool import Pool
@@ -22,8 +23,10 @@ async def get_main_db_stats(db_pool: Pool) -> MainDbStats:
             await conn.fetch('SELECT 1')
 
         is_healthy = True
-    except Exception:
-        logger.exception('Cannot check the database')
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.warning('Cannot check the database', extra={'exception': e})
 
     return MainDbStats(is_healthy=is_healthy)
 
@@ -35,8 +38,10 @@ async def get_node_stats(node_proxy: NodeProxy) -> NodeStats:
         await node_proxy.client_version()
 
         is_healthy = True
-    except Exception:
-        logger.exception('Cannot check the node')
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.warning('Cannot check the node', extra={'exception': e})
 
     return NodeStats(is_healthy=is_healthy)
 
@@ -55,8 +60,10 @@ async def get_kafka_stats() -> KafkaStats:
         await consumer.stop()
 
         is_healthy = True
-    except Exception:
-        logger.exception('Cannot check the kafka')
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.warning('Cannot check the kafka', extra={'exception': e})
 
     return KafkaStats(is_healthy=is_healthy)
 

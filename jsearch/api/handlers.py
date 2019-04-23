@@ -15,7 +15,7 @@ from jsearch.api.helpers import (
     api_error_400,
     api_error_404
 )
-from jsearch.common import tasks, health
+from jsearch.common import tasks, stats
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
 
@@ -456,9 +456,9 @@ async def get_wallet_transactions(request):
 
 
 async def healthcheck(request: web.Request) -> web.Response:
-    main_db_stats = await health.get_main_db_stats(request.app['db_pool'])
-    node_stats = await health.get_node_stats(request.app['node_proxy'])
-    loop_stats = await health.get_loop_stats()
+    main_db_stats = await stats.get_main_db_stats(request.app['db_pool'])
+    node_stats = await stats.get_node_stats(request.app['node_proxy'])
+    loop_stats = await stats.get_loop_stats()
 
     healthy = main_db_stats.is_healthy and node_stats.is_healthy and loop_stats.is_healthy
     status = 200 if healthy else 400
