@@ -1,7 +1,8 @@
 import asyncio
 import subprocess
+from asyncio import AbstractEventLoop
 from functools import wraps
-from typing import List, Any
+from typing import List, Any, Optional
 
 
 def get_git_revesion_num():
@@ -25,3 +26,8 @@ def as_dicts(func):
             return to_dics(result)
 
     return _wrapper
+
+
+def get_loop_tasks_count(loop: Optional[AbstractEventLoop] = None) -> int:
+    # TODO: Replace with `asyncio.all_tasks()` when migrating to `3.7`.
+    return len(asyncio.Task.all_tasks(loop))
