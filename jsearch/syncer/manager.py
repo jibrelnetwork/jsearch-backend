@@ -194,7 +194,6 @@ class Manager:
             # syncer is almost reached the head of chain, can fetch missed blocks now
             sync_mode = SYNC_MODE_STRICT
             blocks = await self.get_blocks_to_sync_strict()
-            print(blocks)
             if len(blocks) < self.chunk_size:
 
                 start_num = latest_synced_block_num + 1
