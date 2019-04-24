@@ -1,11 +1,11 @@
 import os
+
 import pathlib
 import socket
 
 BASE_DIR = pathlib.Path(__file__).parent.parent
-VERSION_FILE_PATH = BASE_DIR / 'version.txt'
 
-VERSION = VERSION_FILE_PATH.read_text().strip()
+VERSION = '0.1.3'
 
 JSEARCH_MAIN_DB = os.getenv('JSEARCH_MAIN_DB', 'postgres://localhost/jsearch_main')
 JSEARCH_RAW_DB = os.getenv('JSEARCH_RAW_DB', 'postgres://localhost/jsearch_raw')
@@ -39,3 +39,6 @@ SERVICE_BUS_WORKER_NAME = 'jsearch_backend'
 API_QUERY_ARRAY_MAX_LENGTH = 25
 
 HTTP_USER_AGENT = f'jsearch-backend/{VERSION} {socket.gethostname()}'
+
+LAST_BLOCK_OFFSET = int(os.getenv('BLOCKCHAIN_OFFSET', 6))
+HEALTH_LOOP_TASKS_COUNT_THRESHOLD = 10000

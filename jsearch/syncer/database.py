@@ -1,6 +1,5 @@
 import logging
 from copy import copy
-from typing import List, Dict, Any
 
 import aiopg
 import backoff
@@ -10,7 +9,9 @@ from psycopg2.extras import DictCursor
 from sqlalchemy import create_engine as sync_create_engine, and_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.pool import NullPool
+from typing import List, Dict, Any
 
+from jsearch import settings
 from jsearch.common import contracts
 from jsearch.common.tables import (
     accounts_base_t,
@@ -147,7 +148,12 @@ class RawDB(DBWrapper):
                 row = await cur.fetchone()
                 cur.close()
 
-        return row['max_block'] or None
+        number = row['max_block']
+        if number is not None:
+            number = int(number) - settings.LAST_BLOCK_OFFSET
+            number = number if number > 0 else 0
+
+        return number or 0
 
     async def get_reorgs_by_chain_split_id(self, chain_split_id):
         q = """
