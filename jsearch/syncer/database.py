@@ -11,7 +11,6 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.pool import NullPool
 from typing import List, Dict, Any
 
-from jsearch import settings
 from jsearch.common import contracts
 from jsearch.common.tables import (
     accounts_base_t,
