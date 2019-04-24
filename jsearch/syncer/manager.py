@@ -191,29 +191,21 @@ class Manager:
 
         if (latest_synced_block_num is not None and
                 (latest_available_block_num - latest_synced_block_num) < self.chunk_size):
+
             # syncer is almost reached the head of chain, can fetch missed blocks now
+
             sync_mode = SYNC_MODE_STRICT
             blocks = await self.get_blocks_to_sync_strict()
             if len(blocks) < self.chunk_size:
-
                 start_num = latest_synced_block_num + 1
                 end_num = start_num + self.chunk_size - len(blocks)
 
-                # create limit to make offset from last available block
-                if end_num >= latest_available_block_num:
-                    end_num = latest_available_block_num
-
-                if start_num < end_num:
-                    extra_blocks = await self.raw_db.get_blocks_to_sync(start_num, end_num)
-                    blocks += extra_blocks
+                extra_blocks = await self.raw_db.get_blocks_to_sync(start_num, end_num)
+                blocks += extra_blocks
         else:
             # syncer is far from chain head, need more speed, will skip missed blocks
             sync_mode = SYNC_MODE_FAST
-            blocks = await self.get_blocks_to_sync_fast(
-                latest_synced_block_num,
-                latest_available_block_num,
-                self.chunk_size
-            )
+            blocks = await self.get_blocks_to_sync_fast(latest_synced_block_num, self.chunk_size)
 
         if self.latest_available_block_num != latest_available_block_num:
             self.latest_available_block_num = latest_available_block_num
@@ -229,7 +221,7 @@ class Manager:
         )
         return blocks
 
-    async def get_blocks_to_sync_fast(self, latest_synced_block_num, latest_available_block_number, chunk_size):
+    async def get_blocks_to_sync_fast(self, latest_synced_block_num, chunk_size):
         if latest_synced_block_num is None:
             start_block_num = self.sync_range[0]
         else:
@@ -238,9 +230,6 @@ class Manager:
         end_block_num = start_block_num + chunk_size - 1
         if self.sync_range[1]:
             end_block_num = min(end_block_num, self.sync_range[1])
-
-        if end_block_num >= latest_available_block_number:
-            end_block_num = latest_available_block_number
 
         return await self.raw_db.get_blocks_to_sync(start_block_num, end_block_num)
 
