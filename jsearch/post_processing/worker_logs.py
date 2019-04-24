@@ -103,4 +103,4 @@ async def handle_transaction_logs(blocks: List[Logs]):
     )
 
 
-handle_transaction_logs.tag = 'logs'
+handle_transaction_logs.action = 'logs'
