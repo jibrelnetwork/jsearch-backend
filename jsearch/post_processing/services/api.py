@@ -1,37 +1,28 @@
+from typing import Any
+
 import aiokafka
 import asyncpg
 from aiohttp import web
+
 from jsearch import settings
-from mode import Service
-
 from jsearch.common import stats
+from jsearch.common import services
 
 
-class ApiService(Service):
-    async def on_start(self) -> None:
-        self.app = await make_app(self.loop)
-        self.runner = web.AppRunner(self.app)
+class ApiService(services.ApiService):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        kwargs.setdefault('port', settings.POST_PROCESSING_API_PORT)
+        kwargs.setdefault('app_maker', make_app)
 
-        await self.runner.setup()
-        await web.TCPSite(self.runner, '0.0.0.0', settings.POST_PROCESSING_API_PORT).start()
-
-    async def on_stop(self) -> None:
-        await self.runner.cleanup()
+        super(ApiService, self).__init__(*args, **kwargs)
 
 
-async def make_app(loop) -> web.Application:
+def make_app(loop) -> web.Application:
     application = web.Application(loop=loop)
     application.router.add_route('GET', '/healthcheck', healthcheck)
 
-    application['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB)
-    application['kafka_consumer'] = aiokafka.AIOKafkaConsumer(
-        loop=loop,
-        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-    )
-
+    application.on_startup.append(on_startup)
     application.on_shutdown.append(on_shutdown)
-
-    await application['kafka_consumer'].start()
 
     return application
 
@@ -61,6 +52,16 @@ async def healthcheck(request: web.Request) -> web.Response:
     return web.json_response(data=data, status=status)
 
 
-async def on_shutdown(app):
+async def on_startup(app: web.Application) -> None:
+    app['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB)
+    app['kafka_consumer'] = aiokafka.AIOKafkaConsumer(
+        loop=app.loop,
+        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+    )
+
+    await app['kafka_consumer'].start()
+
+
+async def on_shutdown(app: web.Application) -> None:
     await app['db_pool'].close()
     await app['kafka_consumer'].stop()
