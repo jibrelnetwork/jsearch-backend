@@ -198,7 +198,11 @@ class Storage:
                 rows = await conn.fetch(query)
             else:
                 rows = await conn.fetch(query, tag.value)
-            rows = [dict(r) for r in rows]
+
+            # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
+            # `in_app_distinct` instead.
+            rows = in_app_distinct([dict(row) for row in rows])
+
             return [models.Transaction(**r) for r in rows]
 
     async def get_block(self, tag: Tag):

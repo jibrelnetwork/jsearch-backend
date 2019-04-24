@@ -435,6 +435,23 @@ async def get_wallet_transfers(request):
     return api_success([t.to_dict() for t in transfers])
 
 
+async def get_wallet_events(request):
+    params = validate_params(request)
+    addresses = request.query.get('addresses', '')
+    addresses = addresses.split(',') if addresses else []
+    assets = request.query.get('assets', '')
+    assets = [a for a in assets.split(',') if a]
+    storage = request.app['storage']
+
+    transfers = await storage.get_wallet_assets_transfers(
+        addresses,
+        limit=params['limit'],
+        offset=params['offset'],
+        assets=assets
+    )
+    return api_success([t.to_dict() for t in transfers])
+
+
 async def get_wallet_transactions(request):
     params = validate_params(request)
     address = request.query.get('address', '')
