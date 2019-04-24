@@ -6,16 +6,12 @@ Create Date: 2019-02-19 07:28:00.195221
 
 """
 from alembic import op
-import sqlalchemy as sa
-from jsearch.common import tables
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'cea942470181'
 down_revision = '78d176256d74'
 branch_labels = None
 depends_on = None
-
 
 UP_SQL = """
 CREATE TABLE chain_splits (
@@ -47,9 +43,6 @@ CREATE TABLE assets_transfers (
     ordering integer
 );
 
-CREATE INDEX ix_assets_transfers ON assets_transfers (address, asset_address, is_forked, ordering);
-
-
 CREATE TABLE assets_summary (
     address varchar,
     asset_address varchar,
@@ -58,13 +51,9 @@ CREATE TABLE assets_summary (
     nonce integer
 );
 
-CREATE INDEX ix_assets_summary ON assets_transfers (address, asset_address);
-
-
 ALTER TABLE transactions ADD COLUMN address varchar default '';
 ALTER TABLE transactions DROP CONSTRAINT transactions_pkey;
 """
-
 
 DOWN_SQL = """
 DROP TABLE chain_splits;
@@ -80,4 +69,3 @@ def upgrade():
 
 def downgrade():
     op.execute(DOWN_SQL)
-
