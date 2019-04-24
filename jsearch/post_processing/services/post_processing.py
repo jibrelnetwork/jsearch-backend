@@ -1,28 +1,15 @@
+from mode import Service
 from typing import List, Any
 
-from mode import Service
-
-from jsearch.service_bus import (
-    ROUTE_HANDLE_ERC20_TRANSFERS,
-    ROUTE_HANDLE_LAST_BLOCK,
-    ROUTE_HANDLE_TRANSACTION_LOGS,
-    service_bus,
-)
+from jsearch.post_processing.worker_logs import handle_transaction_logs
+from jsearch.post_processing.worker_transfers import handle_new_transfers
+from jsearch.service_bus import service_bus
 from jsearch.utils import Singleton
 
-ACTION_PROCESS_LOGS = 'logs'
-ACTION_PROCESS_TRANSFERS = 'transfers'
-
 ACTION_PROCESS_CHOICES = (
-    ACTION_PROCESS_LOGS,
-    ACTION_PROCESS_TRANSFERS,
+    handle_transaction_logs.tag,
+    handle_new_transfers.tag,
 )
-
-WORKER_MAP = {
-    ROUTE_HANDLE_LAST_BLOCK: ACTION_PROCESS_TRANSFERS,
-    ROUTE_HANDLE_TRANSACTION_LOGS: ACTION_PROCESS_LOGS,
-    ROUTE_HANDLE_ERC20_TRANSFERS: ACTION_PROCESS_TRANSFERS,
-}
 
 
 class PostProcessingService(Singleton, Service):
@@ -32,7 +19,7 @@ class PostProcessingService(Singleton, Service):
         self.action = action
 
     def on_init_dependencies(self) -> List[Service]:
-        service_bus.streams = {k: v for k, v in service_bus.streams.items() if WORKER_MAP[k] == self.action}
+        service_bus.streams = {k: v for k, v in service_bus.streams.items() if v.tag == self.action}
 
         return [service_bus]
 
