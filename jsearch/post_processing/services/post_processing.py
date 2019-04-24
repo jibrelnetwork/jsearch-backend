@@ -2,6 +2,8 @@ from typing import List, Any
 
 from mode import Service
 
+from jsearch.post_processing.worker_logs import handle_transaction_logs
+from jsearch.post_processing.worker_transfers import handle_new_transfers
 from jsearch.service_bus import (
     ROUTE_HANDLE_ERC20_TRANSFERS,
     ROUTE_HANDLE_LAST_BLOCK,
@@ -23,6 +25,10 @@ WORKER_MAP = {
     ROUTE_HANDLE_TRANSACTION_LOGS: ACTION_PROCESS_LOGS,
     ROUTE_HANDLE_ERC20_TRANSFERS: ACTION_PROCESS_TRANSFERS,
 }
+
+# Workers have to be imported for the `ServiceBus` to register them via
+# `@service_bus.listen_stream`.
+WORKERS = [handle_new_transfers, handle_transaction_logs]
 
 
 class PostProcessingService(Singleton, Service):
