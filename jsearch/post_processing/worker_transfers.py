@@ -1,5 +1,6 @@
 import asyncio
 import logging
+
 import time
 from itertools import chain, groupby
 from typing import List, Dict, Union
@@ -93,6 +94,9 @@ async def handle_new_transfers(blocks: List[Transfers]):
     )
 
 
+handle_new_transfers.tag = 'transfers'
+
+
 @service_bus.listen_stream(
     ROUTE_HANDLE_LAST_BLOCK,
     service_name='jsearch_post_processing_transfers'
@@ -104,3 +108,6 @@ async def receive_last_block(record: Dict[str, int]):
 
     last_block = LastBlock()
     last_block.update(number=number)
+
+
+receive_last_block.tag = 'transfers'
