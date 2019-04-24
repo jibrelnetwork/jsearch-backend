@@ -8,8 +8,10 @@ from aiohttp_swagger import setup_swagger
 
 from jsearch import settings
 from jsearch.api import handlers
+from jsearch.api.middlewares import cors_middleware
 from jsearch.api.storage import Storage
 from jsearch.api.node_proxy import NodeProxy
+from jsearch.common import logs
 
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
 swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
@@ -25,7 +27,7 @@ async def make_app():
     """
     Create and initialize the application instance.
     """
-    app = web.Application()
+    app = web.Application(middlewares=(cors_middleware,))
     app.on_shutdown.append(on_shutdown)
     # Create a database connection pool
     app['db_pool'] = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
@@ -33,6 +35,7 @@ async def make_app():
     app['node_proxy'] = NodeProxy(settings.ETH_NODE_URL)
 
     # Configure service routes
+    app.router.add_route('GET', '/healthcheck', handlers.healthcheck)
     app.router.add_route('GET', '/v1/accounts/balances', handlers.get_accounts_balances)
     app.router.add_route('GET', '/v1/accounts/{address}', handlers.get_account)
     app.router.add_route('GET', '/v1/accounts/{address}/transactions', handlers.get_account_transactions)
@@ -83,11 +86,12 @@ async def make_app():
 
     app.router.add_static('/docs', swagger_ui_path)
     setup_swagger(app, swagger_from_file=swagger_file)
+    logs.configure(settings.LOG_LEVEL)
 
     return app
 
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    app = loop.run_until_complete(make_app())
-    web.run_app(app)
+    application = loop.run_until_complete(make_app())
+    web.run_app(application)

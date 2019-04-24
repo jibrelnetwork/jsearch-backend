@@ -3,7 +3,7 @@ import logging
 import signal
 from typing import List, Any, Tuple, Optional, Callable
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Singleton(object):
@@ -46,18 +46,25 @@ def add_gracefully_shutdown_handlers(callback: Callable[..., Any]):
 async def shutdown():
     loop = asyncio.get_event_loop()
 
-    logging.info(f'Received exit signal ...')
+    logger.info('Received exit signal ...')
     tasks = [task for task in asyncio.Task.all_tasks() if task is not asyncio.Task.current_task()]
 
     for task in tasks:
         task.cancel()
 
-    logging.info('Canceling outstanding tasks')
+    logger.info('Canceling outstanding tasks')
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
     for task, result in zip(tasks, results):
         if isinstance(result, Exception):
-            logging.info('finished awaiting cancelled task %s with results: %s %s', task, type(result), result)
+            logger.info(
+                'Finished awaiting cancelled task.',
+                extra={
+                    'task_name': task,
+                    'task_result_type': type(result),
+                    'task_result': result,
+                }
+            )
 
     loop.stop()
-    logging.info('Shutdown complete.')
+    logger.info('Shutdown complete.')

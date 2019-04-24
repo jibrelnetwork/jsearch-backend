@@ -89,6 +89,76 @@ class Transaction(Model):
     }
 
 
+class InternalTransaction(Model):
+    swagger_types = {
+        'block_number': int,
+        'block_hash': str,
+        'parent_tx_hash': str,
+        'op': str,
+        'call_depth': int,
+        'from': str,
+        'to': str,
+        'value': str,
+        'gas_limit': str,
+        'payload': str,
+        'status': str,
+        'transaction_index': int,
+    }
+
+    attribute_map = {
+        'block_number': 'blockNumber',
+        'block_hash': 'blockHash',
+        'parent_tx_hash': 'parentTxHash',
+        'op': 'op',
+        'call_depth': 'callDepth',
+        'from': 'from',
+        'to': 'to',
+        'value': 'value',
+        'gas_limit': 'gasLimit',
+        'payload': 'input',
+        'status': 'status',
+        'transaction_index': 'transactionIndex',
+    }
+
+    int_to_str = {'value', 'gasLimit'}
+
+
+class PendingTransaction(Model):
+    swagger_types = {
+        'hash': str,
+        'status': str,
+        'removed': str,
+        'r': str,
+        's': str,
+        'v': str,
+        'to': str,
+        'from': str,
+        'gas': str,
+        'gas_price': str,
+        'input': str,
+        'nonce': str,
+        'value': str,
+    }
+
+    attribute_map = {
+        'hash': 'hash',
+        'status': 'status',
+        'removed': 'removed',
+        'r': 'r',
+        's': 's',
+        'v': 'v',
+        'to': 'to',
+        'from': 'from',
+        'gas': 'gas',
+        'gas_price': 'gasPrice',
+        'input': 'input',
+        'nonce': 'nonce',
+        'value': 'value',
+    }
+
+    int_to_str = {'gas', 'gasPrice', 'nonce', 'value'}
+
+
 class Block(Model):
     swagger_types = {
         'difficulty': str,

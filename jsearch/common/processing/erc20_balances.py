@@ -79,19 +79,35 @@ class BalanceUpdate:
                 changes = 0
 
             balance = self.value + changes
-
-            is_valid = balance >= 0
             if is_valid:
                 db.update_token_holder_balance(self.token_address, self.account_address, balance, self.decimals)
                 logger.info(
-                    '[BALANCE UPDATE] %s on block %s token %s address %s -> %30d + %30d : %30d',
-                    self.block, last_block, self.token_address, self.account_address, self.value, changes, balance
+                    'Updated balance for an account',
+                    extra={
+                        'tag': 'BALANCE UPDATE',
+                        'block': self.block,
+                        'last_block': last_block,
+                        'token_address': self.token_address,
+                        'account_address': self.account_address,
+                        'before_update': self.value,
+                        'delta': changes,
+                        'after_update': balance,
+                    }
                 )
 
         if not is_valid:
             logger.error(
-                '[BALANCE UPDATE ERROR] %s on block %s token %s address %s -> %30s + %30s : %30s',
-                self.block, last_block, self.token_address, self.account_address, self.value, changes, balance
+                'Failed to update balance for an account',
+                extra={
+                    'tag': 'BALANCE UPDATE',
+                    'block': self.block,
+                    'last_block': last_block,
+                    'token_address': self.token_address,
+                    'account_address': self.account_address,
+                    'before_update': self.value,
+                    'delta': changes,
+                    'after_update': balance,
+                }
             )
 
     def to_asset_update(self):
@@ -188,4 +204,4 @@ def update_token_holder_balances(
         updates = fetch_erc20_balance_bulk(chunk, block=last_block)
         for update in updates:
             update.apply(db, last_block)
-        sync_client.write_assets_updates([u.to_asset_update() for u in updates if u.value])
+        sync_client.write_assets_updates([u.to_asset_update() for u in updates if u.value is not None])

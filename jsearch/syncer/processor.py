@@ -1,13 +1,14 @@
 import logging
 import re
 import time
+from collections import defaultdict
 from typing import Optional, NamedTuple, Dict, Any, List, Tuple
 
 from jsearch import service_bus
 from jsearch import settings
 from jsearch.common import contracts
 from jsearch.syncer.database import MainDBSync, RawDBSync
-
+from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,48 @@ class BlockData(NamedTuple):
     receipts: List[Dict[str, Any]]
     accounts: List[Dict[str, Any]]
     internal_txs: List[Dict[str, Any]]
+
+    def write_to_database(self, main_db: MainDBSync) -> None:
+        main_db.write_block_data(
+            block_data=self.block,
+            uncles_data=self.uncles,
+            transactions_data=self.txs,
+            receipts_data=self.receipts,
+            logs_data=self.logs,
+            accounts_data=self.accounts,
+            internal_txs_data=self.internal_txs
+        )
+
+    def write_to_bus(self):
+        contracts_set = set()
+        for acc in self.accounts:
+            if acc['code'] != '':
+                contracts_set.add(acc['address'])
+
+        internal_tx_parent_map = defaultdict(list)
+        for internal_tx in self.internal_txs:
+            internal_tx_parent_map[internal_tx['parent_tx_hash']].append(internal_tx)
+
+        tx_status_map = {receipt["transaction_hash"]: receipt["status"] for receipt in self.receipts}
+        assert len(tx_status_map) == len(self.txs)
+
+        for tx in self.txs:
+            receipt_status = tx_status_map[tx['hash']]
+            internal_txs = internal_tx_parent_map[tx['hash']]
+            to_contract = tx['to'] in contracts_set
+            tx.update(
+                internal_transactions=internal_txs,
+                receipt_status=receipt_status,
+                to_contract=to_contract,
+            )
+
+            service_bus.sync_client.write_tx(tx)
+
+        for account in self.accounts:
+            service_bus.sync_client.write_account(account)
+
+        logs = [dict(log, **{'status': tx_status_map[log['transaction_hash']]}) for log in self.logs]
+        service_bus.sync_client.write_logs(logs=logs)
 
 
 class SyncProcessor:
@@ -39,7 +82,7 @@ class SyncProcessor:
         :param block_number: number of block to sync
         :return: True if sync is successfull, False if syn fails or block already synced
         """
-        logger.debug("Syncing Block %s #%s", block_hash, block_number)
+        logger.debug("Syncing Block", extra={'hash': block_hash, 'number': block_number})
 
         self.main_db.connect()
         self.raw_db.connect()
@@ -47,15 +90,15 @@ class SyncProcessor:
         start_time = time.monotonic()
         is_block_exist = self.main_db.is_block_exist(block_hash)
         if is_block_exist is True:
-            logger.debug("Block #%s exist", block_hash)
+            logger.debug("Block already exists", extra={'hash': block_hash})
             return False
         receipts = self.raw_db.get_block_receipts(block_hash)
         if receipts is None:
-            logger.debug("Block #%s not ready: no receipts", block_hash)
+            logger.debug("Block is not ready, no receipts", extra={'hash': block_hash})
             return False
         reward = self.raw_db.get_reward(block_hash)
         if reward is None:
-            logger.debug("Block #%s not ready: no reward", block_hash)
+            logger.debug("Block is not ready, no reward", extra={'hash': block_hash})
             return False
 
         header = self.raw_db.get_header_by_hash(block_hash)
@@ -72,38 +115,18 @@ class SyncProcessor:
             reward=reward,
             internal_transactions=internal_transactions
         )
-        self.write_block(block)
-        service_bus.sync_client.write_logs(logs=block.logs)
 
-        for tx in block.txs:
-            if tx['value'] != '0x0':
-                service_bus.sync_client.write_tx(tx)
-
-        for acc in block.accounts:
-            service_bus.sync_client.write_account(acc)
+        block.write_to_database(self.main_db)
+        block.write_to_bus()
 
         sync_time = time.monotonic() - start_time
-        logger.debug("Block %s #%s synced on %ss", block_hash, block_number, sync_time)
+        logger.debug("Block is synced", extra={'hash': block_hash, 'number': block_number, 'sync_time': sync_time})
         self.main_db.disconnect()
         return True
 
-    def write_block(self, block: BlockData):
-        """
-        Preprocess and write block data fetched from Raw DB to Main DB
-        """
-        self.main_db.write_block_data(
-            block_data=block.block,
-            uncles_data=block.uncles,
-            transactions_data=block.txs,
-            receipts_data=block.receipts,
-            logs_data=block.logs,
-            accounts_data=block.accounts,
-            internal_txs_data=block.internal_txs
-        )
-
     def process_block(self, header, body, reward, receipts, accounts, internal_transactions) -> BlockData:
         """
-        Preprocess and write block data fetched from Raw DB to Main DB
+        Preprocess data fetched from Raw DB to Main DB
         """
         uncles: List[Dict[str, Any]] = body['fields']['Uncles'] or []
         transactions: List[Dict[str, Any]] = body['fields']['Transactions'] or []
@@ -122,6 +145,7 @@ class SyncProcessor:
         )
         accounts_data = self.process_accounts(accounts, block_number, block_hash)
         internal_txs_data = self.process_internal_txs(internal_transactions)
+
         return BlockData(
             block=block_data,
             uncles=uncles_data,
@@ -204,11 +228,11 @@ class SyncProcessor:
             hex_vals_to_int(recpt_data, ['cumulative_gas_used', 'gas_used', 'status'])
             recpt_items.append(recpt_data)
 
-            logs = self.process_logs(logs)
+            logs = self.process_logs(logs, status=recpt_data['status'])
             logs_items.extend(logs)
         return recpt_items, logs_items
 
-    def process_logs(self, logs):
+    def process_logs(self, logs: Logs, status: bool) -> Logs:
         items = []
         for log_record in logs:
             data = dict_keys_case_convert(log_record)
@@ -219,6 +243,7 @@ class SyncProcessor:
             data['token_amount'] = None
             data['event_type'] = None
             data['event_args'] = None
+            data['status'] = status
             items.append(data)
         return items
 

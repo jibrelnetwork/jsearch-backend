@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 import aiohttp
+from aiohttp import web
 
 from jsearch import settings
 from jsearch.api.error_code import ErrorCode
@@ -14,11 +15,11 @@ from jsearch.api.helpers import (
     api_error_400,
     api_error_404
 )
-from jsearch.common import tasks
+from jsearch.common import tasks, stats
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 async def get_account(request):
@@ -51,16 +52,42 @@ async def get_account_internal_transactions(request):
     """
     Get account internal transactions
     """
-    # todo: implement it
-    return api_success([])
+    storage = request.app['storage']
+    address = request.match_info.get('address').lower()
+    params = validate_params(request)
+
+    internal_txs = await storage.get_account_internal_transactions(
+        address,
+        limit=params['limit'],
+        offset=params['offset'],
+        order=params['order'],
+    )
+
+    response_data = [it.to_dict() for it in internal_txs]
+    response = api_success(response_data)
+
+    return response
 
 
 async def get_account_pending_transactions(request):
     """
     Get account pending transactions
     """
-    # todo: implement it
-    return api_success([])
+    storage = request.app['storage']
+    address = request.match_info.get('address').lower()
+    params = validate_params(request)
+
+    pending_txs = await storage.get_account_pending_transactions(
+        address,
+        limit=params['limit'],
+        offset=params['offset'],
+        order=params['order'],
+    )
+
+    response_data = [pt.to_dict() for pt in pending_txs]
+    response = api_success(response_data)
+
+    return response
 
 
 async def get_account_logs(request):
@@ -166,8 +193,21 @@ async def get_internal_transactions(request):
     """
     Get internal transactions by transaction hash
     """
-    # todo: implement it
-    return api_success([])
+    storage = request.app['storage']
+    tx_hash = request.match_info.get('txhash').lower()
+    params = validate_params(request)
+
+    internal_txs = await storage.get_internal_transactions(
+        tx_hash,
+        limit=params['limit'],
+        offset=params['offset'],
+        order=params['order'],
+    )
+
+    response_data = [it.to_dict() for it in internal_txs]
+    response = api_success(response_data)
+
+    return response
 
 
 async def get_pending_transactions(request):
@@ -413,3 +453,28 @@ async def get_wallet_transactions(request):
         'outgoingTransactionsNumber': nonce
     }
     return api_success(result)
+
+
+async def healthcheck(request: web.Request) -> web.Response:
+    main_db_stats = await stats.get_main_db_stats(request.app['db_pool'])
+    node_stats = await stats.get_node_stats(request.app['node_proxy'])
+    loop_stats = await stats.get_loop_stats()
+
+    healthy = all(
+        (
+            main_db_stats.is_healthy,
+            node_stats.is_healthy,
+            loop_stats.is_healthy,
+        )
+    )
+    status = 200 if healthy else 400
+
+    data = {
+        'healthy': healthy,
+        'isMainDbHealthy': main_db_stats.is_healthy,
+        'isNodeHealthy': node_stats.is_healthy,
+        'isLoopHealthy': loop_stats.is_healthy,
+        'loopTasksCount': loop_stats.tasks_count,
+    }
+
+    return web.json_response(data=data, status=status)

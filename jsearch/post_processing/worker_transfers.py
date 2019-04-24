@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from itertools import chain
+from itertools import chain, groupby
 from typing import List, Dict, Union
 
 from jsearch import settings
@@ -20,6 +20,16 @@ metrics = Metrics()
 logger = logging.getLogger('worker')
 
 
+def write_transfers_to_bus(transfers: Transfers):
+    transfers_by_blocks = groupby(
+        iterable=sorted(transfers, key=lambda x: x['block_number']),
+        key=lambda x: x['block_number']
+    )
+
+    for block, items in transfers_by_blocks:
+        sync_client.write_transfers(list(items))
+
+
 def worker(contracts: Contracts, transfer_logs: Logs, last_block: Union[int, str]) -> None:
     sync_client.start()
     with MainDBSync(settings.JSEARCH_MAIN_DB) as db:
@@ -31,15 +41,31 @@ def worker(contracts: Contracts, transfer_logs: Logs, last_block: Union[int, str
 
         transfers = logs_to_transfers(transfer_logs, blocks, contracts)
         db.insert_or_update_transfers(transfers)
-        sync_client.write_transfers(transfers)
-        logger.info('[WORKER] transfer insert speed %0.2f', len(transfers) / (time.time() - start_at))
+        write_transfers_to_bus(transfers)
+        logger.info(
+            'Insert batch of token transfers',
+            extra={
+                'tag': 'WORKER',
+                'average_speed': len(transfers) / (time.time() - start_at),
+            },
+        )
 
         start_at = time.time()
         update_token_holder_balances(db, transfers, contracts, last_block)
-        logger.info('[WORKER] update token holder balance speed %0.2f', len(transfers) / (time.time() - start_at))
+        logger.info(
+            'Updated batch of token holder balances',
+            extra={
+                'tag': 'WORKER',
+                'average_speed': len(transfers) / (time.time() - start_at),
+            },
+        )
 
 
-@service_bus.listen_stream(ROUTE_HANDLE_ERC20_TRANSFERS, task_limit=30, batch_size=20, batch_timeout=5)
+@service_bus.listen_stream(
+    ROUTE_HANDLE_ERC20_TRANSFERS,
+    task_limit=30, batch_size=20, batch_timeout=1,
+    service_name='jsearch_post_processing_transfers'
+)
 async def handle_new_transfers(blocks: List[Transfers]):
     loop = asyncio.get_event_loop()
     last_block = LastBlock()
@@ -67,11 +93,14 @@ async def handle_new_transfers(blocks: List[Transfers]):
     )
 
 
-@service_bus.listen_stream(ROUTE_HANDLE_LAST_BLOCK)
+@service_bus.listen_stream(
+    ROUTE_HANDLE_LAST_BLOCK,
+    service_name='jsearch_post_processing_transfers'
+)
 async def receive_last_block(record: Dict[str, int]):
     number = record.get('number')
 
-    logger.info("[LAST BLOCK] Receive new last block number %s", number)
+    logger.info("Received new last block", extra={'tag': 'LAST BLOCK', 'number': number})
 
     last_block = LastBlock()
     last_block.update(number=number)

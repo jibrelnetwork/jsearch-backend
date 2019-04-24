@@ -1,3 +1,5 @@
+import logging
+
 import sqlalchemy as sa
 import sqlalchemy.types as types
 from sqlalchemy.dialects import postgresql
@@ -31,6 +33,25 @@ class HexBigInteger(types.TypeDecorator):
         if isinstance(value, str) and value.startswith('0x'):
             return int(value, 16)
         return int(value)
+
+
+class HexToDecString(types.TypeDecorator):
+    """
+    Converts hex string to dec string
+    """
+
+    impl = types.String
+
+    def process_bind_param(self, value, dialect):
+        logging.debug({'value': value})
+
+        if value is None:
+            return None
+
+        if isinstance(value, str) and value.startswith('0x'):
+            return str(int(value, 16))
+
+        return str(int(value))
 
 
 metadata = sa.MetaData()
@@ -79,6 +100,27 @@ internal_transactions_t = sa.Table(
     sa.Column('status', sa.String),
     sa.Column('transaction_index', sa.Integer, primary_key=True),
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
+)
+
+pending_transactions_t = sa.Table(
+    'pending_transactions',
+    metadata,
+    sa.Column('last_synced_id', sa.BigInteger, index=True),
+    sa.Column('hash', sa.String(70), primary_key=True),
+    sa.Column('status', sa.String),
+    sa.Column('timestamp', postgresql.TIMESTAMP),
+    sa.Column('removed', sa.Boolean),
+    sa.Column('node_id', sa.String(70)),
+    sa.Column('r', sa.String),
+    sa.Column('s', sa.String),
+    sa.Column('v', sa.String),
+    sa.Column('to', sa.String, index=True),
+    sa.Column('from', sa.String, index=True),
+    sa.Column('gas', HexBigInteger),
+    sa.Column('gas_price', HexBigInteger),
+    sa.Column('input', sa.String),
+    sa.Column('nonce', HexBigInteger),
+    sa.Column('value', HexToDecString),
 )
 
 transactions_t = sa.Table(
@@ -234,6 +276,7 @@ token_transfers_t = sa.Table(
     sa.Column('token_name', sa.String),
     sa.Column('token_symbol', sa.String),
     sa.Column('is_forked', sa.Boolean),
+    sa.Column('status', sa.Integer),
 )
 
 chain_splits_t = sa.Table(
@@ -264,6 +307,7 @@ assets_transfers_t = sa.Table(
     sa.Column('block_number', sa.BigInteger),
     sa.Column('block_hash', sa.String),
     sa.Column('ordering', sa.String),
+    sa.Column('status', sa.Integer),
 )
 
 assets_summary_t = sa.Table(
@@ -278,6 +322,21 @@ assets_summary_t = sa.Table(
 )
 
 
+wallet_events_t = sa.Table(
+    'wallet_events',
+    metadata,
+    sa.Column('address', sa.String),
+    sa.Column('type', sa.String),
+    sa.Column('tx_hash', sa.String),
+    sa.Column('block_hash', sa.String),
+    sa.Column('block_number', sa.BigInteger),
+    sa.Column('event_index', sa.BigInteger),
+    sa.Column('is_forked', sa.Boolean, default=False),
+    sa.Column('tx_data', postgresql.JSONB),
+    sa.Column('event_data', postgresql.JSONB),
+)
+
+
 TABLES = (
     blocks_t,
     uncles_t,
@@ -288,9 +347,11 @@ TABLES = (
     accounts_base_t,
     token_holders_t,
     internal_transactions_t,
+    pending_transactions_t,
     reorgs_t,
     token_transfers_t,
     chain_splits_t,
     assets_transfers_t,
     assets_summary_t,
+    wallet_events_t,
 )

@@ -1,3 +1,4 @@
+import logging
 from unittest import mock
 
 import pytest
@@ -22,7 +23,12 @@ from jsearch.tests.entities import (
 pytest_plugins = [
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.dumps',
+    'jsearch.tests.plugins.databases.factories.transactions',
+    'jsearch.tests.plugins.databases.factories.internal_transactions',
+    'jsearch.tests.plugins.databases.factories.pending_transactions',
 ]
+
+logger = logging.getLogger(__name__)
 
 
 async def assert_not_404_response(response: ClientResponse) -> None:
@@ -260,7 +266,9 @@ async def test_get_account_block_hash(cli, main_db_data):
 
 
 async def test_get_account_transactions(cli, main_db_data):
-    resp = await cli.get('/v1/accounts/' + main_db_data['accounts_state'][0]['address'] + '/transactions')
+    address = main_db_data['accounts_state'][0]['address']
+
+    resp = await cli.get(f'/v1/accounts/{address}/transactions')
     assert resp.status == 200
     txs = main_db_data['transactions']
     res = (await resp.json())['data']
@@ -471,6 +479,70 @@ async def test_get_receipt(cli, main_db_data):
         'transactionHash': r['transaction_hash'],
         'transactionIndex': r['transaction_index'],
     }
+
+
+@pytest.mark.parametrize(
+    "block_hash, txs",
+    [
+        (
+                '0x4c99d417111714a2118b9f3e336c097c4acbdc45289ba7b3a02d078d00658a22',
+                []
+        ),
+        (
+                '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5',
+                [
+                    '0x8b6450741b7d1d5d5b37354e6b966dfff807346cdc575c7f0a10eeb3cd7717ba',
+                    '0x125fa8f17c970ff63db176860b94ea3d004ec42c1c446b99553e8bbfc2d2a892'
+                ]
+        )
+    ],
+    ids=[
+        "txs=not_transactions",
+        "txs=2_transactions"
+    ]
+)
+async def test_get_blocks_check_txs_hashes_list(cli, main_db_data, block_hash, txs):
+    resp = await cli.get('/v1/blocks')
+    assert resp.status == 200
+
+    data = await resp.json()
+    blocks = {block['hash']: block for block in data['data']}
+
+    assert blocks[block_hash]
+    assert isinstance(blocks[block_hash]['transactions'], list)
+    assert sorted(blocks[block_hash]['transactions']) == sorted(txs)
+
+
+@pytest.mark.parametrize(
+    "block_hash,uncles_hashes",
+    [
+        (
+                '0x4c99d417111714a2118b9f3e336c097c4acbdc45289ba7b3a02d078d00658a22',
+                []
+        ),
+        (
+                '0x691d775caa1979538e2c3e68678d149567e3398480a6c4389585b16a312635f5',
+                [
+                    '0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc',
+                ]
+        ),
+    ],
+    ids=[
+        "uncles=no_uncles",
+        "uncles=1_uncles"
+    ]
+)
+@pytest.mark.usefixtures('uncles')
+async def test_get_blocks_check_uncles_hashes_list(cli, main_db_data, block_hash, uncles_hashes):
+    resp = await cli.get('/v1/blocks')
+    assert resp.status == 200
+
+    data = await resp.json()
+    blocks = {block['hash']: block for block in data['data']}
+
+    assert blocks[block_hash]
+    assert isinstance(blocks[block_hash]['uncles'], list)
+    assert sorted(blocks[block_hash]['uncles']) == sorted(uncles_hashes)
 
 
 async def test_get_blocks_def(cli, main_db_data):
@@ -814,10 +886,13 @@ async def test_account_get_mined_blocks(cli, main_db_data):
 
     resp = await cli.get(f'/v1/accounts/{a1["address"]}/mined_blocks')
     assert resp.status == 200
+
     res = (await resp.json())['data']
     assert len(res) == len(main_db_data['blocks'])
+
     resp = await cli.get(f'/v1/accounts/{a2["address"]}/mined_blocks')
     res = (await resp.json())['data']
+
     assert len(res) == 0
 
 
@@ -1206,7 +1281,7 @@ async def test_get_accounts_balances_does_not_complain_on_addresses_count_less_t
 
 
 async def test_get_accounts_balances_complains_on_addresses_count_more_than_limit(cli):
-    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH+1)]
+    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH + 1)]
     addresses_str = ','.join(addresses)
 
     resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
@@ -1222,59 +1297,282 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
     ]
 
 
-async def test_get_account_transactions_supports_asc_and_desc_ordering(cli, db):
-    values = {
-        'hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
-        'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
-        'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
-    }
+@pytest.mark.parametrize(
+    "direction, expected_order",
+    (
+            (
+                    'asc',
+                    [
+                        (7400000, 0),
+                        (7400000, 1),
+                        (7400000, 2),
+                        (7400000, 3),
+                        (7400000, 4),
+                        (7500000, 0),
+                        (7500000, 1),
+                        (7500000, 2),
+                        (7500000, 3),
+                        (7500000, 4),
+                    ]
+            ),
+            (
+                    'desc',
+                    [
+                        (7500000, 4),
+                        (7500000, 3),
+                        (7500000, 2),
+                        (7500000, 1),
+                        (7500000, 0),
+                        (7400000, 4),
+                        (7400000, 3),
+                        (7400000, 2),
+                        (7400000, 1),
+                        (7400000, 0),
+                    ]
+            ),
+    ),
+    ids=[
+        "direction=asc",
+        "direction=desc"
+    ]
+)
+async def test_get_account_transactions_ordering(cli, db, direction, expected_order, transaction_factory):
+    address = '0x3e20a5fe4eb128156c51e310f0391799beccf0c1'
 
+    # given - unordered transactions
     for block_number in ('7400000', '7500000'):
         for transaction_index in range(5):
-            db.execute(
-                transactions_t.insert().values(
-                    {
-                        **values,
-                        **{
-                            'transaction_index': str(transaction_index),
-                            'block_number': block_number,
-                        },
-                    }
-                )
+            transaction_factory.create(
+                **{
+                    'transaction_index': str(transaction_index),
+                    'block_number': block_number,
+                    'address': address
+                },
             )
 
-    resp = await cli.get(f'/v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/transactions?order=asc')
+    # when - get transactions with default order
+    resp = await cli.get(f'/v1/accounts/{address}/transactions?order={direction}')
     resp_json = await resp.json()
     resp_order_indicators = [(entry['blockNumber'], entry['transactionIndex']) for entry in resp_json['data']]
 
+    # then - check order
     assert resp.status == 200
-    assert resp_order_indicators == [
-        (7400000, 0),
-        (7400000, 1),
-        (7400000, 2),
-        (7400000, 3),
-        (7400000, 4),
-        (7500000, 0),
-        (7500000, 1),
-        (7500000, 2),
-        (7500000, 3),
-        (7500000, 4),
-    ]
+    assert resp_order_indicators == expected_order
 
-    resp = await cli.get(f'/v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/transactions?order=desc')
+
+async def test_get_account_internal_transactions(cli, transaction_factory, internal_transaction_factory):
+    transaction_factory.create(
+        hash='0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+        address='0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+        from_='0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+        to='0x70137010922f2fc2964b3792907f79fbb75febe8',
+    )
+
+    internal_transaction_data = {
+        'block_number': 42,
+        'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+        'parent_tx_hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+        'op': 'suicide',
+        'call_depth': NotImplemented,
+        'from_': NotImplemented,
+        'to': NotImplemented,
+        'value': 1000,
+        'gas_limit': 2000,
+        'payload': '0x',
+        'status': 'success',
+        'transaction_index': NotImplemented,
+    }
+
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{
+                'call_depth': 1,
+                'from_': '0x1111111111111111111111111111111111111111',
+                'to':    '0x2222222222222222222222222222222222222222',
+                'transaction_index': 7,
+            }
+        }
+    )
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{
+                'call_depth': 2,
+                'from_': '0x2222222222222222222222222222222222222222',
+                'to': '0x3333333333333333333333333333333333333333',
+                'transaction_index': 8,
+            }
+        }
+    )
+
+    resp = await cli.get(f'v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/internal_transactions')
     resp_json = await resp.json()
-    resp_order_indicators = [(entry['blockNumber'], entry['transactionIndex']) for entry in resp_json['data']]
 
     assert resp.status == 200
-    assert resp_order_indicators == [
-        (7500000, 4),
-        (7500000, 3),
-        (7500000, 2),
-        (7500000, 1),
-        (7500000, 0),
-        (7400000, 4),
-        (7400000, 3),
-        (7400000, 2),
-        (7400000, 1),
-        (7400000, 0),
-    ]
+    assert resp_json == {
+        'status': {
+            'success': True,
+            'errors': [],
+        },
+        'data': [
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 2,
+                'from': '0x2222222222222222222222222222222222222222',
+                'to': '0x3333333333333333333333333333333333333333',
+                'value': '1000',
+                'gasLimit': '2000',
+                'input': '0x',
+                'status': 'success',
+                'transactionIndex': 8,
+            },
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 1,
+                'from': '0x1111111111111111111111111111111111111111',
+                'to': '0x2222222222222222222222222222222222222222',
+                'value': '1000',
+                'gasLimit': '2000',
+                'input': '0x',
+                'status': 'success',
+                'transactionIndex': 7,
+            }
+        ]
+    }
+
+
+async def test_get_internal_transactions(cli, internal_transaction_factory):
+    internal_transaction_data = {
+        'block_number': 42,
+        'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+        'parent_tx_hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+        'op': 'suicide',
+        'call_depth': 3,
+        'from_': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+        'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+        'value': 1000,
+        'gas_limit': 2000,
+        'payload': '0x',
+        'status': 'success',
+        'transaction_index': NotImplemented,
+    }
+
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{'transaction_index': 42},
+        }
+    )
+    internal_transaction_factory.create(
+        **{
+            **internal_transaction_data,
+            **{'transaction_index': 43},
+        }
+    )
+
+    resp = await cli.get(f'v1/transactions/internal/0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e')
+    resp_json = await resp.json()
+
+    assert resp.status == 200
+    assert resp_json == {
+        'status': {
+            'success': True,
+            'errors': [],
+        },
+        'data': [
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 3,
+                'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+                'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                'value': '1000',
+                'gasLimit': '2000',
+                'input': '0x',
+                'status': 'success',
+                'transactionIndex': 43,
+            },
+            {
+                'blockNumber': 42,
+                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'op': 'suicide',
+                'callDepth': 3,
+                'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+                'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+                'value': '1000',
+                'gasLimit': '2000',
+                'input': '0x',
+                'status': 'success',
+                'transactionIndex': 42,
+            }
+        ]
+    }
+
+
+@pytest.mark.parametrize(
+    "from_,to",
+    [
+        (
+                '0x1111111111111111111111111111111111111111',
+                '0x2222222222222222222222222222222222222222',
+        ),
+        (
+                '0x2222222222222222222222222222222222222222',
+                '0x1111111111111111111111111111111111111111',
+        ),
+    ],
+)
+async def test_get_account_pending_transactions(cli, from_, to, pending_transaction_factory):
+    pending_transaction_factory.create(
+        hash='0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
+        status='',
+        removed=False,
+        r='0x11',
+        s='0x22',
+        v='0x33',
+        to=to,
+        from_=from_,
+        gas=2100,
+        gas_price=10000000000,
+        input='0x0',
+        nonce=42,
+        value='1111111111111111111111111111111111111111',
+    )
+
+    resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/pending_transactions')
+    resp_json = await resp.json()
+
+    assert resp.status == 200
+    assert resp_json == {
+        'status': {
+            'success': True,
+            'errors': [],
+        },
+        'data': [
+            {
+                'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
+                'status': '',
+                'removed': False,
+                'r': '0x11',
+                's': '0x22',
+                'v': '0x33',
+                'to': to,
+                'from': from_,
+                'gas': '2100',
+                'gasPrice': '10000000000',
+                'input': '0x0',
+                'nonce': '42',
+                'value': '1111111111111111111111111111111111111111',
+            },
+        ]
+    }

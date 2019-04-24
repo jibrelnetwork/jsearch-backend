@@ -47,7 +47,15 @@ def process_tx_logs(logs: Logs) -> Logs:
                     'event_args': log.get('event_args'),
                 }
             )
-        logger.info('[WORKER] log update speed %0.2f', len(logs) / (time.time() - start_at))
+
+        logger.info(
+            'Updated batch of logs',
+            extra={
+                'tag': 'WORKER',
+                'average_speed': len(logs) / (time.time() - start_at),
+            },
+        )
+
         return [item for item in logs if item['is_token_transfer']]
 
 
@@ -56,14 +64,18 @@ async def write_transfers_logs_bus(transfer_logs: Logs):
     futures = []
     for block, items in transfers_by_blocks:
         transfers_by_blocks = list(items)
-        future = await service_bus.send_transfers(value=transfers_by_blocks)
+        future = service_bus.send_transfers(value=transfers_by_blocks)
         futures.append(future)
 
     if futures:
         await asyncio.gather(*futures)
 
 
-@service_bus.listen_stream(ROUTE_HANDLE_TRANSACTION_LOGS, task_limit=30, batch_size=10, batch_timeout=5)
+@service_bus.listen_stream(
+    ROUTE_HANDLE_TRANSACTION_LOGS,
+    task_limit=30, batch_size=10, batch_timeout=1,
+    service_name='jsearch_post_processing_logs'
+)
 async def handle_transaction_logs(blocks: List[Logs]):
     if not blocks:
         return

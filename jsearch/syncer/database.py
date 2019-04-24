@@ -1,6 +1,5 @@
 import logging
 from copy import copy
-from typing import List, Dict, Any
 
 import aiopg
 import backoff
@@ -10,6 +9,7 @@ from psycopg2.extras import DictCursor
 from sqlalchemy import create_engine as sync_create_engine, and_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.pool import NullPool
+from typing import List, Dict, Any
 
 from jsearch.common import contracts
 from jsearch.common.tables import (
@@ -24,8 +24,11 @@ from jsearch.common.tables import (
     reorgs_t,
     token_transfers_t,
     chain_splits_t,
-)
+    pending_transactions_t,
+    assets_transfers_t,
+    wallet_events_t)
 from jsearch.common.utils import as_dicts
+from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
 from jsearch.syncer.database_queries.token_transfers import (
     get_transfers_from_query,
@@ -102,52 +105,113 @@ class RawDB(DBWrapper):
     """
 
     async def get_blocks_to_sync(self, start_block_num=0, end_block_num=None):
-        q = """SELECT block_hash, block_number FROM headers WHERE block_number BETWEEN %s AND %s"""
+        q = """
+        SELECT
+          "block_hash",
+          "block_number"
+        FROM "headers" WHERE "block_number" BETWEEN %s AND %s
+        """
+
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(q, [start_block_num, end_block_num])
                 rows = await cur.fetchall()
                 cur.close()
+
         return rows
 
     async def get_missed_blocks(self, blocks_numbers):
         if not blocks_numbers:
             return []
-        q = """SELECT block_hash, block_number
-                FROM headers WHERE block_number IN ({})""".format(','.join('%s' for _ in blocks_numbers))
+
+        q = """
+        SELECT
+          "block_hash",
+          "block_number"
+        FROM "headers" WHERE "block_number" IN ({})""".format(','.join('%s' for _ in blocks_numbers))
+
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(q, blocks_numbers)
                 rows = await cur.fetchall()
                 cur.close()
+
         return rows
 
     async def get_latest_available_block_number(self):
-        q = """SELECT max(block_number) AS max_block FROM bodies"""
+        q = """SELECT max("block_number") AS "max_block" FROM "bodies" """
+
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(q)
                 row = await cur.fetchone()
                 cur.close()
-        return row['max_block'] or None
+
+        return row['max_block'] or 0
 
     async def get_reorgs_by_chain_split_id(self, chain_split_id):
-        q = """SELECT * FROM reorgs WHERE split_id = %s"""
+        q = """
+        SELECT
+          "id",
+          "block_number",
+          "block_hash",
+          "header",
+          "reinserted",
+          "node_id",
+          "split_id"
+        FROM "reorgs" WHERE "split_id" = %s
+        """
+
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(q, [chain_split_id])
                 rows = await cur.fetchall()
                 cur.close()
+
         return rows
 
     async def get_chain_splits_from(self, split_from_num, limit):
-        q = """SELECT * FROM chain_splits WHERE id > %s ORDER BY id LIMIT %s"""
+        q = """
+        SELECT
+          "id",
+          "common_block_number",
+          "common_block_hash",
+          "drop_length",
+          "drop_block_hash",
+          "add_length",
+          "add_block_hash",
+          "node_id"
+        FROM "chain_splits" WHERE "id" > %s ORDER BY "id" LIMIT %s
+        """
+
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(q, [split_from_num, limit])
                 rows = await cur.fetchall()
                 cur.close()
+
         return rows
+
+    async def get_pending_txs_from(self, last_synced_id, limit):
+        q = """
+        SELECT
+          "id",
+          "tx_hash",
+          "status",
+          "fields",
+          "timestamp",
+          "removed",
+          "node_id"
+        FROM "pending_transactions" WHERE "id" > %s ORDER BY "id" LIMIT %s
+        """
+
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [last_synced_id, limit])
+                rows = await cur.fetchall()
+                cur.close()
+
+        return [dict(row) for row in rows]
 
 
 class RawDBSync(DBWrapperSync):
@@ -159,42 +223,42 @@ class RawDBSync(DBWrapperSync):
         self.conn.close()
 
     def get_header_by_hash(self, block_number):
-        q = """SELECT * FROM headers WHERE block_hash=%s"""
+        q = """SELECT "block_number", "block_hash", "fields" FROM "headers" WHERE "block_hash"=%s"""
         with self.conn.cursor() as cur:
             cur.execute(q, [block_number])
             row = cur.fetchone()
         return row
 
     def get_header_by_block_number(self, block_number):
-        q = """SELECT * FROM headers WHERE block_number=%s"""
+        q = """SELECT "block_number", "block_hash", "fields" FROM "headers" WHERE "block_number"=%s"""
         with self.conn.cursor() as cur:
             cur.execute(q, [block_number])
             row = cur.fetchone()
         return row
 
     def get_block_accounts(self, block_hash):
-        q = """SELECT * FROM accounts WHERE block_hash=%s"""
+        q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "accounts" WHERE "block_hash"=%s"""
         with self.conn.cursor() as cur:
             cur.execute(q, [block_hash])
             rows = cur.fetchall()
         return rows
 
     def get_block_body(self, block_hash):
-        q = """SELECT * FROM bodies WHERE block_hash=%s"""
+        q = """SELECT "block_number", "block_hash", "fields" FROM "bodies" WHERE "block_hash"=%s"""
         with self.conn.cursor() as cur:
             cur.execute(q, [block_hash])
             row = cur.fetchone()
         return row
 
     def get_block_receipts(self, block_hash):
-        q = """SELECT * FROM receipts WHERE block_hash=%s"""
+        q = """SELECT "block_number", "block_hash", "fields" FROM "receipts" WHERE "block_hash"=%s"""
         with self.conn.cursor() as cur:
             cur.execute(q, [block_hash])
             row = cur.fetchone()
         return row
 
     def get_reward(self, block_hash):
-        q = """SELECT * FROM rewards WHERE block_hash=%s"""
+        q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "rewards" WHERE "block_hash"=%s"""
         with self.conn.cursor() as cur:
             cur.execute(q, [block_hash])
             rows = cur.fetchall()
@@ -208,10 +272,22 @@ class RawDBSync(DBWrapperSync):
             return None
 
     def get_internal_transactions(self, block_hash):
-        q = """SELECT * FROM internal_transactions WHERE block_hash=%s"""
+        q = """
+        SELECT
+          "id",
+          "block_number",
+          "block_hash",
+          "parent_tx_hash",
+          "index",
+          "type",
+          "timestamp",
+          "fields"
+        FROM "internal_transactions" WHERE "block_hash"=%s"""
+
         with self.conn.cursor() as cur:
             cur.execute(q, [block_hash])
             rows = cur.fetchall()
+
         return rows
 
 
@@ -270,7 +346,7 @@ class MainDB(DBWrapper):
 
     async def get_missed_blocks_numbers(self, limit: int):
         q = """SELECT l.number + 1 as start
-                FROM (SELECT * FROM blocks WHERE is_forked = false) as l
+                FROM (SELECT "number" FROM blocks WHERE is_forked = false) as l
                 LEFT OUTER JOIN blocks as r ON l.number + 1 = r.number AND r.is_forked = false
                 WHERE r.number IS NULL order by start limit %s"""
         async with self.engine.acquire() as conn:
@@ -305,6 +381,10 @@ class MainDB(DBWrapper):
             .values(is_forked=not reorg['reinserted']) \
             .where(token_transfers_t.c.block_hash == reorg['block_hash'])
 
+        update_assets_transfers_q = assets_transfers_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(assets_transfers_t.c.block_hash == reorg['block_hash'])
+
         update_internal_transactions_q = internal_transactions_t.update() \
             .values(is_forked=not reorg['reinserted']) \
             .where(internal_transactions_t.c.block_hash == reorg['block_hash'])
@@ -312,6 +392,10 @@ class MainDB(DBWrapper):
         update_accounts_state_q = accounts_state_t.update() \
             .values(is_forked=not reorg['reinserted']) \
             .where(accounts_state_t.c.block_hash == reorg['block_hash'])
+
+        update_events_q = wallet_events_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(wallet_events_t.c.block_hash == reorg['block_hash'])
 
         update_uncles_q = uncles_t.update() \
             .values(is_forked=not reorg['reinserted']) \
@@ -325,7 +409,13 @@ class MainDB(DBWrapper):
                 rows = await res.fetchall()
                 if len(rows) == 0:
                     # no updates, block is not synced - aborting reorg
-                    logger.debug('Aborting reorg for block %s %s', reorg['block_number'], reorg['block_hash'])
+                    logger.debug(
+                        'Aborting reorg for a block',
+                        extra={
+                            'block_hash': reorg['block_hash'],
+                            'block_number': reorg['block_number'],
+                        },
+                    )
                     await tx.rollback()
                     return False
                 await conn.execute(update_txs_q)
@@ -336,7 +426,16 @@ class MainDB(DBWrapper):
                 await conn.execute(update_uncles_q)
                 await conn.execute(add_reorg_q)
                 await conn.execute(update_token_transfers_q)
-                logger.debug('Reorg applyed for block %s %s', reorg['block_number'], reorg['block_hash'])
+                await conn.execute(update_assets_transfers_q)
+                await conn.execute(update_events_q)
+
+                logger.debug(
+                    'Reord is applied for a block',
+                    extra={
+                        'block_hash': reorg['block_hash'],
+                        'block_number': reorg['block_number'],
+                    },
+                )
                 return True
 
     async def get_last_chain_split(self):
@@ -356,6 +455,21 @@ class MainDB(DBWrapper):
     async def get_blocks(self, hashes: List[str]):
         query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
         return await self.fetch_all(query)
+
+    async def get_pending_tx_last_synced_id(self) -> int:
+        q = pending_transactions_t.select()
+        q = q.order_by(pending_transactions_t.c.last_synced_id.desc())
+        q = q.limit(1)
+
+        async with self.engine.acquire() as conn:
+            res = await conn.execute(q)
+            row = await res.fetchone()
+
+        return row['last_synced_id'] if row else 0
+
+    async def insert_or_update_pending_txs(self, pending_txs: List[Dict[str, Any]]) -> None:
+        for pending_tx in pending_txs:
+            await self.execute(insert_or_update_pending_tx_q(pending_tx))
 
 
 class MainDBSync(DBWrapperSync):
