@@ -1,3 +1,4 @@
+from jsearch.post_processing.services.api import ApiService
 from jsearch.post_processing.services.post_processing import (
     ACTION_PROCESS_CHOICES,
     PostProcessingService,
@@ -5,5 +6,6 @@ from jsearch.post_processing.services.post_processing import (
 
 __all__ = (
     ACTION_PROCESS_CHOICES,
+    ApiService,
     PostProcessingService,
 )
