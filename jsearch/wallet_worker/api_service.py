@@ -7,7 +7,7 @@ from jsearch.common.healthcheck_app import make_app
 
 class ApiService(services.ApiService):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        kwargs.setdefault('port', settings.POST_PROCESSING_API_PORT)
+        kwargs.setdefault('port', settings.WALLET_WORKER_API_PORT)
         kwargs.setdefault('app_maker', make_app)
 
         super(ApiService, self).__init__(*args, **kwargs)

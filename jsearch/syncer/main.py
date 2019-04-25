@@ -2,8 +2,8 @@ import click
 from jsearch.common import worker
 
 from jsearch.common import logs
+from jsearch.syncer import services
 from jsearch.utils import parse_range
-from jsearch.syncer.services import Syncer
 
 
 @click.command()
@@ -13,7 +13,8 @@ def run(log_level, sync_range):
     logs.configure(log_level)
 
     worker.Worker(
-        Syncer(sync_range=parse_range(sync_range)),
+        services.SyncerService(sync_range=parse_range(sync_range)),
+        services.ApiService(),
     ).execute_from_commandline()
 
 

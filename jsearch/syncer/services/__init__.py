@@ -1,5 +1,7 @@
-from jsearch.syncer.services.syncer import Syncer
+from jsearch.syncer.services.api import ApiService
+from jsearch.syncer.services.syncer import SyncerService
 
 __all__ = (
-    Syncer,
+    ApiService,
+    SyncerService,
 )

@@ -7,12 +7,12 @@ import asyncpg
 from jsearch import settings
 from jsearch.common import utils
 from jsearch.api.node_proxy import NodeProxy
-from jsearch.common.structs import MainDbStats, LoopStats, KafkaStats, NodeStats
+from jsearch.common.structs import DbStats, LoopStats, KafkaStats, NodeStats
 
 logger = logging.getLogger(__name__)
 
 
-async def get_main_db_stats(db_pool: asyncpg.pool.Pool) -> MainDbStats:
+async def get_db_stats(db_pool: asyncpg.pool.Pool) -> DbStats:
     is_healthy = False
 
     try:
@@ -25,7 +25,7 @@ async def get_main_db_stats(db_pool: asyncpg.pool.Pool) -> MainDbStats:
     except Exception as e:
         logger.warning('Cannot check the database', extra={'exception': e})
 
-    return MainDbStats(is_healthy=is_healthy)
+    return DbStats(is_healthy=is_healthy)
 
 
 async def get_node_stats(node_proxy: NodeProxy) -> NodeStats:
