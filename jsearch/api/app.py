@@ -9,8 +9,8 @@ from aiohttp_swagger import setup_swagger
 from jsearch import settings
 from jsearch.api import handlers
 from jsearch.api.middlewares import cors_middleware
-from jsearch.api.storage import Storage
 from jsearch.api.node_proxy import NodeProxy
+from jsearch.api.storage import Storage
 from jsearch.common import logs
 
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
@@ -81,7 +81,6 @@ async def make_app():
     app.router.add_route('GET', '/v1/wallet/assets_summary', handlers.get_assets_summary)
     app.router.add_route('GET', '/v1/wallet/transfers', handlers.get_wallet_transfers)
     app.router.add_route('GET', '/v1/wallet/transactions', handlers.get_wallet_transactions)
-    app.router.add_route('GET', '/v1/wallet/events', handlers.get_wallet_transactions)
 
     app.router.add_route('POST', '/_on_new_contracts_added', handlers.on_new_contracts_added)
 
