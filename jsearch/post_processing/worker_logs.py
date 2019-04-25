@@ -1,6 +1,5 @@
 import asyncio
 import logging
-
 import time
 from itertools import groupby, chain
 from typing import List
@@ -101,6 +100,3 @@ async def handle_transaction_logs(blocks: List[Logs]):
         value=logs[0]['block_number'],
         is_need_to_update=lambda prev, value: prev is None or prev < value
     )
-
-
-handle_transaction_logs.tag = 'logs'
