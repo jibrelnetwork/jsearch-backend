@@ -1,29 +1,24 @@
-"""asset_transfer status field
+"""add assets summary index
 
-Revision ID: 63678873b8aa
-Revises: e3f9cd3e195e
-Create Date: 2019-04-02 18:24:11.423492
+Revision ID: f7c9bc772fab
+Revises: 0bbb93975419
+Create Date: 2019-04-24 13:12:50.416794
 
 """
 from alembic import op
-import sqlalchemy as sa
-from jsearch.common import tables
-
 
 # revision identifiers, used by Alembic.
-revision = '63678873b8aa'
-down_revision = '89b05a04aea0'
+revision = 'f7c9bc772fab'
+down_revision = 'cea942470181'
 branch_labels = None
 depends_on = None
 
-
 UP_SQL = """
-ALTER TABLE assets_transfers ADD COLUMN status integer;
+CREATE INDEX CONCURRENTLY ix_assets_transfers ON assets_transfers (address, asset_address, is_forked, ordering);
 """
 
-
 DOWN_SQL = """
-ALTER TABLE assets_transfers DROP COLUMN status;
+DROP INDEX CONCURRENTLY ix_assets_transfers;
 """
 
 
