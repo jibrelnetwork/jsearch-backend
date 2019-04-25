@@ -11,7 +11,6 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.pool import NullPool
 from typing import List, Dict, Any
 
-from jsearch import settings
 from jsearch.common import contracts
 from jsearch.common.tables import (
     accounts_base_t,
@@ -148,12 +147,7 @@ class RawDB(DBWrapper):
                 row = await cur.fetchone()
                 cur.close()
 
-        number = row['max_block']
-        if number is not None:
-            number = int(number) - settings.LAST_BLOCK_OFFSET
-            number = number if number > 0 else 0
-
-        return number or 0
+        return row['max_block'] or 0
 
     async def get_reorgs_by_chain_split_id(self, chain_split_id):
         q = """
