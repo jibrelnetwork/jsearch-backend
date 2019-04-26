@@ -104,6 +104,18 @@ def validate_params(request, default_order=None):
     return params
 
 
+def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -> List[str]:
+    """Lowers, splits and strips the joined string."""
+    if joined_string is None:
+        return list()
+
+    strings_list = joined_string.lower().split(separator)
+    strings_list = [string.strip() for string in strings_list]
+    strings_list = [string for string in strings_list if string]
+
+    return strings_list
+
+
 def api_success(data):
     body = {
         'status': {'success': True, 'errors': []},
