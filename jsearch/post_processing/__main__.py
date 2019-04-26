@@ -30,6 +30,7 @@ def main(action: str, log_level: str, workers: int, mode: str) -> None:
 
     worker.Worker(
         services.PostProcessingService(action=action),
+        services.ApiService(),
     ).execute_from_commandline()
 
 

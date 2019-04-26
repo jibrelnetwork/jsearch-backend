@@ -453,7 +453,7 @@ async def get_wallet_transactions(request):
 
 
 async def healthcheck(request: web.Request) -> web.Response:
-    main_db_stats = await stats.get_main_db_stats(request.app['db_pool'])
+    main_db_stats = await stats.get_db_stats(request.app['db_pool'])
     node_stats = await stats.get_node_stats(request.app['node_proxy'])
     loop_stats = await stats.get_loop_stats()
 
