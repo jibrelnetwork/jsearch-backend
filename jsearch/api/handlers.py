@@ -13,7 +13,8 @@ from jsearch.api.helpers import (
     proxy_response,
     api_error,
     api_error_400,
-    api_error_404
+    api_error_404,
+    get_from_joined_string,
 )
 from jsearch.common import tasks, stats
 from jsearch.common.contracts import cut_contract_metadata_hash
@@ -127,7 +128,7 @@ async def get_accounts_balances(request):
     Get ballances for list of accounts
     """
     storage = request.app['storage']
-    addresses = request.query.get('addresses', '').lower().split(',')
+    addresses = get_from_joined_string(request.query.get('addresses'))
 
     if len(addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
         return api_error_400(errors=[
@@ -407,10 +408,8 @@ async def get_blockchain_tip(request):
 
 async def get_assets_summary(request):
     params = validate_params(request)
-    addresses = request.query.get('addresses', '')
-    addresses = addresses.split(',') if addresses else []
-    assets = request.query.get('assets', '')
-    assets = [a for a in assets.split(',') if a]
+    addresses = get_from_joined_string(request.query.get('addresses'))
+    assets = get_from_joined_string(request.query.get('assets'))
     storage = request.app['storage']
     summary = await storage.get_wallet_assets_summary(
         addresses,
@@ -422,10 +421,8 @@ async def get_assets_summary(request):
 
 async def get_wallet_transfers(request):
     params = validate_params(request)
-    addresses = request.query.get('addresses', '')
-    addresses = addresses.split(',') if addresses else []
-    assets = request.query.get('assets', '')
-    assets = [a for a in assets.split(',') if a]
+    addresses = get_from_joined_string(request.query.get('addresses'))
+    assets = get_from_joined_string(request.query.get('assets'))
     storage = request.app['storage']
     transfers = await storage.get_wallet_assets_transfers(
         addresses,
