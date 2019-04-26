@@ -1,10 +1,9 @@
-import asyncio
-
 import click
+from jsearch.common import worker
 
 from jsearch.common import logs
-from jsearch.utils import parse_range, add_gracefully_shutdown_handlers
-from .service import Service
+from jsearch.utils import parse_range
+from jsearch.syncer.services import Syncer
 
 
 @click.command()
@@ -13,21 +12,9 @@ from .service import Service
 def run(log_level, sync_range):
     logs.configure(log_level)
 
-    sync_range = parse_range(value=sync_range)
-
-    service = Service(sync_range)
-    coro = service.run()
-
-    loop = asyncio.get_event_loop()
-    task = asyncio.ensure_future(coro)
-
-    add_gracefully_shutdown_handlers(service.gracefully_shutdown)
-    try:
-        loop.run_forever()
-    finally:
-        loop.close()
-        if not task.cancelled():
-            task.result()
+    worker.Worker(
+        Syncer(sync_range=parse_range(sync_range)),
+    ).execute_from_commandline()
 
 
 if __name__ == '__main__':
