@@ -1,7 +1,7 @@
 from typing import NamedTuple
 
 
-class MainDbStats(NamedTuple):
+class DbStats(NamedTuple):
     is_healthy: bool
 
 
