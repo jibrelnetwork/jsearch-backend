@@ -7,6 +7,7 @@ builder(
                         runAsUser: "root",
                         entrypoint: "",
                         command: [
+                                "pip install --no-cache-dir flake8==3.6.0",
                                 "flake8",
                         ],
                 ],
