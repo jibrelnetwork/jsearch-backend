@@ -14,7 +14,7 @@ from jsearch import settings
 from jsearch.common.contracts import ERC20_METHODS_IDS, NULL_ADDRESS
 from jsearch.common.logs import configure
 from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t
-from jsearch.common.worker import NoLoggingOverrideWorker
+from jsearch.common import worker
 from jsearch.service_bus import (
     service_bus,
     ROUTE_WALLET_HANDLE_ASSETS_UPDATE,
@@ -24,6 +24,7 @@ from jsearch.service_bus import (
 )
 from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
 from jsearch.utils import Singleton
+from jsearch.wallet_worker.api_service import ApiService
 
 logger = logging.getLogger('wallet_worker')
 
@@ -306,4 +307,8 @@ def main(log_level: str) -> None:
     configure(log_level)
     loop = asyncio.get_event_loop()
     with aiomonitor.start_monitor(loop=loop):
-        NoLoggingOverrideWorker(service, loop=loop).execute_from_commandline()
+        worker.Worker(
+            service,
+            ApiService(),
+            loop=loop,
+        ).execute_from_commandline()

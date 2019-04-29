@@ -314,6 +314,15 @@ async def test_get_account_balances_invalid_addresses_all(cli):
     assert res == []
 
 
+async def test_get_account_balances_addresses_have_spaces(cli, main_db_data):
+    a1 = main_db_data['accounts_base'][0]
+    a2 = main_db_data['accounts_base'][1]
+    resp = await cli.get('/v1/accounts/balances?addresses={}, {}'.format(a1['address'], a2['address']))
+    res = (await resp.json())['data']
+    assert resp.status == 200
+    assert len(res) == 2
+
+
 async def test_get_account_balances_invalid_addresses(cli: object, main_db_data: object) -> object:
     a1 = main_db_data['accounts_base'][0]
     resp = await cli.get('/v1/accounts/balances?addresses={},{},{}'.format('foo', a1['address'], 'bar'))
