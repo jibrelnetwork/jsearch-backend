@@ -337,6 +337,20 @@ wallet_events_t = sa.Table(
 )
 
 
+chain_events_t = sa.Table(
+    'chain_events',
+    metadata,
+    sa.Column('id', sa.BigInteger),
+    sa.Column('block_hash', sa.String),
+    sa.Column('block_number', sa.BigInteger),
+    sa.Column('event_type', sa.String),
+    sa.Column('reorg_id', sa.BigInteger),
+    sa.Column('split_id', sa.BigInteger),
+    sa.Column('node_id', sa.String),
+    sa.Column('created_at', sa.TIMESTAMP),
+)
+
+
 TABLES = (
     blocks_t,
     uncles_t,
@@ -354,4 +368,5 @@ TABLES = (
     assets_transfers_t,
     assets_summary_t,
     wallet_events_t,
+    chain_events_t,
 )

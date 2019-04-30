@@ -26,6 +26,7 @@ from jsearch.common.tables import (
     chain_splits_t,
     pending_transactions_t,
     assets_transfers_t,
+    chain_events_t,
 )
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
@@ -109,7 +110,7 @@ class RawDB(DBWrapper):
         SELECT
           "block_hash",
           "block_number"
-        FROM "headers" WHERE "block_number" BETWEEN %s AND %s
+        FROM "receipts" WHERE "block_number" BETWEEN %s AND %s
         """
 
         async with self.pool.acquire() as conn:
@@ -213,6 +214,32 @@ class RawDB(DBWrapper):
 
         return [dict(row) for row in rows]
 
+    async def get_parent_hash(self, block_hash):
+        q = """SELECT fields FROM headers WHERE block_hash=%s"""
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [block_hash])
+                row = await cur.fetchone()
+                cur.close()
+        return row['fields']['parentHash']
+
+    async def get_chain_event(self, event_id):
+        q = """SELECT * from chain_events WHERE id=%s"""
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [event_id])
+                row = await cur.fetchone()
+                cur.close()
+        return row
+
+    async def get_chain_split(self, split_id):
+        q = """SELECT * from chain_splits WHERE id=%s"""
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [split_id  ])
+                row = await cur.fetchone()
+                cur.close()
+        return row
 
 class RawDBSync(DBWrapperSync):
 
@@ -344,6 +371,25 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             return row['max_number']
 
+    async def get_blockchain_heads(self, blocks_range):
+        """
+        Get blockchain head (or heads) - blocks with maximum number
+        """
+        if blocks_range[1] is None:
+            condition = 'number >= %s'
+            params = (blocks_range[0],)
+        else:
+            condition = 'number BETWEEN %s AND %s'
+            params = blocks_range
+
+        q = """SELECT * FROM blocks WHERE number = (SELECT MAX(number) 
+                FROM blocks
+                WHERE is_forked=false AND {cond}""".format(cond=condition)
+        async with self.engine.acquire() as conn:
+            res = await conn.execute(q, params)
+            rows = await res.fetchall()
+            return rows
+
     async def get_missed_blocks_numbers(self, limit: int):
         q = """SELECT l.number + 1 as start
                 FROM (SELECT "number" FROM blocks WHERE is_forked = false) as l
@@ -432,6 +478,103 @@ class MainDB(DBWrapper):
                 )
                 return True
 
+    async def apply_chain_split(self, split_data):
+        from_block = split_data['common_block_number']
+        to_block = split_data['common_block_number'] + split_data['add_length']
+        query = blocks_t.select().where(and_(blocks_t.c.number > from_block,  blocks_t.c.number <= to_block))
+        blocks = await self.fetch_all(query)
+
+        assert len(blocks) == split_data['add_length'] + split_data['drop_length']
+
+        hash_map = {b['hash']: dict(b) for b in blocks}
+
+        new_head = hash_map[split_data['add_block_hash']]
+        new_chain_fragment = [new_head]
+        while len(new_chain_fragment) < split_data['add_length']:
+            next_block = hash_map[new_chain_fragment[-1]['parent_hash']]
+            new_chain_fragment.append(next_block)
+
+        old_head = hash_map[split_data['drop_block_hash']]
+        old_chain_fragment = [old_head]
+        while len(old_chain_fragment) < split_data['drop_length']:
+            next_block = hash_map[old_chain_fragment[-1]['parent_hash']]
+            old_chain_fragment.append(next_block)
+
+        split_data['add_length']
+        async with self.engine.acquire() as conn:
+            async with conn.begin() as tx:
+                await self.update_fork_status([b['hash'] for b in old_chain_fragment], is_forked=True, conn=conn)
+                await self.update_fork_status([b['hash'] for b in new_chain_fragment], is_forked=False, conn=conn)
+
+    async def update_fork_status(self, block_hashes, is_forked, conn):
+        update_block_q = blocks_t.update() \
+            .values(is_forked=is_forked) \
+            .where(blocks_t.c.hash.in_(block_hashes)) \
+            .returning(blocks_t.c.hash)
+
+        update_txs_q = transactions_t.update() \
+            .values(is_forked=is_forked) \
+            .where(transactions_t.c.block_hash.in_(block_hashes))
+
+        update_receipts_q = receipts_t.update() \
+            .values(is_forked=is_forked) \
+            .where(receipts_t.c.block_hash.in_(block_hashes))
+
+        update_logs_q = logs_t.update() \
+            .values(is_forked=is_forked) \
+            .where(logs_t.c.block_hash.in_(block_hashes))
+
+        update_token_transfers_q = token_transfers_t.update() \
+            .values(is_forked=is_forked) \
+            .where(token_transfers_t.c.block_hash.in_(block_hashes))
+
+        update_assets_transfers_q = assets_transfers_t.update() \
+            .values(is_forked=is_forked) \
+            .where(assets_transfers_t.c.block_hash.in_(block_hashes))
+
+        update_internal_transactions_q = internal_transactions_t.update() \
+            .values(is_forked=is_forked) \
+            .where(internal_transactions_t.c.block_hash.in_(block_hashes))
+
+        update_accounts_state_q = accounts_state_t.update() \
+            .values(is_forked=is_forked) \
+            .where(accounts_state_t.c.block_hash.in_(block_hashes))
+
+        update_uncles_q = uncles_t.update() \
+            .values(is_forked=is_forked) \
+            .where(uncles_t.c.block_hash.in_(block_hashes))
+
+        await conn.execute(update_block_q)
+        await conn.execute(update_txs_q)
+        await conn.execute(update_receipts_q)
+        await conn.execute(update_logs_q)
+        await conn.execute(update_internal_transactions_q)
+        await conn.execute(update_accounts_state_q)
+        await conn.execute(update_uncles_q)
+        await conn.execute(update_token_transfers_q)
+        await conn.execute(update_assets_transfers_q)
+        logger.debug(
+            'Update fork status',
+            extra={
+                'blocks': block_hashes,
+                'is_forked': is_forked,
+            },
+        )
+
+    async def is_block_number_exists(self, block_hash, block_num):
+        q = blocks_t.select().where(blocks_t.c.number == block_num)
+        async with self.engine.acquire() as conn:
+            res = await conn.execute(q)
+            row = await res.fetchone()
+            return row is None
+
+    async def is_canonical_block(self, block_hash):
+        q = blocks_t.select().where(blocks_t.c.hash == block_hash)
+        async with self.engine.acquire() as conn:
+            res = await conn.execute(q)
+            row = await res.fetchone()
+            return not row['is_forked']
+
     async def get_last_chain_split(self):
         q = """SELECT id FROM chain_splits ORDER BY id DESC LIMIT 1"""
         async with self.engine.acquire() as conn:
@@ -442,6 +585,18 @@ class MainDB(DBWrapper):
 
     async def insert_chain_split(self, split):
         q = chain_splits_t.insert().values(**split)
+        async with self.engine.acquire() as conn:
+            await conn.execute(q)
+
+    async def get_last_chain_event(self):
+        q = """SELECT * FROM chain_events ORDER BY id DESC LIMIT 1"""
+        async with self.engine.acquire() as conn:
+            res = await conn.execute(q)
+            row = await res.fetchone()
+            return dict(row) if row else None
+
+    async def insert_chain_event(self, event):
+        q = chain_events_t.insert().values(**event)
         async with self.engine.acquire() as conn:
             await conn.execute(q)
 

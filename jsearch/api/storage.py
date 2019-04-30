@@ -443,7 +443,7 @@ class Storage:
         Retruns status of client's last known block
         """
         split_query = """SELECT common_block_number FROM chain_splits
-                            WHERE id=(SELECT  split_id FROM  reorgs where block_hash=$1)"""
+                            WHERE id=(SELECT split_id FROM reorgs where block_hash=$1)"""
         block_query = "SELECT number FROM blocks WHERE hash=$1"
 
         async with self.pool.acquire() as conn:

@@ -10,6 +10,7 @@ from jsearch.common import contracts
 from jsearch.syncer.database import MainDBSync, RawDBSync
 from jsearch.typing import Logs
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -83,7 +84,7 @@ class SyncProcessor:
         :return: True if sync is successfull, False if syn fails or block already synced
         """
         logger.debug("Syncing Block", extra={'hash': block_hash, 'number': block_number})
-
+        start_time = time.monotonic()
         self.main_db.connect()
         self.raw_db.connect()
 
@@ -105,6 +106,7 @@ class SyncProcessor:
         body = self.raw_db.get_block_body(block_hash)
         accounts = self.raw_db.get_block_accounts(block_hash)
         internal_transactions = self.raw_db.get_internal_transactions(block_hash)
+        fetch_time = time.monotonic() - start_time
         self.raw_db.disconnect()
 
         block = self.process_block(
@@ -115,12 +117,23 @@ class SyncProcessor:
             reward=reward,
             internal_transactions=internal_transactions
         )
+        process_time = time.monotonic() - fetch_time - start_time
 
         block.write_to_database(self.main_db)
+        db_write_time = time.monotonic() - process_time - fetch_time - start_time
         block.write_to_bus()
+        bus_write_time = time.monotonic() - db_write_time - process_time - fetch_time - start_time
 
         sync_time = time.monotonic() - start_time
-        logger.debug("Block is synced", extra={'hash': block_hash, 'number': block_number, 'sync_time': sync_time})
+        logger.debug("Block is synced", extra={
+            'hash': block_hash,
+            'number': block_number,
+            'sync_time': '{:0.2f}s'.format(sync_time),
+            'fetch_time': '{:0.2f}s'.format(fetch_time),
+            'process_time': '{:0.2f}s'.format(process_time),
+            'db_write_time': '{:0.2f}s'.format(db_write_time),
+            'bus_write_time': '{:0.2f}s'.format(bus_write_time),
+        })
         self.main_db.disconnect()
         return True
 

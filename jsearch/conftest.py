@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from jsearch.api.app import make_app
+from jsearch.common import logs
 
 pytest_plugins = (
     "jsearch.tests.plugins.databases.main_db",
@@ -34,10 +35,8 @@ async def cli(event_loop, aiohttp_client):
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_logs():
-    logging.basicConfig(
-        format='%(asctime)-15s %(levelname)-8s %(name)s: %(message)s',
-        level=logging.DEBUG
-    )
+    logs.configure('DEBUG')
+
 
 
 @pytest.fixture

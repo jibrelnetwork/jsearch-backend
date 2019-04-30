@@ -22,6 +22,26 @@ SYNC_MODE_FAST = 'fast'
 SYNC_MODE_STRICT = 'strict'
 
 
+"""
+Dev Note - RawDB filling order:
+
+internal_transactions
+rewards
+bodies
+headers
+accounts
+receipts
+reorgs
+chain_splits
+
+"""
+
+class ChainEvent:
+    INSERT = 'insert'
+    REINSERT = 'reinsert'
+    SPLIT = 'split'
+
+
 class Manager:
     """
     Sync manager
@@ -41,15 +61,20 @@ class Manager:
         self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
 
         self.latest_available_block_num = None
+        self.latest_synced_block_num = None
+        self.blockchain_tip = None
+        self.sync_mode = SYNC_MODE_STRICT
         self.tasks = []
+        self.tip = None
 
     async def run(self):
         logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
         self._running = True
 
         service_loops = [
-            self.sequence_sync_loop(),
-            self.reorg_loop(),
+            # self.sequence_sync_loop(),
+            self.chain_events_process_loop(),
+            # self.reorg_loop(),
             self.pending_tx_loop(),
         ]
 
@@ -79,29 +104,20 @@ class Manager:
         for future in pending:
             future.cancel()
 
-    async def sequence_sync_loop(self):
-        logger.info("Entering Sequence Sync Loop")
+    async def chain_events_process_loop(self):
+        logger.info("Entering Chain Events Process Loop")
         while self._running is True:
             try:
-                start_time = time.monotonic()
-                blocks_to_sync = await self.get_blocks_to_sync()
-                if len(blocks_to_sync) == 0:
+                last_event = await self.main_db.get_last_chain_event()
+                if last_event is None:
+                    next_event_id = 1
+                else:
+                    next_event_id = last_event['id'] + 1
+                next_event = await self.raw_db.get_chain_event(next_event_id)
+                if next_event is None:
                     await asyncio.sleep(self.sleep_on_no_blocks)
                     continue
-                coros = [loop.run_in_executor(self.executor, sync_block, b[0], b[1]) for b in blocks_to_sync]
-                results = await asyncio.gather(*coros)
-                synced_blocks_cnt = sum(results)
-
-                sync_time = time.monotonic() - start_time
-                avg_time = sync_time / synced_blocks_cnt if synced_blocks_cnt else 0
-                logger.info(
-                    "Synced batch of blocks",
-                    extra={
-                        'amount': synced_blocks_cnt,
-                        'total_time': sync_time,
-                        'average_time': avg_time,
-                    }
-                )
+                await self.process_chain_event(next_event)
             except DatabaseError:
                 logger.exception("Database Error raised:")
                 await asyncio.sleep(self.sleep_on_db_error)
@@ -112,35 +128,121 @@ class Manager:
             else:
                 self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
 
-    async def reorg_loop(self):
-        logger.info("Entering Reorg Loop")
-        while self._running is True:
-            try:
-                start_time = time.monotonic()
-                new_splits = await self.get_new_chain_splits()
-                if len(new_splits) == 0:
-                    logger.info("No chain splits(reorgs), sleeping")
-                    await asyncio.sleep(self.sleep_on_no_blocks)
-                    continue
-                for split in new_splits:
-                    await self.process_chain_split(split)
+    async def process_chain_event(self, event):
+        start_time = time.monotonic()
+        logger.info("Start Processing Chain Event", extra={
+            'event_id': event['id'],
+            'event_type': event['event_type'],
+        })
+        if event['event_type'] == ChainEvent.INSERT:
+            await self.process_insert_block(event['block_hash'], event['block_number'])
+        elif event['event_type'] == ChainEvent.REINSERT:
+            # await self.process_reinsert_block(event['block_hash'], event['block_num'])
+            pass
+        elif event['event_type'] == ChainEvent.SPLIT:
+            await self.process_chain_split(event['split_id'])
+        else:
+            logger.error('Invalid chain event', extra={
+                'event_id': event['id'],
+                'event_type': event['event_type'],
+            })
+        logger.info("Finish Processing Chain Event", extra={
+            'event_id': event['id'],
+            'event_type': event['event_type'],
+            'time': '{:0.2f}s'.format(time.monotonic() - start_time)
+        })
+        await self.main_db.insert_chain_event(event)
 
-                proc_time = time.monotonic() - start_time
-                logger.info(
-                    "Processed batch of chain splits",
-                    extra={
-                        'amount': len(new_splits),
-                        'total_time': proc_time,
-                    }
-                )
+    async def process_insert_block(self, block_hash, block_num):
+        is_block_number_exists = await self.main_db.is_block_number_exists(block_hash, block_num)
+        parent_hash = await self.raw_db.get_parent_hash(block_hash)
+        if block_num > 7411551:
+            is_canonical_parent = await self.main_db.is_canonical_block(parent_hash)
+        else:
+            is_canonical_parent = True ## FIXME!!!
+        is_forked = is_block_number_exists or (not is_canonical_parent)
+        await loop.run_in_executor(self.executor, sync_block, block_hash, block_num, is_forked)
 
-            except Exception:
-                logger.exception("Reorg Loop Error occured:")
-                await asyncio.sleep(self.sleep_on_error)
-                self.sleep_on_error = self.sleep_on_error * 2
-            else:
-                self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
-                await asyncio.sleep(0.1)
+    # async def process_reinsert_block(self, block_hash, block_num):
+    #     await self.main_db.update_fork_status([block_hash], is_forked=False)
+
+    async def process_chain_split(self, split_id):
+        split_data = await self.raw_db.get_chain_split(split_id)
+        await self.main_db.apply_chain_split(split_data)
+
+    # async def sequence_sync_loop(self):
+    #     logger.info("Entering Sequence Sync Loop")
+    #     while self._running is True:
+    #         try:
+    #             start_time = time.monotonic()
+    #
+    #             await self.update_sync_mode()
+    #             if self.sync_mode == SYNC_MODE_FAST:
+    #                 await self.sync_blocks_fast()
+    #             else:
+    #                 missed_blocks = await self.get_missed_blocks()
+    #                 if missed_blocks:
+    #                     await self.sync_blocks(missed_blocks)
+    #                 else:
+    #                     await self.sync_next_block_stricte()
+    #                 ###
+    #             blocks_to_sync = await self.get_blocks_to_sync()
+    #             if len(blocks_to_sync) == 0:
+    #                 await asyncio.sleep(self.sleep_on_no_blocks)
+    #                 continue
+    #             coros = [loop.run_in_executor(self.executor, sync_block, b[0], b[1]) for b in blocks_to_sync]
+    #             results = await asyncio.gather(*coros)
+    #             synced_blocks_cnt = sum(results)
+    #
+    #             sync_time = time.monotonic() - start_time
+    #             avg_time = sync_time / synced_blocks_cnt if synced_blocks_cnt else 0
+    #             logger.info(
+    #                 "Synced batch of blocks",
+    #                 extra={
+    #                     'amount': synced_blocks_cnt,
+    #                     'total_time': sync_time,
+    #                     'average_time': avg_time,
+    #                 }
+    #             )
+    #         except DatabaseError:
+    #             logger.exception("Database Error raised:")
+    #             await asyncio.sleep(self.sleep_on_db_error)
+    #         except Exception:
+    #             logger.exception("Error raised:")
+    #             await asyncio.sleep(self.sleep_on_error)
+    #             self.sleep_on_error = self.sleep_on_error * 2
+    #         else:
+    #             self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
+    #
+    # async def reorg_loop(self):
+    #     logger.info("Entering Reorg Loop")
+    #     while self._running is True:
+    #         try:
+    #             start_time = time.monotonic()
+    #             new_splits = await self.get_new_chain_splits()
+    #             if len(new_splits) == 0:
+    #                 logger.info("No chain splits(reorgs), sleeping")
+    #                 await asyncio.sleep(self.sleep_on_no_blocks)
+    #                 continue
+    #             for split in new_splits:
+    #                 await self.process_chain_split(split)
+    #
+    #             proc_time = time.monotonic() - start_time
+    #             logger.info(
+    #                 "Processed batch of chain splits",
+    #                 extra={
+    #                     'amount': len(new_splits),
+    #                     'total_time': proc_time,
+    #                 }
+    #             )
+    #
+    #         except Exception:
+    #             logger.exception("Reorg Loop Error occured:")
+    #             await asyncio.sleep(self.sleep_on_error)
+    #             self.sleep_on_error = self.sleep_on_error * 2
+    #         else:
+    #             self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
+    #             await asyncio.sleep(0.1)
 
     async def pending_tx_loop(self):
         logger.info("Entering Pending Tx Loop")
@@ -177,40 +279,47 @@ class Manager:
         else:
             self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
             await asyncio.sleep(0.1)
+    #
+    # async def process_chain_split(self, split):
+    #     new_reorgs = await self.get_reorgs(split['id'])
+    #     await self.process_reorgs(new_reorgs)
+    #     await self.main_db.insert_chain_split(split)
+    #     await asyncio.sleep(0.1)
 
-    async def process_chain_split(self, split):
-        new_reorgs = await self.get_reorgs(split['id'])
-        await self.process_reorgs(new_reorgs)
-        await self.main_db.insert_chain_split(split)
-        await asyncio.sleep(0.1)
-
-    async def get_blocks_to_sync(self):
+    async def update_sync_mode(self):
         latest_synced_block_num = await self.main_db.get_latest_synced_block_number(blocks_range=self.sync_range)
         latest_available_block_num = await self.raw_db.get_latest_available_block_number()
         if latest_available_block_num - (latest_synced_block_num or 0) < self.chunk_size:
             # syncer is almost reached the head of chain, can fetch missed blocks now
-            sync_mode = SYNC_MODE_STRICT
-            blocks = await self.get_blocks_to_sync_strict()
-            if len(blocks) < self.chunk_size:
-                start_num = latest_synced_block_num + 1
-                end_num = start_num + self.chunk_size - len(blocks)
-                extra_blocks = await self.raw_db.get_blocks_to_sync(start_num, end_num)
-                blocks += extra_blocks
+            self.sync_mode = SYNC_MODE_STRICT
         else:
             # syncer is far from chain head, need more speed, will skip missed blocks
-            sync_mode = SYNC_MODE_FAST
-            blocks = await self.get_blocks_to_sync_fast(latest_synced_block_num, self.chunk_size)
+            self.sync_mode = SYNC_MODE_FAST
 
         if self.latest_available_block_num != latest_available_block_num:
             self.latest_available_block_num = latest_available_block_num
             await service_bus.emit_last_block_event(number=self.latest_available_block_num)
+        self.latest_synced_block_num = latest_synced_block_num
+
+    async def get_blocks_to_sync(self):
+        if self.sync_mode == SYNC_MODE_STRICT:
+            blocks = await self.get_blocks_to_sync_strict()
+            if len(blocks) < self.chunk_size:
+                start_num = self.latest_synced_block_num + 1
+                end_num = start_num + self.chunk_size - len(blocks)
+                extra_blocks = await self.raw_db.get_blocks_to_sync(start_num, end_num)
+                blocks += extra_blocks
+        else:
+            blocks = await self.get_blocks_to_sync_fast(self.latest_synced_block_num, self.chunk_size)
+
+
 
         logger.info(
             "Fetched new blocks to sync",
             extra={
                 'latest_synced_block_number': latest_synced_block_num,
                 'blocks_to_sync': len(blocks),
-                'sync_mode': sync_mode,
+                'sync_mode': self.sync_mode,
             }
         )
 
@@ -264,6 +373,6 @@ class Manager:
         return c
 
 
-def sync_block(block_hash, block_number=None, main_db_dsn=None, raw_db_dsn=None):
+def sync_block(block_hash, block_number=None, is_forked=False, main_db_dsn=None, raw_db_dsn=None):
     processor = SyncProcessor(main_db_dsn=main_db_dsn, raw_db_dsn=raw_db_dsn)
     return processor.sync_block(block_hash, block_number)
