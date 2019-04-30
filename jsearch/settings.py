@@ -5,7 +5,8 @@ import socket
 
 BASE_DIR = pathlib.Path(__file__).parent.parent
 
-VERSION = '0.1.3'
+VERSION_FILE = BASE_DIR / 'jsearch' / 'version.txt'
+VERSION = VERSION_FILE.read_text()
 
 JSEARCH_MAIN_DB = os.getenv('JSEARCH_MAIN_DB', 'postgres://localhost/jsearch_main')
 JSEARCH_RAW_DB = os.getenv('JSEARCH_RAW_DB', 'postgres://localhost/jsearch_raw')
