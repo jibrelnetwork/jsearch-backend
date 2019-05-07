@@ -9,8 +9,8 @@ from aiohttp_swagger import setup_swagger
 from jsearch import settings
 from jsearch.api import handlers
 from jsearch.api.middlewares import cors_middleware
-from jsearch.api.storage import Storage
 from jsearch.api.node_proxy import NodeProxy
+from jsearch.api.storage import Storage
 from jsearch.common import logs
 
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
