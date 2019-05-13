@@ -82,9 +82,9 @@ async def get_account_pending_transactions(request):
 
     pending_txs = await storage.get_account_pending_transactions(
         address,
+        order=params['order'],
         limit=params['limit'],
         offset=params['offset'],
-        order=params['order'],
     )
 
     response_data = [pt.to_dict() for pt in pending_txs]
@@ -613,8 +613,8 @@ async def get_wallet_events(request):
     pending_events = []
     include_pending_events = request.query.get('include_pending_events', False)
     if include_pending_events:
-        pending_txs = await storage.get_account_pending_transactions(address)
-        pending_events = [{'rootTxData': tx, 'events': []} for tx in pending_txs]
+        pending_txs = await storage.get_account_pending_transactions(address, order=ORDER_ASC)
+        pending_events = [{'rootTxData': tx.to_dict(), 'events': []} for tx in pending_txs]
 
     return api_success({
         "blockchainTip": tip.to_dict(),

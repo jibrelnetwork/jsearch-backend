@@ -691,15 +691,17 @@ class Storage:
 
     async def get_account_pending_transactions(self,
                                                account: str,
-                                               limit: int,
-                                               offset: int,
-                                               order: str):
+                                               order: str,
+                                               limit: Optional[int] = None,
+                                               offset: Optional[int] = None):
 
         query = get_pending_txs_by_account(account, order)
-        query = query.limit(limit)
-        query = query.offset(offset)
+
+        if limit:
+            query = query.limit(limit)
+
+        if offset:
+            query = query.offset(offset)
 
         rows = await fetch(self.pool, query)
-        internal_txs = [models.PendingTransaction(**r) for r in rows]
-
-        return internal_txs
+        return [models.PendingTransaction(**r) for r in rows]
