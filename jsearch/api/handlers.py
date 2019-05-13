@@ -2,9 +2,12 @@ import asyncio
 import logging
 
 import aiohttp
+from functools import partial
+from typing import Tuple, Optional, Union, Dict
 
 from jsearch import settings
 from jsearch.api.error_code import ErrorCode
+from jsearch.api.helpers import ApiError
 from jsearch.api.helpers import (
     get_tag,
     validate_params,
@@ -14,6 +17,7 @@ from jsearch.api.helpers import (
     api_error_400,
     api_error_404
 )
+from jsearch.api.structs import BlockInfo
 from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
@@ -310,7 +314,6 @@ async def get_token_transfers(request):
 
 
 async def get_account_token_transfers(request):
-    # todo: need to add validation. I'm worried about max size of limit
     storage = request.app['storage']
     params = validate_params(request)
     account_address = request.match_info['address'].lower()
@@ -391,17 +394,20 @@ async def on_new_contracts_added(request):
 
 
 async def get_blockchain_tip(request):
-    tip = request.query.get('tip')
     storage = request.app['storage']
-    block_status = await storage.get_blockchain_tip_status(tip)
-    if block_status is None:
+
+    block = await storage.get_latest_block_info()
+    if block is None:
         err = {
-            'field': 'tip',
             'error_code': ErrorCode.BLOCK_NOT_FOUND,
-            'error_message': f'Block with hash {tip} not found'
+            'error_message': f'Blockchain tip not found'
         }
         return api_error(status=404, errors=[err])
-    return api_success(block_status)
+
+    return api_success({
+        'blockHash': block.hash,
+        'blockNumber': block.number
+    })
 
 
 async def get_assets_summary(request):
@@ -452,3 +458,159 @@ async def get_wallet_transactions(request):
         'outgoingTransactionsNumber': nonce
     }
     return api_success(result)
+
+
+MAX_COUNT = 1000
+MAX_LIMIT = 1000
+MAX_OFFSET = 10000
+
+
+def get_address(request) -> str:
+    address = request.query.get('blockchain_address', '').lower()
+    if not address:
+        raise ApiError(
+            {
+                'param': 'blockchain_address',
+                'error_code': ErrorCode.PARAM_REQUIRED,
+                'error_message': f'Query param `blockchain_address` is required'
+            },
+            status=400
+        )
+    return address
+
+
+def get_tip_hash(request) -> Optional[str]:
+    tip = request.query.get('blockchain_tip')
+    if tip is None:
+        raise ApiError(
+            {
+                'param': 'blockchain_tip',
+                'error_code': ErrorCode.PARAM_REQUIRED,
+                'error_message': f'Query param `blockchain_tip` is required'
+            },
+            status=400
+        )
+
+    return tip
+
+
+async def get_tip_block(storage, block_hash: str) -> BlockInfo:
+    block_info = await storage.get_block_number(block_hash)
+    if block_info is None:
+        raise ApiError(
+            {
+                'field': 'tip',
+                'error_code': ErrorCode.BLOCK_NOT_FOUND,
+                'error_message': f'Block with hash {block_hash} not found'
+            },
+            status=404
+        )
+    return block_info
+
+
+def get_integer(request: aiohttp.RequestInfo,
+                attr: str,
+                tags=Optional[Dict[str, int]],
+                is_required=False) -> Optional[Union[int, str]]:
+    value = request.query.get(attr, "").lower()
+
+    if value.isdigit():
+        return int(value)
+
+    if value and tags and value in tags:
+        return tags[value]
+
+    if not value and not is_required:
+        return None
+
+    msg_allowed_tags = tags and f"or tag ( {', '.join(tags.keys())} )" or " "
+    if is_required:
+        raise ApiError(
+            {
+                'field': attr,
+                'error_code': ErrorCode.PARAM_REQUIRED,
+                'error_message': f'Query param `{attr}` is required'
+            },
+            status=400
+        )
+
+    raise ApiError(
+        {
+            'field': attr,
+            'error_code': ErrorCode.UNKNOWN_VALUE,
+            'error_message': f'Parameter `{attr}` must be integer {msg_allowed_tags} or empty'
+        },
+        status=400
+    )
+
+
+def get_block_range(start_from: int,
+                    until_to: Optional[int],
+                    count: Optional[int]) -> Tuple[int, int]:
+    """
+    Create range from three variables: start from, until to and count.
+
+    If sorting is `asc` - check what start_from + count < until or replace `until to` to start_from + count
+    If sorting is `desc` - check what start_from - count > until or replace `until to` to start_from - count
+    """
+    if count is not None and count > 0:
+        count -= 1
+
+    if count is not None and (until_to is None or start_from + count < until_to):
+        until_to = start_from + count
+
+    if until_to < 0:
+        until_to = 0
+
+    if until_to < start_from:
+        until_to = start_from
+
+    return start_from, until_to
+
+
+@ApiError.catch
+async def get_wallet_events(request):
+    storage = request.app['storage']
+    params = validate_params(request, max_limit=MAX_LIMIT, max_offset=MAX_OFFSET)
+
+    address = get_address(request)
+    tip_hash = get_tip_hash(request)
+
+    tip_block = await get_tip_block(storage, block_hash=tip_hash)
+    latest_block = await storage.get_latest_block_info()
+
+    get_block_number = partial(get_integer, tags={"latest": latest_block.number, "tip": tip_block.number})
+
+    start_from = get_block_number(request, 'block_range_start', is_required=True)
+    until_to = get_block_number(request, 'block_range_end') or tip_block.number
+    count = get_integer(request, 'block_range_count')
+
+    start_from, until_to = get_block_range(start_from, until_to, count)
+
+    get_events_task = storage.get_wallet_events(address, start_from, until_to, **params)
+    get_txs_task = storage.get_wallet_events_transactions(address, start_from, until_to, **params)
+
+    wallet_events, txs = await asyncio.gather(get_events_task, get_txs_task)
+
+    tip = await storage.get_blockchain_tip(tip=tip_block, last_block=latest_block)
+    is_event_affected = (
+            tip.is_in_fork and
+            tip.last_unchanged_block is not None and until_to > tip.last_unchanged_block
+    )
+
+    if is_event_affected:
+        events = []
+    else:
+        events = [{'rootTxData': tx, 'events': wallet_events.get(tx['hash'])} for tx in txs]
+
+    pending_events = []
+    include_pending_events = request.query.get('include_pending_events', False)
+    if include_pending_events:
+        pending_txs = await storage.get_account_pending_transactions(address)
+        pending_events = [{'rootTxData': tx, 'events': []} for tx in pending_txs]
+
+    return api_success({
+        "blockchainTip": tip.to_dict(),
+        "events": events,
+        "pending_events": pending_events
+    })

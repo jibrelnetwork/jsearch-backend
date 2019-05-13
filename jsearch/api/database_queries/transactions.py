@@ -1,12 +1,11 @@
-from typing import List
-
 from sqlalchemy import select, Column, and_, false
 from sqlalchemy.orm import Query
+from typing import List, Optional
 
 from jsearch.common.tables import transactions_t
 
 
-def get_default_fields():
+def get_default_fields() -> List[Column]:
     return [
         transactions_t.c.block_hash,
         transactions_t.c.block_number,
@@ -63,3 +62,9 @@ def _order_tx_query(query: Query, direction: str) -> Query:
         transactions_t.c.block_number.desc(),
         transactions_t.c.transaction_index.desc(),
     )
+
+
+def get_txs_for_events_query(events_query: Query, order: str, columns: Optional[List[Column]] = None) -> Query:
+    columns = columns or get_default_fields()
+    query = select(columns).where(transactions_t.c.hash.in_(events_query))
+    return _order_tx_query(query, order)
