@@ -1,10 +1,10 @@
-import time
 from random import randint
-from uuid import uuid4
 
 import factory
 import pytest
+import time
 from eth_utils import keccak, to_normalized_address
+from uuid import uuid4
 
 from jsearch.common.tables import blocks_t
 from jsearch.tests.plugins.databases.factories.common import generate_address
@@ -49,4 +49,5 @@ class BlockFactory(factory.alchemy.SQLAlchemyModelFactory):
 
 @pytest.fixture()
 def block_factory():
-    return BlockFactory
+    yield BlockFactory
+    BlockFactory.reset_sequence()
