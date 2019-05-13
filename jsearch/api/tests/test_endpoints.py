@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 import pytest
 from aiohttp import ClientResponse
 from asynctest import CoroutineMock
-from typing import NamedTuple, Optional, Set, Union
+from typing import Optional, Set, Union
 
 from jsearch import settings
 from jsearch.api.error_code import ErrorCode
@@ -1614,7 +1614,7 @@ async def test_get_wallet_events(cli, block_factory, wallet_events_factory, tran
     }
 
 
-class PaginationCase(NamedTuple):
+class PaginationCase:
     # block pagination params
     start: Union[str, int]
     until: Optional[Union[str, int]]
@@ -1633,6 +1633,26 @@ class PaginationCase(NamedTuple):
     ordering: Optional[str]
     id: str
 
+    def __init__(self,
+                 start=None,
+                 until=None,
+                 count=None,
+                 limit=None,
+                 offset=None,
+                 txs_count=None,
+                 events_count=None,
+                 blocks=None,
+                 ordering=None):
+        self.start = start
+        self.until = until
+        self.count = count
+        self.limit = limit
+        self.offset = offset
+        self.txs_count = txs_count
+        self.events_count = events_count
+        self.blocks = blocks
+        self.ordering = ordering
+
     def to_dict(self):
         data = {
             'block_range_start': self.start,
@@ -1644,51 +1664,56 @@ class PaginationCase(NamedTuple):
         }
         return {key: value for key, value in data.items() if value is not None}
 
+    @property
+    def name(self):
+        keys = {'start', 'until', 'count', 'limit', 'offset', 'ordering'}
+        params = [(key, getattr(self, key, None)) for key in keys]
+        return ",".join([f"{key}={value}" for key, value in params if value is not None])
+
 
 # 5 blocks
 # 3 transaction per block
 # 2 events per transaction or 6 events per block
 # Tip is previous before latest (blocks[-2])
 parameters = [
-    PaginationCase(0, 'latest', 1, None, None, 3, 6, {0}, None, 'from_first_to_latest'),
-    PaginationCase(0, 'latest', 2, 1, None, 1, 1, {0}, None, 'from_first_to_latest_check_asc_order'),
-    PaginationCase(0, 'latest', 1, None, None, 3, 6, {4}, 'desc', 'from_first_to_latest_desc_order'),
-    PaginationCase(0, 'latest', 2, None, 11, 1, 1, {3}, 'desc', 'from_first_to_latest_check_desc_order'),
+    PaginationCase(0, until='latest', count=1, txs_count=3, events_count=6, blocks={0}),
+    PaginationCase(0, until='latest', count=2, limit=1, txs_count=1, events_count=1, blocks={0}),
+    PaginationCase(0, until='latest', count=1, txs_count=3, events_count=6, blocks={4}, ordering='desc'),
+    PaginationCase(0, until='latest', count=2, offset=11, txs_count=1, events_count=1, blocks={3}, ordering='desc'),
 
-    PaginationCase(0, 'tip', 1, None, None, 3, 6, {3}, 'desc', 'last_page'),
-    PaginationCase(0, 'tip', 1, None, None, 3, 6, {0}, None, 'last_page'),
+    PaginationCase(0, until='tip', count=1, txs_count=3, events_count=6, blocks={3}, ordering='desc'),
+    PaginationCase(0, until='tip', count=1, txs_count=3, events_count=6, blocks={0}),
 
-    PaginationCase(0, None, 1, None, None, 3, 6, {0}, None, 'check_pagination_from=0_count=1'),
-    PaginationCase(0, 'tip', 1, None, None, 3, 6, {0}, None, 'check_pagination_from=0_until=tip_and_count=1'),
-    PaginationCase(0, 'latest', 1, None, None, 3, 6, {0}, None, 'check_pagination_from=_until=latest_and_count=1'),
+    PaginationCase(0, count=1, txs_count=3, events_count=6, blocks={0}),
+    PaginationCase(0, until='tip', count=1, txs_count=3, events_count=6, blocks={0}),
+    PaginationCase(0, until='latest', count=1, txs_count=3, events_count=6, blocks={0}),
 
-    PaginationCase(0, 'tip', None, None, None, 3 * 4, 6 * 4, {0, 1, 2, 3}, None, 'check_pagination_from=0_until=tip'),
-    PaginationCase(0, 'latest', None, None, None,
-                   3 * 5, 6 * 5, {0, 1, 2, 3, 4}, None, 'check_pagination_from=_until=latest'),
+    PaginationCase(0, until='tip', txs_count=3 * 4, events_count=6 * 4, blocks={0, 1, 2, 3}),
+    PaginationCase(0, until='latest', txs_count=3 * 5, events_count=6 * 5, blocks={0, 1, 2, 3, 4}),
 
-    PaginationCase(0, None, 1, 1, None, 1, 1, {0}, None, 'first_page_limit=1_from=6'),
-    PaginationCase(0, None, 1, None, 5, 1, 1, {0}, None, 'first_page_offset=5_from=6'),
-    PaginationCase(0, None, 1, None, None, 3, 6, {0}, None, 'first_page'),
+    PaginationCase(0, count=1, limit=1, txs_count=1, events_count=1, blocks={0}),
+    PaginationCase(0, count=1, offset=5, txs_count=1, events_count=1, blocks={0}),
+    PaginationCase(0, count=1, txs_count=3, events_count=6, blocks={0}),
 
-    PaginationCase(0, None, 2, 1, None, 1, 1, {0}, 'desc', 'check_limit_with_desc_ordering'),
-    PaginationCase(0, None, 2, None, 5, 1, 1, {0}, 'desc', 'check_offset_with_desc_ordering'),
+    PaginationCase(0, count=2, limit=1, txs_count=1, events_count=1, blocks={0}, ordering='desc'),
+    PaginationCase(0, count=2, offset=5, txs_count=1, events_count=1, blocks={0}, ordering='desc'),
 
-    PaginationCase(0, None, 2, 1, None, 1, 1, {0}, 'asc', 'check_limit_with_asc_ordering'),
-    PaginationCase(0, None, 2, None, 11, 1, 1, {1}, 'asc', 'check_offset_with_asc_ordering'),
+    PaginationCase(0, count=2, limit=1, txs_count=1, events_count=1, blocks={0}),
+    PaginationCase(0, count=2, offset=11, txs_count=1, events_count=1, blocks={1}, ordering='asc'),
 
-    PaginationCase('latest', None, 1, None, None, 3, 6, {4}, None, 'check_latest'),
-    PaginationCase('latest', None, 2, None, None, 3, 6, {4}, None, 'check_latest_with_offset'),
-    PaginationCase('latest', None, 2, None, None, 6, 12, {3, 4}, 'desc', 'check_latest_desc_order'),
-    PaginationCase('latest', None, 1, 1, None, 1, 1, {4}, 'desc', 'check_latest_desc_order_count=1_limit=1'),
-    PaginationCase('latest', None, 2, None, 11, 1, 1, {3}, 'desc', 'check_latest_desc_order_count=2_offset=5'),
+    PaginationCase('latest', count=1, txs_count=3, events_count=6, blocks={4}),
+    PaginationCase('latest', count=2, txs_count=3, events_count=6, blocks={4}),
+    PaginationCase('latest', count=2, txs_count=6, events_count=12, blocks={3, 4}, ordering='desc'),
+    PaginationCase('latest', count=1, limit=1, events_count=1, txs_count=1, blocks={4}, ordering='desc'),
+    PaginationCase('latest', count=2, offset=11, txs_count=1, events_count=1, blocks={3}, ordering='desc'),
 
-    PaginationCase('tip', None, 1, None, None, 3, 6, {3}, None, 'check_tip_tag'),
-    PaginationCase('tip', None, 2, None, None, 6, 12, {3, 4}, None, 'check_tip_tag_and_blocks=2_after'),
-    PaginationCase('tip', 'latest', None, None, None, 6, 12, {3, 4}, None, 'check_tip_tag_until=latest'),
+    PaginationCase('tip', count=1, txs_count=3, events_count=6, blocks={3}),
+    PaginationCase('tip', count=2, txs_count=6, events_count=12, blocks={3, 4}),
+    PaginationCase('tip', until='latest', txs_count=6, events_count=12, blocks={3, 4}),
 ]
 
 
-@pytest.mark.parametrize('case', parameters[:], ids=[p.id for p in parameters])
+@pytest.mark.parametrize('case', parameters, ids=[p.name for p in parameters])
 async def test_get_wallet_events_pagination(
         cli,
         account_factory,
