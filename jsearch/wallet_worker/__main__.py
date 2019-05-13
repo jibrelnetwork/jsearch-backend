@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 import backoff
 import click
@@ -7,9 +6,10 @@ import psycopg2
 from aiopg.sa import Engine, create_engine
 from mode import Service, Worker
 from sqlalchemy.dialects.postgresql import insert
+from typing import List
 
 from jsearch import settings
-from jsearch.common.contracts import ERC20_METHODS_IDS
+from jsearch.common.contracts import ERC20_METHODS_IDS, NULL_ADDRESS
 from jsearch.common.logs import configure
 from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t
 from jsearch.service_bus import (
@@ -21,9 +21,6 @@ from jsearch.service_bus import (
 )
 from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
 from jsearch.utils import Singleton
-
-from jsearch.common.contracts import ERC20_METHODS_IDS, NULL_ADDRESS
-
 
 logger = logging.getLogger('wallet_worker')
 
