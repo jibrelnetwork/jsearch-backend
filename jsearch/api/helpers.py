@@ -168,4 +168,29 @@ async def fetch(connection: Connection, query: Query) -> List[Dict[str, Any]]:
 async def fetch_row(connection: Connection, query: Query) -> Optional[Dict[str, Any]]:
     query, params = asyncpgsa.compile_query(query)
     result = await connection.fetchrow(query, *params)
-    return result is not None and dict(result)
+    return dict(result) if result is not None else None
+
+
+class ApiError(Exception):
+
+    """
+    @ApiError.catch
+    async def get_api(request):
+        raise ApiError(status=404, error={'field': 'Not found'})
+    """
+
+    def __init__(self, error: Dict[str, str], status: int = 400) -> None:
+        self.error = error
+        self.status = status
+
+    @classmethod
+    def catch(cls, func):
+
+        async def _wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except ApiError as exc:
+
+                return api_error(status=exc.status, errors=[exc.error], data={})
+
+        return _wrapper
