@@ -7,7 +7,7 @@ from typing import Tuple, Optional, Union, Dict
 
 from jsearch import settings
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.helpers import ApiError
+from jsearch.api.helpers import ApiError, ORDER_ASC
 from jsearch.api.helpers import (
     get_tag,
     validate_params,
@@ -508,14 +508,16 @@ async def get_tip_block(storage, block_hash: str) -> BlockInfo:
     return block_info
 
 
-def get_integer(request: aiohttp.RequestInfo,
-                attr: str,
-                tags=Optional[Dict[str, int]],
-                is_required=False) -> Optional[Union[int, str]]:
+def get_positive_number(request: aiohttp.RequestInfo,
+                        attr: str,
+                        tags=Optional[Dict[str, int]],
+                        is_required=False) -> Optional[Union[int, str]]:
     value = request.query.get(attr, "").lower()
 
     if value.isdigit():
-        return int(value)
+        number = int(value)
+        if number >= 0:
+            return number
 
     if value and tags and value in tags:
         return tags[value]
@@ -538,32 +540,43 @@ def get_integer(request: aiohttp.RequestInfo,
         {
             'field': attr,
             'error_code': ErrorCode.UNKNOWN_VALUE,
-            'error_message': f'Parameter `{attr}` must be integer {msg_allowed_tags} or empty'
+            'error_message': f'Parameter `{attr}` must be positive integer {msg_allowed_tags} or empty'
         },
         status=400
     )
 
 
-def get_block_range(start_from: int,
-                    until_to: Optional[int],
-                    count: Optional[int]) -> Tuple[int, int]:
-    """
-    Create range from three variables: start from, until to and count.
+def get_block_range(request: aiohttp.RequestInfo,
+                    tip_block: BlockInfo,
+                    latest_block: BlockInfo,
+                    is_asc_order: bool) -> Tuple[int, int]:
+    get_block_number = partial(get_positive_number, tags={"latest": latest_block.number, "tip": tip_block.number})
 
-    If sorting is `asc` - check what start_from + count < until or replace `until to` to start_from + count
-    If sorting is `desc` - check what start_from - count > until or replace `until to` to start_from - count
-    """
-    if count is not None and count > 0:
-        count -= 1
+    count = get_positive_number(request, 'block_range_count')
+    start_from = get_block_number(request, 'block_range_start', is_required=True)
+    until_to = get_block_number(request, 'block_range_end')
 
-    if count is not None and (until_to is None or start_from + count < until_to):
-        until_to = start_from + count
+    # from pdb import set_trace; set_trace()
+    # set default value only if count is None
+    if count is None and until_to is None:
+        until_to = tip_block.number
 
-    if until_to < 0:
-        until_to = 0
+    if count is not None:
 
-    if until_to < start_from:
-        until_to = start_from
+        if count < 0:
+            count = 0
+
+        if count is not None and count > 0:
+            count -= 1
+
+        if until_to is None:
+            offset = count if is_asc_order else count * -1
+            until_to = start_from + offset
+
+        if is_asc_order:
+            until_to = min(start_from + count, until_to or 0)
+        else:
+            start_from = max(until_to - count, start_from)
 
     return start_from, until_to
 
@@ -571,7 +584,7 @@ def get_block_range(start_from: int,
 @ApiError.catch
 async def get_wallet_events(request):
     storage = request.app['storage']
-    params = validate_params(request, max_limit=MAX_LIMIT, max_offset=MAX_OFFSET)
+    params = validate_params(request, max_limit=MAX_LIMIT, max_offset=MAX_OFFSET, default_order='asc')
 
     address = get_address(request)
     tip_hash = get_tip_hash(request)
@@ -579,13 +592,7 @@ async def get_wallet_events(request):
     tip_block = await get_tip_block(storage, block_hash=tip_hash)
     latest_block = await storage.get_latest_block_info()
 
-    get_block_number = partial(get_integer, tags={"latest": latest_block.number, "tip": tip_block.number})
-
-    start_from = get_block_number(request, 'block_range_start', is_required=True)
-    until_to = get_block_number(request, 'block_range_end') or tip_block.number
-    count = get_integer(request, 'block_range_count')
-
-    start_from, until_to = get_block_range(start_from, until_to, count)
+    start_from, until_to = get_block_range(request, tip_block, latest_block, is_asc_order=params['order'] == ORDER_ASC)
 
     get_events_task = storage.get_wallet_events(address, start_from, until_to, **params)
     get_txs_task = storage.get_wallet_events_transactions(address, start_from, until_to, **params)

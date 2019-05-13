@@ -1650,6 +1650,14 @@ class PaginationCase(NamedTuple):
 # 2 events per transaction or 6 events per block
 # Tip is previous before latest (blocks[-2])
 parameters = [
+    PaginationCase(0, 'latest', 1, None, None, 3, 6, {0}, None, 'from_first_to_latest'),
+    PaginationCase(0, 'latest', 2, 1, None, 1, 1, {0}, None, 'from_first_to_latest_check_asc_order'),
+    PaginationCase(0, 'latest', 1, None, None, 3, 6, {4}, 'desc', 'from_first_to_latest_desc_order'),
+    PaginationCase(0, 'latest', 2, None, 11, 1, 1, {3}, 'desc', 'from_first_to_latest_check_desc_order'),
+
+    PaginationCase(0, 'tip', 1, None, None, 3, 6, {3}, 'desc', 'last_page'),
+    PaginationCase(0, 'tip', 1, None, None, 3, 6, {0}, None, 'last_page'),
+
     PaginationCase(0, None, 1, None, None, 3, 6, {0}, None, 'check_pagination_from=0_count=1'),
     PaginationCase(0, 'tip', 1, None, None, 3, 6, {0}, None, 'check_pagination_from=0_until=tip_and_count=1'),
     PaginationCase(0, 'latest', 1, None, None, 3, 6, {0}, None, 'check_pagination_from=_until=latest_and_count=1'),
@@ -1658,19 +1666,24 @@ parameters = [
     PaginationCase(0, 'latest', None, None, None,
                    3 * 5, 6 * 5, {0, 1, 2, 3, 4}, None, 'check_pagination_from=_until=latest'),
 
-    PaginationCase(0, None, 1, 1, None, 1, 1, {0}, None, 'check_limit=1_from=6'),
-    PaginationCase(0, None, 1, None, 5, 1, 1, {0}, None, 'check_offset=5_from=6'),
+    PaginationCase(0, None, 1, 1, None, 1, 1, {0}, None, 'first_page_limit=1_from=6'),
+    PaginationCase(0, None, 1, None, 5, 1, 1, {0}, None, 'first_page_offset=5_from=6'),
+    PaginationCase(0, None, 1, None, None, 3, 6, {0}, None, 'first_page'),
 
-    PaginationCase(0, None, 2, 1, None, 1, 1, {1}, 'desc', 'check_limit_with_desc_ordering'),
-    PaginationCase(0, None, 2, None, 11, 1, 1, {0}, 'desc', 'check_offset_with_desc_ordering'),
+    PaginationCase(0, None, 2, 1, None, 1, 1, {0}, 'desc', 'check_limit_with_desc_ordering'),
+    PaginationCase(0, None, 2, None, 5, 1, 1, {0}, 'desc', 'check_offset_with_desc_ordering'),
+
     PaginationCase(0, None, 2, 1, None, 1, 1, {0}, 'asc', 'check_limit_with_asc_ordering'),
     PaginationCase(0, None, 2, None, 11, 1, 1, {1}, 'asc', 'check_offset_with_asc_ordering'),
-    #
-    PaginationCase('latest', None, 1, None, None, 3, 6, {4}, None, 'check_latest_tag'),
-    PaginationCase('latest', None, 2, None, None, 3, 6, {4}, None, 'check_latest_tag_with_offset'),
-    #
+
+    PaginationCase('latest', None, 1, None, None, 3, 6, {4}, None, 'check_latest'),
+    PaginationCase('latest', None, 2, None, None, 3, 6, {4}, None, 'check_latest_with_offset'),
+    PaginationCase('latest', None, 2, None, None, 6, 12, {3, 4}, 'desc', 'check_latest_desc_order'),
+    PaginationCase('latest', None, 1, 1, None, 1, 1, {4}, 'desc', 'check_latest_desc_order_count=1_limit=1'),
+    PaginationCase('latest', None, 2, None, 11, 1, 1, {3}, 'desc', 'check_latest_desc_order_count=2_offset=5'),
+
     PaginationCase('tip', None, 1, None, None, 3, 6, {3}, None, 'check_tip_tag'),
-    PaginationCase('tip', None, 2, None, None, 3, 6, {3}, None, 'check_tip_tag_and_blocks=2_after'),
+    PaginationCase('tip', None, 2, None, None, 6, 12, {3, 4}, None, 'check_tip_tag_and_blocks=2_after'),
     PaginationCase('tip', 'latest', None, None, None, 6, 12, {3, 4}, None, 'check_tip_tag_until=latest'),
 ]
 
@@ -1698,11 +1711,12 @@ async def test_get_wallet_events_pagination(
         for _ in range(0, 3):
             tx = transaction_factory.create(block_hash=block.hash, block_number=block.number)
             txs.append(tx)
-            for _ in range(0, 2):
+            for event_index in range(0, 2):
                 event = wallet_events_factory.create_token_transfer(
                     block=block,
                     tx_hash=tx.hash,
                     address=account.address,
+                    event_index=event_index,
                 )
                 events.append(event)
 

@@ -14,7 +14,10 @@ DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
 DEFAULT_OFFSET = 0
 MAX_OFFSET = 10000
-DEFAULT_ORDER = 'desc'
+
+ORDER_ASC = 'asc'
+ORDER_DESC = 'desc'
+DEFAULT_ORDER = ORDER_DESC
 
 
 class Tag:
@@ -95,7 +98,7 @@ def validate_params(request, max_limit=None, max_offset=None, default_order=None
         })
 
     order = request.query.get('order', '').lower()
-    if order and order in ['asc', 'desc']:
+    if order and order in [ORDER_ASC, ORDER_DESC]:
         params['order'] = order
     elif order:
         errors.append({'field': 'order',

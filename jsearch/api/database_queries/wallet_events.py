@@ -17,7 +17,7 @@ def get_default_fields() -> List[Column]:
 
 def get_wallet_events_query(address: str,
                             from_block: int,
-                            until_block: Optional[int],
+                            until_block: int,
                             limit: int,
                             offset: int,
                             order: str,
@@ -37,18 +37,10 @@ def get_wallet_events_query(address: str,
     )
     query = query.order_by(*ordering)
 
-    if from_block is not None and until_block is not None:
-        filter_by_block_number = wallet_events_t.c.block_number.between(from_block, until_block)
-    elif from_block is not None:
-        filter_by_block_number = wallet_events_t.c.block_number >= from_block
-    elif until_block is not None:
-        filter_by_block_number = wallet_events_t.c.block_number <= until_block
-    else:
-        filter_by_block_number = None
+    if from_block > until_block:
+        from_block, until_block = until_block, from_block
 
-    if filter_by_block_number is not None:
-        query = query.where(filter_by_block_number)
-
+    query = query.where(wallet_events_t.c.block_number.between(from_block, until_block))
     query = query.limit(limit)
     if offset:
         query = query.offset(offset)
