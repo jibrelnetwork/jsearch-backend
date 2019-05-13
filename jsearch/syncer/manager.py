@@ -83,71 +83,77 @@ class Manager:
     async def sequence_sync_loop(self):
         logger.info("Entering Sequence Sync Loop")
         while self._running is True:
-            try:
-                start_time = time.monotonic()
-                blocks_to_sync = await self.get_blocks_to_sync()
-                if len(blocks_to_sync) == 0:
-                    await asyncio.sleep(self.sleep_on_no_blocks)
-                    continue
-                coros = [loop.run_in_executor(self.executor, sync_block, b[0], b[1]) for b in blocks_to_sync]
-                results = await asyncio.gather(*coros)
-                synced_blocks_cnt = sum(results)
-
-                sync_time = time.monotonic() - start_time
-                avg_time = sync_time / synced_blocks_cnt if synced_blocks_cnt else 0
-                logger.info(
-                    "Synced batch of blocks",
-                    extra={
-                        'amount': synced_blocks_cnt,
-                        'total_time': sync_time,
-                        'average_time': avg_time,
-                    }
-                )
-            except DatabaseError:
-                logger.exception("Database Error raised:")
-                await asyncio.sleep(self.sleep_on_db_error)
-            except Exception:
-                logger.exception("Error raised:")
-                await asyncio.sleep(self.sleep_on_error)
-                self.sleep_on_error = self.sleep_on_error * 2
-            else:
-                self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
+            await self.get_and_process_blocks()
 
     async def reorg_loop(self):
         logger.info("Entering Reorg Loop")
         while self._running is True:
-            try:
-                start_time = time.monotonic()
-                new_splits = await self.get_new_chain_splits()
-                if len(new_splits) == 0:
-                    logger.info("No chain splits(reorgs), sleeping")
-                    await asyncio.sleep(self.sleep_on_no_blocks)
-                    continue
-                for split in new_splits:
-                    await self.process_chain_split(split)
-
-                proc_time = time.monotonic() - start_time
-                logger.info(
-                    "Processed batch of chain splits",
-                    extra={
-                        'amount': len(new_splits),
-                        'total_time': proc_time,
-                    }
-                )
-
-            except Exception:
-                logger.exception("Reorg Loop Error occured:")
-                await asyncio.sleep(self.sleep_on_error)
-                self.sleep_on_error = self.sleep_on_error * 2
-            else:
-                self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
-                await asyncio.sleep(0.1)
+            await self.get_and_process_chain_splits()
 
     async def pending_tx_loop(self):
         logger.info("Entering Pending Tx Loop")
 
         while self._running is True:
             await self.get_and_process_pending_txs()
+
+    async def get_and_process_blocks(self):
+        try:
+            start_time = time.monotonic()
+            blocks_to_sync = await self.get_blocks_to_sync()
+            if len(blocks_to_sync) == 0:
+                await asyncio.sleep(self.sleep_on_no_blocks)
+                return
+            coros = [loop.run_in_executor(self.executor, sync_block, b[0], b[1]) for b in blocks_to_sync]
+            results = await asyncio.gather(*coros)
+            synced_blocks_cnt = sum(results)
+
+            sync_time = time.monotonic() - start_time
+            avg_time = sync_time / synced_blocks_cnt if synced_blocks_cnt else 0
+            logger.info(
+                "Synced batch of blocks",
+                extra={
+                    'amount': synced_blocks_cnt,
+                    'total_time': sync_time,
+                    'average_time': avg_time,
+                }
+            )
+        except DatabaseError:
+            logger.exception("Database Error raised:")
+            await asyncio.sleep(self.sleep_on_db_error)
+        except Exception:
+            logger.exception("Error raised:")
+            await asyncio.sleep(self.sleep_on_error)
+            self.sleep_on_error = self.sleep_on_error * 2
+        else:
+            self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
+
+    async def get_and_process_chain_splits(self):
+        try:
+            start_time = time.monotonic()
+            new_splits = await self.get_new_chain_splits()
+            if len(new_splits) == 0:
+                logger.info("No chain splits(reorgs), sleeping")
+                await asyncio.sleep(self.sleep_on_no_blocks)
+                return
+            for split in new_splits:
+                await self.process_chain_split(split)
+
+            proc_time = time.monotonic() - start_time
+            logger.info(
+                "Processed batch of chain splits",
+                extra={
+                    'amount': len(new_splits),
+                    'total_time': proc_time,
+                }
+            )
+
+        except Exception:
+            logger.exception("Reorg Loop Error occured:")
+            await asyncio.sleep(self.sleep_on_error)
+            self.sleep_on_error = self.sleep_on_error * 2
+        else:
+            self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
+            await asyncio.sleep(0.1)
 
     async def get_and_process_pending_txs(self):
         try:
