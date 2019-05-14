@@ -1,3 +1,5 @@
+import os
+
 import click
 from jsearch.common import worker
 
@@ -7,7 +9,7 @@ from jsearch.utils import parse_range
 
 
 @click.command()
-@click.option('--log-level', default='INFO', help="Log level")
+@click.option('--log-level', default=os.getenv('LOG_LEVEL', 'INFO'), help="Log level")
 @click.option('--sync-range', default=None, help="Blocks range to sync")
 def run(log_level, sync_range):
     logs.configure(log_level)

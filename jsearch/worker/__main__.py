@@ -24,6 +24,7 @@ Communication scheme for token transfer reorganization.
 """
 import asyncio
 import logging
+import os
 from typing import List, Dict
 
 import backoff
@@ -126,7 +127,7 @@ async def receive_last_block(record: Dict[str, int]):
 
 
 @click.command()
-@click.option('--log-level', default='INFO')
+@click.option('--log-level', default=os.getenv('LOG_LEVEL', 'INFO'))
 def main(log_level: str) -> None:
     configure(log_level)
     worker.Worker(

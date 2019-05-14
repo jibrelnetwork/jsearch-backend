@@ -1,5 +1,6 @@
 # !/usr/bin/env python
 import logging
+import os
 
 import click
 
@@ -16,7 +17,7 @@ MODE_FAST = 'fast'
 
 @click.command()
 @click.argument('action', type=click.Choice(services.ACTION_PROCESS_CHOICES))
-@click.option('--log-level', default='INFO', help="Log level")
+@click.option('--log-level', default=os.getenv('LOG_LEVEL', 'INFO'), help="Log level")
 @click.option('--workers', default=30, help="Workers count")
 @click.option('--mode', type=click.Choice([MODE_FAST, MODE_STRICT]), default=MODE_STRICT)
 def main(action: str, log_level: str, workers: int, mode: str) -> None:
