@@ -41,7 +41,7 @@ class Manager:
         self.latest_available_block_num = None
         self.tasks = []
 
-    async def run(self):
+    async def start(self):
         logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
         self._running = True
 
@@ -58,6 +58,10 @@ class Manager:
             task.add_done_callback(self.tasks.remove)
 
             self.tasks.append(task)
+
+    async def run(self):
+        await asyncio.wait(self.tasks, return_when=asyncio.FIRST_EXCEPTION)
+        await self.stop()
 
     async def stop(self, timeout=60):
         self._running = False
