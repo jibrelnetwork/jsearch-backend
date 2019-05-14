@@ -13,13 +13,27 @@ from jsearch.service_bus import (
     ROUTE_WALLET_HANDLE_TOKEN_TRANSFER,
     ROUTE_HANDLE_TRANSACTIONS,
     ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE,
+    ROUTE_HANDLE_PENDING_TXS
 )
 from jsearch.wallet_worker.api_service import ApiService
 from jsearch.wallet_worker.service import DatabaseService
+from jsearch.wallet_worker.typing import PendingTransaction
 
 logger = logging.getLogger('wallet_worker')
 
 service = DatabaseService()
+
+
+@service_bus.listen_stream(ROUTE_HANDLE_PENDING_TXS, service_name='jsearch_wallet_worker', task_limit=100)
+async def handle_pending_transaction(pending_tx: PendingTransaction):
+    logger.info(
+        "Handling new pending Transaction",
+        extra={
+            'tag': 'WALLET',
+            'tx_hash': pending_tx['hash'],
+        }
+    )
+    await service.add_pending_wallet_event_from_tx(pending_tx)
 
 
 @service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS, service_name='jsearch_wallet_worker', task_limit=100)
@@ -36,7 +50,7 @@ async def handle_new_transaction(tx_data):
         'address': tx_data['to'],
         'token_address': '',
     }
-    await service.add_or_update_asset_summary_transfer(update_data)
+    await service.add_or_update_asset_summary_from_transfer(update_data)
     for itx in tx_data['internal_transactions']:
         await service.add_wallet_event_tx_internal(tx_data, itx)
 
@@ -73,7 +87,7 @@ async def handle_token_transfer(transfers):
             },
         )
         await service.add_wallet_event_token_transfer(transfer_data)
-        await service.add_or_update_asset_summary_transfer(transfer_data)
+        await service.add_or_update_asset_summary_from_transfer(transfer_data)
 
 
 @service_bus.listen_stream(ROUTE_WALLET_HANDLE_ASSETS_UPDATE, service_name='jsearch_wallet_worker', task_limit=100)

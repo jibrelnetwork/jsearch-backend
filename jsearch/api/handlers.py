@@ -611,16 +611,19 @@ async def get_wallet_events(request):
     else:
         events = [{'rootTxData': tx, 'events': wallet_events.get(tx['hash'])} for tx in txs]
 
-    pending_events = []
+    pending_data = []
     include_pending_events = request.query.get('include_pending_events', False)
     if include_pending_events:
-        pending_txs = await storage.get_account_pending_transactions(address, order=ORDER_ASC)
-        pending_events = [{'rootTxData': tx.to_dict(), 'events': []} for tx in pending_txs]
+        get_pending_txs_task = storage.get_account_pending_transactions(address, order=ORDER_ASC)
+        get_pending_events_task = storage.get_account_pending_events(address)
+
+        pending_txs, pending_events = await asyncio.gather(get_pending_txs_task, get_pending_events_task)
+        pending_data = [{'rootTxData': tx.to_dict(), 'events': pending_events.get(tx.hash, [])} for tx in pending_txs]
 
     return api_success({
         "blockchainTip": tip.to_dict(),
         "events": events,
-        "pending_events": pending_events
+        "pending_events": pending_data
     })
 
 

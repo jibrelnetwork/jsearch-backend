@@ -66,7 +66,7 @@ async def test_add_or_update_asset_summary_transfer(db):
         'token_address': '0xc2',
         'address': '0xa2',
     }
-    await s.add_or_update_asset_summary_transfer(asset_transfer)
+    await s.add_or_update_asset_summary_from_transfer(asset_transfer)
 
     res = db.execute(assets_summary_t.select()).fetchall()
     assert len(res) == 1
@@ -78,7 +78,7 @@ async def test_add_or_update_asset_summary_transfer(db):
                             'nonce': None
                             }
 
-    await s.add_or_update_asset_summary_transfer(asset_transfer)
+    await s.add_or_update_asset_summary_from_transfer(asset_transfer)
 
     res = db.execute(assets_summary_t.select()).fetchall()
     assert len(res) == 1
