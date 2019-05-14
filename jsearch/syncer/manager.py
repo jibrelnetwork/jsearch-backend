@@ -93,7 +93,7 @@ class Manager:
         while self._running is True:
             await self.get_and_process_pending_txs()
 
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def get_and_process_blocks(self):
         start_time = time.monotonic()
         blocks_to_sync = await self.get_blocks_to_sync()
@@ -115,7 +115,7 @@ class Manager:
             }
         )
 
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def get_and_process_chain_splits(self):
         start_time = time.monotonic()
         new_splits = await self.get_new_chain_splits()
@@ -135,7 +135,7 @@ class Manager:
             }
         )
 
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=Exception)
+    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def get_and_process_pending_txs(self):
         start_time = time.monotonic()
         new_pending_txs = await self.get_new_pending_txs()
