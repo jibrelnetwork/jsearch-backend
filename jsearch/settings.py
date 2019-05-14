@@ -39,7 +39,7 @@ SERVICE_BUS_WORKER_NAME = 'jsearch_backend'
 
 API_QUERY_ARRAY_MAX_LENGTH = 25
 
-HTTP_USER_AGENT = f'jsearch-backend/{VERSION} {socket.gethostname()}'
+HTTP_USER_AGENT = f'jsearch-backend/{VERSION} {socket.gethostname()}'.replace('\n', '')
 
 HEALTH_LOOP_TASKS_COUNT_THRESHOLD = 10000
 
