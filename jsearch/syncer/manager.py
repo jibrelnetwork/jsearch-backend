@@ -66,17 +66,23 @@ class Manager:
     async def stop(self, timeout=60):
         self._running = False
 
+        if not self.tasks:
+            # All tasks have been completed already and removed from the list.
+            return
+
         done, pending = await asyncio.wait(self.tasks, timeout=timeout)
 
-        logger.warning(
-            'There are pending futures, that will be canceled',
-            extra={
-                'tag': 'SERVICE BUS',
-                'count': len(pending)
-            }
-        )
         for future in done:
             future.result()
+
+        if pending:
+            logger.warning(
+                'There are pending futures, that will be canceled',
+                extra={
+                    'tag': 'SYNCER',
+                    'count': len(pending)
+                }
+            )
 
         for future in pending:
             future.cancel()
