@@ -1,3 +1,6 @@
+import asyncio
+
+import aiomonitor
 import click
 from jsearch.common import worker
 
@@ -12,10 +15,14 @@ from jsearch.utils import parse_range
 def run(log_level, sync_range):
     logs.configure(log_level)
 
-    worker.Worker(
-        services.SyncerService(sync_range=parse_range(sync_range)),
-        services.ApiService(),
-    ).execute_from_commandline()
+    loop = asyncio.get_event_loop()
+
+    with aiomonitor.start_monitor(loop=loop):
+        worker.Worker(
+            services.SyncerService(sync_range=parse_range(sync_range)),
+            services.ApiService(),
+            loop=loop,
+        ).execute_from_commandline()
 
 
 if __name__ == '__main__':

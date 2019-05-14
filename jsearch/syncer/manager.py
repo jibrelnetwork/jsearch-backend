@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import functools
 import logging
 
 import time
@@ -46,18 +47,29 @@ class Manager:
         self._running = True
 
         service_loops = [
-            self.sequence_sync_loop(),
-            self.reorg_loop(),
-            self.pending_tx_loop(),
+            # self.sequence_sync_loop(),
+            # self.reorg_loop(),
+            # self.pending_tx_loop(),
+            self.debug_loop(),
         ]
 
+        def callback(fut):
+            fut.result()
+
         for coro in service_loops:
-            coro = asyncio.shield(coro)
+            # coro = asyncio.shield(coro)
 
             task = asyncio.ensure_future(coro)
-            task.add_done_callback(self.tasks.remove)
+            task.add_done_callback(callback)
 
             self.tasks.append(task)
+
+
+    async def debug_loop(self):
+        print('before sleep')
+        await asyncio.sleep(1)
+        print('after sleep')
+        raise Exception
 
     async def stop(self, timeout=60):
         self._running = False

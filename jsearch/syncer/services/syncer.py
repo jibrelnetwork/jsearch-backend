@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import mode
 
@@ -20,6 +21,8 @@ class SyncerService(mode.Service):
         await self.raw_db.connect()
         await self.main_db.connect()
         await self.manager.run()
+        print('before sleep')
+        await asyncio.sleep(1)
 
     async def on_stop(self) -> None:
         await self.manager.stop()
