@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 import aiohttp
+from aiohttp import web
 from functools import partial
 from typing import Tuple, Optional, Union, Dict
 
@@ -15,10 +16,11 @@ from jsearch.api.helpers import (
     proxy_response,
     api_error,
     api_error_400,
-    api_error_404
+    api_error_404,
+    get_from_joined_string,
 )
 from jsearch.api.structs import BlockInfo
-from jsearch.common import tasks
+from jsearch.common import tasks, stats
 from jsearch.common.contracts import cut_contract_metadata_hash
 from jsearch.common.contracts import is_erc20_compatible
 
@@ -130,7 +132,7 @@ async def get_accounts_balances(request):
     Get ballances for list of accounts
     """
     storage = request.app['storage']
-    addresses = request.query.get('addresses', '').lower().split(',')
+    addresses = get_from_joined_string(request.query.get('addresses'))
 
     if len(addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
         return api_error_400(errors=[
@@ -412,10 +414,8 @@ async def get_blockchain_tip(request):
 
 async def get_assets_summary(request):
     params = validate_params(request)
-    addresses = request.query.get('addresses', '')
-    addresses = addresses.split(',') if addresses else []
-    assets = request.query.get('assets', '')
-    assets = [a for a in assets.split(',') if a]
+    addresses = get_from_joined_string(request.query.get('addresses'))
+    assets = get_from_joined_string(request.query.get('assets'))
     storage = request.app['storage']
     summary = await storage.get_wallet_assets_summary(
         addresses,
@@ -427,10 +427,8 @@ async def get_assets_summary(request):
 
 async def get_wallet_transfers(request):
     params = validate_params(request)
-    addresses = request.query.get('addresses', '')
-    addresses = addresses.split(',') if addresses else []
-    assets = request.query.get('assets', '')
-    assets = [a for a in assets.split(',') if a]
+    addresses = get_from_joined_string(request.query.get('addresses'))
+    assets = get_from_joined_string(request.query.get('assets'))
     storage = request.app['storage']
     transfers = await storage.get_wallet_assets_transfers(
         addresses,
@@ -624,3 +622,28 @@ async def get_wallet_events(request):
         "events": events,
         "pending_events": pending_events
     })
+
+
+async def healthcheck(request: web.Request) -> web.Response:
+    main_db_stats = await stats.get_db_stats(request.app['db_pool'])
+    node_stats = await stats.get_node_stats(request.app['node_proxy'])
+    loop_stats = await stats.get_loop_stats()
+
+    healthy = all(
+        (
+            main_db_stats.is_healthy,
+            node_stats.is_healthy,
+            loop_stats.is_healthy,
+        )
+    )
+    status = 200 if healthy else 400
+
+    data = {
+        'healthy': healthy,
+        'isMainDbHealthy': main_db_stats.is_healthy,
+        'isNodeHealthy': node_stats.is_healthy,
+        'isLoopHealthy': loop_stats.is_healthy,
+        'loopTasksCount': loop_stats.tasks_count,
+    }
+
+    return web.json_response(data=data, status=status)

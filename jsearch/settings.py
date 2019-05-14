@@ -1,5 +1,13 @@
 import os
 
+import pathlib
+import socket
+
+BASE_DIR = pathlib.Path(__file__).parent.parent
+
+VERSION_FILE = BASE_DIR / 'jsearch' / 'version.txt'
+VERSION = VERSION_FILE.read_text()
+
 JSEARCH_MAIN_DB = os.getenv('JSEARCH_MAIN_DB', 'postgres://localhost/jsearch_main')
 JSEARCH_RAW_DB = os.getenv('JSEARCH_RAW_DB', 'postgres://localhost/jsearch_raw')
 
@@ -30,3 +38,12 @@ RAVEN_DSN = os.getenv('RAVEN_DSN')
 SERVICE_BUS_WORKER_NAME = 'jsearch_backend'
 
 API_QUERY_ARRAY_MAX_LENGTH = 25
+
+HTTP_USER_AGENT = f'jsearch-backend/{VERSION} {socket.gethostname()}'.replace('\n', '')
+
+HEALTH_LOOP_TASKS_COUNT_THRESHOLD = 10000
+
+POST_PROCESSING_API_PORT = int(os.getenv('POST_PROCESSING_API_PORT', 8080))
+SYNCER_API_PORT = int(os.getenv('SYNCER_API_PORT', 8080))
+WALLET_WORKER_API_PORT = int(os.getenv('WALLET_WORKER_API_PORT', 8080))
+WORKER_API_PORT = int(os.getenv('WORKER_API_PORT', 8080))

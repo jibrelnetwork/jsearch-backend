@@ -1,6 +1,7 @@
 import asyncio
 import concurrent.futures
 import logging
+
 import time
 
 from jsearch import settings
@@ -187,13 +188,18 @@ class Manager:
     async def get_blocks_to_sync(self):
         latest_synced_block_num = await self.main_db.get_latest_synced_block_number(blocks_range=self.sync_range)
         latest_available_block_num = await self.raw_db.get_latest_available_block_number()
-        if latest_available_block_num - (latest_synced_block_num or 0) < self.chunk_size:
+
+        if (latest_synced_block_num is not None and
+                (latest_available_block_num - latest_synced_block_num) < self.chunk_size):
+
             # syncer is almost reached the head of chain, can fetch missed blocks now
+
             sync_mode = SYNC_MODE_STRICT
             blocks = await self.get_blocks_to_sync_strict()
             if len(blocks) < self.chunk_size:
                 start_num = latest_synced_block_num + 1
                 end_num = start_num + self.chunk_size - len(blocks)
+
                 extra_blocks = await self.raw_db.get_blocks_to_sync(start_num, end_num)
                 blocks += extra_blocks
         else:
@@ -213,7 +219,6 @@ class Manager:
                 'sync_mode': sync_mode,
             }
         )
-
         return blocks
 
     async def get_blocks_to_sync_fast(self, latest_synced_block_num, chunk_size):
@@ -221,11 +226,12 @@ class Manager:
             start_block_num = self.sync_range[0]
         else:
             start_block_num = latest_synced_block_num + 1
+
         end_block_num = start_block_num + chunk_size - 1
         if self.sync_range[1]:
             end_block_num = min(end_block_num, self.sync_range[1])
-        blocks = await self.raw_db.get_blocks_to_sync(start_block_num, end_block_num)
-        return blocks
+
+        return await self.raw_db.get_blocks_to_sync(start_block_num, end_block_num)
 
     async def get_blocks_to_sync_strict(self):
         missed_blocks_nums = await self.main_db.get_missed_blocks_numbers(limit=self.chunk_size // 2)

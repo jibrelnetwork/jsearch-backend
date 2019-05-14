@@ -6,9 +6,6 @@ Create Date: 2019-04-05 15:16:31.028616
 
 """
 from alembic import op
-import sqlalchemy as sa
-from jsearch.common import tables
-
 
 # revision identifiers, used by Alembic.
 revision = 'eb4c04c8de9f'
@@ -38,10 +35,6 @@ CREATE TABLE pending_transactions (
 
 ALTER TABLE ONLY pending_transactions ADD CONSTRAINT pending_transactions_pkey
      PRIMARY KEY (hash);
-
-CREATE INDEX ix_pending_transactions_last_synced_id ON pending_transactions("last_synced_id");
-CREATE INDEX ix_pending_transactions_from_partial ON pending_transactions("from") WHERE "removed" IS FALSE;
-CREATE INDEX ix_pending_transactions_to_partial ON pending_transactions("to") WHERE "removed" IS FALSE;
 """
 
 DOWN_SQL = """

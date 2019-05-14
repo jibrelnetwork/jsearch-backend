@@ -317,6 +317,15 @@ async def test_get_account_balances_invalid_addresses_all(cli):
     assert res == []
 
 
+async def test_get_account_balances_addresses_have_spaces(cli, main_db_data):
+    a1 = main_db_data['accounts_base'][0]
+    a2 = main_db_data['accounts_base'][1]
+    resp = await cli.get('/v1/accounts/balances?addresses={}, {}'.format(a1['address'], a2['address']))
+    res = (await resp.json())['data']
+    assert resp.status == 200
+    assert len(res) == 2
+
+
 async def test_get_account_balances_invalid_addresses(cli: object, main_db_data: object) -> object:
     a1 = main_db_data['accounts_base'][0]
     resp = await cli.get('/v1/accounts/balances?addresses={},{},{}'.format('foo', a1['address'], 'bar'))
@@ -326,28 +335,37 @@ async def test_get_account_balances_invalid_addresses(cli: object, main_db_data:
                     'balance': hex(main_db_data['accounts_state'][10]['balance'])}]
 
 
-async def test_get_block_transactions(cli, main_db_data):
-    resp = await cli.get('/v1/blocks/' + main_db_data['blocks'][1]['hash'] + '/transactions')
+async def test_get_block_transactions(cli, block_factory, transaction_factory):
+    # given
+    block = block_factory.create()
+    txs = transaction_factory.create_for_block(block.number, block.hash)
+    tx = txs[0]
+
+    # when
+    resp = await cli.get(f'/v1/blocks/{block.hash}/transactions')
     assert resp.status == 200
+
+    # then
     res = (await resp.json())['data']
-    txs = main_db_data['transactions']
-    assert len(res) == 2
-    assert res[0] == {
-        'blockHash': txs[0]['block_hash'],
-        'blockNumber': txs[0]['block_number'],
-        'from': txs[0]['from'],
-        'gas': txs[0]['gas'],
-        'gasPrice': txs[0]['gas_price'],
-        'hash': txs[0]['hash'],
-        'input': txs[0]['input'],
-        'nonce': txs[0]['nonce'],
-        'r': txs[0]['r'],
-        's': txs[0]['s'],
-        'to': txs[0]['to'],
-        'transactionIndex': txs[0]['transaction_index'],
-        'v': txs[0]['v'],
-        'value': txs[0]['value'],
-    }
+    assert len(res) == 1
+    assert res == [
+        {
+            'blockHash': tx.block_hash,
+            'blockNumber': tx.block_number,
+            'from': getattr(tx, 'from'),
+            'gas': tx.gas,
+            'gasPrice': tx.gas_price,
+            'hash': tx.hash,
+            'input': tx.input,
+            'nonce': tx.nonce,
+            'r': tx.r,
+            's': tx.s,
+            'to': tx.to,
+            'transactionIndex': tx.transaction_index,
+            'v': tx.v,
+            'value': tx.value,
+        }
+    ]
 
 
 async def test_get_block_transactions_forked(cli, db):
