@@ -321,7 +321,6 @@ assets_summary_t = sa.Table(
     sa.Column('nonce', sa.BigInteger),
 )
 
-
 wallet_events_t = sa.Table(
     'wallet_events',
     metadata,
@@ -336,6 +335,17 @@ wallet_events_t = sa.Table(
     sa.Column('event_data', postgresql.JSONB),
 )
 
+pending_wallet_events_t = sa.Table(
+    'pending_wallet_events',
+    metadata,
+    sa.Column('is_removed', sa.Boolean),
+    sa.Column('address', sa.String),
+    sa.Column('type', sa.String),
+    sa.Column('tx_hash', sa.String),
+    sa.Column('tx_data', postgresql.JSONB),
+    sa.Column('event_data', postgresql.JSONB),
+    sa.Column('event_index', sa.BigInteger),
+)
 
 TABLES = (
     blocks_t,
@@ -354,4 +364,5 @@ TABLES = (
     assets_transfers_t,
     assets_summary_t,
     wallet_events_t,
+    pending_wallet_events_t,
 )

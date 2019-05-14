@@ -2,7 +2,7 @@ from typing import Optional
 
 from jsearch.common.contracts import NULL_ADDRESS, ERC20_METHODS_IDS
 from jsearch.wallet_worker.consts import WalletEventType, CANCELLATION_ADDRESS, TOKEN_DECIMALS_DEFAULT
-from jsearch.wallet_worker.typing import Transaction, Event, TokenTransfer, InternalTransaction
+from jsearch.wallet_worker.typing import Transaction, Event, TokenTransfer, InternalTransaction, PendingTransaction
 
 
 def get_event_type(tx_data: Transaction) -> Optional[str]:
@@ -12,7 +12,7 @@ def get_event_type(tx_data: Transaction) -> Optional[str]:
     if tx_data['to'] == NULL_ADDRESS:
         return WalletEventType.CONTRACT_CALL
 
-    if tx_data['to_contract'] is True:
+    if tx_data.get('to_contract') is True:
         method_id = tx_data['input'][:10]
         if method_id in (ERC20_METHODS_IDS['transferFrom'], ERC20_METHODS_IDS['transfer']):
             return WalletEventType.CONTRACT_CALL
@@ -57,11 +57,13 @@ def event_from_token_transfer(address: str, transfer_data: TokenTransfer, tx_dat
     """
     Make wallet event object from Transfer and TX data
 
-    :param  address: from address or to address of Transrer - explicitly
-    :param tx_data: full TX data object
-    :param transfer_data: full Token Transfer data object
+    Args:
+        address: from address or to address of Transrer - explicitly
+        tx_data: full TX data object
+        transfer_data: full Token Transfer data object
 
-    :return: event data object
+    Returns:
+        event data object
     """
     event_type = WalletEventType.ERC20_TRANSFER
     decimals = transfer_data['token_decimals'] or TOKEN_DECIMALS_DEFAULT
@@ -92,11 +94,13 @@ def event_from_internal_tx(address: str,
     """
     Make wallet event object from internal TX data and Root TX data
 
-    :param  address: from address or to address of Transaction - explicitly
-    :param internal_tx_data: internal TX data object
-    :param tx_data: full TX data object
+    Args:
+        address: from address or to address of Transaction - explicitly
+        internal_tx_data: internal TX data object
+        tx_data: full TX data object
 
-    :return: event data object
+    Returns:
+        event data object
     """
     if internal_tx_data['value'] == 0:
         return None
@@ -124,3 +128,21 @@ def event_from_internal_tx(address: str,
         }
     }
     return event_data
+
+
+def get_event_from_pending_tx(address: str, event_index: int, pending_tx: PendingTransaction) -> Event:
+    event_type = get_event_type(pending_tx)
+    if event_type:
+        return {
+            'is_removed': pending_tx['removed'],
+            'address': address,
+            'type': event_type,
+            'tx_hash': pending_tx['hash'],
+            'tx_data': pending_tx,
+            'event_index': event_index,
+            'event_data': {
+                'sender': pending_tx['from'],
+                'recipient': pending_tx['to'],
+                'amount': str(int(pending_tx['value'], 16)),
+            }
+        }

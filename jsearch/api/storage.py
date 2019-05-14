@@ -20,6 +20,7 @@ from jsearch.api.database_queries.blocks import (
     get_block_number_by_hash_query
 )
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
+from jsearch.api.database_queries.pending_events import get_pending_wallet_events_query
 from jsearch.api.database_queries.pending_transactions import get_pending_txs_by_account
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_token,
@@ -709,3 +710,24 @@ class Storage:
 
         rows = await fetch(self.pool, query)
         return [models.PendingTransaction(**r) for r in rows]
+
+    async def get_account_pending_events(self,
+                                         account: str,
+                                         limit: Optional[int] = None,
+                                         offset: Optional[int] = None) -> Dict[str, List[Dict[str, Any]]]:
+        query = get_pending_wallet_events_query(account, limit, offset)
+
+        if limit:
+            query = query.limit(limit)
+
+        if offset:
+            query = query.offset(offset)
+
+        rows = await fetch(self.pool, query)
+
+        result = defaultdict(list)
+        for row in rows:
+            tx_hash = row['tx_hash']
+            result[tx_hash].append(models.WalletEvent(**row).to_dict())
+
+        return result
