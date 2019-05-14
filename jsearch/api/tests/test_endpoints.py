@@ -1666,7 +1666,7 @@ class PaginationCase:
 
     @property
     def name(self):
-        keys = {'start', 'until', 'count', 'limit', 'offset', 'ordering'}
+        keys = ('start', 'until', 'count', 'limit', 'offset', 'ordering')
         params = [(key, getattr(self, key, None)) for key in keys]
         return ",".join([f"{key}={value}" for key, value in params if value is not None])
 
@@ -1676,6 +1676,8 @@ class PaginationCase:
 # 2 events per transaction or 6 events per block
 # Tip is previous before latest (blocks[-2])
 parameters = [
+    PaginationCase('latest', until=0, count=1, txs_count=3, events_count=6, blocks={4}, ordering='desc'),
+
     PaginationCase(0, until='latest', count=1, txs_count=3, events_count=6, blocks={0}),
     PaginationCase(0, until='latest', count=2, limit=1, txs_count=1, events_count=1, blocks={0}),
     PaginationCase(0, until='latest', count=1, txs_count=3, events_count=6, blocks={4}, ordering='desc'),

@@ -556,7 +556,6 @@ def get_block_range(request: aiohttp.RequestInfo,
     start_from = get_block_number(request, 'block_range_start', is_required=True)
     until_to = get_block_number(request, 'block_range_end')
 
-    # from pdb import set_trace; set_trace()
     # set default value only if count is None
     if count is None and until_to is None:
         until_to = tip_block.number
@@ -573,10 +572,14 @@ def get_block_range(request: aiohttp.RequestInfo,
             offset = count if is_asc_order else count * -1
             until_to = start_from + offset
 
+        is_reversed = start_from > until_to if is_asc_order else start_from < until_to
+        if is_reversed:
+            start_from, until_to = until_to, start_from
+
         if is_asc_order:
-            until_to = min(start_from + count, until_to or 0)
+            until_to = min(start_from + count, until_to)
         else:
-            start_from = max(until_to - count, start_from)
+            until_to = max(start_from - count, until_to)
 
     return start_from, until_to
 
