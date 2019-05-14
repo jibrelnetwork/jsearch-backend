@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from typing import List
 
 import aiomonitor
@@ -302,7 +303,7 @@ def event_from_internal_tx(address, internal_tx_data, tx_data):
 
 
 @click.command()
-@click.option('--log-level', default='INFO')
+@click.option('--log-level', default=os.getenv('LOG_LEVEL', 'INFO'))
 def main(log_level: str) -> None:
     configure(log_level)
     loop = asyncio.get_event_loop()
