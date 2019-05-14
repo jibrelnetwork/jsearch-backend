@@ -12,6 +12,7 @@ from jsearch.api.models.all import (
     Uncle,
     TokenHolder,
     AssetTransfer,
+    WalletEvent
 )
 
 __ALL__ = (
@@ -28,4 +29,5 @@ __ALL__ = (
     Uncle,
     TokenHolder,
     AssetTransfer,
+    WalletEvent
 )
