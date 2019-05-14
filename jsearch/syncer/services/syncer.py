@@ -21,7 +21,7 @@ class SyncerService(mode.Service):
         await self.main_db.connect()
 
         await self.manager.start()
-        await self.manager.run()
+        await self.manager.wait()
 
     async def on_stop(self) -> None:
         await self.manager.stop()

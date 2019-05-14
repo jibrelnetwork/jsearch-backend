@@ -59,7 +59,7 @@ class Manager:
 
             self.tasks.append(task)
 
-    async def run(self):
+    async def wait(self):
         await asyncio.wait(self.tasks, return_when=asyncio.FIRST_EXCEPTION)
         await self.stop()
 
