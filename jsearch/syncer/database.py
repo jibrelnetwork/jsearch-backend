@@ -467,7 +467,7 @@ class MainDB(DBWrapper):
 
         return row['last_synced_id'] if row else 0
 
-    async def insert_or_update_pending_tx(self, pending_tx: List[Dict[str, Any]]) -> None:
+    async def insert_or_update_pending_tx(self, pending_tx: Dict[str, Any]) -> None:
         query = insert_or_update_pending_tx_q(pending_tx)
         await self.execute(query)
 

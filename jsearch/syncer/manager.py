@@ -163,7 +163,6 @@ class Manager:
             for pending_tx in new_pending_txs:
                 data = prepare_pending_tx(pending_tx)
                 await self.main_db.insert_or_update_pending_tx(data)
-                await service_bus.write_pending_tx(data)
 
             proc_time = time.monotonic() - start_time
             logger.info(

@@ -22,14 +22,13 @@ from jsearch.api.helpers import (
 from jsearch.api.structs import BlockInfo
 from jsearch.common import tasks, stats
 from jsearch.common.contracts import cut_contract_metadata_hash, is_erc20_compatible
-from jsearch.common.wallet_events import get_event_from_pending_tx
 
 logger = logging.getLogger(__name__)
 
 
 async def get_account(request):
     """
-    Get account by adress
+    Get account by address
     """
     storage = request.app['storage']
     address = request.match_info.get('address').lower()

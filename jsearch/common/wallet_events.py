@@ -1,10 +1,14 @@
-from typing import Optional
+import logging
+
+from typing import Optional, Tuple
 
 from jsearch.common.contracts import NULL_ADDRESS, ERC20_METHODS_IDS
 from jsearch.typing import Transaction, Event, Transfer, InternalTransaction, PendingTransaction
 
 CANCELLATION_ADDRESS = '0x000000000000000000000063616e63656c6c6564'
 TOKEN_DECIMALS_DEFAULT = 18
+
+logger = logging.getLogger()
 
 
 class WalletEventType:
@@ -144,8 +148,44 @@ def event_from_internal_tx(address: str,
     return event_data
 
 
+def get_token_transfer_args_from_pending_tx(event_type: str, pending_tx: PendingTransaction) -> Tuple[str, str, str]:
+    try:
+        tx_input = pending_tx['input']
+        method_id = tx_input[:10]
+        body = tx_input[10:]
+
+        amount = str(int(body[-64:], 16))
+        if method_id == ERC20_METHODS_IDS['transferFrom']:
+            # signature is `function transferFrom(address from, address to, uint tokens)`
+
+            sender = f"0x{body[:64][-40:]}"
+            receiver = f"0x{body[64:][-40:]}"
+
+        elif method_id == ERC20_METHODS_IDS['transfer']:
+            # signature is `function transfer(address to, uint tokens)`
+
+            sender = pending_tx["from"]
+            receiver = f"0x{body[:64][-40:]}"
+        else:
+            amount = sender = receiver = None
+
+    except (TypeError, IndexError) as e:
+        logger.error(e)
+        amount = sender = receiver = None
+
+    return sender, receiver, amount
+
+
 def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> Event:
     event_type = get_event_type(pending_tx, is_pending=True)
+
+    if event_type == WalletEventType.CONTRACT_CALL:
+        sender, recipient, amount = get_token_transfer_args_from_pending_tx(event_type, pending_tx)
+    else:
+        sender = pending_tx['from']
+        recipient = pending_tx['to']
+        amount = str(int(pending_tx['value'], 16))
+
     if event_type:
         return {
             'is_removed': pending_tx['removed'],
@@ -155,8 +195,8 @@ def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> E
             'tx_data': pending_tx,
             'event_index': 0,
             'event_data': {
-                'sender': pending_tx['from'],
-                'recipient': pending_tx['to'],
-                'amount': str(int(pending_tx['value'], 16)),
+                'sender': sender,
+                'recipient': recipient,
+                'amount': amount,
             }
         }
