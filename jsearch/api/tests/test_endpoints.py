@@ -55,27 +55,41 @@ async def test_get_block_404(cli):
     await assert_not_404_response(resp)
 
 
-async def test_get_block_by_number(cli, main_db_data):
+async def test_get_block_by_number(cli, block_factory, transaction_factory):
     # given
-    block_number = 2
+    block = block_factory.create()
+    from_tx, to_tx = transaction_factory.create_for_block(block)
 
-    txs = TransactionFromDumpWrapper.from_dump(
-        main_db_data,
-        filters={"block_number": block_number},
-        bulk=True
-    )
-    block = BlockFromDumpWrapper.from_dump(
-        dump=main_db_data,
-        filters={'number': block_number},
-        transactions=[tx.entity.hash for tx in txs]
-    )
-    # then
-    resp = await cli.get(f'/v1/blocks/{block_number}')
+    # when
+    resp = await cli.get(f'/v1/blocks/{block.number}')
     assert resp.status == 200
 
+    # then
     payload = await resp.json()
     assert payload['status'] == {'success': True, 'errors': []}
-    assert payload['data'] == block.as_dict()
+    assert payload['data'] == {
+        'difficulty': str(block.difficulty),
+        'extraData': block.extra_data,
+        'gasLimit': str(block.gas_limit),
+        'gasUsed': str(block.gas_used),
+        'hash': block.hash,
+        'logsBloom': block.logs_bloom,
+        'miner': block.miner,
+        'mixHash': block.mix_hash,
+        'nonce': block.nonce,
+        'number': block.number,
+        'parentHash': block.parent_hash,
+        'receiptsRoot': block.receipts_root,
+        'sha3Uncles': block.sha3_uncles,
+        'stateRoot': block.state_root,
+        'timestamp': block.timestamp,
+        'transactions': [from_tx.hash],
+        'transactionsRoot': block.transactions_root,
+        'staticReward': str(hex(int(block.static_reward))),
+        'txFees': str(hex(int(block.tx_fees))),
+        'uncleInclusionReward': str(hex(int(block.uncle_inclusion_reward))),
+        'uncles': []
+    }
 
 
 async def test_get_block_with_empty_uncles_list(cli, main_db_data):
@@ -338,7 +352,7 @@ async def test_get_account_balances_invalid_addresses(cli: object, main_db_data:
 async def test_get_block_transactions(cli, block_factory, transaction_factory):
     # given
     block = block_factory.create()
-    txs = transaction_factory.create_for_block(block.number, block.hash)
+    txs = transaction_factory.create_for_block(block)
     tx = txs[0]
 
     # when
@@ -396,27 +410,35 @@ async def test_get_block_transactions_forked(cli, db):
     assert len(txs) == 0
 
 
-async def test_get_block_transactions_by_number(cli, main_db_data):
-    resp = await cli.get('/v1/blocks/{}/transactions'.format(main_db_data['blocks'][1]['number']))
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    txs = main_db_data['transactions']
-    assert len(res) == 2
-    assert res[0] == {
-        'blockHash': txs[0]['block_hash'],
-        'blockNumber': txs[0]['block_number'],
-        'from': txs[0]['from'],
-        'gas': txs[0]['gas'],
-        'gasPrice': txs[0]['gas_price'],
-        'hash': txs[0]['hash'],
-        'input': txs[0]['input'],
-        'nonce': txs[0]['nonce'],
-        'r': txs[0]['r'],
-        's': txs[0]['s'],
-        'to': txs[0]['to'],
-        'transactionIndex': txs[0]['transaction_index'],
-        'v': txs[0]['v'],
-        'value': txs[0]['value'],
+async def test_get_block_transactions_by_number(cli, block_factory, transaction_factory):
+    # given
+    block = block_factory.create()
+    from_tx, to_tx = transaction_factory.create_for_block(block)
+
+    # when
+    response = await cli.get(f'/v1/blocks/{block.hash}/transactions')
+    response_json = await response.json()
+
+    # then
+    assert response.status == 200
+
+    txs = response_json['data']
+    assert len(txs) == 1
+    assert txs[0] == {
+        'blockHash': from_tx.block_hash,
+        'blockNumber': from_tx.block_number,
+        'from': getattr(from_tx, 'from'),
+        'gas': from_tx.gas,
+        'gasPrice': from_tx.gas_price,
+        'hash': from_tx.hash,
+        'input': from_tx.input,
+        'nonce': from_tx.nonce,
+        'r': from_tx.r,
+        's': from_tx.s,
+        'to': from_tx.to,
+        'transactionIndex': from_tx.transaction_index,
+        'v': from_tx.v,
+        'value': from_tx.value,
     }
 
 
