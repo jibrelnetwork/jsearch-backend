@@ -50,8 +50,8 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
         rename = {'from_': 'from'}
 
     @classmethod
-    def create_for_block(cls, number, block_hash):
-        data = cls.stub(block_number=number, block_hash=block_hash).__dict__
+    def create_for_block(cls, block):
+        data = cls.stub(block_number=block.number, block_hash=block.hash).__dict__
         data.pop('address', None)
         data['from_'] = data.pop('from', None)
 
