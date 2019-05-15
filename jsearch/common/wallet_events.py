@@ -14,22 +14,27 @@ class WalletEventType:
     TX_CANCELLATION = 'tx-cancellation'
 
 
-def get_event_type(tx_data: Transaction) -> Optional[str]:
+def get_event_type(tx_data: Transaction, is_pending=False) -> Optional[str]:
     if int(tx_data['value'], 16) != 0:
         return WalletEventType.ETH_TRANSFER
 
     if tx_data['to'] == NULL_ADDRESS:
         return WalletEventType.CONTRACT_CALL
 
-    if tx_data.get('to_contract') is True:
+    is_receiver_contract = tx_data.get('to_contract') is True
+    if is_pending or is_receiver_contract:
+
         method_id = tx_data['input'][:10]
         if method_id in (ERC20_METHODS_IDS['transferFrom'], ERC20_METHODS_IDS['transfer']):
             return WalletEventType.CONTRACT_CALL
         else:
             return None
-    else:
+
+    elif not is_receiver_contract:
+
         if tx_data['to'] == CANCELLATION_ADDRESS:
             return WalletEventType.TX_CANCELLATION
+
     return None
 
 
@@ -140,7 +145,7 @@ def event_from_internal_tx(address: str,
 
 
 def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> Event:
-    event_type = get_event_type(pending_tx)
+    event_type = get_event_type(pending_tx, is_pending=True)
     if event_type:
         return {
             'is_removed': pending_tx['removed'],
