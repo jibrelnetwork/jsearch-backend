@@ -8,7 +8,12 @@ from sqlalchemy.dialects.postgresql import insert
 from typing import List
 
 from jsearch import settings
-from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t, pending_wallet_events_t
+from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t
+from jsearch.common.wallet_events import (
+    event_from_internal_tx,
+    event_from_token_transfer,
+    event_from_tx
+)
 from jsearch.service_bus import service_bus
 from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
 from jsearch.utils import Singleton
@@ -18,14 +23,7 @@ from jsearch.wallet_worker.typing import (
     Event,
     InternalTransaction,
     TokenTransfer,
-    Transaction,
-    PendingTransaction
-)
-from jsearch.wallet_worker.utils import (
-    event_from_internal_tx,
-    event_from_token_transfer,
-    event_from_tx,
-    get_event_from_pending_tx
+    Transaction
 )
 
 logger = logging.getLogger('wallet_worker')
@@ -106,12 +104,3 @@ class DatabaseService(Service, Singleton):
         )
         async with self.engine.acquire() as connection:
             await connection.execute(upsert)
-
-    async def add_pending_wallet_event_from_tx(self, pending_tx: PendingTransaction) -> None:
-        event_data_from = get_event_from_pending_tx(pending_tx['from'], 0, pending_tx)
-        event_data_to = get_event_from_pending_tx(pending_tx['to'], 1, pending_tx)
-        if event_data_to is not None:
-            async with self.engine.acquire() as connection:
-                async with connection.begin():
-                    await connection.execute(pending_wallet_events_t.insert(), **event_data_from)
-                    await connection.execute(pending_wallet_events_t.insert(), **event_data_to)

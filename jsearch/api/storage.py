@@ -20,7 +20,6 @@ from jsearch.api.database_queries.blocks import (
     get_block_number_by_hash_query
 )
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
-from jsearch.api.database_queries.pending_events import get_pending_wallet_events_query
 from jsearch.api.database_queries.pending_transactions import get_pending_txs_by_account
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_token,
@@ -41,6 +40,7 @@ from jsearch.api.helpers import fetch
 from jsearch.api.structs import BlockchainTip, BlockInfo
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import blocks_t, chain_splits_t, reorgs_t, wallet_events_t
+from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.utils import split
 
 logger = logging.getLogger(__name__)
@@ -713,9 +713,11 @@ class Storage:
 
     async def get_account_pending_events(self,
                                          account: str,
+                                         order: str,
                                          limit: Optional[int] = None,
-                                         offset: Optional[int] = None) -> Dict[str, List[Dict[str, Any]]]:
-        query = get_pending_wallet_events_query(account, limit, offset)
+                                         offset: Optional[int] = None) -> List[Dict[str, Any]]:
+
+        query = get_pending_txs_by_account(account, order)
 
         if limit:
             query = query.limit(limit)
@@ -725,9 +727,13 @@ class Storage:
 
         rows = await fetch(self.pool, query)
 
-        result = defaultdict(list)
-        for row in rows:
-            tx_hash = row['tx_hash']
-            result[tx_hash].append(models.WalletEvent(**row).to_dict())
+        result = []
+        for tx in rows:
+            event = get_event_from_pending_tx(address=account, pending_tx=tx)
+            tx_data = {
+                'rootTxData': models.PendingTransaction(**tx).to_dict(),
+                'events': models.WalletEvent(**event).to_dict()
+            }
+            result.append(tx_data)
 
         return result

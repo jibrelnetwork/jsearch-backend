@@ -21,8 +21,8 @@ from jsearch.api.helpers import (
 )
 from jsearch.api.structs import BlockInfo
 from jsearch.common import tasks, stats
-from jsearch.common.contracts import cut_contract_metadata_hash
-from jsearch.common.contracts import is_erc20_compatible
+from jsearch.common.contracts import cut_contract_metadata_hash, is_erc20_compatible
+from jsearch.common.wallet_events import get_event_from_pending_tx
 
 logger = logging.getLogger(__name__)
 
@@ -611,19 +611,15 @@ async def get_wallet_events(request):
     else:
         events = [{'rootTxData': tx, 'events': wallet_events.get(tx['hash'])} for tx in txs]
 
-    pending_data = []
+    pending_events = []
     include_pending_events = request.query.get('include_pending_events', False)
     if include_pending_events:
-        get_pending_txs_task = storage.get_account_pending_transactions(address, order=ORDER_ASC)
-        get_pending_events_task = storage.get_account_pending_events(address)
-
-        pending_txs, pending_events = await asyncio.gather(get_pending_txs_task, get_pending_events_task)
-        pending_data = [{'rootTxData': tx.to_dict(), 'events': pending_events.get(tx.hash, [])} for tx in pending_txs]
+        pending_events = await storage.get_account_pending_events(address, order=ORDER_ASC)
 
     return api_success({
         "blockchainTip": tip.to_dict(),
         "events": events,
-        "pending_events": pending_data
+        "pending_events": pending_events
     })
 
 

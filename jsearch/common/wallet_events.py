@@ -1,8 +1,17 @@
 from typing import Optional
 
 from jsearch.common.contracts import NULL_ADDRESS, ERC20_METHODS_IDS
-from jsearch.wallet_worker.consts import WalletEventType, CANCELLATION_ADDRESS, TOKEN_DECIMALS_DEFAULT
-from jsearch.wallet_worker.typing import Transaction, Event, TokenTransfer, InternalTransaction, PendingTransaction
+from jsearch.typing import Transaction, Event, Transfer, InternalTransaction, PendingTransaction
+
+CANCELLATION_ADDRESS = '0x000000000000000000000063616e63656c6c6564'
+TOKEN_DECIMALS_DEFAULT = 18
+
+
+class WalletEventType:
+    ERC20_TRANSFER = 'erc20-transfer'
+    ETH_TRANSFER = 'eth-transfer'
+    CONTRACT_CALL = 'contract-call'
+    TX_CANCELLATION = 'tx-cancellation'
 
 
 def get_event_type(tx_data: Transaction) -> Optional[str]:
@@ -53,7 +62,7 @@ def event_from_tx(address: str, tx_data: Transaction) -> Event:
         }
 
 
-def event_from_token_transfer(address: str, transfer_data: TokenTransfer, tx_data: Transaction) -> Event:
+def event_from_token_transfer(address: str, transfer_data: Transfer, tx_data: Transaction) -> Event:
     """
     Make wallet event object from Transfer and TX data
 
@@ -130,7 +139,7 @@ def event_from_internal_tx(address: str,
     return event_data
 
 
-def get_event_from_pending_tx(address: str, event_index: int, pending_tx: PendingTransaction) -> Event:
+def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> Event:
     event_type = get_event_type(pending_tx)
     if event_type:
         return {
@@ -139,7 +148,7 @@ def get_event_from_pending_tx(address: str, event_index: int, pending_tx: Pendin
             'type': event_type,
             'tx_hash': pending_tx['hash'],
             'tx_data': pending_tx,
-            'event_index': event_index,
+            'event_index': 0,
             'event_data': {
                 'sender': pending_tx['from'],
                 'recipient': pending_tx['to'],

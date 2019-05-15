@@ -12,28 +12,14 @@ from jsearch.service_bus import (
     ROUTE_WALLET_HANDLE_ASSETS_UPDATE,
     ROUTE_WALLET_HANDLE_TOKEN_TRANSFER,
     ROUTE_HANDLE_TRANSACTIONS,
-    ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE,
-    ROUTE_HANDLE_PENDING_TXS
+    ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE
 )
 from jsearch.wallet_worker.api_service import ApiService
 from jsearch.wallet_worker.service import DatabaseService
-from jsearch.wallet_worker.typing import PendingTransaction
 
 logger = logging.getLogger('wallet_worker')
 
 service = DatabaseService()
-
-
-@service_bus.listen_stream(ROUTE_HANDLE_PENDING_TXS, service_name='jsearch_wallet_worker', task_limit=100)
-async def handle_pending_transaction(pending_tx: PendingTransaction):
-    logger.info(
-        "Handling new pending Transaction",
-        extra={
-            'tag': 'WALLET',
-            'tx_hash': pending_tx['hash'],
-        }
-    )
-    await service.add_pending_wallet_event_from_tx(pending_tx)
 
 
 @service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS, service_name='jsearch_wallet_worker', task_limit=100)
