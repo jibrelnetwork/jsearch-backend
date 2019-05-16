@@ -236,6 +236,7 @@ class Storage:
             tx_query = get_tx_hashes_by_block_hash_query(block_hash=data['hash'])
             tx_query, params = asyncpgsa.compile_query(tx_query)
             txs = await conn.fetch(tx_query, *params)
+            txs = in_app_distinct(txs)
 
             data['transactions'] = [tx['hash'] for tx in txs]
 
