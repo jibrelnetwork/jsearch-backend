@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import List
+import os
 
 import aiomonitor
 import backoff
@@ -9,12 +9,13 @@ import psycopg2
 from aiopg.sa import Engine, create_engine
 from mode import Service
 from sqlalchemy.dialects.postgresql import insert
+from typing import List
 
 from jsearch import settings
+from jsearch.common import worker
 from jsearch.common.contracts import ERC20_METHODS_IDS, NULL_ADDRESS
 from jsearch.common.logs import configure
 from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t
-from jsearch.common import worker
 from jsearch.service_bus import (
     service_bus,
     ROUTE_WALLET_HANDLE_ASSETS_UPDATE,
@@ -302,7 +303,7 @@ def event_from_internal_tx(address, internal_tx_data, tx_data):
 
 
 @click.command()
-@click.option('--log-level', default='INFO')
+@click.option('--log-level', default=os.getenv('LOG_LEVEL', 'INFO'))
 def main(log_level: str) -> None:
     configure(log_level)
     loop = asyncio.get_event_loop()

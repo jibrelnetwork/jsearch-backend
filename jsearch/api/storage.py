@@ -1,24 +1,26 @@
 import json
 import logging
 from collections import defaultdict
-from itertools import groupby
-from typing import DefaultDict
-from typing import List, Optional, Dict, Any
 
 import asyncpgsa
 from asyncpg import Connection
+from itertools import groupby
+from sqlalchemy import select
 from sqlalchemy.orm import Query
+from typing import DefaultDict
+from typing import List, Optional, Dict, Any
 
 from jsearch.api import models
-from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
-from jsearch.api.database_queries.pending_transactions import get_pending_txs_by_account
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
     get_last_block_query,
     get_blocks_query,
     get_mined_blocks_query,
+    get_block_number_by_hash_query
 )
+from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
+from jsearch.api.database_queries.pending_transactions import get_pending_txs_by_account
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_token,
     get_token_transfers_by_account
@@ -27,15 +29,17 @@ from jsearch.api.database_queries.transactions import (
     get_tx_by_address,
     get_tx_hashes_by_block_hashes_query,
     get_tx_hashes_by_block_hash_query,
-)
+    get_txs_for_events_query)
 from jsearch.api.database_queries.uncles import (
     get_uncle_hashes_by_block_hashes_query,
     get_uncle_hashes_by_block_hash_query,
 )
-from jsearch.api.helpers import Tag
+from jsearch.api.database_queries.wallet_events import get_wallet_events_query
+from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
+from jsearch.api.structs import BlockchainTip, BlockInfo
 from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import blocks_t
+from jsearch.common.tables import blocks_t, chain_splits_t, reorgs_t, wallet_events_t
 from jsearch.utils import split
 
 logger = logging.getLogger(__name__)
@@ -232,6 +236,7 @@ class Storage:
             tx_query = get_tx_hashes_by_block_hash_query(block_hash=data['hash'])
             tx_query, params = asyncpgsa.compile_query(tx_query)
             txs = await conn.fetch(tx_query, *params)
+            txs = in_app_distinct(txs)
 
             data['transactions'] = [tx['hash'] for tx in txs]
 
@@ -442,44 +447,84 @@ class Storage:
             row = await conn.fetchrow(query, account_address, token_address)
             return models.TokenHolder(**row) if row else None
 
-    async def get_blockchain_tip_status(self, last_known_block_hash: str):
-        """
-        Retruns status of client's last known block
-        """
-        split_query = """SELECT common_block_number FROM chain_splits
-                            WHERE id=(SELECT  split_id FROM  reorgs where block_hash=$1)"""
-        block_query = "SELECT number FROM blocks WHERE hash=$1"
-
+    async def get_latest_block_info(self) -> Optional[BlockInfo]:
+        last_block_query = get_last_block_query()
         async with self.pool.acquire() as conn:
-            split = await conn.fetchrow(split_query, last_known_block_hash)
-            block = await conn.fetchrow(block_query, last_known_block_hash)
+            last_block = await fetch_row(conn, query=last_block_query)
 
-        if block is None:
-            return None
+        if last_block is not None:
+            return BlockInfo(
+                hash=last_block['hash'],
+                number=last_block['number']
+            )
 
-        if split is None:
-            result = {
-                'blockchainTip': {
-                    'blockHash': last_known_block_hash,
-                    'blockNumber': block['number']
-                },
-                'forkData': {
-                    'isInFork': False,
-                    'lastUnchangedBlock': block['number']
-                }
-            }
-        else:
-            result = {
-                'blockchainTip': {
-                    'blockHash': last_known_block_hash,
-                    'blockNumber': block['number']
-                },
-                'forkData': {
-                    'isInFork': True,
-                    'lastUnchangedBlock': split['common_block_number']
-                }
-            }
-        return result
+    async def get_block_number(self, block_hash: str) -> Optional[BlockInfo]:
+        query = get_block_number_by_hash_query(block_hash)
+        async with self.pool.acquire() as conn:
+            block = await fetch_row(conn, query=query)
+
+        if block is not None:
+            return BlockInfo(
+                hash=block_hash,
+                number=block['number']
+            )
+
+    async def get_blockchain_tip(self,
+                                 last_block: BlockInfo,
+                                 tip: Optional[BlockInfo]) -> Optional[BlockchainTip]:
+        """
+        Return status of client's last known block
+        """
+        is_in_fork = False
+        last_unchanged = None
+        if tip:
+            split_query = select([chain_splits_t.c.common_block_number]).where(
+                chain_splits_t.c.id == select([reorgs_t.c.split_id]).where(reorgs_t.c.block_hash == tip.hash)
+            )
+
+            async with self.pool.acquire() as conn:
+                chain_split = await fetch_row(conn, query=split_query)
+
+            is_in_fork = chain_split is not None
+            common_block_number = chain_split and chain_split['common_block_number']
+            if is_in_fork and common_block_number is not None:
+                last_unchanged = common_block_number
+
+        return BlockchainTip(
+            tip_hash=tip and tip.hash,
+            tip_number=tip and tip.number,
+            last_hash=last_block.hash,
+            last_number=last_block.number,
+            is_in_fork=is_in_fork,
+            last_unchanged_block=last_unchanged
+        )
+
+    async def get_wallet_events(self,
+                                address: str,
+                                from_block: int,
+                                until_block: int,
+                                limit: int,
+                                order: str,
+                                offset: int) -> Dict[str, List[Dict[str, Any]]]:
+        query = get_wallet_events_query(
+            address=address,
+            from_block=from_block,
+            until_block=until_block,
+            limit=limit,
+            offset=offset,
+            order=order
+        )
+        async with self.pool.acquire() as connection:
+            rows = await fetch(connection, query)
+
+        events_per_tx = defaultdict(list)
+        for item in rows:
+            tx_hash = item['tx_hash']
+            data = models.WalletEvent(**item).to_dict()
+
+            events_per_tx[tx_hash].append(data)
+
+        return events_per_tx
 
     async def get_wallet_assets_transfers(self, addresses: List[str], limit: int, offset: int,
                                           assets: Optional[List[str]] = None) -> List:
@@ -508,6 +553,39 @@ class Storage:
                 t['amount'] = str(t['value'] / 10 ** t['decimals'])
                 items.append(t)
             return [models.AssetTransfer(**t) for t in items]
+
+    async def get_wallet_events_transactions(self,
+                                             address: str,
+                                             from_block: int,
+                                             until_block: int,
+                                             limit: int,
+                                             order: str,
+                                             offset: int) -> List[Dict[str, Any]]:
+
+        events_query = get_wallet_events_query(
+            address=address,
+            from_block=from_block,
+            until_block=until_block,
+            limit=limit,
+            offset=offset,
+            order=order,
+            columns=[wallet_events_t.c.tx_hash]
+        )
+        query = get_txs_for_events_query(events_query, order)
+
+        async with self.pool.acquire() as conn:
+            rows = await fetch(conn, query)
+            distinct_set = set()
+            transactions = []
+            for row in rows:
+                row = dict(row)
+                distinct_key = tuple(row.values())
+                if distinct_key in distinct_set:
+                    continue
+
+                distinct_set.add(distinct_key)
+                transactions.append(models.Transaction(**row).to_dict())
+        return transactions
 
     async def get_wallet_transactions(self, address: str, limit: int, offset: int) -> List:
         offset *= 2
@@ -618,15 +696,17 @@ class Storage:
 
     async def get_account_pending_transactions(self,
                                                account: str,
-                                               limit: int,
-                                               offset: int,
-                                               order: str):
+                                               order: str,
+                                               limit: Optional[int] = None,
+                                               offset: Optional[int] = None):
 
         query = get_pending_txs_by_account(account, order)
-        query = query.limit(limit)
-        query = query.offset(offset)
+
+        if limit:
+            query = query.limit(limit)
+
+        if offset:
+            query = query.offset(offset)
 
         rows = await fetch(self.pool, query)
-        internal_txs = [models.PendingTransaction(**r) for r in rows]
-
-        return internal_txs
+        return [models.PendingTransaction(**r) for r in rows]

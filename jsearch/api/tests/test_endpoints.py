@@ -1,15 +1,15 @@
 import logging
 from unittest import mock
+from urllib.parse import urlencode
 
 import pytest
 from aiohttp import ClientResponse
 from asynctest import CoroutineMock
+from typing import Optional, Set, Union
 
 from jsearch import settings
+from jsearch.api.error_code import ErrorCode
 from jsearch.common.tables import (
-    blocks_t,
-    reorgs_t,
-    chain_splits_t,
     assets_transfers_t,
     transactions_t,
     assets_summary_t,
@@ -26,6 +26,9 @@ pytest_plugins = [
     'jsearch.tests.plugins.databases.factories.transactions',
     'jsearch.tests.plugins.databases.factories.internal_transactions',
     'jsearch.tests.plugins.databases.factories.pending_transactions',
+    'jsearch.tests.plugins.databases.factories.wallet_events',
+    'jsearch.tests.plugins.databases.factories.chain_splits',
+    'jsearch.tests.plugins.databases.factories.reorgs',
 ]
 
 logger = logging.getLogger(__name__)
@@ -52,27 +55,41 @@ async def test_get_block_404(cli):
     await assert_not_404_response(resp)
 
 
-async def test_get_block_by_number(cli, main_db_data):
+async def test_get_block_by_number(cli, block_factory, transaction_factory):
     # given
-    block_number = 2
+    block = block_factory.create()
+    from_tx, to_tx = transaction_factory.create_for_block(block)
 
-    txs = TransactionFromDumpWrapper.from_dump(
-        main_db_data,
-        filters={"block_number": block_number},
-        bulk=True
-    )
-    block = BlockFromDumpWrapper.from_dump(
-        dump=main_db_data,
-        filters={'number': block_number},
-        transactions=[tx.entity.hash for tx in txs]
-    )
-    # then
-    resp = await cli.get(f'/v1/blocks/{block_number}')
+    # when
+    resp = await cli.get(f'/v1/blocks/{block.number}')
     assert resp.status == 200
 
+    # then
     payload = await resp.json()
     assert payload['status'] == {'success': True, 'errors': []}
-    assert payload['data'] == block.as_dict()
+    assert payload['data'] == {
+        'difficulty': str(block.difficulty),
+        'extraData': block.extra_data,
+        'gasLimit': str(block.gas_limit),
+        'gasUsed': str(block.gas_used),
+        'hash': block.hash,
+        'logsBloom': block.logs_bloom,
+        'miner': block.miner,
+        'mixHash': block.mix_hash,
+        'nonce': block.nonce,
+        'number': block.number,
+        'parentHash': block.parent_hash,
+        'receiptsRoot': block.receipts_root,
+        'sha3Uncles': block.sha3_uncles,
+        'stateRoot': block.state_root,
+        'timestamp': block.timestamp,
+        'transactions': [from_tx.hash],
+        'transactionsRoot': block.transactions_root,
+        'staticReward': str(hex(int(block.static_reward))),
+        'txFees': str(hex(int(block.tx_fees))),
+        'uncleInclusionReward': str(hex(int(block.uncle_inclusion_reward))),
+        'uncles': []
+    }
 
 
 async def test_get_block_with_empty_uncles_list(cli, main_db_data):
@@ -335,7 +352,7 @@ async def test_get_account_balances_invalid_addresses(cli: object, main_db_data:
 async def test_get_block_transactions(cli, block_factory, transaction_factory):
     # given
     block = block_factory.create()
-    txs = transaction_factory.create_for_block(block.number, block.hash)
+    txs = transaction_factory.create_for_block(block)
     tx = txs[0]
 
     # when
@@ -393,27 +410,35 @@ async def test_get_block_transactions_forked(cli, db):
     assert len(txs) == 0
 
 
-async def test_get_block_transactions_by_number(cli, main_db_data):
-    resp = await cli.get('/v1/blocks/{}/transactions'.format(main_db_data['blocks'][1]['number']))
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    txs = main_db_data['transactions']
-    assert len(res) == 2
-    assert res[0] == {
-        'blockHash': txs[0]['block_hash'],
-        'blockNumber': txs[0]['block_number'],
-        'from': txs[0]['from'],
-        'gas': txs[0]['gas'],
-        'gasPrice': txs[0]['gas_price'],
-        'hash': txs[0]['hash'],
-        'input': txs[0]['input'],
-        'nonce': txs[0]['nonce'],
-        'r': txs[0]['r'],
-        's': txs[0]['s'],
-        'to': txs[0]['to'],
-        'transactionIndex': txs[0]['transaction_index'],
-        'v': txs[0]['v'],
-        'value': txs[0]['value'],
+async def test_get_block_transactions_by_number(cli, block_factory, transaction_factory):
+    # given
+    block = block_factory.create()
+    from_tx, to_tx = transaction_factory.create_for_block(block)
+
+    # when
+    response = await cli.get(f'/v1/blocks/{block.hash}/transactions')
+    response_json = await response.json()
+
+    # then
+    assert response.status == 200
+
+    txs = response_json['data']
+    assert len(txs) == 1
+    assert txs[0] == {
+        'blockHash': from_tx.block_hash,
+        'blockNumber': from_tx.block_number,
+        'from': getattr(from_tx, 'from'),
+        'gas': from_tx.gas,
+        'gasPrice': from_tx.gas_price,
+        'hash': from_tx.hash,
+        'input': from_tx.input,
+        'nonce': from_tx.nonce,
+        'r': from_tx.r,
+        's': from_tx.s,
+        'to': from_tx.to,
+        'transactionIndex': from_tx.transaction_index,
+        'v': from_tx.v,
+        'value': from_tx.value,
     }
 
 
@@ -961,60 +986,22 @@ async def test_get_account_token_balance(cli, main_db_data):
     await assert_not_404_response(resp)
 
 
-async def test_get_blockchain_tip(cli, db):
-    db.execute(blocks_t.insert().values(hash='aa', number=100))
-    db.execute(blocks_t.insert().values(hash='ab', number=101))
-    db.execute(blocks_t.insert().values(hash='abf', number=101))
-    db.execute(blocks_t.insert().values(hash='ac', number=102))
-    db.execute(blocks_t.insert().values(hash='acf', number=102))
+async def test_get_blockchain_tip(cli, block_factory):
+    block_factory.create()
+    last_block = block_factory.create()
 
-    db.execute(chain_splits_t.insert().values(id=1, common_block_number=100))
+    response = await cli.get(f'/v1/wallet/blockchain_tip?tip=aa')
+    response_json = await response.json()
 
-    db.execute(
-        reorgs_t.insert().values(id=1, split_id=1, block_hash='abf', block_number=101, reinserted=False, node_id='a'))
-    db.execute(
-        reorgs_t.insert().values(id=2, split_id=1, block_hash='acf', block_number=102, reinserted=False, node_id='a'))
-
-    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=aa')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == {'blockchainTip': {'blockHash': 'aa', 'blockNumber': 100},
-                   'forkData': {'isInFork': False, 'lastUnchangedBlock': 100}}
-
-    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=ac')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == {'blockchainTip': {'blockHash': 'ac', 'blockNumber': 102},
-                   'forkData': {'isInFork': False, 'lastUnchangedBlock': 102}}
-
-    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=abf')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == {'blockchainTip': {'blockHash': 'abf', 'blockNumber': 101},
-                   'forkData': {'isInFork': True, 'lastUnchangedBlock': 100}}
-
-    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=acf')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == {'blockchainTip': {'blockHash': 'acf', 'blockNumber': 102},
-                   'forkData': {'isInFork': True, 'lastUnchangedBlock': 100}}
-
-
-async def test_get_blockchain_tip_no_block(cli):
-    resp = await cli.get(f'/v1/wallet/blockchain_tip?tip=aa')
-    assert resp.status == 404
-    assert (await resp.json()) == {
+    assert response_json == {
         'status': {
-            'success': False,
-            'errors': [
-                {
-                    'field': 'tip',
-                    'error_code': 'BLOCK_NOT_FOUND',
-                    'error_message': 'Block with hash aa not found'
-                }
-            ]
+            'success': True,
+            'errors': []
         },
-        'data': None
+        'data': {
+            'blockHash': last_block.hash,
+            'blockNumber': last_block.number
+        }
     }
 
 
@@ -1593,4 +1580,631 @@ async def test_get_account_pending_transactions(cli, from_, to, pending_transact
                 'value': '1111111111111111111111111111111111111111',
             },
         ]
+    }
+
+
+async def test_get_wallet_events(cli, block_factory, wallet_events_factory, transaction_factory):
+    # given
+    block = block_factory.create()
+    tx = transaction_factory.create(block_hash=block.hash, block_number=block.number)
+    event = wallet_events_factory.create_token_transfer(block=block, tx_hash=tx.hash)
+
+    params = urlencode({
+        'blockchain_address': event.address,
+        'blockchain_tip': block.hash,
+        'block_range_start': block.number,
+    })
+    url = f'v1/wallet/get_events?{params}'
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    assert response.status == 200
+    assert response_json == {
+        'status': {
+            'success': True,
+            'errors': []
+        },
+        'data': {
+            'blockchainTip': {
+                'blockchainTipStatus': {
+                    'blockHash': block.hash,
+                    'blockNumber': block.number,
+                    'isOrphaned': False,
+                    'lastUnchangedBlock': None
+                },
+                'currentBlockchainTip': {
+                    'blockHash': block.hash,
+                    'blockNumber': block.number
+                }
+            },
+            'pending_events': [],
+            'events': [
+                {
+                    'events': [
+                        {
+                            'eventData': [
+                                {'fieldName': key, 'fieldValue': value} for key, value in event.event_data.items()
+                            ],
+                            'eventIndex': event.event_index,
+                            'eventType': event.type
+                        }
+                    ],
+                    'rootTxData': {
+                        'blockHash': tx.block_hash,
+                        'blockNumber': tx.block_number,
+                        'from': getattr(tx, 'from'),
+                        'gas': tx.gas,
+                        'gasPrice': tx.gas_price,
+                        'hash': tx.hash,
+                        'input': tx.input,
+                        'nonce': tx.nonce,
+                        'r': tx.r,
+                        's': tx.s,
+                        'to': tx.to,
+                        'transactionIndex': tx.transaction_index,
+                        'v': tx.v,
+                        'value': tx.value
+                    }
+                }
+            ],
+        }
+    }
+
+
+class PaginationCase:
+    # block pagination params
+    start: Union[str, int]
+    until: Optional[Union[str, int]]
+    count: Optional[int]
+
+    # events pagination
+    limit: Optional[int]
+    offset: Optional[int]
+
+    # expectation
+    txs_count: int
+    events_count: int
+    blocks: Set[int]
+
+    # mis
+    ordering: Optional[str]
+    id: str
+
+    def __init__(self,
+                 start=None,
+                 until=None,
+                 count=None,
+                 limit=None,
+                 offset=None,
+                 txs_count=None,
+                 events_count=None,
+                 blocks=None,
+                 ordering=None):
+        self.start = start
+        self.until = until
+        self.count = count
+        self.limit = limit
+        self.offset = offset
+        self.txs_count = txs_count
+        self.events_count = events_count
+        self.blocks = blocks
+        self.ordering = ordering
+
+    def to_dict(self):
+        data = {
+            'block_range_start': self.start,
+            'block_range_end': self.until,
+            'block_range_count': self.count,
+            'order': self.ordering,
+            'limit': self.limit,
+            'offset': self.offset,
+        }
+        return {key: value for key, value in data.items() if value is not None}
+
+    @property
+    def name(self):
+        keys = ('start', 'until', 'count', 'limit', 'offset', 'ordering')
+        params = [(key, getattr(self, key, None)) for key in keys]
+        return ",".join([f"{key}={value}" for key, value in params if value is not None])
+
+
+# 5 blocks
+# 3 transaction per block
+# 2 events per transaction or 6 events per block
+# Tip is previous before latest (blocks[-2])
+parameters = [
+    PaginationCase('latest', until=0, count=1, txs_count=3, events_count=6, blocks={4}, ordering='desc'),
+
+    PaginationCase(0, until='latest', count=1, txs_count=3, events_count=6, blocks={0}),
+    PaginationCase(0, until='latest', count=2, limit=1, txs_count=1, events_count=1, blocks={0}),
+    PaginationCase(0, until='latest', count=1, txs_count=3, events_count=6, blocks={4}, ordering='desc'),
+    PaginationCase(0, until='latest', count=2, offset=11, txs_count=1, events_count=1, blocks={3}, ordering='desc'),
+
+    PaginationCase(0, until='tip', count=1, txs_count=3, events_count=6, blocks={3}, ordering='desc'),
+    PaginationCase(0, until='tip', count=1, txs_count=3, events_count=6, blocks={0}),
+
+    PaginationCase(0, count=1, txs_count=3, events_count=6, blocks={0}),
+    PaginationCase(0, until='tip', count=1, txs_count=3, events_count=6, blocks={0}),
+    PaginationCase(0, until='latest', count=1, txs_count=3, events_count=6, blocks={0}),
+
+    PaginationCase(0, until='tip', txs_count=3 * 4, events_count=6 * 4, blocks={0, 1, 2, 3}),
+    PaginationCase(0, until='latest', txs_count=3 * 5, events_count=6 * 5, blocks={0, 1, 2, 3, 4}),
+
+    PaginationCase(0, count=1, limit=1, txs_count=1, events_count=1, blocks={0}),
+    PaginationCase(0, count=1, offset=5, txs_count=1, events_count=1, blocks={0}),
+    PaginationCase(0, count=1, txs_count=3, events_count=6, blocks={0}),
+
+    PaginationCase(0, count=2, limit=1, txs_count=1, events_count=1, blocks={0}, ordering='desc'),
+    PaginationCase(0, count=2, offset=5, txs_count=1, events_count=1, blocks={0}, ordering='desc'),
+
+    PaginationCase(0, count=2, limit=1, txs_count=1, events_count=1, blocks={0}),
+    PaginationCase(0, count=2, offset=11, txs_count=1, events_count=1, blocks={1}, ordering='asc'),
+
+    PaginationCase('latest', count=1, txs_count=3, events_count=6, blocks={4}),
+    PaginationCase('latest', count=2, txs_count=3, events_count=6, blocks={4}),
+    PaginationCase('latest', count=2, txs_count=6, events_count=12, blocks={3, 4}, ordering='desc'),
+    PaginationCase('latest', count=1, limit=1, events_count=1, txs_count=1, blocks={4}, ordering='desc'),
+    PaginationCase('latest', count=2, offset=11, txs_count=1, events_count=1, blocks={3}, ordering='desc'),
+
+    PaginationCase('tip', count=1, txs_count=3, events_count=6, blocks={3}),
+    PaginationCase('tip', count=2, txs_count=6, events_count=12, blocks={3, 4}),
+    PaginationCase('tip', until='latest', txs_count=6, events_count=12, blocks={3, 4}),
+]
+
+
+@pytest.mark.parametrize('case', parameters, ids=[p.name for p in parameters])
+async def test_get_wallet_events_pagination(
+        cli,
+        account_factory,
+        block_factory,
+        wallet_events_factory,
+        transaction_factory,
+        case
+):
+    # given
+    account = account_factory.create()
+
+    # create 2 events per transaction
+    # create 3 txs per blocks
+    blocks = []
+    events = []
+    txs = []
+    for _ in range(0, 5):
+        block = block_factory.create()
+        blocks.append(block)
+        for _ in range(0, 3):
+            tx = transaction_factory.create(block_hash=block.hash, block_number=block.number)
+            txs.append(tx)
+            for event_index in range(0, 2):
+                event = wallet_events_factory.create_token_transfer(
+                    block=block,
+                    tx_hash=tx.hash,
+                    address=account.address,
+                    event_index=event_index,
+                )
+                events.append(event)
+
+    tip_block = blocks[-2]
+
+    params = urlencode({
+        'blockchain_address': account.address,
+        'blockchain_tip': tip_block.hash,
+        **case.to_dict()
+    })
+    url = f'v1/wallet/get_events?{params}'
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    assert response.status == 200
+
+    txs = response_json['data']['events']
+    events = sum([tx['events'] for tx in txs], [])
+    blocks = {tx['rootTxData']['blockNumber'] for tx in txs}
+
+    assert len(txs) == case.txs_count
+    assert len(events) == case.events_count
+    assert blocks == case.blocks
+
+
+async def test_get_wallet_events_tip_in_fork(cli,
+                                             block_factory,
+                                             wallet_events_factory,
+                                             reorg_factory,
+                                             chain_split_factory):
+    # given
+    block = block_factory.create()
+    chain_splits = chain_split_factory.create()
+    reorg = reorg_factory.create(block_hash=block.hash, block_number=block.number, split_id=chain_splits.id)
+    event = wallet_events_factory.create_token_transfer()
+
+    url = f'v1/wallet/get_events?' \
+          f'blockchain_address={event.address}&' \
+          f'blockchain_tip={reorg.block_hash}&' \
+          f'block_range_start={block.number}'
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    assert response.status == 200
+    assert response_json == {
+        'status': {
+            'success': True,
+            'errors': []
+        },
+        'data': {
+            'blockchainTip': {
+                'blockchainTipStatus': {
+                    'blockHash': block.hash,
+                    'blockNumber': block.number,
+                    'isOrphaned': True,
+                    'lastUnchangedBlock': 0
+                },
+                'currentBlockchainTip': {
+                    'blockHash': block.hash,
+                    'blockNumber': block.number
+                }
+            },
+            'events': [],
+            'pending_events': []
+        }
+    }
+
+
+async def test_get_wallet_events_tip(cli, block_factory, chain_split_factory, reorg_factory, wallet_events_factory):
+    block_factory.create(hash='aa', number=100)
+    block_factory.create(hash='ab', number=101)
+    block_factory.create(hash='abf', number=101, is_forked=True)
+    block_factory.create(hash='ac', number=102)
+    block_factory.create(hash='acf', number=102, is_forked=True)
+
+    chain_split_factory.create(id=1, common_block_number=100)
+
+    reorg_factory.create(id=1, split_id=1, block_hash='abf', block_number=101, reinserted=False)
+    reorg_factory.create(id=2, split_id=1, block_hash='acf', block_number=102, reinserted=False)
+
+    event = wallet_events_factory.create_token_transfer()
+
+    def get_url(tip):
+        return f'v1/wallet/get_events?' \
+               f'blockchain_address={event.address}&' \
+               f'blockchain_tip={tip}&' \
+               f'block_range_start={0}'
+
+    response = await cli.get(get_url(tip='aa'))
+    response_json = await response.json()
+    assert response.status == 200
+    assert response_json == {
+        'status': {
+            'success': True,
+            'errors': []
+        },
+        'data': {
+            'blockchainTip': {
+                'blockchainTipStatus': {
+                    'blockHash': 'aa',
+                    'blockNumber': 100,
+                    'isOrphaned': False,
+                    'lastUnchangedBlock': None
+                },
+                'currentBlockchainTip': {
+                    'blockHash': 'ac',
+                    'blockNumber': 102
+                }
+            },
+            'events': [],
+            'pending_events': []
+        }
+    }
+
+    response = await cli.get(get_url(tip='ac'))
+    response_json = await response.json()
+    assert response.status == 200
+    assert response_json == {
+        'status': {
+            'success': True,
+            'errors': []
+        },
+        'data': {
+            'blockchainTip': {
+                'blockchainTipStatus': {
+                    'blockHash': 'ac',
+                    'blockNumber': 102,
+                    'isOrphaned': False,
+                    'lastUnchangedBlock': None
+                },
+                'currentBlockchainTip': {
+                    'blockHash': 'ac',
+                    'blockNumber': 102
+                }
+            },
+            'events': [],
+            'pending_events': []
+        }
+    }
+
+    response = await cli.get(get_url('abf'))
+    response_json = await response.json()
+    assert response.status == 200
+    assert response_json == {
+        'status': {
+            'success': True,
+            'errors': []
+        },
+        'data': {
+            'blockchainTip': {
+                'blockchainTipStatus': {
+                    'blockHash': 'abf',
+                    'blockNumber': 101,
+                    'isOrphaned': True,
+                    'lastUnchangedBlock': 100
+                },
+                'currentBlockchainTip': {
+                    'blockHash': 'ac',
+                    'blockNumber': 102
+                }
+            },
+            'events': [],
+            'pending_events': []
+        }
+    }
+
+    response = await cli.get(get_url('acf'))
+    response_json = await response.json()
+    assert response.status == 200
+    assert response_json == {
+        'status': {
+            'success': True,
+            'errors': []
+        },
+        'data': {
+            'blockchainTip': {
+                'blockchainTipStatus': {
+                    'blockHash': 'acf',
+                    'blockNumber': 102,
+                    'isOrphaned': True,
+                    'lastUnchangedBlock': 100
+                },
+                'currentBlockchainTip': {
+                    'blockHash': 'ac',
+                    'blockNumber': 102
+                }
+            },
+            'events': [],
+            'pending_events': []
+        }
+    }
+
+
+async def test_get_wallet_events_tip_in_fork_but_events_not_affected(cli,
+                                                                     block_factory,
+                                                                     wallet_events_factory,
+                                                                     transaction_factory,
+                                                                     reorg_factory,
+                                                                     chain_split_factory):
+    # given
+    not_affected_block = block_factory.create()
+    block = block_factory.create()
+
+    chain_splits = chain_split_factory.create(
+        common_block_number=not_affected_block.number,
+        common_block_hash=not_affected_block.hash
+    )
+    reorg = reorg_factory.create(block_hash=block.hash, block_number=block.number, split_id=chain_splits.id)
+
+    tx = transaction_factory.create(
+        block_hash=not_affected_block.hash,
+        block_number=not_affected_block.number
+    )
+    event = wallet_events_factory.create_token_transfer(
+        tx_hash=tx.hash,
+        block_hash=not_affected_block.hash,
+        block_number=not_affected_block.number
+    )
+
+    params = urlencode({
+        'blockchain_address': event.address,
+        'blockchain_tip': reorg.block_hash,
+        'block_range_start': 0,
+        'block_range_count': 1,
+    })
+    url = f'v1/wallet/get_events?{params}'
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    assert response.status == 200
+    assert response_json == {
+        'status': {
+            'success': True,
+            'errors': []
+        },
+        'data': {
+            'blockchainTip': {
+                'blockchainTipStatus': {
+                    'blockHash': block.hash,
+                    'blockNumber': block.number,
+                    'isOrphaned': True,
+                    'lastUnchangedBlock': 0
+                },
+                'currentBlockchainTip': {
+                    'blockHash': block.hash,
+                    'blockNumber': block.number
+                }
+            },
+            'events': [
+                {
+                    'events': [
+                        {
+                            'eventData': [
+                                {'fieldName': key, 'fieldValue': value} for key, value in event.event_data.items()
+                            ],
+                            'eventIndex': event.event_index,
+                            'eventType': event.type
+                        }
+                    ],
+                    'rootTxData': {
+                        'blockHash': tx.block_hash,
+                        'blockNumber': tx.block_number,
+                        'from': getattr(tx, 'from'),
+                        'gas': tx.gas,
+                        'gasPrice': tx.gas_price,
+                        'hash': tx.hash,
+                        'input': tx.input,
+                        'nonce': tx.nonce,
+                        'r': tx.r,
+                        's': tx.s,
+                        'to': tx.to,
+                        'transactionIndex': tx.transaction_index,
+                        'v': tx.v,
+                        'value': tx.value
+                    }
+                }
+            ],
+            'pending_events': [],
+        }
+    }
+
+
+async def test_get_wallet_events_tip_does_not_exist(cli,
+                                                    block_factory,
+                                                    wallet_events_factory):
+    # given
+    block = block_factory.create()
+    event = wallet_events_factory.create_token_transfer(block=block)
+
+    unsaved_block = block_factory.build()
+
+    url = f'v1/wallet/get_events?' \
+          f'blockchain_address={event.address}&' \
+          f'blockchain_tip={unsaved_block.hash}&' \
+          f'block_range_start={block.number}'
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    assert response.status == 404
+
+    assert response_json == {
+        'data': {},
+        'status': {
+            'errors': [
+                {
+                    'error_code': 'BLOCK_NOT_FOUND',
+                    'error_message': f'Block with hash {unsaved_block.hash} not found',
+                    'field': 'tip'
+                }
+            ],
+            'success': False
+        }
+    }
+
+
+async def test_get_wallet_events_query_param_started_from_is_required(cli,
+                                                                      block_factory,
+                                                                      wallet_events_factory,
+                                                                      reorg_factory,
+                                                                      chain_split_factory):
+    # given
+    block = block_factory.create()
+    chain_splits = chain_split_factory.create()
+    reorg = reorg_factory.create(block_hash=block.hash, block_number=block.number, split_id=chain_splits.id)
+    event = wallet_events_factory.create_token_transfer()
+
+    url = f'v1/wallet/get_events?' \
+          f'blockchain_address={event.address}&' \
+          f'blockchain_tip={reorg.block_hash}'
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    assert response.status == 400
+    assert response_json == {
+        'status': {
+            'success': False,
+            'errors': [
+                {
+                    'field': 'block_range_start',
+                    'error_code': ErrorCode.PARAM_REQUIRED,
+                    'error_message': f'Query param `block_range_start` is required'
+                },
+            ]
+        },
+        'data': {},
+    }
+
+
+async def test_get_wallet_events_query_param_address_is_required(cli,
+                                                                 block_factory,
+                                                                 reorg_factory,
+                                                                 chain_split_factory):
+    # given
+    block = block_factory.create()
+    chain_splits = chain_split_factory.create()
+    reorg = reorg_factory.create(block_hash=block.hash, block_number=block.number, split_id=chain_splits.id)
+
+    url = f'v1/wallet/get_events?' \
+          f'blockchain_tip={reorg.block_hash}' \
+          f'block_range_start={block.number}'
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    assert response.status == 400
+    assert response_json == {
+        'status': {
+            'success': False,
+            'errors': [
+                {
+                    'param': 'blockchain_address',
+                    'error_code': ErrorCode.PARAM_REQUIRED,
+                    'error_message': 'Query param `blockchain_address` is required'
+                },
+            ]
+        },
+        'data': {},
+    }
+
+
+async def test_get_wallet_events_query_param_tip_is_required(cli, block_factory, wallet_events_factory):
+    # given
+    block = block_factory.create()
+    event = wallet_events_factory.create_token_transfer()
+    url = f'v1/wallet/get_events?' \
+          f'blockchain_address={event.address}&' \
+          f'block_range_start={block.number}'
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    assert response.status == 400
+    assert response_json == {
+        'status': {
+            'success': False,
+            'errors': [
+                {
+                    'param': 'blockchain_tip',
+                    'error_code': ErrorCode.PARAM_REQUIRED,
+                    'error_message': f'Query param `blockchain_tip` is required'
+                },
+            ]
+        },
+        'data': {},
     }
