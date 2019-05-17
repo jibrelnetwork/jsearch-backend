@@ -155,7 +155,6 @@ class Manager:
             await asyncio.sleep(self.sleep_on_no_blocks)
             return
 
-        await self.main_db.insert_or_update_pending_txs(new_pending_txs)
         for pending_tx in new_pending_txs:
             data = prepare_pending_tx(pending_tx)
             await self.main_db.insert_or_update_pending_tx(data)
