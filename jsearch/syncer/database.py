@@ -517,11 +517,12 @@ class MainDBSync(DBWrapperSync):
         if transactions_data:
             transactions = []
             for tx in transactions_data:
-                from_tx = {'address': 'from', **tx}
-                to_tx = {'address': 'to', **tx}
+                from_tx = {'address': tx['from'], **tx}
+                to_tx = {'address': tx['to'], **tx}
 
                 transactions.append(from_tx)
                 transactions.append(to_tx)
+
             self.execute(transactions_t.insert(), *transactions)
 
     def insert_receipts(self, receipts_data):
