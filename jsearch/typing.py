@@ -19,3 +19,11 @@ Token = Dict[str, Any]
 
 AsyncCallback = Callable[..., Awaitable[Any]]
 AsyncReducer = Callable[[Any, AsyncCallback], Any]
+
+Event = Dict[str, Any]
+Transaction = Dict[str, Any]
+InternalTransaction = Dict[str, Any]
+PendingTransaction = Dict[str, Any]
+
+AssetUpdate = Dict[str, Any]
+AssetTransfer = Dict[str, Any]

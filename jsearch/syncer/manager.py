@@ -2,12 +2,12 @@ import asyncio
 import concurrent.futures
 import logging
 
-import time
-
 import backoff
+import time
 
 from jsearch import settings
 from jsearch.service_bus import service_bus
+from jsearch.syncer.database_queries.pending_transactions import prepare_pending_tx
 from jsearch.syncer.processor import SyncProcessor
 
 logger = logging.getLogger(__name__)
@@ -155,7 +155,9 @@ class Manager:
             await asyncio.sleep(self.sleep_on_no_blocks)
             return
 
-        await self.main_db.insert_or_update_pending_txs(new_pending_txs)
+        for pending_tx in new_pending_txs:
+            data = prepare_pending_tx(pending_tx)
+            await self.main_db.insert_or_update_pending_tx(data)
 
         proc_time = time.monotonic() - start_time
         logger.info(

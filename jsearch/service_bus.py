@@ -1,7 +1,8 @@
 import logging
 
-import backoff
+from datetime import datetime
 from jsearch_service_bus import SyncServiceBusClient, ServiceBus
+from typing import Dict, Any
 
 from jsearch import settings
 from jsearch.typing import Contracts
@@ -12,6 +13,7 @@ SERVICE_JSEARCH = 'jsearch'
 SERVICE_CONTRACT = 'jsearch_contracts'
 
 ROUTE_HANDLE_ERC20_TRANSFERS = f'{SERVICE_JSEARCH}.erc20_transfers'
+ROUTE_HANDLE_PENDING_TXS = f'{SERVICE_JSEARCH}.pending_transaction'
 ROUTE_HANDLE_TRANSACTION_LOGS = f'{SERVICE_JSEARCH}.transaction_logs'
 ROUTE_HANDLE_REORGANIZATION_EVENTS = f'{SERVICE_JSEARCH}.reorganization'
 ROUTE_HANDLE_LAST_BLOCK = f'{SERVICE_JSEARCH}.last_block'
@@ -26,27 +28,21 @@ ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE = f'{SERVICE_JSEARCH}.account_update'
 
 
 class JsearchSyncServiceBusClient(SyncServiceBusClient):
-
-    @backoff.on_exception(backoff.fibo, max_tries=3, exception=Exception)
     def write_logs(self, logs):
         return self.send_to_stream(ROUTE_HANDLE_TRANSACTION_LOGS, value=logs)
 
     def get_contracts(self, addresses, fields=None) -> Contracts:
         return self.rpc_call(ROUTE_GET_CONTRACTS, value={'addresses': addresses, 'fields': fields})
 
-    @backoff.on_exception(backoff.fibo, max_tries=3, exception=Exception)
     def write_tx(self, tx):
         return self.send_to_stream(ROUTE_HANDLE_TRANSACTIONS, value=tx)
 
-    @backoff.on_exception(backoff.fibo, max_tries=3, exception=Exception)
     def write_account(self, account):
         return self.send_to_stream(ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE, value=account)
 
-    @backoff.on_exception(backoff.fibo, max_tries=3, exception=Exception)
     def write_transfers(self, transfers):
         return self.send_to_stream(ROUTE_WALLET_HANDLE_TOKEN_TRANSFER, value=transfers)
 
-    @backoff.on_exception(backoff.fibo, max_tries=3, exception=Exception)
     def write_assets_updates(self, updates):
         return self.send_to_stream(ROUTE_WALLET_HANDLE_ASSETS_UPDATE, value=updates)
 
@@ -69,6 +65,10 @@ class JsearchServiceBus(ServiceBus):
                 'reinserted': reinserted
             }
         )
+
+    async def write_pending_tx(self, pending_tx: Dict[str, Any]):
+        pending_tx['timestamp'] = datetime.timestamp(pending_tx['timestamp'])
+        return await self.send_to_stream(ROUTE_HANDLE_PENDING_TXS, pending_tx)
 
     async def send_transfers(self, value):
         return await self.send_to_stream(ROUTE_HANDLE_ERC20_TRANSFERS, value)
