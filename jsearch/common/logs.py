@@ -8,7 +8,7 @@ from jsearch import settings
 sentry_sdk.init(settings.RAVEN_DSN)
 
 
-def configure(log_level):
+def configure(log_level: str) -> None:
     config = {
         'version': 1,
         'disable_existing_loggers': False,
@@ -27,7 +27,11 @@ def configure(log_level):
         },
         'loggers': {
             'kafka.conn': {
-                'level': 'WARNING',
+                'level': 'CRITICAL',
+                'handlers': ['console']
+            },
+            'aiokafka': {
+                'level': 'CRITICAL',
                 'handlers': ['console']
             },
             'post_processing': {
