@@ -26,11 +26,11 @@ ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE = f'{SERVICE_JSEARCH}.account_update'
 
 
 class JsearchSyncServiceBusClient(SyncServiceBusClient):
-
     @backoff.on_exception(backoff.fibo, max_tries=3, exception=Exception)
     def write_logs(self, logs):
         return self.send_to_stream(ROUTE_HANDLE_TRANSACTION_LOGS, value=logs)
 
+    @backoff.on_exception(backoff.fibo, max_tries=3, exception=Exception)
     def get_contracts(self, addresses, fields=None) -> Contracts:
         return self.rpc_call(ROUTE_GET_CONTRACTS, value={'addresses': addresses, 'fields': fields})
 
@@ -52,6 +52,7 @@ class JsearchSyncServiceBusClient(SyncServiceBusClient):
 
 
 class JsearchServiceBus(ServiceBus):
+    @backoff.on_exception(backoff.fibo, max_tries=3, exception=Exception)
     async def emit_last_block_event(self, number):
         return await self.send_to_stream(
             route=ROUTE_HANDLE_LAST_BLOCK,
@@ -60,6 +61,7 @@ class JsearchServiceBus(ServiceBus):
             }
         )
 
+    @backoff.on_exception(backoff.fibo, max_tries=3, exception=Exception)
     async def emit_reorganization_event(self, block_hash, block_number, reinserted):
         return await self.send_to_stream(
             route=ROUTE_HANDLE_REORGANIZATION_EVENTS,
@@ -70,9 +72,11 @@ class JsearchServiceBus(ServiceBus):
             }
         )
 
+    @backoff.on_exception(backoff.fibo, max_tries=3, exception=Exception)
     async def send_transfers(self, value):
         return await self.send_to_stream(ROUTE_HANDLE_ERC20_TRANSFERS, value)
 
+    @backoff.on_exception(backoff.fibo, max_tries=3, exception=Exception)
     async def get_contracts(self, addresses, fields=None) -> Contracts:
         return await self.rpc_call(ROUTE_GET_CONTRACTS, value={'addresses': addresses, 'fields': fields})
 
