@@ -402,7 +402,10 @@ class WalletEvent(Model):
     def to_dict(self):
         data = super(WalletEvent, self).to_dict()
 
-        event_data = json.loads(getattr(self, 'event_data', {}))
+        event_data = getattr(self, 'event_data', {})
+        if isinstance(event_data, str):
+            event_data = json.loads(event_data)
+
         data['eventData'] = [{'fieldName': name, 'fieldValue': value} for name, value in event_data.items()]
 
         return data

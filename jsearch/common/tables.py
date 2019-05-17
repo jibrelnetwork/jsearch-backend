@@ -321,7 +321,6 @@ assets_summary_t = sa.Table(
     sa.Column('nonce', sa.BigInteger),
 )
 
-
 wallet_events_t = sa.Table(
     'wallet_events',
     metadata,
@@ -335,7 +334,6 @@ wallet_events_t = sa.Table(
     sa.Column('tx_data', postgresql.JSONB),
     sa.Column('event_data', postgresql.JSONB),
 )
-
 
 TABLES = (
     blocks_t,
