@@ -34,6 +34,10 @@ def configure(log_level: str) -> None:
                 'level': 'CRITICAL',
                 'handlers': ['console']
             },
+            'aiokafka.consumer.fetcher': {
+                'level': 'CRITICAL',
+                'handlers': ['console']
+            },
             'post_processing': {
                 'level': log_level,
                 'handlers': ['console'],
