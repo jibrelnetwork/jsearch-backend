@@ -2,18 +2,16 @@ import asyncio
 import concurrent.futures
 import logging
 
+import backoff
 import time
 
 from jsearch import settings
-from jsearch.common.database import DatabaseError
 from jsearch.service_bus import service_bus
 from jsearch.syncer.database_queries.pending_transactions import prepare_pending_tx
 from jsearch.syncer.processor import SyncProcessor
 
 logger = logging.getLogger(__name__)
 
-SLEEP_ON_ERROR_DEFAULT = 0.1
-SLEEP_ON_DB_ERROR_DEFAULT = 5
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
 REORGS_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL / 2
 PENDING_TX_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL * 2
@@ -36,8 +34,6 @@ class Manager:
         self.sync_range = sync_range
         self._running = False
         self.chunk_size = settings.JSEARCH_SYNC_PARALLEL
-        self.sleep_on_db_error = SLEEP_ON_DB_ERROR_DEFAULT
-        self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
 
         self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
@@ -45,7 +41,7 @@ class Manager:
         self.latest_available_block_num = None
         self.tasks = []
 
-    async def run(self):
+    async def start(self):
         logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
         self._running = True
 
@@ -63,20 +59,30 @@ class Manager:
 
             self.tasks.append(task)
 
+    async def wait(self):
+        await asyncio.wait(self.tasks, return_when=asyncio.FIRST_EXCEPTION)
+        await self.stop()
+
     async def stop(self, timeout=60):
         self._running = False
 
+        if not self.tasks:
+            # All tasks have been completed already and removed from the list.
+            return
+
         done, pending = await asyncio.wait(self.tasks, timeout=timeout)
 
-        logger.warning(
-            'There are pending futures, that will be canceled',
-            extra={
-                'tag': 'SERVICE BUS',
-                'count': len(pending)
-            }
-        )
         for future in done:
             future.result()
+
+        if pending:
+            logger.warning(
+                'There are pending futures, that will be canceled',
+                extra={
+                    'tag': 'SYNCER',
+                    'count': len(pending)
+                }
+            )
 
         for future in pending:
             future.cancel()
@@ -84,65 +90,12 @@ class Manager:
     async def sequence_sync_loop(self):
         logger.info("Entering Sequence Sync Loop")
         while self._running is True:
-            try:
-                start_time = time.monotonic()
-                blocks_to_sync = await self.get_blocks_to_sync()
-                if len(blocks_to_sync) == 0:
-                    await asyncio.sleep(self.sleep_on_no_blocks)
-                    continue
-                coros = [loop.run_in_executor(self.executor, sync_block, b[0], b[1]) for b in blocks_to_sync]
-                results = await asyncio.gather(*coros)
-                synced_blocks_cnt = sum(results)
-
-                sync_time = time.monotonic() - start_time
-                avg_time = sync_time / synced_blocks_cnt if synced_blocks_cnt else 0
-                logger.info(
-                    "Synced batch of blocks",
-                    extra={
-                        'amount': synced_blocks_cnt,
-                        'total_time': sync_time,
-                        'average_time': avg_time,
-                    }
-                )
-            except DatabaseError:
-                logger.exception("Database Error raised:")
-                await asyncio.sleep(self.sleep_on_db_error)
-            except Exception:
-                logger.exception("Error raised:")
-                await asyncio.sleep(self.sleep_on_error)
-                self.sleep_on_error = self.sleep_on_error * 2
-            else:
-                self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
+            await self.get_and_process_blocks()
 
     async def reorg_loop(self):
         logger.info("Entering Reorg Loop")
         while self._running is True:
-            try:
-                start_time = time.monotonic()
-                new_splits = await self.get_new_chain_splits()
-                if len(new_splits) == 0:
-                    logger.info("No chain splits(reorgs), sleeping")
-                    await asyncio.sleep(self.sleep_on_no_blocks)
-                    continue
-                for split in new_splits:
-                    await self.process_chain_split(split)
-
-                proc_time = time.monotonic() - start_time
-                logger.info(
-                    "Processed batch of chain splits",
-                    extra={
-                        'amount': len(new_splits),
-                        'total_time': proc_time,
-                    }
-                )
-
-            except Exception:
-                logger.exception("Reorg Loop Error occured:")
-                await asyncio.sleep(self.sleep_on_error)
-                self.sleep_on_error = self.sleep_on_error * 2
-            else:
-                self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
-                await asyncio.sleep(0.1)
+            await self.get_and_process_chain_splits()
 
     async def pending_tx_loop(self):
         logger.info("Entering Pending Tx Loop")
@@ -150,37 +103,71 @@ class Manager:
         while self._running is True:
             await self.get_and_process_pending_txs()
 
+    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
+    async def get_and_process_blocks(self):
+        start_time = time.monotonic()
+        blocks_to_sync = await self.get_blocks_to_sync()
+        if len(blocks_to_sync) == 0:
+            await asyncio.sleep(self.sleep_on_no_blocks)
+            return
+        coros = [loop.run_in_executor(self.executor, sync_block, b[0], b[1]) for b in blocks_to_sync]
+        results = await asyncio.gather(*coros)
+        synced_blocks_cnt = sum(results)
+
+        sync_time = time.monotonic() - start_time
+        avg_time = sync_time / synced_blocks_cnt if synced_blocks_cnt else 0
+        logger.info(
+            "Synced batch of blocks",
+            extra={
+                'amount': synced_blocks_cnt,
+                'total_time': sync_time,
+                'average_time': avg_time,
+            }
+        )
+
+    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
+    async def get_and_process_chain_splits(self):
+        start_time = time.monotonic()
+        new_splits = await self.get_new_chain_splits()
+        if len(new_splits) == 0:
+            logger.info("No chain splits(reorgs), sleeping")
+            await asyncio.sleep(self.sleep_on_no_blocks)
+            return
+        for split in new_splits:
+            await self.process_chain_split(split)
+
+        proc_time = time.monotonic() - start_time
+        logger.info(
+            "Processed batch of chain splits",
+            extra={
+                'amount': len(new_splits),
+                'total_time': proc_time,
+            }
+        )
+
+    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def get_and_process_pending_txs(self):
-        try:
-            start_time = time.monotonic()
-            new_pending_txs = await self.get_new_pending_txs()
+        start_time = time.monotonic()
+        new_pending_txs = await self.get_new_pending_txs()
 
-            if len(new_pending_txs) == 0:
-                logger.info("No pending txs, sleeping")
-                await asyncio.sleep(self.sleep_on_no_blocks)
-                return
+        if len(new_pending_txs) == 0:
+            logger.info("No pending txs, sleeping")
+            await asyncio.sleep(self.sleep_on_no_blocks)
+            return
 
-            for pending_tx in new_pending_txs:
-                data = prepare_pending_tx(pending_tx)
-                await self.main_db.insert_or_update_pending_tx(data)
+        await self.main_db.insert_or_update_pending_txs(new_pending_txs)
+        for pending_tx in new_pending_txs:
+            data = prepare_pending_tx(pending_tx)
+            await self.main_db.insert_or_update_pending_tx(data)
 
-            proc_time = time.monotonic() - start_time
-            logger.info(
-                "Processed batch of pending txs",
-                extra={
-                    'amount': len(new_pending_txs),
-                    'total_time': proc_time,
-                }
-            )
-
-        except Exception:
-            logger.exception("Pending Tx Loop Error occured:")
-            await asyncio.sleep(self.sleep_on_error)
-            self.sleep_on_error = self.sleep_on_error * 2
-            raise
-        else:
-            self.sleep_on_error = SLEEP_ON_ERROR_DEFAULT
-            await asyncio.sleep(0.1)
+        proc_time = time.monotonic() - start_time
+        logger.info(
+            "Processed batch of pending txs",
+            extra={
+                'amount': len(new_pending_txs),
+                'total_time': proc_time,
+            }
+        )
 
     async def process_chain_split(self, split):
         new_reorgs = await self.get_reorgs(split['id'])
