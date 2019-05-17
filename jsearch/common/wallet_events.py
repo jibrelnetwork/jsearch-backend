@@ -183,8 +183,8 @@ def get_token_transfer_args_from_pending_tx(pending_tx: PendingTransaction) -> T
 def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> Event:
     event_type = get_event_type(pending_tx, is_pending=True)
 
-    if event_type == WalletEventType.CONTRACT_CALL:
-        sender, recipient, amount = get_token_transfer_args_from_pending_tx(event_type, pending_tx)
+    if event_type == WalletEventType.ERC20_TRANSFER:
+        sender, recipient, amount = get_token_transfer_args_from_pending_tx(pending_tx)
     else:
         sender = pending_tx['from']
         recipient = pending_tx['to']
