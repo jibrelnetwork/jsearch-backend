@@ -14,10 +14,9 @@ PENDING_TX_SLEEP_ON_NO_TXS = 1
 
 
 class PendingSyncerService(mode.Service):
-    def __init__(self, raw_db_dsn, main_db_dsn, sync_range, *args, **kwargs):
+    def __init__(self, raw_db_dsn, main_db_dsn, *args, **kwargs):
         self.raw_db = RawDB(raw_db_dsn)
         self.main_db = MainDB(main_db_dsn)
-        self.sync_range = sync_range
 
         super().__init__(*args, **kwargs)
 

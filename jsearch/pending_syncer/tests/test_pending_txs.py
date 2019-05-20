@@ -45,7 +45,6 @@ async def pending_syncer_service(
     service = PendingSyncerService(
         raw_db_dsn=raw_db_connection_string,
         main_db_dsn=db_connection_string,
-        sync_range=None,
         loop=event_loop,
     )
 
