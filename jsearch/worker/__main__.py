@@ -38,7 +38,6 @@ from jsearch.common.last_block import LastBlock
 from jsearch.common.logs import configure
 from jsearch.common import worker
 from jsearch.multiprocessing import executor
-from jsearch.post_processing.metrics import Metrics
 from jsearch.service_bus import service_bus, ROUTE_HANDLE_REORGANIZATION_EVENTS, ROUTE_HANDLE_LAST_BLOCK
 from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
 from jsearch.utils import Singleton
@@ -46,8 +45,6 @@ from jsearch.worker.api_service import ApiService
 from jsearch.worker.token_balances import get_balance_updates, update_balances
 
 logger = logging.getLogger('worker')
-
-metrics = Metrics()
 
 
 class DatabaseService(Service, Singleton):
