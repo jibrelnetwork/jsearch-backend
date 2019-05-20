@@ -75,7 +75,7 @@ class Metrics(Singleton):
         self.ensure_started()
         self.metrics[metric.name].append(metric)
 
-    def update_value(
+    def set_value(
             self,
             name: str,
             value: Any,

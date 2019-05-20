@@ -94,7 +94,7 @@ async def handle_transaction_logs(blocks: List[Logs]):
 
     metrics.update(metric_logs)
     metrics.update(metric_blocks)
-    metrics.update_value(
+    metrics.set_value(
         name='last_block',
         value=logs[0]['block_number'],
         is_need_to_update=lambda prev, value: prev is None or prev < value
