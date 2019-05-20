@@ -28,8 +28,10 @@ ALTER TABLE assets_transfers DROP COLUMN status;
 
 
 def upgrade():
+    op.execute("COMMIT")  # HACK: stop transaction and do action concurrently
     op.execute(UP_SQL)
 
 
 def downgrade():
+    op.execute("COMMIT")  # HACK: stop transaction and do action concurrently
     op.execute(DOWN_SQL)

@@ -1,6 +1,7 @@
 # !/usr/bin/env python
 import asyncio
 import logging
+import os
 
 import click
 
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 @click.option('--check-balances', is_flag=True)
 @click.option('--show-holders', is_flag=True)
 @click.option('--rewrite', is_flag=True)
-@click.option('--log-level', default='INFO', help="Log level")
+@click.option('--log-level', default=os.getenv('LOG_LEVEL', 'INFO'), help="Log level")
 def check(token, check_balances, rewrite, show_holders, log_level):
     logs.configure(log_level)
     loop = asyncio.get_event_loop()

@@ -6,9 +6,6 @@ Create Date: 2019-04-10 13:56:06.305934
 
 """
 from alembic import op
-import sqlalchemy as sa
-from jsearch.common import tables
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '0bbb93975419'
@@ -16,9 +13,8 @@ down_revision = '4c2d1b91374f'
 branch_labels = None
 depends_on = None
 
-
 UP_SQL = """
-CREATE TABLE wallet_events(
+CREATE TABLE IF NOT EXISTS wallet_events(
     address varchar,
     type varchar,
     tx_hash varchar,
@@ -30,8 +26,6 @@ CREATE TABLE wallet_events(
     event_data json
 );
 
-CREATE INDEX ix_wallet_events_address ON wallet_events (address, event_index) WHERE is_forked=False;
-CREATE INDEX ix_wallet_events_block_hash ON wallet_events (block_hash);
 """
 
 DOWN_SQL = """

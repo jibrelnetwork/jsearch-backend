@@ -1,7 +1,6 @@
-from typing import List
-
-from sqlalchemy import select, Column, and_, false, or_
+from sqlalchemy import select, Column, or_, and_, false
 from sqlalchemy.orm import Query
+from typing import List
 
 from jsearch.api.helpers import get_order
 from jsearch.common.tables import pending_transactions_t

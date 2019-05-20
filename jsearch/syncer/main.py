@@ -1,33 +1,23 @@
-import asyncio
+import os
 
 import click
+from jsearch.common import worker
 
 from jsearch.common import logs
-from jsearch.utils import parse_range, add_gracefully_shutdown_handlers
-from .service import Service
+from jsearch.syncer import services
+from jsearch.utils import parse_range
 
 
 @click.command()
-@click.option('--log-level', default='INFO', help="Log level")
+@click.option('--log-level', default=os.getenv('LOG_LEVEL', 'INFO'), help="Log level")
 @click.option('--sync-range', default=None, help="Blocks range to sync")
 def run(log_level, sync_range):
     logs.configure(log_level)
 
-    sync_range = parse_range(value=sync_range)
-
-    service = Service(sync_range)
-    coro = service.run()
-
-    loop = asyncio.get_event_loop()
-    task = asyncio.ensure_future(coro)
-
-    add_gracefully_shutdown_handlers(service.gracefully_shutdown)
-    try:
-        loop.run_forever()
-    finally:
-        loop.close()
-        if not task.cancelled():
-            task.result()
+    worker.Worker(
+        services.SyncerService(sync_range=parse_range(sync_range)),
+        services.ApiService(),
+    ).execute_from_commandline()
 
 
 if __name__ == '__main__':

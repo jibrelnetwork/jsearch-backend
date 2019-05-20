@@ -1,17 +1,17 @@
 import datetime
+import pytest
 from psycopg2._json import Json
 
 from jsearch.common.tables import pending_transactions_t
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.manager import Manager
 
-
 pytest_plugins = (
     'jsearch.tests.plugins.databases.raw_db',
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.factories.pending_transactions',
+    'jsearch.tests.plugins.service_bus',
 )
-
 
 pending_tx_fields = {
     'r': '0xf337e2c696ea289fd209ec0fc64d29ab74c56d1ca6c334de406f345c11498b66',
@@ -31,6 +31,7 @@ pending_tx_fields = {
 }
 
 
+@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_tx_is_not_saved_if_there_is_none(db, db_connection_string, raw_db_connection_string):
     raw_db_wrapper = RawDB(raw_db_connection_string)
     main_db_wrapper = MainDB(db_connection_string)
@@ -47,6 +48,7 @@ async def test_pending_tx_is_not_saved_if_there_is_none(db, db_connection_string
     assert pending_txs == []
 
 
+@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_tx_is_saved_to_main_db(db, raw_db, db_connection_string, raw_db_connection_string):
     raw_db_wrapper = RawDB(raw_db_connection_string)
     main_db_wrapper = MainDB(db_connection_string)
@@ -106,6 +108,7 @@ async def test_pending_tx_is_saved_to_main_db(db, raw_db, db_connection_string, 
     ]
 
 
+@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_tx_is_marked_as_removed(
         db,
         raw_db,
@@ -179,6 +182,7 @@ async def test_pending_tx_is_marked_as_removed(
     ]
 
 
+@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_tx_can_be_saved_with_a_big_value(
         db,
         raw_db,

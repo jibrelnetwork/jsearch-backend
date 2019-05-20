@@ -1,7 +1,9 @@
 import logging
 from copy import copy
+
 from typing import List, Dict, Any
 import json
+
 
 import aiopg
 import backoff
@@ -11,6 +13,7 @@ from psycopg2.extras import DictCursor
 from sqlalchemy import create_engine as sync_create_engine, and_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.pool import NullPool
+from typing import List, Dict, Any
 
 from jsearch.common import contracts
 from jsearch.common.tables import (
@@ -28,7 +31,9 @@ from jsearch.common.tables import (
     pending_transactions_t,
     assets_transfers_t,
     chain_events_t,
+    wallet_events_t,
 )
+
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
@@ -149,7 +154,7 @@ class RawDB(DBWrapper):
                 row = await cur.fetchone()
                 cur.close()
 
-        return row['max_block'] or None
+        return row['max_block'] or 0
 
     async def get_reorgs_by_chain_split_id(self, chain_split_id):
         q = """
@@ -529,6 +534,10 @@ class MainDB(DBWrapper):
             .values(is_forked=not reorg['reinserted']) \
             .where(accounts_state_t.c.block_hash == reorg['block_hash'])
 
+        update_events_q = wallet_events_t.update() \
+            .values(is_forked=not reorg['reinserted']) \
+            .where(wallet_events_t.c.block_hash == reorg['block_hash'])
+
         update_uncles_q = uncles_t.update() \
             .values(is_forked=not reorg['reinserted']) \
             .where(uncles_t.c.block_hash == reorg['block_hash'])
@@ -559,6 +568,8 @@ class MainDB(DBWrapper):
                 await conn.execute(add_reorg_q)
                 await conn.execute(update_token_transfers_q)
                 await conn.execute(update_assets_transfers_q)
+                await conn.execute(update_events_q)
+
                 logger.debug(
                     'Reord is applied for a block',
                     extra={
@@ -706,9 +717,9 @@ class MainDB(DBWrapper):
 
         return row['last_synced_id'] if row else 0
 
-    async def insert_or_update_pending_txs(self, pending_txs: List[Dict[str, Any]]) -> None:
-        for pending_tx in pending_txs:
-            await self.execute(insert_or_update_pending_tx_q(pending_tx))
+    async def insert_or_update_pending_tx(self, pending_tx: Dict[str, Any]) -> None:
+        query = insert_or_update_pending_tx_q(pending_tx)
+        await self.execute(query)
 
 
 class MainDBSync(DBWrapperSync):
