@@ -3,14 +3,12 @@ import logging
 
 import mode
 
+from jsearch import settings
 from jsearch.common import metrics
 from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.database_queries.pending_transactions import prepare_pending_tx
 
 logger = logging.getLogger(__name__)
-
-PENDING_TX_BATCH_SIZE = 20
-PENDING_TX_SLEEP_ON_NO_TXS = 1
 
 
 class PendingSyncerService(mode.Service):
@@ -39,7 +37,7 @@ class PendingSyncerService(mode.Service):
 
         if len(pending_txs) == 0:
             logger.info("No pending txs, sleeping")
-            await asyncio.sleep(PENDING_TX_SLEEP_ON_NO_TXS)
+            await asyncio.sleep(settings.PENDING_TX_SLEEP_ON_NO_TXS)
             return 0
 
         for pending_tx in pending_txs:
@@ -52,4 +50,4 @@ class PendingSyncerService(mode.Service):
         last_synced_id = await self.main_db.get_pending_tx_last_synced_id()
         logger.info("Fetched last pending tx synced ID", extra={'number': last_synced_id})
 
-        return await self.raw_db.get_pending_txs_from(last_synced_id, PENDING_TX_BATCH_SIZE)
+        return await self.raw_db.get_pending_txs_from(last_synced_id, settings.PENDING_TX_BATCH_SIZE)
