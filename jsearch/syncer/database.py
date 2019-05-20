@@ -1,6 +1,7 @@
 import logging
 from copy import copy
 from typing import List, Dict, Any
+import json
 
 import aiopg
 import backoff
@@ -236,12 +237,28 @@ class RawDB(DBWrapper):
         q = """SELECT * from chain_splits WHERE id=%s"""
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(q, [split_id  ])
+                await cur.execute(q, [split_id])
                 row = await cur.fetchone()
                 cur.close()
         return row
 
-class RawDBSync(DBWrapperSync):
+        return rows
+
+    async def is_canonical_block(self, block_hash):
+        q = """SELECT id, reinserted FROM reorgs WHERE block_hash=%s ORDER BY id DESC"""
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [block_hash])
+                rows = await cur.fetchall()
+                cur.close()
+        if len(rows) == 0:
+            return True
+        if rows[0]['reinserted'] is True:
+            return True
+        return False
+
+
+class RawDBSync(DBWrapper):
 
     def connect(self):
         self.conn = psycopg2.connect(self.connection_string, cursor_factory=DictCursor)
@@ -316,6 +333,79 @@ class RawDBSync(DBWrapperSync):
             rows = cur.fetchall()
 
         return rows
+
+
+class RawDBAsync(DBWrapper):
+
+    async def fetch_rows(self, q, params):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, params)
+                rows = await cur.fetchall()
+                cur.close()
+        return rows
+
+    async def fetch_row(self, q, params):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, params)
+                row = await cur.fetchone()
+                cur.close()
+        return row
+
+    async def get_header_by_hash(self, block_hash):
+        q = """SELECT "block_number", "block_hash", "fields" FROM "headers" WHERE "block_hash"=%s"""
+        row = await self.fetch_row(q, [block_hash])
+        return row
+
+    async def get_header_by_block_number(self, block_number):
+        q = """SELECT "block_number", "block_hash", "fields" FROM "headers" WHERE "block_number"=%s"""
+        row = await self.fetch_row(q, [block_number])
+        return row
+
+    async def get_block_accounts(self, block_hash):
+        q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "accounts" WHERE "block_hash"=%s"""
+        rows = await self.fetch_rows(q, [block_hash])
+        return rows
+
+    async def get_block_body(self, block_hash):
+        q = """SELECT "block_number", "block_hash", "fields" FROM "bodies" WHERE "block_hash"=%s"""
+        row = await self.fetch_row(q, [block_hash])
+        return row
+
+    async def get_block_receipts(self, block_hash):
+        q = """SELECT "block_number", "block_hash", "fields" FROM "receipts" WHERE "block_hash"=%s"""
+        row = await self.fetch_row(q, [block_hash])
+        return row
+
+    async def get_reward(self, block_hash):
+        q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "rewards" WHERE "block_hash"=%s"""
+        rows = await self.fetch_rows(q, [block_hash])
+        if len(rows) > 1:
+            for r in rows:
+                if r['address'] != contracts.NULL_ADDRESS:
+                    return r
+        elif len(rows) == 1:
+            return rows[0]
+        else:
+            return None
+
+    async def get_internal_transactions(self, block_hash):
+        q = """
+        SELECT
+          "id",
+          "block_number",
+          "block_hash",
+          "parent_tx_hash",
+          "index",
+          "type",
+          "timestamp",
+          "fields"
+        FROM "internal_transactions" WHERE "block_hash"=%s"""
+
+        rows = await self.fetch_rows(q, [block_hash])
+        return rows
+
 
 
 class MainDB(DBWrapper):
@@ -481,7 +571,7 @@ class MainDB(DBWrapper):
     async def apply_chain_split(self, split_data):
         from_block = split_data['common_block_number']
         to_block = split_data['common_block_number'] + split_data['add_length']
-        query = blocks_t.select().where(and_(blocks_t.c.number > from_block,  blocks_t.c.number <= to_block))
+        query = blocks_t.select().where(and_(blocks_t.c.number > from_block, blocks_t.c.number <= to_block))
         blocks = await self.fetch_all(query)
 
         assert len(blocks) == split_data['add_length'] + split_data['drop_length']
@@ -769,3 +859,214 @@ class MainDBSync(DBWrapperSync):
         negative_changes = self.fetch_one(negative_changes_query)['value']
 
         return (positive_changes or 0) - (negative_changes or 0)
+
+
+class MainDBAsync(DBWrapper):
+    engine: Engine
+
+    async def __aenter__(self):
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.disconnect()
+        if exc_type:
+            return False
+
+    async def connect(self):
+        self.engine = await async_create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
+
+    async def disconnect(self):
+        self.engine.close()
+        await self.engine.wait_closed()
+
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
+    async def execute(self, query, *params):
+        async with self.engine.acquire() as connection:
+            return await connection.execute(query, params)
+
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
+    async def fetch_all(self, query, *params):
+        async with self.engine.acquire() as connection:
+            cursor = await connection.execute(query, params)
+            return await cursor.fetchall()
+
+    async def fetch_one(self, query, *params):
+        async with self.engine.acquire() as connection:
+            cursor = await connection.execute(query, params)
+            return await cursor.fetchone()
+
+    async def is_block_exist(self, block_hash):
+        q = """SELECT hash from blocks WHERE hash=%s"""
+        row = await self.fetch_one(q, block_hash)
+        return row['hash'] == block_hash if row else False
+
+    async def write_block_data(self, block_data, uncles_data, transactions_data, receipts_data,
+                               logs_data, accounts_data, internal_txs_data):
+        """
+        Insert block and all related items in main database
+        """
+        async with self.engine.acquire() as conn:
+            async with conn.begin():
+                await self.insert_block(block_data)
+                await self.insert_uncles(uncles_data)
+                await self.insert_transactions(transactions_data)
+                await self.insert_receipts(receipts_data)
+                await self.insert_logs(logs_data)
+                await self.insert_accounts(accounts_data)
+                await self.insert_internal_transactions(internal_txs_data)
+
+    async def write_block_data_proc(self, block_data, uncles_data, transactions_data, receipts_data,
+                                    logs_data, accounts_data, internal_txs_data, transfers,
+                                    token_holders_updates, wallet_events, assets_summary_updates):
+        """
+        Insert block and all related items in main database
+        """
+
+        accounts_state_data = []
+        accounts_base_data = []
+        address_set = set()
+        for acc in accounts_data:
+            if acc['address'] not in address_set:
+                address_set.add(acc['address'])
+                accounts_base_data.append({
+                    'address': acc['address'],
+                    'code': acc['code'],
+                    'code_hash': acc['code_hash'],
+                    'last_known_balance': acc['balance'],
+                    'root': acc['root'],
+                })
+            accounts_state_data.append({
+                'block_number': acc['block_number'],
+                'block_hash': acc['block_hash'],
+                'address': acc['address'],
+                'nonce': acc['nonce'],
+                'root': acc['root'],
+                'balance': acc['balance'],
+            })
+
+        q = "CALL insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        j = json.dumps
+
+        async with self.engine.acquire() as conn:
+            async with conn.begin():
+                await self.execute(q, [j([block_data]), j(uncles_data), j(transactions_data),
+                                       j(receipts_data), j(logs_data), j(accounts_state_data),
+                                       j(accounts_base_data), j(internal_txs_data), j(transfers),
+                                       j(token_holders_updates), j(wallet_events), j(assets_summary_updates)])
+
+    async def insert_block(self, block_data):
+        if block_data:
+            await self.execute(blocks_t.insert(), block_data)
+
+    async def insert_uncles(self, uncles_data):
+        if uncles_data:
+            await self.execute(uncles_t.insert(), *uncles_data)
+
+    async def insert_transactions(self, transactions_data):
+        if transactions_data:
+            transactions = []
+            for td in transactions_data:
+                tx1 = copy(td)
+                tx1['address'] = tx1['from']
+                tx2 = copy(td)
+                tx2['address'] = tx2['to']
+                transactions.append(tx1)
+                transactions.append(tx2)
+            await self.execute(transactions_t.insert(), *transactions)
+
+    async def insert_receipts(self, receipts_data):
+        if receipts_data:
+            await self.execute(receipts_t.insert(), *receipts_data)
+
+    async def insert_logs(self, logs_data):
+        if logs_data:
+            await self.execute(logs_t.insert(), *logs_data)
+
+    async def insert_accounts(self, accounts):
+        if not accounts:
+            return
+        base_items = []
+        state_items = []
+        address_set = set()
+        for acc in accounts:
+            if acc['address'] not in address_set:
+                address_set.add(acc['address'])
+                base_items.append({
+                    'address': acc['address'],
+                    'code': acc['code'],
+                    'code_hash': acc['code_hash'],
+                    'last_known_balance': acc['balance'],
+                    'root': acc['root'],
+                })
+            state_items.append({
+                'block_number': acc['block_number'],
+                'block_hash': acc['block_hash'],
+                'address': acc['address'],
+                'nonce': acc['nonce'],
+                'root': acc['root'],
+                'balance': acc['balance'],
+            })
+
+        base_insert = insert(accounts_base_t)
+        await self.execute(base_insert, *base_items)
+        await self.execute(accounts_state_t.insert(), *state_items)
+
+    async def insert_internal_transactions(self, internal_transactions):
+        if internal_transactions:
+            self.execute(internal_transactions_t.insert(), *internal_transactions)
+
+    async def insert_or_update_transfers(self, records: List[Dict[str, Any]]):
+        for i, record in enumerate(records):
+            insert_query = insert(token_transfers_t).values(record).on_conflict_do_update(
+                index_elements=[
+                    'transaction_hash',
+                    'log_index',
+                    'address',
+                ],
+                set_={
+                    'block_number': record['block_number'],
+                    'block_hash': record['block_hash'],
+                    'transaction_index': record['transaction_index'],
+                    'timestamp': record['timestamp'],
+                    'from_address': record['from_address'],
+                    'to_address': record['to_address'],
+                    'token_address': record['token_address'],
+                    'token_decimals': record['token_decimals'],
+                    'token_name': record['token_name'],
+                    'token_symbol': record['token_symbol'],
+                    'token_value': record['token_value'],
+                }
+            )
+            await self.execute(insert_query)
+
+    def update_log(self, tx_hash, block_hash, log_index, values: Dict[str, Any]):
+        query = logs_t.update(). \
+            where(and_(logs_t.c.transaction_hash == tx_hash,
+                       logs_t.c.block_hash == block_hash,
+                       logs_t.c.log_index == log_index)). \
+            values(**values)
+        self.execute(query)
+
+    async def update_token_holder_balance(self, token_address: str, account_address: str, balance: int, decimals: int):
+        query = update_token_holder_balance_q(
+            token_address=token_address,
+            account_address=account_address,
+            balance=balance,
+            decimals=decimals
+        )
+        return await self.execute(query)
+
+    @as_dicts
+    async def get_blocks(self, hashes):
+        query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
+        return await self.execute(query)
+
+    async def get_balance_changes_since_block(self, token: str, account: str, block_number: int) -> int:
+        positive_changes_query = get_transfers_to_query(token, account, block_number)
+        positive_changes = self.fetch_one(positive_changes_query)['value']
+
+        negative_changes_query = get_transfers_from_query(token, account, block_number)
+        negative_changes = self.fetch_one(negative_changes_query)['value']
+
+        return await (positive_changes or 0) - (negative_changes or 0)

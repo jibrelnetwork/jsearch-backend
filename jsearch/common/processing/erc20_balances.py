@@ -207,3 +207,149 @@ def update_token_holder_balances(
         for update in updates:
             update.apply(db, last_block)
         sync_client.write_assets_updates([u.to_asset_update() for u in updates if u.value is not None])
+
+
+import asyncio
+import time
+
+from eth_abi import encode_abi as eth_abi_encode_abi
+from eth_abi.exceptions import DecodingError, EncodingError
+from eth_utils import to_hex
+from hexbytes import HexBytes
+from web3 import Web3
+from web3.utils.abi import get_abi_output_types, map_abi_data, get_abi_input_types
+from web3.utils.normalizers import BASE_RETURN_NORMALIZERS, abi_bytes_to_bytes, abi_address_to_hex, abi_string_to_text
+
+
+abi = {'constant': True,
+       'inputs': [{'name': '_owner', 'type': 'address'}],
+       'name': 'balanceOf',
+       'outputs': [{'name': 'balance', 'type': 'uint256'}],
+       'payable': False,
+       'stateMutability': 'view',
+       'type': 'function'}
+
+
+def encode_abi(abi, arguments):
+    argument_types = get_abi_input_types(abi)
+    try:
+        normalizers = [
+            abi_address_to_hex,
+            abi_bytes_to_bytes,
+            abi_string_to_text,
+        ]
+        normalized_arguments = map_abi_data(
+            normalizers,
+            argument_types,
+            arguments,
+        )
+        encoded_arguments = eth_abi_encode_abi(
+            argument_types,
+            normalized_arguments,
+        )
+    except EncodingError as e:
+        raise TypeError(
+            "One or more arguments could not be encoded to the necessary "
+            "ABI type: {0}".format(str(e))
+        )
+
+    return encoded_arguments
+
+
+def get_data(owner):
+    address = Web3.toChecksumAddress(owner)
+    data = to_hex(HexBytes('0x70a08231') + encode_abi(abi, [address]))
+    return data
+
+
+def get_params(contract, owner):
+    return [{"from": "0xb60e8dd61c5d32be8058bb8eb970870f07233155",
+             "to": contract,
+             "gas": "0x76c0",
+             "gasPrice": "0x9184e72a000",
+             "data": get_data(owner)},
+            "latest"]
+
+
+def get_rpc_call(contract, owner, _id):
+    value = {
+        "jsonrpc": "2.0",
+        "method": 'eth_call',
+        "params": get_params(contract, owner),
+        "id": _id,
+    }
+    return value
+
+
+from jsearch.common.rpc import ContractCall, EthCallException, EthRequestException, pformat, settings
+from itertools import count
+import aiohttp
+from jsearch.common.contracts import ERC20_ABI
+
+
+API_URL = 'https://main-node.jwallet.network'
+#API_URL = 'https://mainnet.infura.io/JmDPRWA8l91sQf5ANQTb'
+
+
+async def eth_call_request(data):
+    rs = time.time()
+    async with aiohttp.ClientSession() as session:
+        async with session.post(API_URL, json=data) as response:
+            if response.status != 200:
+                raise EthRequestException(f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}")
+            data = await response.json()
+            print('RPC REQ', API_URL,  time.time() - rs)
+            if any('error' in item for item in data):
+                msg = pformat(data)
+                raise EthCallException(
+                    f"[REQUEST] {settings.ETH_NODE_URL}: "
+                    f"{response.status_code}, {response.reason}: {msg}"
+                )
+            return data
+
+
+async def eth_call(call):
+    data = call
+    response = eth_call_request(data)
+    results = {result["id"]: HexBytes(result["result"]) for result in response}
+    return results
+
+
+async def eth_call_batch(calls):
+    # data = [call.encode() for call in calls]
+    data = [item for item in calls if item]
+
+    response = await eth_call_request(data)
+    results = {result["id"]: HexBytes(result["result"]) for result in response}
+
+    return results
+
+
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+
+
+async def get_balances(owners, batch_size):
+    calls = []
+    gt = time.time()
+    for i, h in enumerate(owners):
+        call = get_rpc_call(h[1], h[0], i)
+        calls.append(call)
+    print('RPC GEN TIME', time.time() - gt, len(owners))
+
+    calls_chunks = chunks(calls, batch_size)
+    coros = [eth_call_batch(calls=c) for c in calls_chunks]
+    calls_results_list = await asyncio.gather(*coros)
+    calls_results = {}
+    for res in calls_results_list:
+        calls_results.update(res)
+    print('TOTAL TIME', time.time() - gt, batch_size)
+    balances = []
+    for i, h in enumerate(owners):
+        balance = int(to_hex(calls_results[i]), 16)
+        balances.append((h[0], h[1], balance))
+    return balances
+

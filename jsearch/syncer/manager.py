@@ -37,8 +37,8 @@ chain_splits
 """
 
 class ChainEvent:
-    INSERT = 'insert'
-    REINSERT = 'reinsert'
+    INSERT = 'created'
+    REINSERT = 'reinserted'
     SPLIT = 'split'
 
 
@@ -66,6 +66,8 @@ class Manager:
         self.sync_mode = SYNC_MODE_STRICT
         self.tasks = []
         self.tip = None
+
+        self.processor = SyncProcessor()
 
     async def run(self):
         logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
@@ -156,12 +158,9 @@ class Manager:
     async def process_insert_block(self, block_hash, block_num):
         is_block_number_exists = await self.main_db.is_block_number_exists(block_hash, block_num)
         parent_hash = await self.raw_db.get_parent_hash(block_hash)
-        if block_num > 7411551:
-            is_canonical_parent = await self.main_db.is_canonical_block(parent_hash)
-        else:
-            is_canonical_parent = True ## FIXME!!!
+        is_canonical_parent = await self.raw_db.is_canonical_block(parent_hash)
         is_forked = is_block_number_exists or (not is_canonical_parent)
-        await loop.run_in_executor(self.executor, sync_block, block_hash, block_num, is_forked)
+        await self.processor.sync_block(block_hash, block_num, is_forked)
 
     # async def process_reinsert_block(self, block_hash, block_num):
     #     await self.main_db.update_fork_status([block_hash], is_forked=False)
@@ -375,4 +374,5 @@ class Manager:
 
 def sync_block(block_hash, block_number=None, is_forked=False, main_db_dsn=None, raw_db_dsn=None):
     processor = SyncProcessor(main_db_dsn=main_db_dsn, raw_db_dsn=raw_db_dsn)
-    return processor.sync_block(block_hash, block_number)
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(processor.sync_block(block_hash, block_number))
