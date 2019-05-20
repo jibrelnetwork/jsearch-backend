@@ -134,3 +134,6 @@ def show_value(name: str, value: Any) -> None:
             'metrics_value': value,
         }
     )
+
+
+metrics = Metrics()

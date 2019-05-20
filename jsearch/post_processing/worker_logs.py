@@ -7,12 +7,11 @@ from typing import List
 from jsearch import settings
 from jsearch.common.processing.logs import process_log_event
 from jsearch.multiprocessing import executor
-from jsearch.common.metrics import Metrics, Metric
+from jsearch.common.metrics import Metric, metrics
 from jsearch.service_bus import service_bus, ROUTE_HANDLE_TRANSACTION_LOGS
 from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Logs
 
-metrics = Metrics()
 
 logger = logging.getLogger(__name__)
 

@@ -10,12 +10,10 @@ from jsearch.common.processing.erc20_balances import update_token_holder_balance
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.utils import fetch_contracts, prefetch_decimals
 from jsearch.multiprocessing import executor
-from jsearch.common.metrics import Metrics, Metric
+from jsearch.common.metrics import Metric, metrics
 from jsearch.service_bus import service_bus, sync_client, ROUTE_HANDLE_LAST_BLOCK, ROUTE_HANDLE_ERC20_TRANSFERS
 from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Contracts, Transfers, Logs
-
-metrics = Metrics()
 
 logger = logging.getLogger('worker')
 
