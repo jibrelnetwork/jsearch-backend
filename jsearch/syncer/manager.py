@@ -62,14 +62,18 @@ class Manager:
     async def wait(self):
         done, pending = await asyncio.wait(self.tasks, return_when=asyncio.FIRST_EXCEPTION)
 
+        exceptions = []
         for task in done:
             try:
                 task.result()
             except Exception as e:
+                exceptions.append(e)
                 logger.exception(e)
-            self.tasks.remove(task)
 
         await self.stop()
+
+        if exceptions:
+            return exceptions[0]
 
     async def stop(self, timeout=60):
         self._running = False
