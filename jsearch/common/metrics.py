@@ -75,12 +75,18 @@ class Metrics(Singleton):
         self.ensure_started()
         self.metrics[metric.name].append(metric)
 
-    def set_value(self, name: str, value: Any, is_need_to_update: Callable[[Any, Any], bool]) -> None:
+    def update_value(
+            self,
+            name: str,
+            value: Any,
+            is_need_to_update: Optional[Callable[[Any, Any], bool]] = None,
+    ) -> None:
         """
         set value to metrics
 
         it there is a callback - value will rewrite only if callback returns True
         """
+        is_need_to_update = is_need_to_update or (lambda x, y: True)
         prev = self.values.get(name)
 
         if is_need_to_update(prev, value):
@@ -91,8 +97,8 @@ class Metrics(Singleton):
             self.future = asyncio.ensure_future(self.task())
 
     def show(self) -> None:
-        for name, metrics in self.metrics.items():
-            show_metrics(name, metrics)
+        for name, metrics_list in self.metrics.items():
+            show_metrics(name, metrics_list)
 
         for name, value in self.values.items():
             show_value(name, value)
@@ -103,12 +109,12 @@ class Metrics(Singleton):
             await asyncio.sleep(self.timeout)
 
 
-def show_metrics(name: str, metrics: List[Metric]) -> None:
-    if not metrics:
+def show_metrics(name: str, metrics_list: List[Metric]) -> None:
+    if not metrics_list:
         return
 
-    value = sum([metric.value for metric in metrics], 0.0)
-    worked_time = sum([metric.worked_time for metric in metrics], 0.0)
+    value = sum([metric.value for metric in metrics_list], 0.0)
+    worked_time = sum([metric.worked_time for metric in metrics_list], 0.0)
     speed = value / worked_time if worked_time else 0.0
 
     logger.info(
@@ -122,7 +128,7 @@ def show_metrics(name: str, metrics: List[Metric]) -> None:
         }
     )
 
-    metrics.clear()
+    metrics_list.clear()
 
 
 def show_value(name: str, value: Any) -> None:
