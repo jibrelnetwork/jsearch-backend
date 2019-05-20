@@ -143,6 +143,7 @@ transactions_t = sa.Table(
     sa.Column('contract_call_description', postgresql.JSONB),
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
     sa.Column('address', sa.String, index=True),
+    sa.Column('status', sa.Integer)
 )
 
 receipts_t = sa.Table(

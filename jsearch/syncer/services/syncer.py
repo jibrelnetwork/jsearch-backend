@@ -1,4 +1,5 @@
 import logging
+
 import mode
 
 from jsearch import settings
@@ -20,11 +21,15 @@ class SyncerService(mode.Service):
         await self.raw_db.connect()
         await self.main_db.connect()
 
-        await self.manager.start()
-        await self.manager.wait()
-
     async def on_stop(self) -> None:
         await self.manager.stop()
 
         await self.main_db.disconnect()
         self.raw_db.disconnect()
+
+    @mode.Service.task
+    async def syncer(self):
+        await self.manager.start()
+        exception = await self.manager.wait()
+        if exception:
+            await self.crash(exception)

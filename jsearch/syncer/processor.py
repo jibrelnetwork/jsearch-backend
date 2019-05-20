@@ -1,13 +1,15 @@
 import logging
+from collections import defaultdict
+
 import re
 import time
-from collections import defaultdict
 from typing import Optional, NamedTuple, Dict, Any, List, Tuple
 from copy import copy
 
 from jsearch import service_bus
 from jsearch import settings
 from jsearch.common import contracts
+
 from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.erc20_transfers import logs_to_transfers_fake_decimals
 from jsearch.common.processing.erc20_balances import get_balances
@@ -304,17 +306,26 @@ class SyncProcessor:
             recpt_data = dict_keys_case_convert(receipt)
             tx = transactions[i*2]
             assert tx['hash'] == recpt_data['transaction_hash']
+
             recpt_data['transaction_index'] = i
             recpt_data['to'] = tx['to']
             recpt_data['from'] = tx['from']
+            recpt_data.update({
+                'transaction_index': i,
+                'to': tx['to'],
+                'from': tx['from'],
+                'block_hash': block_hash,
+                'block_number': block_number,
+            })
+
             logs = recpt_data.pop('logs') or []
             recpt_data['block_hash'] = block_hash
             recpt_data['block_number'] = block_number
             recpt_data['is_forked'] = is_forked
             hex_vals_to_int(recpt_data, ['cumulative_gas_used', 'gas_used', 'status'])
             recpt_items.append(recpt_data)
-            tx['receipt_status'] = recpt_data['status']
-            transactions[i * 2 + 1]['receipt_status'] = recpt_data['status']
+            tx['status'] = recpt_data['status']
+            transactions[i * 2 + 1]['status'] = recpt_data['status']
             logs = self.process_logs(logs, status=recpt_data['status'], is_forked=is_forked)
             logs_items.extend(logs)
         return recpt_items, logs_items

@@ -88,6 +88,8 @@ def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
 
     accounts_states = for_block(d['accounts_state'])
     accounts_bases = {item['address']: item for item in d['accounts_base']}
+    receipts_statuses = {item['transaction_hash']: item['status'] for item in receipts}
+    transactions = [{'status': receipts_statuses[tx['hash']], **tx} for tx in transactions]
 
     accounts = []
     for state in accounts_states:
@@ -118,12 +120,9 @@ def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
 
     result_transactions = []
     for tx in transactions:
-        rt1 = {}
-        rt1.update(tx)
-        rt1['address'] = tx['from']
-        rt2 = {}
-        rt2.update(tx)
-        rt2['address'] = tx['to']
+        rt1 = {'address': tx['from'], **tx}
+        rt2 = {'address': tx['to'], **tx}
+
         result_transactions.append(rt1)
         result_transactions.append(rt2)
 

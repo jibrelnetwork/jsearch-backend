@@ -1,5 +1,4 @@
 import logging
-from copy import copy
 
 from typing import List, Dict, Any
 import json
@@ -30,10 +29,15 @@ from jsearch.common.tables import (
     chain_splits_t,
     pending_transactions_t,
     assets_transfers_t,
+<<<<<<< HEAD
     chain_events_t,
     wallet_events_t,
 )
 
+=======
+    wallet_events_t
+)
+>>>>>>> develop
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
@@ -767,13 +771,13 @@ class MainDBSync(DBWrapperSync):
     def insert_transactions(self, transactions_data):
         if transactions_data:
             transactions = []
-            for td in transactions_data:
-                tx1 = copy(td)
-                tx1['address'] = tx1['from']
-                tx2 = copy(td)
-                tx2['address'] = tx2['to']
-                transactions.append(tx1)
-                transactions.append(tx2)
+            for tx in transactions_data:
+                from_tx = {'address': tx['from'], **tx}
+                to_tx = {'address': tx['to'], **tx}
+
+                transactions.append(from_tx)
+                transactions.append(to_tx)
+
             self.execute(transactions_t.insert(), *transactions)
 
     def insert_receipts(self, receipts_data):

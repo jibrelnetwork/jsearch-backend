@@ -66,7 +66,7 @@ def event_from_tx(address: str, tx_data: Transaction) -> Event:
                 'sender': tx_data['from'],
                 'recipient': tx_data['to'],
                 'amount': str(int(tx_data['value'], 16)),
-                'status': tx_data['receipt_status']
+                'status': tx_data['status']
             }
         }
 
@@ -124,7 +124,7 @@ def event_from_internal_tx(address: str,
         return None
 
     event_type = WalletEventType.ETH_TRANSFER
-    if tx_data['receipt_status'] == 0 or internal_tx_data['status'] != 'success':
+    if tx_data['status'] == 0 or internal_tx_data['status'] != 'success':
         event_status = 0
     else:
         event_status = 1
