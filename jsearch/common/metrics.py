@@ -13,7 +13,6 @@ MetricCallable = Callable[..., Awaitable[MetricValue]]
 MetricCallableDecorator = Callable[[MetricCallable], MetricCallable]
 
 
-
 class Metric:
     name: str
     value: MetricValue
