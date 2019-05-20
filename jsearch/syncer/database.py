@@ -697,6 +697,7 @@ class MainDB(DBWrapper):
             return dict(row) if row else None
 
     async def insert_chain_event(self, event):
+        event['event_type'] = event.pop('type')
         q = chain_events_t.insert().values(**event)
         async with self.engine.acquire() as conn:
             await conn.execute(q)

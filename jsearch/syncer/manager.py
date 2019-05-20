@@ -123,23 +123,23 @@ class Manager:
         start_time = time.monotonic()
         logger.info("Start Processing Chain Event", extra={
             'event_id': event['id'],
-            'event_type': event['event_type'],
+            'event_type': event['type'],
         })
-        if event['event_type'] == ChainEvent.INSERT:
+        if event['type'] == ChainEvent.INSERT:
             await self.process_insert_block(event['block_hash'], event['block_number'])
-        elif event['event_type'] == ChainEvent.REINSERT:
+        elif event['type'] == ChainEvent.REINSERT:
             # await self.process_reinsert_block(event['block_hash'], event['block_num'])
             pass
-        elif event['event_type'] == ChainEvent.SPLIT:
+        elif event['type'] == ChainEvent.SPLIT:
             await self.process_chain_split(event['split_id'])
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],
-                'event_type': event['event_type'],
+                'event_type': event['type'],
             })
         logger.info("Finish Processing Chain Event", extra={
             'event_id': event['id'],
-            'event_type': event['event_type'],
+            'event_type': event['type'],
             'time': '{:0.2f}s'.format(time.monotonic() - start_time)
         })
         await self.main_db.insert_chain_event(event)
