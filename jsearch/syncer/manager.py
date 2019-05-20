@@ -113,7 +113,6 @@ class Manager:
 
     @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def get_and_process_blocks(self):
-        raise ValueError()
         start_time = time.monotonic()
         blocks_to_sync = await self.get_blocks_to_sync()
         if len(blocks_to_sync) == 0:
