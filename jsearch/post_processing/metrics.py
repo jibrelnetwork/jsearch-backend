@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
-from typing import Optional, Union, DefaultDict, List
+from typing import Optional, Union, DefaultDict, List, Dict, Any, Callable, NoReturn
 
 from jsearch.utils import Singleton
 
@@ -11,31 +11,37 @@ logger = logging.getLogger(__name__)
 
 class Metric:
     name: str
-    value: Optional[Union[int, float]]
+    value: Union[int, float]
 
     started_at: float
     finished_at: Optional[float]
 
-    def __init__(self, name):
+    def __init__(self, name) -> None:
         self.name = name
-        self.started_at = time.time()
+        self.value = 0
+        self.started_at = time.monotonic()
+        self.finished_at = None
+
+    def __repr__(self) -> str:
+        return f"<Metric {self.name} = {self.value} / {self.worked_time} = {self.speed}"
 
     @property
-    def worked_time(self):
+    def worked_time(self) -> float:
         if self.finished_at:
             return self.finished_at - self.started_at
 
+        return 0.0
+
     @property
-    def speed(self):
+    def speed(self) -> float:
         if self.value and self.worked_time:
             return self.value / self.worked_time
 
-    def finish(self, value: Union[int, float]):
-        self.value = value
-        self.finished_at = time.time()
+        return 0.0
 
-    def __repr__(self):
-        return f"<Metric {self.name} = {self.value} / {self.worked_time} = {self.speed}"
+    def finish(self, value: Union[int, float]) -> None:
+        self.value = value
+        self.finished_at = time.monotonic()
 
 
 class Metrics(Singleton):
@@ -52,73 +58,79 @@ class Metrics(Singleton):
     - show average metrics
     >>> metrics.show()
     """
-    logs: int
-    blocks: int
-    timeout: int  # seconds
+    timeout: int
 
+    future: Optional[asyncio.Future]
     metrics: DefaultDict[str, List[Metric]]
+    values: Dict[str, Any]
 
-    def __init__(self, timeout=5):
-        self.logs = 0
-        self.blocks = 0
+    def __init__(self, timeout=5) -> None:
         self.timeout = timeout
 
         self.future = None
         self.metrics = defaultdict(list)
         self.values = {}
 
-    def update(self, metric: Metric):
+    def update(self, metric: Metric) -> None:
         self.ensure_started()
         self.metrics[metric.name].append(metric)
 
-    def set_value(self, name, value, is_need_to_update):
+    def set_value(self, name: str, value: Any, is_need_to_update: Callable[[Any, Any], bool]) -> None:
         """
         set value to metrics
 
         it there is a callback - value will rewrite only if callback returns True
         """
         prev = self.values.get(name)
+
         if is_need_to_update(prev, value):
             self.values[name] = value
 
-    def ensure_started(self):
+    def ensure_started(self) -> None:
         if not self.future:
             self.future = asyncio.ensure_future(self.task())
 
-    def ensure_stop(self):
-        if self.future:
-            self.future.cancel()
-
-    def show(self):
+    def show(self) -> None:
         for name, metrics in self.metrics.items():
-            if metrics:
-                value = sum([metric.value for metric in metrics], 0)
-                worked_time = sum([metric.worked_time for metric in metrics], 0)
-                speed = value / worked_time
-                logger.info(
-                    'Metrics',
-                    extra={
-                        'tag': 'METRICS',
-                        'metrics_name': name,
-                        'total_items_count': value,
-                        'total_time': worked_time,
-                        'per_worker_speed': speed,
-                    }
-                )
-
-            self.metrics[name].clear()
+            show_metrics(name, metrics)
 
         for name, value in self.values.items():
-            logger.info(
-                'Metrics by values',
-                extra={
-                    'tag': 'METRICS',
-                    'metrics_name': name,
-                    'total_items_count': value,
-                }
-            )
+            show_value(name, value)
 
-    async def task(self):
+    async def task(self) -> NoReturn:
         while True:
             self.show()
             await asyncio.sleep(self.timeout)
+
+
+def show_metrics(name: str, metrics: List[Metric]) -> None:
+    if not metrics:
+        return
+
+    value = sum([metric.value for metric in metrics], 0.0)
+    worked_time = sum([metric.worked_time for metric in metrics], 0.0)
+    speed = value / worked_time if worked_time else 0.0
+
+    logger.info(
+        'Metrics',
+        extra={
+            'tag': 'METRICS',
+            'metrics_name': name,
+            'metrics_total_count': value,
+            'metrics_total_time': worked_time,
+            'per_worker_speed': speed,
+        }
+    )
+
+    metrics.clear()
+
+
+def show_value(name: str, value: Any) -> None:
+    logger.info(
+        'Metrics by values',
+        extra={
+            'tag': 'METRICS',
+            'metrics_name': name,
+            'metrics_value': value,
+        }
+    )
