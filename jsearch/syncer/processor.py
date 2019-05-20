@@ -1,14 +1,15 @@
 import logging
+from collections import defaultdict
+
 import re
 import time
-from collections import defaultdict
 from typing import Optional, NamedTuple, Dict, Any, List, Tuple
 
 from jsearch import service_bus
 from jsearch import settings
 from jsearch.common import contracts
 from jsearch.syncer.database import MainDBSync, RawDBSync
-from jsearch.typing import Logs
+from jsearch.typing import Logs, Transaction
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +138,7 @@ class SyncProcessor:
         block_data = self.process_header(header, block_reward)
         uncles_data = self.process_uncles(uncles, uncles_rewards, block_number, block_hash)
         transactions_data = self.process_transactions(transactions, block_number, block_hash)
-        receipts_data, logs_data = self.process_receipts(
+        receipts_data, transactions_data, logs_data = self.process_receipts(
             receipts=receipts,
             transactions=transactions_data,
             block_number=block_number,
@@ -211,7 +212,7 @@ class SyncProcessor:
                          receipts: Dict[str, Any],
                          transactions: List[Dict[str, Any]],
                          block_number: int,
-                         block_hash: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+                         block_hash: str) -> Tuple[List[Dict[str, Any]], List[Transaction], List[Dict[str, Any]]]:
         rdata: List[Dict[str, Any]] = receipts['fields']['Receipts'] or []
         recpt_items = []
         logs_items = []
@@ -219,18 +220,28 @@ class SyncProcessor:
             recpt_data = dict_keys_case_convert(receipt)
             tx = transactions[i]
             assert tx['hash'] == recpt_data['transaction_hash']
+
             recpt_data['transaction_index'] = i
             recpt_data['to'] = tx['to']
             recpt_data['from'] = tx['from']
+            recpt_data.update({
+                'transaction_index': i,
+                'to': tx['to'],
+                'from': tx['from'],
+                'block_hash': block_hash,
+                'block_number': block_number,
+            })
+
             logs = recpt_data.pop('logs') or []
-            recpt_data['block_hash'] = block_hash
-            recpt_data['block_number'] = block_number
+            logs = self.process_logs(logs, status=recpt_data['status'])
+            logs_items.extend(logs)
+
             hex_vals_to_int(recpt_data, ['cumulative_gas_used', 'gas_used', 'status'])
             recpt_items.append(recpt_data)
 
-            logs = self.process_logs(logs, status=recpt_data['status'])
-            logs_items.extend(logs)
-        return recpt_items, logs_items
+            tx['status'] = int(recpt_data['status'])
+
+        return recpt_items, transactions, logs_items
 
     def process_logs(self, logs: Logs, status: bool) -> Logs:
         items = []
