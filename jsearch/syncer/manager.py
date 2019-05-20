@@ -60,7 +60,15 @@ class Manager:
             self.tasks.append(task)
 
     async def wait(self):
-        await asyncio.wait(self.tasks, return_when=asyncio.FIRST_EXCEPTION)
+        done, pending = await asyncio.wait(self.tasks, return_when=asyncio.FIRST_EXCEPTION)
+
+        for task in done:
+            try:
+                task.result()
+            except Exception as e:
+                logger.exception(e)
+            self.tasks.remove(task)
+
         await self.stop()
 
     async def stop(self, timeout=60):
@@ -105,6 +113,7 @@ class Manager:
 
     @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def get_and_process_blocks(self):
+        raise ValueError()
         start_time = time.monotonic()
         blocks_to_sync = await self.get_blocks_to_sync()
         if len(blocks_to_sync) == 0:
