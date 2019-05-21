@@ -2,16 +2,20 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
-from typing import Optional, Union, DefaultDict, List, Dict, Any, Callable, NoReturn
+from typing import Optional, Union, DefaultDict, List, Dict, Any, Callable, NoReturn, Awaitable
 
 from jsearch.utils import Singleton
 
 logger = logging.getLogger(__name__)
 
+MetricValue = Union[int, float]
+MetricCallable = Callable[..., Awaitable[MetricValue]]
+MetricCallableDecorator = Callable[[MetricCallable], MetricCallable]
+
 
 class Metric:
     name: str
-    value: Union[int, float]
+    value: MetricValue
 
     started_at: float
     finished_at: Optional[float]
@@ -39,7 +43,7 @@ class Metric:
 
         return 0.0
 
-    def finish(self, value: Union[int, float]) -> None:
+    def finish(self, value: MetricValue) -> None:
         self.value = value
         self.finished_at = time.monotonic()
 
@@ -143,3 +147,18 @@ def show_value(name: str, value: Any) -> None:
 
 
 metrics = Metrics()
+
+
+def with_metrics(name: str) -> MetricCallableDecorator:
+    def decorator(func: MetricCallable) -> MetricCallable:
+        async def inner(*args: Any, **kwargs: Any) -> Any:
+            metric = Metric(name)
+            metric_value = await func(*args, **kwargs)
+            metric.finish(metric_value)
+            metrics.update(metric)
+
+            return metric_value
+
+        return inner
+
+    return decorator
