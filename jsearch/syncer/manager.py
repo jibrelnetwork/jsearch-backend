@@ -175,7 +175,7 @@ class Manager:
 
     @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def get_and_process_chain_event(self):
-        last_event = await self.main_db.get_last_chain_event()
+        last_event = await self.main_db.get_last_chain_event(self.sync_range)
         if last_event is None:
             next_event_id = 1
         else:

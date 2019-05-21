@@ -29,15 +29,10 @@ from jsearch.common.tables import (
     chain_splits_t,
     pending_transactions_t,
     assets_transfers_t,
-<<<<<<< HEAD
     chain_events_t,
     wallet_events_t,
 )
 
-=======
-    wallet_events_t
-)
->>>>>>> develop
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
@@ -693,10 +688,20 @@ class MainDB(DBWrapper):
         async with self.engine.acquire() as conn:
             await conn.execute(q)
 
-    async def get_last_chain_event(self):
-        q = """SELECT * FROM chain_events ORDER BY id DESC LIMIT 1"""
+    async def get_last_chain_event(self, sync_range):
+        if sync_range[1] is not None:
+            cond = """block_number BETWEEN %s AND %s 
+                        OR common_block_number BETWEEN %s AND %s"""
+            params = list(sync_range) + list(sync_range)
+        else:
+            cond = """block_number >= %s 
+                        OR common_block_number >= %s"""
+            params = [sync_range[0], sync_range[0]]
+        q = f"""SELECT * FROM chain_events 
+                    WHERE {cond} 
+                    ORDER BY id DESC LIMIT 1"""
         async with self.engine.acquire() as conn:
-            res = await conn.execute(q)
+            res = await conn.execute(q, params)
             row = await res.fetchone()
             return dict(row) if row else None
 
