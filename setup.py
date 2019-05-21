@@ -18,6 +18,7 @@ setup(
     entry_points={
         'console_scripts': [
             'jsearch-syncer = jsearch.syncer.main:run',
+            'jsearch-syncer-pending = jsearch.pending_syncer.main:run',
             'jsearch-post-processing = jsearch.post_processing.__main__:main',
             'jsearch-check = jsearch.validation.__main__:check',
             'jsearch-worker = jsearch.worker.__main__:main',
