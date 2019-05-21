@@ -2120,7 +2120,7 @@ async def test_get_wallet_events_query_param_started_from_is_required(cli,
     block = block_factory.create()
     chain_splits = chain_split_factory.create()
     reorg = reorg_factory.create(block_hash=block.hash, block_number=block.number, split_id=chain_splits.id)
-    event = wallet_events_factory.create_token_transfer()
+    event = wallet_events_factory.create_token_transfer(block=block)
 
     url = f'v1/wallet/get_events?' \
           f'blockchain_address={event.address}&' \
@@ -2208,3 +2208,104 @@ async def test_get_wallet_events_query_param_tip_is_required(cli, block_factory,
         },
         'data': {},
     }
+
+
+async def test_get_wallet_events_pending_txs(cli, block_factory, wallet_events_factory, pending_transaction_factory):
+    # given
+    block = block_factory.create()
+    event = wallet_events_factory.create_token_transfer(block=block)
+    pending_tx = pending_transaction_factory.create_eth_transfer(to=event.address)
+
+    url = f'v1/wallet/get_events?' \
+          f'blockchain_address={event.address}&' \
+          f'blockchain_tip={block.hash}&' \
+          f'block_range_start={block.number}&' \
+          f'include_pending_events=1'
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+
+    assert response_json == {
+        'status': {
+            'success': True,
+            'errors': []
+        },
+        'data': {
+            'blockchainTip': {
+                'blockchainTipStatus': {
+                    'blockHash': block.hash,
+                    'blockNumber': block.number,
+                    'isOrphaned': False,
+                    'lastUnchangedBlock': None
+                },
+                'currentBlockchainTip': {
+                    'blockHash': block.hash,
+                    'blockNumber': block.number
+                }
+            },
+            'events': [],
+            'pending_events': [
+                {
+                    'events': [{
+                        'eventData': [
+                            {
+                                'fieldName': 'sender',
+                                'fieldValue': getattr(pending_tx, 'from')},
+                            {
+                                'fieldName': 'recipient',
+                                'fieldValue': pending_tx.to},
+                            {
+                                'fieldName': 'amount',
+                                'fieldValue': f'{int(pending_tx.value, 16)}'
+                            }
+                        ],
+                        'eventIndex': 0,
+                        'eventType': 'eth-transfer'
+                    }],
+                    'rootTxData': {
+                        'from': getattr(pending_tx, 'from'),
+                        'gas': str(pending_tx.gas),
+                        'gasPrice': str(pending_tx.gas_price),
+                        'hash': pending_tx.hash,
+                        'input': pending_tx.input,
+                        'nonce': str(pending_tx.nonce),
+                        'removed': False,
+                        'r': pending_tx.r,
+                        's': pending_tx.s,
+                        'to': pending_tx.to,
+                        'v': pending_tx.v,
+                        'status': pending_tx.status,
+                        'value': pending_tx.value,
+                    }
+                }
+            ]
+        }
+    }
+
+
+async def test_get_wallet_events_pending_txs_limit(cli,
+                                                   block_factory,
+                                                   wallet_events_factory,
+                                                   pending_transaction_factory):
+    # given
+    block = block_factory.create()
+    event = wallet_events_factory.create_token_transfer(block=block)
+    for i in range(0, 110):
+        pending_transaction_factory.create_eth_transfer(to=event.address)
+
+    url = f'v1/wallet/get_events?' \
+          f'blockchain_address={event.address}&' \
+          f'blockchain_tip={block.hash}&' \
+          f'block_range_start={block.number}&' \
+          f'include_pending_events=1'
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+
+    assert len(response_json['data']['pending_events']) == 100
