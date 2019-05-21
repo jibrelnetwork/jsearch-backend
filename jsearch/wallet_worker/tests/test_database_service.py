@@ -99,7 +99,7 @@ async def test_add_wallet_event_token_transfer(db, transfer_factory, transaction
         dict,
         FACTORY_CLASS=transfer_factory,
         transaction_hash=tx.hash,
-        token_value=5 * 10 ** 18,
+        token_value=5,
         token_decimals=18
     )
     transfer_data['status'] = 1
@@ -120,7 +120,8 @@ async def test_add_wallet_event_token_transfer(db, transfer_factory, transaction
         'event_data': {
             'recipient': transfer_data['to_address'],
             'sender': transfer_data['from_address'],
-            'amount': '5.0',
+            'amount': '5',
+            'decimals': '18',
             'asset': transfer_data['token_address'],
             'status': 1
         },
@@ -137,7 +138,8 @@ async def test_add_wallet_event_token_transfer(db, transfer_factory, transaction
         'event_data': {
             'recipient': transfer_data['to_address'],
             'sender': transfer_data['from_address'],
-            'amount': '5.0',
+            'amount': '5',
+            'decimals': '18',
             'asset': transfer_data['token_address'],
             'status': 1
         },

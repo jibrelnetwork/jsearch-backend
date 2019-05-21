@@ -89,7 +89,10 @@ def event_from_token_transfer(address: str, transfer_data: Transfer, tx_data: Tr
     """
     event_type = WalletEventType.ERC20_TRANSFER
     decimals = transfer_data['token_decimals'] or TOKEN_DECIMALS_DEFAULT
-    amount = str(transfer_data['token_value'] / 10 ** decimals)
+
+    amount = str(transfer_data['token_value'])
+    decimals = str(decimals)
+
     event_data = {
         'is_forked': False,
         'address': address,
@@ -103,6 +106,7 @@ def event_from_token_transfer(address: str, transfer_data: Transfer, tx_data: Tr
             'sender': transfer_data['from_address'],
             'recipient': transfer_data['to_address'],
             'amount': amount,
+            'decimals': decimals,
             'asset': transfer_data['token_address'],
             'status': transfer_data['status']
         }

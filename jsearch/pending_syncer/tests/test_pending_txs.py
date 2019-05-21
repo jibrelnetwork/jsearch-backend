@@ -62,7 +62,7 @@ async def test_pending_tx_is_not_saved_if_there_is_none(
 ) -> None:
     # No pending TXs are in DB.
 
-    await pending_syncer_service.get_and_process_pending_txs()
+    await pending_syncer_service.sync_pending_txs()
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
@@ -100,7 +100,7 @@ async def test_pending_tx_is_saved_to_main_db(
         ]
     )
 
-    await pending_syncer_service.get_and_process_pending_txs()
+    await pending_syncer_service.sync_pending_txs()
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
@@ -167,7 +167,7 @@ async def test_pending_tx_is_marked_as_removed(
         ]
     )
 
-    await pending_syncer_service.get_and_process_pending_txs()
+    await pending_syncer_service.sync_pending_txs()
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
@@ -225,7 +225,7 @@ async def test_pending_tx_can_be_saved_with_a_big_value(
         ]
     )
 
-    await pending_syncer_service.get_and_process_pending_txs()
+    await pending_syncer_service.sync_pending_txs()
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
