@@ -19,25 +19,27 @@ class WalletEventType:
 
 
 def get_event_type(tx_data: Transaction, is_pending=False) -> Optional[str]:
+    """
+    Accord to https://jibrelnetwork.atlassian.net/wiki/spaces/JWALLET/pages/769327162/Ethereum+blockchain+events
+    """
     if int(tx_data['value'], 16) != 0:
         return WalletEventType.ETH_TRANSFER
+
+    if tx_data['to'] == CANCELLATION_ADDRESS:
+        return WalletEventType.TX_CANCELLATION
 
     if tx_data['to'] == NULL_ADDRESS:
         return WalletEventType.CONTRACT_CALL
 
+    method_id = tx_data.get('input', "")[:10]
+    is_it_transfer = method_id in (ERC20_METHODS_IDS['transferFrom'], ERC20_METHODS_IDS['transfer'])
+
     is_receiver_contract = tx_data.get('to_contract') is True
-    if is_pending or is_receiver_contract:
+    if is_it_transfer and (is_receiver_contract or is_pending):
+        return WalletEventType.ERC20_TRANSFER
 
-        method_id = tx_data['input'][:10]
-        if method_id in (ERC20_METHODS_IDS['transferFrom'], ERC20_METHODS_IDS['transfer']):
-            return WalletEventType.CONTRACT_CALL
-        else:
-            return None
-
-    elif not is_receiver_contract:
-
-        if tx_data['to'] == CANCELLATION_ADDRESS:
-            return WalletEventType.TX_CANCELLATION
+    if method_id and (is_receiver_contract or is_pending):
+        return WalletEventType.CONTRACT_CALL
 
     return None
 
@@ -46,10 +48,12 @@ def event_from_tx(address: str, tx_data: Transaction) -> Event:
     """
     Make wallet event object from TX data
 
-    :param  address: from address of to address of Transaction - explicitly
-    :param tx_data: full TX data object
+    Args:
+        address: from address of to address of Transaction - explicitly
+        tx_data: full TX data object
 
-    :return: event data object
+    Returns:
+        event data object
     """
     event_type = get_event_type(tx_data)
     if event_type:
@@ -152,7 +156,7 @@ def event_from_internal_tx(address: str,
     return event_data
 
 
-def get_token_transfer_args_from_pending_tx(event_type: str, pending_tx: PendingTransaction) -> Tuple[str, str, str]:
+def get_token_transfer_args_from_pending_tx(pending_tx: PendingTransaction) -> Tuple[str, str, str]:
     try:
         tx_input = pending_tx['input']
         method_id = tx_input[:10]
@@ -183,8 +187,8 @@ def get_token_transfer_args_from_pending_tx(event_type: str, pending_tx: Pending
 def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> Event:
     event_type = get_event_type(pending_tx, is_pending=True)
 
-    if event_type == WalletEventType.CONTRACT_CALL:
-        sender, recipient, amount = get_token_transfer_args_from_pending_tx(event_type, pending_tx)
+    if event_type == WalletEventType.ERC20_TRANSFER:
+        sender, recipient, amount = get_token_transfer_args_from_pending_tx(pending_tx)
     else:
         sender = pending_tx['from']
         recipient = pending_tx['to']
