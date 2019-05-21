@@ -460,6 +460,7 @@ async def get_wallet_transactions(request):
 MAX_COUNT = 1000
 MAX_LIMIT = 1000
 MAX_OFFSET = 10000
+PENDING_EVENTS_DEFAULT_LIMIT = 100
 
 
 def get_address(request) -> str:
@@ -613,7 +614,11 @@ async def get_wallet_events(request):
     pending_events = []
     include_pending_events = request.query.get('include_pending_events', False)
     if include_pending_events:
-        pending_events = await storage.get_account_pending_events(address, order=ORDER_ASC)
+        pending_events = await storage.get_account_pending_events(
+            address,
+            order=ORDER_ASC,
+            limit=PENDING_EVENTS_DEFAULT_LIMIT
+        )
 
     return api_success({
         "blockchainTip": tip.to_dict(),
