@@ -22,6 +22,18 @@ def split(iterable: List[Any], size: int) -> List[List[Any]]:
 
 
 def parse_range(value: Optional[str] = None) -> Tuple[int, Optional[int]]:
+    """
+    >>> parse_range(None)
+    (0, None)
+    >>> parse_range('')
+    (0, None)
+    >>> parse_range('10-')
+    (10, None)
+    >>> parse_range('-10')
+    (1, 10)
+    >>> parse_range('10-20')
+    (10, 20)
+    """
     if not value:
         result = (0, None)
     else:
