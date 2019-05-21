@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+import backoff
 import mode
 
 from jsearch import settings
@@ -32,6 +33,7 @@ class PendingSyncerService(mode.Service):
             await self.sync_pending_txs()
 
     @metrics.with_metrics('pending_transactions')
+    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def sync_pending_txs(self) -> int:
         pending_txs = await self.get_pending_txs_to_sync()
 
