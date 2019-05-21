@@ -6,6 +6,10 @@ from typing import List, Any, Tuple, Optional, Callable
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_RANGE_START = 0
+DEFAULT_RANGE_END = None
+
+
 class Singleton(object):
     _instance = None  # Keep instance reference
 
@@ -30,23 +34,22 @@ def parse_range(value: Optional[str] = None) -> Tuple[int, Optional[int]]:
     >>> parse_range('10-')
     (10, None)
     >>> parse_range('-10')
-    (1, 10)
+    (0, 10)
     >>> parse_range('10-20')
     (10, 20)
     """
     if not value:
-        result = (0, None)
-    else:
-        parts = [p.strip() for p in value.split('-')]
-        if len(parts) != 2:
-            raise ValueError('Invalid sync_range option')
+        return DEFAULT_RANGE_START, DEFAULT_RANGE_END
 
-        value_from = int(parts[0]) if parts[0] else 1
-        value_until = int(parts[1]) if parts[1] else None
+    parts = [p.strip() for p in value.split('-')]
 
-        result = (value_from, value_until)
+    if len(parts) != 2:
+        raise ValueError('Invalid sync_range option')
 
-    return result
+    value_from = int(parts[0]) if parts[0] else DEFAULT_RANGE_START
+    value_until = int(parts[1]) if parts[1] else DEFAULT_RANGE_END
+
+    return value_from, value_until
 
 
 def add_gracefully_shutdown_handlers(callback: Callable[..., Any]):
