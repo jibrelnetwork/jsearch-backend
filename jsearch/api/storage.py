@@ -733,7 +733,7 @@ class Storage:
             event = get_event_from_pending_tx(address=account, pending_tx=tx)
             tx_data = {
                 'rootTxData': models.PendingTransaction(**tx).to_dict(),
-                'events': models.WalletEvent(**event).to_dict()
+                'events': [models.WalletEvent(**event).to_dict()] if event else []
             }
             result.append(tx_data)
 
