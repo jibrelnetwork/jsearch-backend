@@ -192,7 +192,7 @@ class RawDB(DBWrapper):
 
         return rows
 
-    async def get_pending_txs_from(self, last_synced_id, limit):
+    async def get_pending_txs(self, start_id, end_id):
         q = """
         SELECT
           "id",
@@ -202,12 +202,12 @@ class RawDB(DBWrapper):
           "timestamp",
           "removed",
           "node_id"
-        FROM "pending_transactions" WHERE "id" > %s ORDER BY "id" LIMIT %s
+        FROM "pending_transactions" WHERE "id" BETWEEN %s AND %s ORDER BY "id"
         """
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(q, [last_synced_id, limit])
+                await cur.execute(q, [start_id, end_id])
                 rows = await cur.fetchall()
                 cur.close()
 
