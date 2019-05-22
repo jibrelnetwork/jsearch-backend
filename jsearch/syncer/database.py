@@ -213,6 +213,29 @@ class RawDB(DBWrapper):
 
         return [dict(row) for row in rows]
 
+    async def get_pending_txs_from(self, last_synced_id, limit):
+        # TODO (Nick Gashkov): Remove after `Manager` will no longer sync
+        # pending transactions.
+        q = """
+        SELECT
+          "id",
+          "tx_hash",
+          "status",
+          "fields",
+          "timestamp",
+          "removed",
+          "node_id"
+        FROM "pending_transactions" WHERE "id" > %s ORDER BY "id" LIMIT %s
+        """
+
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [last_synced_id, limit])
+                rows = await cur.fetchall()
+                cur.close()
+
+        return [dict(row) for row in rows]
+
 
 class RawDBSync(DBWrapperSync):
 
