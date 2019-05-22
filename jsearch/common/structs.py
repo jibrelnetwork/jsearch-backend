@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 
 class DbStats(NamedTuple):
@@ -20,3 +20,8 @@ class KafkaStats(NamedTuple):
 
 class NodeStats(NamedTuple):
     is_healthy: bool
+
+
+class SyncRange(NamedTuple):
+    start: int
+    end: Optional[int]
