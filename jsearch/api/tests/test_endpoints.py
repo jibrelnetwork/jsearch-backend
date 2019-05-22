@@ -762,7 +762,7 @@ async def test_verify_contract_ok(db, cli, main_db_data, here, fuck_token):
         'source_code': fuck_token.sources
     }
 
-    with mock.patch('jsearch.api.handlers.aiohttp.request', new=AsyncContextManagerMock()) as m:
+    with mock.patch('jsearch.api.handlers.contracts.aiohttp.request', new=AsyncContextManagerMock()) as m:
         m.return_value.aenter.json = CoroutineMock(side_effect=[
             {
                 'bin': fuck_token.bin,
@@ -940,7 +940,7 @@ async def test_account_get_mined_blocks(cli, main_db_data):
 
 
 async def test_on_new_contracts_added(cli, mocker):
-    m = mocker.patch('jsearch.api.handlers.tasks.on_new_contracts_added_task')
+    m = mocker.patch('jsearch.api.handlers.contracts.tasks.on_new_contracts_added_task')
     resp = await cli.post('/_on_new_contracts_added', json={'address': 'abc', 'abi': 'ABI'})
     assert resp.status == 200
     m.delay.assert_called_with('abc')
