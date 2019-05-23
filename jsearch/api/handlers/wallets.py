@@ -215,7 +215,7 @@ async def get_assets_summary(request):
         offset=params['offset'],
         assets=assets
     )
-    return api_success(summary)
+    return api_success([item.to_dict() for item in summary])
 
 
 async def get_wallet_transfers(request):
