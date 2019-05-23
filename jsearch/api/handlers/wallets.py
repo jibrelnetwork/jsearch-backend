@@ -204,10 +204,22 @@ async def get_blockchain_tip(request):
     })
 
 
+@ApiError.catch
 async def get_assets_summary(request):
     params = validate_params(request)
     addresses = get_from_joined_string(request.query.get('addresses'))
     assets = get_from_joined_string(request.query.get('assets'))
+
+    if not addresses:
+        raise ApiError(
+            {
+                'param': 'addresses',
+                'error_code': ErrorCode.PARAM_REQUIRED,
+                'error_message': f'Query param `addresses` is required'
+            },
+            status=400
+        )
+
     storage = request.app['storage']
     summary = await storage.get_wallet_assets_summary(
         addresses,
