@@ -1,4 +1,4 @@
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, List
 
 
 class BlockInfo(NamedTuple):
@@ -38,3 +38,35 @@ class BlockchainTip(NamedTuple):
                 f"tip={self.tip_hash} "
                 f"is_fork={self.is_in_fork} "
                 f"last_unchanged={self.last_unchanged_block} />")
+
+
+class AssetSummary(NamedTuple):
+    address: str
+    balance: float
+    transfers_number: str
+
+    def to_dict(self):
+        return {
+            'address': self.address,
+            'balance': self.balance,
+            'transfersNumber': self.transfers_number
+        }
+
+
+AssetsSummary = List[AssetSummary]
+
+
+class AddressSummary(NamedTuple):
+    address: str
+    assets_summary: AssetsSummary
+    outgoing_transactions_number: str
+
+    def to_dict(self):
+        return {
+            'address': self.address,
+            'assetsSummary': [item.to_dict() for item in self.assets_summary],
+            'outgoingTransactionsNumber': self.outgoing_transactions_number
+        }
+
+
+AddressesSummary = List[AddressSummary]
