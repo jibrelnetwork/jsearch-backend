@@ -7,7 +7,8 @@ from aiohttp import web
 from aiohttp_swagger import setup_swagger
 
 from jsearch import settings
-from jsearch.api import handlers
+from jsearch.api.handlers import contracts
+from jsearch.api.handlers import monitoring, accounts, blocks, explorer, tokens, node_proxy, wallets
 from jsearch.api.middlewares import cors_middleware
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.api.storage import Storage
@@ -35,55 +36,55 @@ async def make_app():
     app['node_proxy'] = NodeProxy(settings.ETH_NODE_URL)
 
     # Configure service routes
-    app.router.add_route('GET', '/healthcheck', handlers.healthcheck)
-    app.router.add_route('GET', '/v1/accounts/balances', handlers.get_accounts_balances)
-    app.router.add_route('GET', '/v1/accounts/{address}', handlers.get_account)
-    app.router.add_route('GET', '/v1/accounts/{address}/transactions', handlers.get_account_transactions)
+    app.router.add_route('GET', '/healthcheck', monitoring.healthcheck)
+    app.router.add_route('GET', '/v1/accounts/balances', accounts.get_accounts_balances)
+    app.router.add_route('GET', '/v1/accounts/{address}', accounts.get_account)
+    app.router.add_route('GET', '/v1/accounts/{address}/transactions', accounts.get_account_transactions)
     app.router.add_route(
-        'GET', '/v1/accounts/{address}/internal_transactions', handlers.get_account_internal_transactions
+        'GET', '/v1/accounts/{address}/internal_transactions', accounts.get_account_internal_transactions
     )
     app.router.add_route(
-        'GET', '/v1/accounts/{address}/pending_transactions', handlers.get_account_pending_transactions
+        'GET', '/v1/accounts/{address}/pending_transactions', accounts.get_account_pending_transactions
     )
-    app.router.add_route('GET', '/v1/accounts/{address}/mined_blocks', handlers.get_account_mined_blocks)
-    app.router.add_route('GET', '/v1/accounts/{address}/mined_uncles', handlers.get_account_mined_uncles)
-    app.router.add_route('GET', '/v1/accounts/{address}/token_transfers', handlers.get_account_token_transfers)
+    app.router.add_route('GET', '/v1/accounts/{address}/mined_blocks', accounts.get_account_mined_blocks)
+    app.router.add_route('GET', '/v1/accounts/{address}/mined_uncles', accounts.get_account_mined_uncles)
+    app.router.add_route('GET', '/v1/accounts/{address}/token_transfers', accounts.get_account_token_transfers)
     app.router.add_route(
-        'GET', '/v1/accounts/{address}/token_balance/{token_address}', handlers.get_account_token_balance
+        'GET', '/v1/accounts/{address}/token_balance/{token_address}', accounts.get_account_token_balance
     )
-    app.router.add_route('GET', '/v1/accounts/{address}/logs', handlers.get_account_logs)
+    app.router.add_route('GET', '/v1/accounts/{address}/logs', accounts.get_account_logs)
 
-    app.router.add_route('GET', '/v1/blocks', handlers.get_blocks)
-    app.router.add_route('GET', '/v1/blocks/{tag}', handlers.get_block)
-    app.router.add_route('GET', '/v1/blocks/{tag}/transactions', handlers.get_block_transactions)
-    app.router.add_route('GET', '/v1/blocks/{tag}/uncles', handlers.get_block_uncles)
+    app.router.add_route('GET', '/v1/blocks', blocks.get_blocks)
+    app.router.add_route('GET', '/v1/blocks/{tag}', blocks.get_block)
+    app.router.add_route('GET', '/v1/blocks/{tag}/transactions', blocks.get_block_transactions)
+    app.router.add_route('GET', '/v1/blocks/{tag}/uncles', blocks.get_block_uncles)
 
-    app.router.add_route('GET', '/v1/transactions/{txhash}', handlers.get_transaction)
-    app.router.add_route('GET', '/v1/transactions/internal/{txhash}', handlers.get_internal_transactions)
-    app.router.add_route('GET', '/v1/transactions/pending/{txhash}', handlers.get_pending_transactions)
-    app.router.add_route('GET', '/v1/receipts/{txhash}', handlers.get_receipt)
+    app.router.add_route('GET', '/v1/transactions/{txhash}', explorer.get_transaction)
+    app.router.add_route('GET', '/v1/transactions/internal/{txhash}', explorer.get_internal_transactions)
+    app.router.add_route('GET', '/v1/transactions/pending/{txhash}', explorer.get_pending_transactions)
+    app.router.add_route('GET', '/v1/receipts/{txhash}', explorer.get_receipt)
 
-    app.router.add_route('GET', '/v1/uncles', handlers.get_uncles)
-    app.router.add_route('GET', '/v1/uncles/{tag}', handlers.get_uncle)
+    app.router.add_route('GET', '/v1/uncles', explorer.get_uncles)
+    app.router.add_route('GET', '/v1/uncles/{tag}', explorer.get_uncle)
 
-    app.router.add_route('POST', '/v1/verify_contract', handlers.verify_contract)
+    app.router.add_route('POST', '/v1/verify_contract', contracts.verify_contract)
 
-    app.router.add_route('GET', '/v1/tokens/{address}/transfers', handlers.get_token_transfers)
-    app.router.add_route('GET', '/v1/tokens/{address}/holders', handlers.get_token_holders)
+    app.router.add_route('GET', '/v1/tokens/{address}/transfers', tokens.get_token_transfers)
+    app.router.add_route('GET', '/v1/tokens/{address}/holders', tokens.get_token_holders)
 
-    app.router.add_route('GET', '/v1/gas_price', handlers.get_gas_price)
-    app.router.add_route('POST', '/v1/transaction_count', handlers.get_transaction_count)
-    app.router.add_route('POST', '/v1/estimate_gas', handlers.calculate_estimate_gas)
-    app.router.add_route('POST', '/v1/call_contract', handlers.call_contract)
-    app.router.add_route('POST', '/v1/send_raw_transaction', handlers.send_raw_transaction)
+    app.router.add_route('GET', '/v1/gas_price', node_proxy.get_gas_price)
+    app.router.add_route('POST', '/v1/transaction_count', node_proxy.get_transaction_count)
+    app.router.add_route('POST', '/v1/estimate_gas', node_proxy.calculate_estimate_gas)
+    app.router.add_route('POST', '/v1/call_contract', node_proxy.call_contract)
+    app.router.add_route('POST', '/v1/send_raw_transaction', node_proxy.send_raw_transaction)
 
-    app.router.add_route('GET', '/v1/wallet/blockchain_tip', handlers.get_blockchain_tip)
-    app.router.add_route('GET', '/v1/wallet/assets_summary', handlers.get_assets_summary)
-    app.router.add_route('GET', '/v1/wallet/transfers', handlers.get_wallet_transfers)
-    app.router.add_route('GET', '/v1/wallet/transactions', handlers.get_wallet_transactions)
-    app.router.add_route('GET', '/v1/wallet/get_events', handlers.get_wallet_events)
+    app.router.add_route('GET', '/v1/wallet/blockchain_tip', wallets.get_blockchain_tip)
+    app.router.add_route('GET', '/v1/wallet/assets_summary', wallets.get_assets_summary)
+    app.router.add_route('GET', '/v1/wallet/transfers', wallets.get_wallet_transfers)
+    app.router.add_route('GET', '/v1/wallet/transactions', wallets.get_wallet_transactions)
+    app.router.add_route('GET', '/v1/wallet/get_events', wallets.get_wallet_events)
 
-    app.router.add_route('POST', '/_on_new_contracts_added', handlers.on_new_contracts_added)
+    app.router.add_route('POST', '/_on_new_contracts_added', contracts.on_new_contracts_added)
 
     app.router.add_static('/docs', swagger_ui_path)
     setup_swagger(app, swagger_from_file=swagger_file)
