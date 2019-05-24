@@ -1,12 +1,11 @@
 import asyncio
 import logging
-import os
 
 import aiomonitor
 import click
 
-from jsearch.common import worker
-from jsearch.common.logs import configure
+from jsearch import settings
+from jsearch.common import worker, logs
 from jsearch.service_bus import (
     service_bus,
     ROUTE_WALLET_HANDLE_ASSETS_UPDATE,
@@ -92,9 +91,10 @@ async def handle_assets_update(updates):
 
 
 @click.command()
-@click.option('--log-level', default=os.getenv('LOG_LEVEL', 'INFO'))
-def main(log_level: str) -> None:
-    configure(log_level)
+@click.option('--log-level', settings.LOG_LEVEL)
+@click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
+def main(log_level: str, no_json_logging: bool) -> None:
+    logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_logging))
     loop = asyncio.get_event_loop()
     with aiomonitor.start_monitor(loop=loop):
         worker.Worker(
