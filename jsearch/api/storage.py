@@ -628,7 +628,8 @@ class Storage:
                 nonce = 0
                 for row in addr_map.get(addr, []):
                     asset_summary = AssetSummary(
-                        balance=float(row['value'] / 10 ** row['decimals']),
+                        balance=str(row['value']),
+                        decimals=str(row['decimals']),
                         address=row['asset_address'],
                         transfers_number=row['tx_number'],
                     )
