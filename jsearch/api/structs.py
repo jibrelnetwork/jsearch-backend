@@ -42,13 +42,15 @@ class BlockchainTip(NamedTuple):
 
 class AssetSummary(NamedTuple):
     address: str
-    balance: float
+    balance: str
+    decimals: str
     transfers_number: str
 
     def to_dict(self):
         return {
             'address': self.address,
             'balance': self.balance,
+            'decimals': self.decimals,
             'transfersNumber': self.transfers_number
         }
 
