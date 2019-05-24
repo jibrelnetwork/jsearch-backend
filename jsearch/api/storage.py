@@ -627,16 +627,23 @@ class Storage:
                 assets_summary = []
                 nonce = 0
                 for row in addr_map.get(addr, []):
+                    balance = int(row['value'])
+                    decimals = int(row['decimals']) if row['decimals'] is not None else ""
+
                     asset_summary = AssetSummary(
-                        balance=str(row['value']),
-                        decimals=str(row['decimals']),
+                        balance=str(balance),
+                        decimals=str(decimals),
                         address=row['asset_address'],
                         transfers_number=row['tx_number'],
                     )
                     assets_summary.append(asset_summary)
                     nonce = row['nonce']
 
-                item = AddressSummary(address=addr, assets_summary=assets_summary, outgoing_transactions_number=nonce)
+                item = AddressSummary(
+                    address=addr,
+                    assets_summary=assets_summary,
+                    outgoing_transactions_number=str(nonce)
+                )
                 summary.append(item)
             return summary
 

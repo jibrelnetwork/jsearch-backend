@@ -1259,20 +1259,20 @@ async def test_get_wallet_assets_summary(cli, db):
     assert resp.status == 200
     res = (await resp.json())['data']
     assert res == [{'address': 'a1',
-                    'assetsSummary': [{'address': '', 'balance': 300.0, 'transfersNumber': 3},
-                                      {'address': 'c1', 'balance': 100.0, 'transfersNumber': 1},
-                                      {'address': 'c2', 'balance': 200.0, 'transfersNumber': 2}],
-                    'outgoingTransactionsNumber': 10},
+                    'assetsSummary': [{'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 3},
+                                      {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 1},
+                                      {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 2}],
+                    'outgoingTransactionsNumber': "10"},
                    {'address': 'a2',
-                    'assetsSummary': [{'address': 'c1', 'balance': 100.0, 'transfersNumber': 1}],
-                    'outgoingTransactionsNumber': 5}]
+                    'assetsSummary': [{'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 1}],
+                    'outgoingTransactionsNumber': "5"}]
 
     resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1&assets=c2')
     assert resp.status == 200
     res = (await resp.json())['data']
     assert res == [{'address': 'a1',
-                    'assetsSummary': [{'address': 'c2', 'balance': 200.0, 'transfersNumber': 2}],
-                    'outgoingTransactionsNumber': 10},
+                    'assetsSummary': [{'address': 'c2', 'balance': "20000", "decimals": "2", 'transfersNumber': 2}],
+                    'outgoingTransactionsNumber': "10"},
                    ]
 
 
