@@ -17,13 +17,27 @@ info:
 #   description: Secured Admin-only calls
 # - name: developers
 #   description: Operations available to regular developers
-  
+
 parameters:
   address:
     name: address
     in: path
     required: true
     description: Account address
+    type: string
+    format: address
+  blockchain_address:
+    name: blockchain_address
+    in: query
+    required: true
+    description: Blockchain account address
+    type: string
+    format: address
+  blockchain_tip:
+    name: blockchain_tip
+    in: query
+    required: true
+    description: Blockchain tip ( as block hash from /v1/wallet/blockchain_tip)
     type: string
     format: address
   addresses:
@@ -84,7 +98,41 @@ parameters:
       type: string
       enum: [asc, desc]
     default: asc
-    
+  block_range_start:
+    name: block_range_start
+    in: query
+    required: true
+    description: Filter by block number
+    schema:
+      oneOf:
+        - type: integer
+          example: 1000
+        - type: string
+          enum: [latest, tip]
+          example:
+            - "latest"
+            - "tip"
+    default: "tip"
+  block_range_end:
+    name: block_range_end
+    in: query
+    description: Filter by block number
+    schema:
+      oneOf:
+        - type: integer
+          example: 1000
+        - type: string
+          enum: [latest, tip]
+          example:
+            - "latest"
+            - "tip"
+    type: integer
+  block_range_count:
+    name: block_range_count
+    in: query
+    description: Filter by blocks count
+    type: integer
+
 paths:
 
   /v1/accounts/balances:
@@ -908,6 +956,70 @@ paths:
               data:
                 $ref: '#/definitions/AddressSummary'
 
+  /v1/wallet/get_events:
+    get:
+      summary: Get blockchain events (contract call, erc20 transfer, either transfer, transactions cancelation) for address.
+      parameters:
+        - $ref: '#/parameters/blockchain_address'
+        - $ref: '#/parameters/blockchain_tip'
+        - $ref: '#/parameters/block_range_start'
+        - $ref: '#/parameters/block_range_end'
+        - $ref: '#/parameters/block_range_count'
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+      responses:
+        200:
+          schema:
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              data:
+                properties:
+                  blockchainTip:
+                    $ref: '#/definitions/BlockchainTipInfo'
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/definitions/TransactionInfo'
+                  pending_events:
+                    type: array
+                    items:
+                      $ref: '#/definitions/PendingTransactionInfo'
+
+        400:
+          description: Validation errors
+          schema:
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              errors:
+                $ref: '#/definitions/Errors'
+            example:
+              - {"success": false,
+                 "errors": [{"field": "blockchain_address",
+                             "error_code": "VALIDATION_ERROR",
+                             "error_message": "Query param `blockchain_address` is required'"}]}
+              - {"success": false,
+                 "errors": [{"field": "blockchain_tip",
+                             "error_code": "VALIDATION_ERROR",
+                             "error_message": "Query param `blockchain_tip` is required'"}]}
+              - {"success": false,
+                 "errors": [{"field": "block_range_start",
+                             "error_code": "VALIDATION_ERROR",
+                             "error_message": "query param `block range start ` is required'"}]}
+        404:
+          description: Not found
+          schema:
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              errors:
+                $ref: '#/definitions/Errors'
+            example:
+              - {"success": false,
+                 "errors": [{"field": "tip",
+                             "error_code": "BLOCK_NOT_FOUND",
+                             "error_message": "Block with hash {block_hash} not found"}]}
 definitions:
 
   Account:
@@ -938,7 +1050,7 @@ definitions:
         type: string
         format: dec
         example: "1029436321514224"
-  
+
   Transaction:
     properties:
       blockHash:
@@ -1086,7 +1198,7 @@ definitions:
         type: string
         format: dec
         example: "0"
- 
+
   Block:
     properties:
       difficulty:
@@ -1341,7 +1453,7 @@ definitions:
       transactionIndex:
         type: integer
         example: 2
-        
+
   Balance:
     properties:
       balance:
@@ -1352,11 +1464,11 @@ definitions:
         type: string
         format: address
         example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
-        
+
   Contract:
     properties:
       name:
-        type: string      
+        type: string
       address:
         type: string
         format: address
@@ -1381,7 +1493,7 @@ definitions:
         type: string
       token:
         type: string
-  
+
   Token:
     properties:
       contractAddress:
@@ -1397,7 +1509,7 @@ definitions:
       totalSupply:
         type: string
         format: dec
-  
+
   TokenTransfer:
     properties:
       timestamp:
@@ -1503,13 +1615,78 @@ definitions:
 
   BlockchainTip:
     properties:
-      hash:
+      blockHash:
+        summary: Last block hash as blockchain tip.
         type: string
         format: hex
         example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
-      number:
+      blockNumber:
+        summary: Last block number in network.
         type: integer
         example: 900056
+
+  BlockchainTipInfo:
+    properties:
+      currentBlockchainTip:
+        $ref: '#/definitions/BlockchainTip'
+      blockchainTipStatus:
+        type: object
+        properties:
+          blockHash:
+            summary: Block hash from request query.
+            type: string
+            format: hex
+            example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
+          blockNumber:
+            summary: Block number from request query.
+            type:
+            example: 900056
+          isOrphaned:
+            summary: If positive - then tip is in a fork block.
+            type: boolean
+            example: False
+          lastUnchangedBlock:
+            summary: Latest block in a canonical chain. Client should invalidate cache since this block number.
+            type: integer
+            example: 0
+
+  WalletEvent:
+    properties:
+      type:
+        type: string
+      event_index:
+        type: integer
+      event_data:
+        type: array
+        items:
+          properties:
+            fieldName:
+              type: string
+              summary: Name of field
+              example: 'asset'
+            fieldValue:
+              type: string
+              summary: Value of field
+              example: '0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413'
+
+
+  TransactionInfo:
+    properties:
+      rootTxData:
+        $ref: '#/definitions/Transaction'
+      events:
+        type: array
+        items:
+          $ref: '#/definitions/WalletEvent'
+
+  PendingTransactionInfo:
+    properties:
+      rootTxData:
+        $ref: '#/definitions/PendingTransaction'
+      events:
+        type: array
+        items:
+          $ref: '#/definitions/WalletEvent'
 
   Error:
     type: object
