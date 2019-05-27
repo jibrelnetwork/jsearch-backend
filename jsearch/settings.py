@@ -12,6 +12,7 @@ JSEARCH_MAIN_DB = os.getenv('JSEARCH_MAIN_DB', 'postgres://localhost/jsearch_mai
 JSEARCH_RAW_DB = os.getenv('JSEARCH_RAW_DB', 'postgres://localhost/jsearch_raw')
 
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+NO_JSON_FORMATTER = bool(int(os.getenv('NO_JSON_FORMATTER', '0')))
 
 # can get list of connection.
 # examples:
