@@ -2101,7 +2101,7 @@ async def test_get_wallet_events_tip_does_not_exist(cli,
         'status': {
             'errors': [
                 {
-                    'error_code': 'BLOCK_NOT_FOUND',
+                    'error_code': ErrorCode.BLOCK_NOT_FOUND,
                     'error_message': f'Block with hash {unsaved_block.hash} not found',
                     'field': 'tip'
                 }
@@ -2138,7 +2138,7 @@ async def test_get_wallet_events_query_param_started_from_is_required(cli,
             'errors': [
                 {
                     'field': 'block_range_start',
-                    'error_code': ErrorCode.PARAM_REQUIRED,
+                    'error_code': ErrorCode.VALIDATION_ERROR,
                     'error_message': f'Query param `block_range_start` is required'
                 },
             ]
@@ -2172,7 +2172,7 @@ async def test_get_wallet_events_query_param_address_is_required(cli,
             'errors': [
                 {
                     'param': 'blockchain_address',
-                    'error_code': ErrorCode.PARAM_REQUIRED,
+                    'error_code': ErrorCode.VALIDATION_ERROR,
                     'error_message': 'Query param `blockchain_address` is required'
                 },
             ]
@@ -2201,7 +2201,7 @@ async def test_get_wallet_events_query_param_tip_is_required(cli, block_factory,
             'errors': [
                 {
                     'param': 'blockchain_tip',
-                    'error_code': ErrorCode.PARAM_REQUIRED,
+                    'error_code': ErrorCode.VALIDATION_ERROR,
                     'error_message': f'Query param `blockchain_tip` is required'
                 },
             ]
