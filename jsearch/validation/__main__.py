@@ -1,10 +1,10 @@
 # !/usr/bin/env python
 import asyncio
 import logging
-import os
 
 import click
 
+from jsearch import settings
 from jsearch.common import logs
 from jsearch.service_bus import service_bus
 from jsearch.validation.balances import check_token_holder_balances, show_statistics, show_top_holders
@@ -18,9 +18,18 @@ logger = logging.getLogger(__name__)
 @click.option('--check-balances', is_flag=True)
 @click.option('--show-holders', is_flag=True)
 @click.option('--rewrite', is_flag=True)
-@click.option('--log-level', default=os.getenv('LOG_LEVEL', 'INFO'), help="Log level")
-def check(token, check_balances, rewrite, show_holders, log_level):
-    logs.configure(log_level)
+@click.option('--log-level', settings.LOG_LEVEL, help="Log level")
+@click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
+def check(
+        token: str,
+        check_balances: bool,
+        rewrite: bool,
+        show_holders: bool,
+        log_level: str,
+        no_json_formatter: bool,
+) -> None:
+
+    logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
     loop = asyncio.get_event_loop()
 
     tokens = service_bus.get_contracts(addresses=[token])

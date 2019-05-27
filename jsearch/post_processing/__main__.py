@@ -1,9 +1,9 @@
 # !/usr/bin/env python
 import logging
-import os
 
 import click
 
+from jsearch import settings
 from jsearch.common import logs, worker
 from jsearch.common.last_block import LastBlock
 from jsearch.multiprocessing import executor
@@ -17,11 +17,12 @@ MODE_FAST = 'fast'
 
 @click.command()
 @click.argument('action', type=click.Choice(services.ACTION_PROCESS_CHOICES))
-@click.option('--log-level', default=os.getenv('LOG_LEVEL', 'INFO'), help="Log level")
+@click.option('--log-level', settings.LOG_LEVEL, help="Log level")
+@click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
 @click.option('--workers', default=30, help="Workers count")
 @click.option('--mode', type=click.Choice([MODE_FAST, MODE_STRICT]), default=MODE_STRICT)
-def main(action: str, log_level: str, workers: int, mode: str) -> None:
-    logs.configure(log_level)
+def main(action: str, log_level: str, no_json_formatter: bool, workers: int, mode: str) -> None:
+    logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
     executor.init(workers)
 
     if mode == MODE_FAST:
