@@ -27,7 +27,9 @@ def loop(event_loop):
 
 @pytest.fixture
 @pytest.mark.asyncio
-async def cli(event_loop, aiohttp_client):
+async def cli(event_loop, mocker, db_connection_string, aiohttp_client):
+    mocker.patch('jsearch.settings.JSEARCH_MAIN_DB', db_connection_string)
+
     app = await make_app()
     return await aiohttp_client(app)
 
