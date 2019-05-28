@@ -1,10 +1,10 @@
 import asyncio
 from collections import defaultdict
-from itertools import chain
-from typing import Any, DefaultDict
 
 import pytest
 from asynctest import CoroutineMock
+from itertools import chain
+from typing import Any, DefaultDict
 
 
 class KafkaMessage:
@@ -49,6 +49,5 @@ def mock_service_bus_sync_client(mocker, kafka_buffer):
 
     def send_to_stream(route, value):
         kafka_buffer[route].insert(0, value)
-        return asyncio.sleep(0)
 
     mocker.patch('jsearch.service_bus.sync_client.send_to_stream', send_to_stream)
