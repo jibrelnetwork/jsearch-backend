@@ -1,12 +1,12 @@
 import logging
 import os
 from asyncio import AbstractEventLoop
-from functools import partial
 
 import aiopg
 import dsnparse
 import pytest
 from aiopg.sa import Engine
+from functools import partial
 from sqlalchemy import create_engine
 
 logger = logging.getLogger(__name__)
@@ -98,3 +98,8 @@ def do_truncate_db(db):
 @pytest.fixture(scope='function', autouse=True)
 def truncate_db(do_truncate_db):
     do_truncate_db()
+
+
+@pytest.fixture(scope='function', autouse=True)
+def mock_settings(mocker, db_connection_string):
+    mocker.patch('jsearch.settings.JSEARCH_MAIN_DB', db_connection_string)
