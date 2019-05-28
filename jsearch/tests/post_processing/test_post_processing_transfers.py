@@ -1,7 +1,7 @@
 from decimal import Decimal
-from functools import partial
 
 import pytest
+from functools import partial
 from sqlalchemy import select
 
 pytest_plugins = [
@@ -14,15 +14,13 @@ pytest_plugins = [
 ]
 
 
-@pytest.mark.usefixtures('mock_service_bus', 'mock_executor')
+@pytest.mark.usefixtures('mock_service_bus_sync_client', 'mock_service_bus', 'mock_executor')
 async def test_post_processing_logs_to_transfer_transition(transaction,
                                                            logs,
                                                            transfers,
                                                            load_transfers,
                                                            mock_last_block_consumer,
-                                                           get_erc20_transfers_from_kafka,
-                                                           post_processing_transfers,
-                                                           token_address):
+                                                           post_processing_transfers):
     # given
     mock_last_block_consumer({"number": 7000000})
 
@@ -45,7 +43,7 @@ async def test_post_processing_logs_to_transfer_transition(transaction,
     assert result == expected_transfers
 
 
-@pytest.mark.usefixtures('mock_service_bus', 'mock_executor')
+@pytest.mark.usefixtures('mock_service_bus_sync_client', 'mock_service_bus', 'mock_executor')
 async def test_post_processing_account_balance(mocker,
                                                mock_last_block_consumer,
                                                db_connection_string,
