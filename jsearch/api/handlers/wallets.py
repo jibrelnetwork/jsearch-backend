@@ -29,7 +29,7 @@ def get_address(request) -> str:
         raise ApiError(
             {
                 'param': 'blockchain_address',
-                'error_code': ErrorCode.PARAM_REQUIRED,
+                'error_code': ErrorCode.VALIDATION_ERROR,
                 'error_message': f'Query param `blockchain_address` is required'
             },
             status=400
@@ -43,7 +43,7 @@ def get_tip_hash(request) -> Optional[str]:
         raise ApiError(
             {
                 'param': 'blockchain_tip',
-                'error_code': ErrorCode.PARAM_REQUIRED,
+                'error_code': ErrorCode.VALIDATION_ERROR,
                 'error_message': f'Query param `blockchain_tip` is required'
             },
             status=400
@@ -88,7 +88,7 @@ def get_positive_number(request: web.Request,
         raise ApiError(
             {
                 'field': attr,
-                'error_code': ErrorCode.PARAM_REQUIRED,
+                'error_code': ErrorCode.VALIDATION_ERROR,
                 'error_message': f'Query param `{attr}` is required'
             },
             status=400
@@ -97,7 +97,7 @@ def get_positive_number(request: web.Request,
     raise ApiError(
         {
             'field': attr,
-            'error_code': ErrorCode.UNKNOWN_VALUE,
+            'error_code': ErrorCode.VALIDATION_ERROR,
             'error_message': f'Parameter `{attr}` must be positive integer {msg_allowed_tags} or empty'
         },
         status=400
