@@ -27,7 +27,7 @@ RUN cd jsearch-service-bus && pip install --no-cache-dir . && cd ..
 
 COPY --chown=app:app requirements.txt /app/
 COPY --chown=app:app requirements-test.txt /app/
-RUN pip install --no-cache-dir -r $(test "$ENVIRONMENT" != production && echo "requirements-test.txt" || echo "requirements.txt")
+RUN pip install --no-cache-dir -r $(if [ "$ENVIRONMENT" = "production" ]; then echo 'requirements.txt'; else echo 'requirements-test.txt'; fi;)
 
 COPY --chown=app:app . /app
 RUN pip install --no-cache-dir .
