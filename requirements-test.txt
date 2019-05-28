@@ -1,3 +1,4 @@
+-r requirements.txt
 asynctest==0.12.2
 dsnparse==0.1.12
 factory-boy==2.11.1

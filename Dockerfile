@@ -1,4 +1,5 @@
 FROM python:3.6
+ARG ENVIRONMENT="production"
 
 ENV LOG_LEVEL=INFO \
     RAVEN_DSN="" \
@@ -25,7 +26,8 @@ COPY --chown=app:app ./jsearch-service-bus /app/jsearch-service-bus/
 RUN cd jsearch-service-bus && pip install --no-cache-dir . && cd ..
 
 COPY --chown=app:app requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=app:app requirements-test.txt /app/
+RUN pip install --no-cache-dir -r $(test "$ENVIRONMENT" != production && echo "requirements-test.txt" || echo "requirements.txt")
 
 COPY --chown=app:app . /app
 RUN pip install --no-cache-dir .

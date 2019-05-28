@@ -7,8 +7,10 @@ services:
       - main_db
       - raw_db
     build:
-      context: ./.
-      dockerfile: ./docker/tests/Dockerfile
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - ENVIRONMENT=development
     image: jsearch/tests
     container_name: jsearch_tests
     entrypoint: /bin/sh
