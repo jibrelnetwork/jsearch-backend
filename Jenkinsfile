@@ -40,7 +40,7 @@ builder(
                                 ],
                         ],
                         command: [
-                                'pip install --no-cache-dir -r test-requirements.txt',
+                                'pip install --no-cache-dir -r requirements-test.txt',
                                 'pytest'
                         ],
                 ]
