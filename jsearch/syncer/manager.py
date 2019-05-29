@@ -64,6 +64,7 @@ class Manager:
         self.sync_mode = SYNC_MODE_STRICT
         self.tasks = []
         self.tip = None
+        self.node_id = '0x83f47b4ec7fc8a709e649df7fd2a77d34119dbd0a2e47b5430e85033108142e9'
 
         self.processor = SyncProcessor()
 
@@ -75,7 +76,7 @@ class Manager:
             # self.sequence_sync_loop(),
             self.chain_events_process_loop(),
             # self.reorg_loop(),
-            self.pending_tx_loop(),
+            #self.pending_tx_loop(),
         ]
 
         for coro in service_loops:
@@ -175,12 +176,12 @@ class Manager:
 
     @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def get_and_process_chain_event(self):
-        last_event = await self.main_db.get_last_chain_event(self.sync_range)
+        last_event = await self.main_db.get_last_chain_event(self.sync_range, self.node_id)
         if last_event is None:
-            next_event_id = 1
+            next_event = await self.raw_db.get_first_chain_event_for_block_range(self.sync_range, self.node_id)
         else:
             next_event_id = last_event['id'] + 1
-        next_event = await self.raw_db.get_chain_event(next_event_id)
+            next_event = await self.raw_db.get_next_chain_event(last_event['id'], self.node_id)
         if next_event is None:
             await asyncio.sleep(self.sleep_on_no_blocks)
             return

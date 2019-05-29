@@ -260,20 +260,31 @@ def get_data(owner):
     return data
 
 
-def get_params(contract, owner):
-    return [{"from": "0xb60e8dd61c5d32be8058bb8eb970870f07233155",
-             "to": contract,
-             "gas": "0x76c0",
-             "gasPrice": "0x9184e72a000",
-             "data": get_data(owner)},
-            "latest"]
+def get_params(contract, data):
+    return [{"to": contract,
+             "data": data},
+             "latest"]
 
 
-def get_rpc_call(contract, owner, _id):
+def get_params_balance(contract, owner):
+    return get_params(contract, get_data(owner))
+
+
+def get_balance_rpc_call(contract, owner, _id):
     value = {
         "jsonrpc": "2.0",
         "method": 'eth_call',
-        "params": get_params(contract, owner),
+        "params": get_params(contract, get_data(owner)),
+        "id": _id,
+    }
+    return value
+
+
+def get_decimals_rpc_call(contract, _id):
+    value = {
+        "jsonrpc": "2.0",
+        "method": 'eth_call',
+        "params": get_params(contract, '0x313ce5670000000000000000000000'),
         "id": _id,
     }
     return value
@@ -301,7 +312,7 @@ async def eth_call_request(data):
                 msg = pformat(data)
                 raise EthCallException(
                     f"[REQUEST] {settings.ETH_NODE_URL}: "
-                    f"{response.status_code}, {response.reason}: {msg}"
+                    f"{response.status}, {response.reason}: {msg}"
                 )
             return data
 
@@ -329,12 +340,11 @@ def chunks(l, n):
         yield l[i:i + n]
 
 
-
 async def get_balances(owners, batch_size):
     calls = []
     gt = time.time()
     for i, h in enumerate(owners):
-        call = get_rpc_call(h[1], h[0], i)
+        call = get_balance_rpc_call(h[1], h[0], i)
         calls.append(call)
     print('RPC GEN TIME', time.time() - gt, len(owners))
 
@@ -344,10 +354,40 @@ async def get_balances(owners, batch_size):
     calls_results = {}
     for res in calls_results_list:
         calls_results.update(res)
-    print('TOTAL TIME', time.time() - gt, batch_size)
+    print('BALANCEOF TOTAL TIME', time.time() - gt, batch_size)
     balances = []
     for i, h in enumerate(owners):
-        balance = int(to_hex(calls_results[i]), 16)
+        hex_val = calls_results[i].hex().strip('0x')[:64]
+        if hex_val == '':
+            balance = 0
+        else:
+            balance = int(hex_val, 16)
         balances.append((h[0], h[1], balance))
     return balances
+
+
+async def get_decimals(addresses, batch_size):
+    calls = []
+    gt = time.time()
+    for i, addr in enumerate(addresses):
+        call = get_decimals_rpc_call(addr, i)
+        calls.append(call)
+        calls_chunks = chunks(calls, batch_size)
+
+    coros = [eth_call_batch(calls=c) for c in calls_chunks]
+    calls_results_list = await asyncio.gather(*coros)
+    calls_results = {}
+    for res in calls_results_list:
+        calls_results.update(res)
+    print('DECIMALS TOTAL TIME', time.time() - gt, batch_size)
+    decimals = {}
+    for i, addr in enumerate(addresses):
+        try:
+            value = int(to_hex(calls_results[i]), 16)
+        except ValueError:
+            value = 18
+        if value > 255:
+            value = 18
+        decimals[addr] = value
+    return decimals
 

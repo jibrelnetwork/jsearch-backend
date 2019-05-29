@@ -22,9 +22,14 @@ CREATE TABLE chain_events (
     id bigint PRIMARY KEY,
     block_hash varchar,
     block_number bigint,
-    event_type varchar,
-    reorg_id bigint,
-    split_id bigint,
+    type varchar,
+    parent_block_hash varchar,  
+    common_block_number bigint,
+    common_block_hash varchar,  
+    drop_length bigint,
+    drop_block_hash varchar,   
+    add_length bigint,      
+    add_block_hash varchar,    
     node_id varchar,
     created_at timestamp
 );

@@ -19,9 +19,8 @@ depends_on = None
 
 UP_SQL = """
 alter table token_transfers drop constraint token_transfers_unique;
-alter table token_transfers add constraint token_transfers_unique  unique (block_hash, transaction_hash, log_index, address);
 
-CREATE OR REPLACE PROCEDURE insert_block_data(
+CREATE OR REPLACE FUNCTION insert_block_data(
 			block_data text,
             uncles_data text,
             transactions_data text,
@@ -35,7 +34,7 @@ CREATE OR REPLACE PROCEDURE insert_block_data(
             wallet_events_data text,
             assets_summary_updates_data text
             )
-LANGUAGE plpgsql
+RETURNS BOOLEAN 
 AS $$
 BEGIN
 	INSERT INTO blocks SELECT * FROM json_populate_recordset(null::blocks, block_data::json);
@@ -85,16 +84,16 @@ BEGIN
 		INSERT INTO assets_summary SELECT * FROM json_populate_recordset(null::assets_summary, assets_summary_updates_data::json)
 		    ON CONFLICT (address, asset_address) DO UPDATE SET value = EXCLUDED.value;
 	END IF;
-
+	RETURN true;
 END;
-$$;
+$$
+LANGUAGE plpgsql;
 """
 
 DOWN_SQL = """
-alter table token_transfers drop constraint token_transfers_unique;
 alter table token_transfers add constraint token_transfers_unique  unique (transaction_hash, log_index, address);
 
-DROP PROCEDURE insert_block_data;
+DROP FUNCTION insert_block_data;
 """
 
 

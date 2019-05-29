@@ -237,7 +237,7 @@ def event_from_tx(address, tx_data, contracts_set):
         'event_data': {'sender': tx_data['from'],
                        'recipient': tx_data['to'],
                        'amount': str(int(tx_data['value'], 16)),
-                       'status': tx_data['receipt_status']}
+                       'status': tx_data['status']}
     }
     return event_data
 
@@ -252,6 +252,7 @@ def event_from_token_transfer(address, transfer_data, tx_data):
 
     :return: event data object
     """
+
     event_type = WalletEventType.ERC20_TRANSFER
     decimals = transfer_data['token_decimals'] or TOKEN_DECIMALS_DEFAULT
     amount = str(transfer_data['token_value'] / 10 ** decimals)
@@ -286,7 +287,7 @@ def event_from_internal_tx(address, internal_tx_data, tx_data):
     if internal_tx_data['value'] == 0:
         return None
     event_type = WalletEventType.ETH_TRANSFER
-    if tx_data['receipt_status'] == 0 or internal_tx_data['status'] != 'success':
+    if tx_data['status'] == 0 or internal_tx_data['status'] != 'success':
         event_status = 0
     else:
         event_status = 1
@@ -313,7 +314,11 @@ def events_from_transactions(transactions, contracts_set):
 
 def events_from_transfers(transfers, transactions):
     tx_map = {tx['hash']: tx for tx in transactions}
-    return [event_from_token_transfer(t['address'], t, tx_map[t['transaction_hash']]) for t in transfers]
+    events = []
+    for t in transfers:
+        e = event_from_token_transfer(t['address'], t, tx_map[t['transaction_hash']])
+        events.append(e)
+    return events
 
 
 def events_from_internal_transactions(internal_transactions, transactions):

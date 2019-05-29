@@ -11,11 +11,12 @@ from jsearch import settings
 from jsearch.common import contracts
 
 from jsearch.common.processing.logs import process_log_event
-from jsearch.common.processing.erc20_transfers import logs_to_transfers_fake_decimals
+from jsearch.common.processing.erc20_transfers import logs_to_transfers_decimals
 from jsearch.common.processing.erc20_balances import get_balances
 from jsearch.syncer.database import MainDBSync, RawDBSync, RawDBAsync, MainDBAsync
 from jsearch.typing import Logs
 from jsearch.common.processing import wallet
+from jsearch.common.processing.decimals_cache import decimals_cache
 
 
 logger = logging.getLogger(__name__)
@@ -197,10 +198,10 @@ class SyncProcessor:
             if acc['code'] != '':
                 contracts_set.add(acc['address'])
 
-        transfers = logs_to_transfers_fake_decimals(logs_data, block_data)
+        decimals = await decimals_cache.get_many({l['address'] for l in logs_data})
+        transfers = logs_to_transfers_decimals(logs_data, block_data, decimals)
 
         token_holders_updates = await self.get_token_holders_updates(transfers)
-        #print('HOLDER UPDATES', token_holders_updates[:3])
 
         wallet_events = wallet.events_from_transactions(transactions_data, contracts_set)
         wallet_events.extend(wallet.events_from_transfers(transfers, transactions_data))

@@ -66,14 +66,14 @@ def logs_to_transfers(logs: Logs, blocks: Dict[str, Block], contracts: Dict[str,
     return transfers
 
 
-def logs_to_transfers_fake_decimals(logs: Logs, block: Block) -> Transfers:
+def logs_to_transfers_decimals(logs: Logs, block: Block, decimals: Dict) -> Transfers:
     transfers = []
     for log in logs:
         if log and log.get('is_token_transfer'):
             contract = {
-                'decimals': 18,
-                'token_name': 'Fake',
-                'token_symbol': 'FAKE'
+                'decimals': decimals[log['address']],
+                'token_name': None,
+                'token_symbol': None
             }
             log_transfers = log_to_transfers(log, block, contract)
             transfers.extend(log_transfers)

@@ -2,6 +2,7 @@ import logging
 
 from typing import List, Dict, Any
 import json
+from copy import copy
 
 
 import aiopg
@@ -236,6 +237,37 @@ class RawDB(DBWrapper):
                 row = await cur.fetchone()
                 cur.close()
         return row
+
+    async def get_next_chain_event(self, event_id, node_id):
+        q = """SELECT * FROM chain_events WHERE id > %s AND node_id=%s ORDER BY id ASC LIMIT 1"""
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [event_id, node_id])
+                row = await cur.fetchone()
+                cur.close()
+        return row
+
+    async def get_first_chain_event_for_block_range(self, block_range, node_id):
+        if block_range[1] is not None:
+            cond = """block_number BETWEEN %s AND %s 
+                        OR common_block_number BETWEEN %s AND %s"""
+            params = list(block_range) + list(block_range)
+        else:
+            cond = """block_number >= %s 
+                        OR common_block_number >= %s"""
+            params = [block_range[0], block_range[0]]
+        params.append(node_id)
+
+        q = f"""SELECT * FROM chain_events 
+                    WHERE {cond}  AND node_id=%s
+                    ORDER BY id ASC LIMIT 1"""
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, params)
+                row = await cur.fetchone()
+                cur.close()
+        return row
+
 
     async def get_chain_split(self, split_id):
         q = """SELECT * from chain_splits WHERE id=%s"""
@@ -688,7 +720,7 @@ class MainDB(DBWrapper):
         async with self.engine.acquire() as conn:
             await conn.execute(q)
 
-    async def get_last_chain_event(self, sync_range):
+    async def get_last_chain_event(self, sync_range, node_id):
         if sync_range[1] is not None:
             cond = """block_number BETWEEN %s AND %s 
                         OR common_block_number BETWEEN %s AND %s"""
@@ -697,16 +729,18 @@ class MainDB(DBWrapper):
             cond = """block_number >= %s 
                         OR common_block_number >= %s"""
             params = [sync_range[0], sync_range[0]]
+
+        params.insert(0, node_id)
         q = f"""SELECT * FROM chain_events 
-                    WHERE {cond} 
+                    WHERE node_id=%s AND ({cond}) 
                     ORDER BY id DESC LIMIT 1"""
         async with self.engine.acquire() as conn:
             res = await conn.execute(q, params)
             row = await res.fetchone()
+            print('LCE', sync_range, q, params, row)
             return dict(row) if row else None
 
     async def insert_chain_event(self, event):
-        event['event_type'] = event.pop('type')
         q = chain_events_t.insert().values(**event)
         async with self.engine.acquire() as conn:
             await conn.execute(q)
@@ -966,9 +1000,8 @@ class MainDBAsync(DBWrapper):
                 'balance': acc['balance'],
             })
 
-        q = "CALL insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
         j = json.dumps
-
         async with self.engine.acquire() as conn:
             async with conn.begin():
                 await self.execute(q, [j([block_data]), j(uncles_data), j(transactions_data),
