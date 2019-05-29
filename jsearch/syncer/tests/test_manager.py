@@ -23,7 +23,7 @@ pytest_plugins = (
 )
 
 
-@pytest.mark.usefixtures('mock_service_bus_sync_client')
+@pytest.mark.usefixtures('mock_service_bus_sync_client', 'mock_service_bus')
 async def test_process_chain_split(raw_db_sample, db, raw_db_connection_string, db_connection_string):
     s = raw_db_sample
     processor = SyncProcessor(raw_db_connection_string, db_connection_string)

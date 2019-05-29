@@ -1,7 +1,7 @@
 import logging
-from pathlib import Path
 
 import pytest
+from pathlib import Path
 
 from jsearch.api.app import make_app
 
@@ -27,7 +27,7 @@ def loop(event_loop):
 
 @pytest.fixture
 @pytest.mark.asyncio
-async def cli(event_loop, aiohttp_client):
+async def cli(event_loop, db_connection_string, aiohttp_client):
     app = await make_app()
     return await aiohttp_client(app)
 
