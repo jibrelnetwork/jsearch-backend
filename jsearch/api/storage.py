@@ -11,6 +11,7 @@ from typing import DefaultDict
 from typing import List, Optional, Dict, Any
 
 from jsearch.api import models
+from jsearch.api.database_queries.assets_summary import get_assets_summary_query
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
@@ -37,7 +38,7 @@ from jsearch.api.database_queries.uncles import (
 from jsearch.api.database_queries.wallet_events import get_wallet_events_query
 from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
-from jsearch.api.structs import BlockchainTip, BlockInfo
+from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import blocks_t, chain_splits_t, reorgs_t, wallet_events_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
@@ -610,43 +611,39 @@ class Storage:
                 transactions.append(models.Transaction(**row))
         return transactions
 
-    async def get_wallet_assets_summary(self, addresses: List[str], limit: int, offset: int,
-                                        assets: Optional[List[str]] = None):
-        if assets:
-            assets_filter = " AND asset_address = ANY($2::varchar[]) "
-            limit_stmt = "LIMIT $3 OFFSET $4 "
-        else:
-            assets_filter = ""
-            limit_stmt = "LIMIT $2 OFFSET $3 "
-
-        query = f"""SELECT * FROM assets_summary
-                        WHERE address = ANY($1::varchar[])
-                        {assets_filter}
-                        ORDER BY address, asset_address ASC
-                        {limit_stmt}"""
+    async def get_wallet_assets_summary(self,
+                                        addresses: List[str],
+                                        limit: int,
+                                        offset: int,
+                                        assets: Optional[List[str]] = None) -> AddressesSummary:
+        query = get_assets_summary_query(addresses=addresses, assets=assets, limit=limit, offset=offset)
 
         async with self.pool.acquire() as conn:
-            if assets:
-                rows = await conn.fetch(query, addresses, assets, limit, offset)
-            else:
-                rows = await conn.fetch(query, addresses, limit, offset)
+            rows = await fetch(conn, query)
+
             addr_map = {k: list(g) for k, g in groupby(rows, lambda r: r['address'])}
             summary = []
             for addr in addresses:
                 assets_summary = []
                 nonce = 0
                 for row in addr_map.get(addr, []):
-                    assets_summary.append({
-                        'balance': float(row['value'] / 10 ** row['decimals']),
-                        'address': row['asset_address'],
-                        'transfersNumber': row['tx_number'],
-                    })
+                    balance = int(row['value'])
+                    decimals = int(row['decimals']) if row['decimals'] is not None else ""
+
+                    asset_summary = AssetSummary(
+                        balance=str(balance),
+                        decimals=str(decimals),
+                        address=row['asset_address'],
+                        transfers_number=row['tx_number'],
+                    )
+                    assets_summary.append(asset_summary)
                     nonce = row['nonce']
-                item = {
-                    'assetsSummary': assets_summary,
-                    'address': addr,
-                    'outgoingTransactionsNumber': nonce,
-                }
+
+                item = AddressSummary(
+                    address=addr,
+                    assets_summary=assets_summary,
+                    outgoing_transactions_number=str(nonce)
+                )
                 summary.append(item)
             return summary
 
