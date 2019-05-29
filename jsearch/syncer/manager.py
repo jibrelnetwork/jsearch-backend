@@ -137,6 +137,8 @@ class Manager:
         logger.info("Start Processing Chain Event", extra={
             'event_id': event['id'],
             'event_type': event['type'],
+            'block_number': event['block_number'] or event['common_block_number'],
+            'block_hash': event['block_hash'] or event['common_block_hash'],
         })
         if event['type'] == ChainEvent.INSERT:
             await self.process_insert_block(event['block_hash'], event['block_number'])
@@ -144,7 +146,7 @@ class Manager:
             # await self.process_reinsert_block(event['block_hash'], event['block_num'])
             pass
         elif event['type'] == ChainEvent.SPLIT:
-            await self.process_chain_split(event['split_id'])
+            await self.process_chain_split(event)
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],
@@ -153,6 +155,8 @@ class Manager:
         logger.info("Finish Processing Chain Event", extra={
             'event_id': event['id'],
             'event_type': event['type'],
+            'block_number': event['block_number'] or event['common_block_number'],
+            'block_hash': event['block_hash'] or event['common_block_hash'],
             'time': '{:0.2f}s'.format(time.monotonic() - start_time)
         })
         await self.main_db.insert_chain_event(event)
@@ -164,8 +168,7 @@ class Manager:
         is_forked = is_block_number_exists or (not is_canonical_parent)
         await self.processor.sync_block(block_hash, block_num, is_forked)
 
-    async def process_chain_split(self, split_id):
-        split_data = await self.raw_db.get_chain_split(split_id)
+    async def process_chain_split(self, split_data):
         await self.main_db.apply_chain_split(split_data)
 
     async def pending_tx_loop(self):
