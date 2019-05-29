@@ -21,6 +21,7 @@ def get_default_fields() -> List[Column]:
         transactions_t.c.transaction_index,
         transactions_t.c.v,
         transactions_t.c.value,
+        transactions_t.c.status,
     ]
 
 
@@ -38,6 +39,16 @@ def get_tx_hashes_by_block_hashes_query(block_hashes: List[str]) -> Query:
         columns=[transactions_t.c.block_hash, transactions_t.c.hash],
         whereclause=transactions_t.c.block_hash.in_(block_hashes),
     ).order_by(transactions_t.c.block_hash).distinct()
+
+
+def get_tx_by_hash(tx_hash: str, columns: List[Column] = None) -> Query:
+    return select(
+        columns=columns or get_default_fields(),
+        whereclause=and_(
+            transactions_t.c.is_forked == false(),
+            transactions_t.c.hash == tx_hash,
+        )
+    ).limit(1)
 
 
 def get_tx_by_address(address: str, order: str, columns: List[Column] = None) -> Query:

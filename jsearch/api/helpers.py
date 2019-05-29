@@ -193,7 +193,8 @@ async def fetch(connection: Connection, query: Query) -> List[Dict[str, Any]]:
 async def fetch_row(connection: Connection, query: Query) -> Optional[Dict[str, Any]]:
     query, params = asyncpgsa.compile_query(query)
     result = await connection.fetchrow(query, *params)
-    return dict(result) if result is not None else None
+    if result is not None:
+        return dict(result)
 
 
 class ApiError(Exception):
