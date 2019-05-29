@@ -1,5 +1,6 @@
 builder(
         jUnitReportsPath: 'junit-reports',
+        coverageReportsPath: 'coverage-reports',
         buildTasks: [
                 [
                         name: "Linters",
@@ -22,6 +23,7 @@ builder(
                         runAsUser: 'root',
                         entrypoint: '',
                         jUnitPath: '/junit-reports',
+                        coveragePath: '/coverage-reports',
                         environment: [
                                 JSEARCH_MAIN_DB_TEST: 'postgres://app:pass@maindb/jsearch-maindb',
                                 JSEARCH_RAW_DB_TEST: 'postgres://app:pass@rawdb/jsearch-rawdb',
@@ -47,7 +49,7 @@ builder(
                         command: [
                                 'pip install --no-cache-dir -r requirements-test.txt',
                                 'mkdir -p /junit-reports',
-                                'pytest --junitxml=/junit-reports/pytest-junit-report.xml',
+                                'pytest --junitxml=/junit-reports/pytest-junit-report.xml --cov-report xml:/coverage-reports/pytest-coverage-report.xml',
                         ],
                 ]
         ],
