@@ -155,21 +155,15 @@ async def get_wallet_events(request):
 
     start_from, until_to = get_block_range(request, tip_block, latest_block, is_asc_order=params['order'] == ORDER_ASC)
 
-    get_events_task = storage.get_wallet_events(address, start_from, until_to, **params)
-    get_txs_task = storage.get_wallet_events_transactions(address, start_from, until_to, **params)
-
-    wallet_events, txs = await asyncio.gather(get_events_task, get_txs_task)
+    events = await storage.get_wallet_events(address, start_from, until_to, **params)
 
     tip = await storage.get_blockchain_tip(tip=tip_block, last_block=latest_block)
     is_event_affected = (
             tip.is_in_fork and
-            tip.last_unchanged_block is not None and until_to > tip.last_unchanged_block
+            tip.last_unchanged_block is not None and
+            max(until_to, start_from) > tip.last_unchanged_block
     )
-
-    if is_event_affected:
-        events = []
-    else:
-        events = [{'rootTxData': tx, 'events': wallet_events.get(tx['hash'])} for tx in txs]
+    events = not is_event_affected and events or []
 
     pending_events = []
     include_pending_events = request.query.get('include_pending_events', False)

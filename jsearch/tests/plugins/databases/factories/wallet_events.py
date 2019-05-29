@@ -37,7 +37,7 @@ class WalletEventsFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session_persistence = 'flush'
 
     @classmethod
-    def create_token_transfer(cls, block=None, **kwargs):
+    def create_token_transfer(cls, tx, block=None, **kwargs):
         to = generate_address()
         from_ = generate_address()
         amount = randint(0, 10 * 18)
@@ -48,6 +48,12 @@ class WalletEventsFactory(factory.alchemy.SQLAlchemyModelFactory):
             event_data={'sender': to, 'recipient': from_, 'amount': amount},
         )
         defaults.update(**kwargs)
+        if tx:
+            defaults.update(
+                tx_hash=tx.hash,
+                tx_data=tx.to_dict()
+            )
+
         if block:
             defaults.update(
                 block_hash=block.hash,

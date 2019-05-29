@@ -1,6 +1,6 @@
 import json
 import logging
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 import asyncpgsa
 from asyncpg import Connection
@@ -507,7 +507,7 @@ class Storage:
                                 until_block: int,
                                 limit: int,
                                 order: str,
-                                offset: int) -> Dict[str, List[Dict[str, Any]]]:
+                                offset: int) -> List[Dict[str, Any]]:
         query = get_wallet_events_query(
             address=address,
             from_block=from_block,
@@ -517,16 +517,29 @@ class Storage:
             order=order
         )
         async with self.pool.acquire() as connection:
-            rows = await fetch(connection, query)
+            events = await fetch(connection, query)
 
-        events_per_tx = defaultdict(list)
-        for item in rows:
-            tx_hash = item['tx_hash']
-            data = models.WalletEvent(**item).to_dict()
+        result = OrderedDict()
+        for event in events:
+            tx_data = event['tx_data']
+            if tx_data:
+                tx = models.Transaction(**json.loads(tx_data)).to_dict()
+            else:
+                tx = {}
 
-            events_per_tx[tx_hash].append(data)
+            tx_hash = event['tx_hash']
+            tx_event = models.WalletEvent(**event).to_dict()
 
-        return events_per_tx
+            item = result.get(tx_hash)
+            if item:
+                tx_events = item.get('events', [])
+                tx_events.append(tx_event)
+
+                item.update(events=tx_events)
+            else:
+                result[tx_hash] = {'rootTxData': tx, 'events': [tx_event]}
+
+        return [value for key, value in result.items()]
 
     async def get_wallet_assets_transfers(self, addresses: List[str], limit: int, offset: int,
                                           assets: Optional[List[str]] = None) -> List:
