@@ -762,7 +762,7 @@ async def test_verify_contract_ok(db, cli, main_db_data, here, fuck_token):
         'source_code': fuck_token.sources
     }
 
-    with mock.patch('jsearch.api.handlers.aiohttp.request', new=AsyncContextManagerMock()) as m:
+    with mock.patch('jsearch.api.handlers.contracts.aiohttp.request', new=AsyncContextManagerMock()) as m:
         m.return_value.aenter.json = CoroutineMock(side_effect=[
             {
                 'bin': fuck_token.bin,
@@ -940,7 +940,7 @@ async def test_account_get_mined_blocks(cli, main_db_data):
 
 
 async def test_on_new_contracts_added(cli, mocker):
-    m = mocker.patch('jsearch.api.handlers.tasks.on_new_contracts_added_task')
+    m = mocker.patch('jsearch.api.handlers.contracts.tasks.on_new_contracts_added_task')
     resp = await cli.post('/_on_new_contracts_added', json={'address': 'abc', 'abi': 'ABI'})
     assert resp.status == 200
     m.delay.assert_called_with('abc')
@@ -1259,20 +1259,20 @@ async def test_get_wallet_assets_summary(cli, db):
     assert resp.status == 200
     res = (await resp.json())['data']
     assert res == [{'address': 'a1',
-                    'assetsSummary': [{'address': '', 'balance': 300.0, 'transfersNumber': 3},
-                                      {'address': 'c1', 'balance': 100.0, 'transfersNumber': 1},
-                                      {'address': 'c2', 'balance': 200.0, 'transfersNumber': 2}],
-                    'outgoingTransactionsNumber': 10},
+                    'assetsSummary': [{'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 3},
+                                      {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 1},
+                                      {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 2}],
+                    'outgoingTransactionsNumber': "10"},
                    {'address': 'a2',
-                    'assetsSummary': [{'address': 'c1', 'balance': 100.0, 'transfersNumber': 1}],
-                    'outgoingTransactionsNumber': 5}]
+                    'assetsSummary': [{'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 1}],
+                    'outgoingTransactionsNumber': "5"}]
 
     resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1&assets=c2')
     assert resp.status == 200
     res = (await resp.json())['data']
     assert res == [{'address': 'a1',
-                    'assetsSummary': [{'address': 'c2', 'balance': 200.0, 'transfersNumber': 2}],
-                    'outgoingTransactionsNumber': 10},
+                    'assetsSummary': [{'address': 'c2', 'balance': "20000", "decimals": "2", 'transfersNumber': 2}],
+                    'outgoingTransactionsNumber': "10"},
                    ]
 
 
@@ -2101,7 +2101,7 @@ async def test_get_wallet_events_tip_does_not_exist(cli,
         'status': {
             'errors': [
                 {
-                    'error_code': 'BLOCK_NOT_FOUND',
+                    'error_code': ErrorCode.BLOCK_NOT_FOUND,
                     'error_message': f'Block with hash {unsaved_block.hash} not found',
                     'field': 'tip'
                 }
@@ -2138,7 +2138,7 @@ async def test_get_wallet_events_query_param_started_from_is_required(cli,
             'errors': [
                 {
                     'field': 'block_range_start',
-                    'error_code': ErrorCode.PARAM_REQUIRED,
+                    'error_code': ErrorCode.VALIDATION_ERROR,
                     'error_message': f'Query param `block_range_start` is required'
                 },
             ]
@@ -2172,7 +2172,7 @@ async def test_get_wallet_events_query_param_address_is_required(cli,
             'errors': [
                 {
                     'param': 'blockchain_address',
-                    'error_code': ErrorCode.PARAM_REQUIRED,
+                    'error_code': ErrorCode.VALIDATION_ERROR,
                     'error_message': 'Query param `blockchain_address` is required'
                 },
             ]
@@ -2201,7 +2201,7 @@ async def test_get_wallet_events_query_param_tip_is_required(cli, block_factory,
             'errors': [
                 {
                     'param': 'blockchain_tip',
-                    'error_code': ErrorCode.PARAM_REQUIRED,
+                    'error_code': ErrorCode.VALIDATION_ERROR,
                     'error_message': f'Query param `blockchain_tip` is required'
                 },
             ]

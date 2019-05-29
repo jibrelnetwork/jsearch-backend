@@ -13,7 +13,7 @@ from psycopg2.extras import DictCursor
 from sqlalchemy import create_engine as sync_create_engine, and_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.pool import NullPool
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from jsearch.common import contracts
 from jsearch.common.tables import (
@@ -199,7 +199,30 @@ class RawDB(DBWrapper):
 
         return rows
 
+    async def get_pending_txs(self, start_id, end_id):
+        q = """
+        SELECT
+          "id",
+          "tx_hash",
+          "status",
+          "fields",
+          "timestamp",
+          "removed",
+          "node_id"
+        FROM "pending_transactions" WHERE "id" BETWEEN %s AND %s ORDER BY "id"
+        """
+
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, [start_id, end_id])
+                rows = await cur.fetchall()
+                cur.close()
+
+        return [dict(row) for row in rows]
+
     async def get_pending_txs_from(self, last_synced_id, limit):
+        # TODO (Nick Gashkov): Remove after `Manager` will no longer sync
+        # pending transactions.
         q = """
         SELECT
           "id",
@@ -750,7 +773,7 @@ class MainDB(DBWrapper):
         query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
         return await self.fetch_all(query)
 
-    async def get_pending_tx_last_synced_id(self) -> int:
+    async def get_pending_tx_last_synced_id(self) -> Optional[int]:
         q = pending_transactions_t.select()
         q = q.order_by(pending_transactions_t.c.last_synced_id.desc())
         q = q.limit(1)
@@ -759,7 +782,7 @@ class MainDB(DBWrapper):
             res = await conn.execute(q)
             row = await res.fetchone()
 
-        return row['last_synced_id'] if row else 0
+        return row['last_synced_id'] if row else None
 
     async def insert_or_update_pending_tx(self, pending_tx: Dict[str, Any]) -> None:
         query = insert_or_update_pending_tx_q(pending_tx)

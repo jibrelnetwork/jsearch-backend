@@ -24,7 +24,6 @@ Communication scheme for token transfer reorganization.
 """
 import asyncio
 import logging
-import os
 from typing import List, Dict
 
 import backoff
@@ -34,9 +33,9 @@ from aiopg.sa import Engine, create_engine
 from mode import Service
 
 from jsearch import settings
-from jsearch.common.last_block import LastBlock
-from jsearch.common.logs import configure
+from jsearch.common import logs
 from jsearch.common import worker
+from jsearch.common.last_block import LastBlock
 from jsearch.multiprocessing import executor
 from jsearch.service_bus import service_bus, ROUTE_HANDLE_REORGANIZATION_EVENTS, ROUTE_HANDLE_LAST_BLOCK
 from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
@@ -124,9 +123,10 @@ async def receive_last_block(record: Dict[str, int]):
 
 
 @click.command()
-@click.option('--log-level', default=os.getenv('LOG_LEVEL', 'INFO'))
-def main(log_level: str) -> None:
-    configure(log_level)
+@click.option('--log-level', settings.LOG_LEVEL)
+@click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
+def main(log_level: str, no_json_logging: bool) -> None:
+    logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_logging))
     worker.Worker(
         service,
         ApiService(),

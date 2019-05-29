@@ -1,7 +1,6 @@
 from concurrent.futures import ProcessPoolExecutor
 
 import pytest
-
 from aiohttp import web
 
 from jsearch.api.app import make_app
@@ -9,6 +8,7 @@ from jsearch.common.rpc import eth_call_request
 
 pytest_plugins = (
     'jsearch.tests.plugins.settings',
+    'jsearch.tests.plugins.databases.main_db',
 )
 
 
@@ -29,7 +29,7 @@ async def node_server(aiohttp_server):
 
 @pytest.fixture
 @pytest.mark.asyncio
-async def cli_with_node(event_loop, aiohttp_client, node_server, override_settings):
+async def cli_with_node(event_loop, db_connection_string, aiohttp_client, node_server, override_settings):
     override_settings('ETH_NODE_URL', str(node_server._root))
 
     app = await make_app()

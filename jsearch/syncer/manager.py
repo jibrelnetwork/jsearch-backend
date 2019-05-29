@@ -210,7 +210,7 @@ class Manager:
         )
 
     async def get_new_pending_txs(self):
-        last_synced_id = await self.main_db.get_pending_tx_last_synced_id()
+        last_synced_id = await self.main_db.get_pending_tx_last_synced_id() or 0
         logger.info("Fetched last pending tx synced ID", extra={'number': last_synced_id})
 
         return await self.raw_db.get_pending_txs_from(last_synced_id, PENDING_TX_BATCH_SIZE)
