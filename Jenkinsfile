@@ -1,4 +1,5 @@
 builder(
+        jUnitReportsPath: 'junit-reports',
         buildTasks: [
                 [
                         name: "Linters",
@@ -6,9 +7,12 @@ builder(
                         method: "inside",
                         runAsUser: "root",
                         entrypoint: "",
+                        jUnitPath: '/junit-reports',
                         command: [
-                                "pip install --no-cache-dir -r requirements-test.txt",
-                                "flake8",
+                                'pip install --no-cache-dir -r requirements-test.txt',
+                                'mkdir -p /junit-reports',
+                                'flake8 -v --format junit-xml --output-file=/junit-reports/flake8-junit-report.xml',
+                                // 'mypy --junit-xml=/junit-reports/mypy-junit-report.xml .',
                         ],
                 ],
                 [
@@ -17,6 +21,7 @@ builder(
                         method: 'inside',
                         runAsUser: 'root',
                         entrypoint: '',
+                        jUnitPath: '/junit-reports',
                         environment: [
                                 JSEARCH_MAIN_DB_TEST: 'postgres://app:pass@maindb/jsearch-maindb',
                                 JSEARCH_RAW_DB_TEST: 'postgres://app:pass@rawdb/jsearch-rawdb',
@@ -41,7 +46,8 @@ builder(
                         ],
                         command: [
                                 'pip install --no-cache-dir -r requirements-test.txt',
-                                'pytest'
+                                'mkdir -p /junit-reports',
+                                'pytest --junitxml=/junit-reports/pytest-junit-report.xml',
                         ],
                 ]
         ],
