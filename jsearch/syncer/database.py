@@ -639,7 +639,7 @@ class MainDB(DBWrapper):
         query = blocks_t.select().where(and_(blocks_t.c.number > from_block, blocks_t.c.number <= to_block))
         blocks = await self.fetch_all(query)
 
-        assert len(blocks) == split_data['add_length'] + split_data['drop_length']
+        #assert len(blocks) == split_data['add_length'] + split_data['drop_length']
 
         hash_map = {b['hash']: dict(b) for b in blocks}
 
@@ -721,7 +721,7 @@ class MainDB(DBWrapper):
         async with self.engine.acquire() as conn:
             res = await conn.execute(q)
             row = await res.fetchone()
-            return row is None
+            return row is not None
 
     async def is_canonical_block(self, block_hash):
         q = blocks_t.select().where(blocks_t.c.hash == block_hash)
