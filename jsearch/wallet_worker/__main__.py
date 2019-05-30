@@ -91,10 +91,10 @@ async def handle_assets_update(updates):
 
 
 @click.command()
-@click.option('--log-level', settings.LOG_LEVEL)
+@click.option('--log-level', default=settings.LOG_LEVEL)
 @click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
-def main(log_level: str, no_json_logging: bool) -> None:
-    logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_logging))
+def main(log_level: str, no_json_formatter: bool) -> None:
+    logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
     loop = asyncio.get_event_loop()
     with aiomonitor.start_monitor(loop=loop):
         worker.Worker(

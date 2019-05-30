@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 @click.option('--check-balances', is_flag=True)
 @click.option('--show-holders', is_flag=True)
 @click.option('--rewrite', is_flag=True)
-@click.option('--log-level', settings.LOG_LEVEL, help="Log level")
+@click.option('--log-level', default=settings.LOG_LEVEL, help="Log level")
 @click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
 def check(
         token: str,
