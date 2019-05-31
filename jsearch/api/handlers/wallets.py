@@ -203,12 +203,15 @@ async def get_assets_summary(request):
     addresses = get_from_joined_string(request.query.get('addresses'))
     assets = get_from_joined_string(request.query.get('assets'))
     storage = request.app['storage']
-    summary = await storage.get_wallet_assets_summary(
-        addresses,
-        limit=params['limit'],
-        offset=params['offset'],
-        assets=assets
-    )
+    if addresses:
+        summary = await storage.get_wallet_assets_summary(
+            addresses,
+            limit=params['limit'],
+            offset=params['offset'],
+            assets=assets
+        )
+    else:
+        summary = []
     return api_success([item.to_dict() for item in summary])
 
 
