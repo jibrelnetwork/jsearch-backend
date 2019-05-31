@@ -11,7 +11,8 @@ pytest_plugins = (
 @pytest.fixture()
 def last_block():
     LastBlock._instance = None
-    return LastBlock()
+    yield LastBlock()
+    LastBlock._instance = None
 
 
 @pytest.mark.asyncio
