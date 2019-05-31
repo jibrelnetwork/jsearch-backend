@@ -2132,6 +2132,46 @@ async def test_get_wallet_events_query_param_started_from_is_required(cli,
     }
 
 
+async def test_get_wallet_events_query_param_started_from_is_uknown_tag(cli,
+                                                                        block_factory,
+                                                                        wallet_events_factory,
+                                                                        reorg_factory,
+                                                                        transaction_factory,
+                                                                        chain_split_factory):
+    # given
+    block = block_factory.create()
+    tx, _ = transaction_factory.create_for_block(block=block)
+    event = wallet_events_factory.create_token_transfer(tx, block=block)
+
+    params = urlencode({
+        'blockchain_address': event.address,
+        'blockchain_tip': block.hash,
+        'block_range_start': 'unknown_tag',
+    })
+    url = f'v1/wallet/get_events?{params}'
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    assert response.status == 400
+    assert response_json == {
+        'status': {
+            'success': False,
+            'errors': [
+                {
+                    'field': 'block_range_start',
+                    'error_code': ErrorCode.VALIDATION_ERROR,
+                    'error_message': 'Parameter `block_range_start` must be '
+                                     'either positive integer or tag (latest, tip).'
+                },
+            ]
+        },
+        'data': {},
+    }
+
+
 async def test_get_wallet_events_query_param_address_is_required(cli,
                                                                  block_factory,
                                                                  reorg_factory,

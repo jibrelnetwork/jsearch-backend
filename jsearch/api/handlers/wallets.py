@@ -77,13 +77,20 @@ def get_positive_number(request: web.Request,
         if number >= 0:
             return number
 
-    if value and tags and value in tags:
+    elif value and tags and value in tags:
         return tags[value]
 
-    if not value and not is_required:
-        return None
+    elif value and tags and value not in tags:
+        msg_allowed_tags = tags and f" or tag ({', '.join(tags.keys())})" or ""
+        raise ApiError(
+            {
+                'field': attr,
+                'error_code': ErrorCode.VALIDATION_ERROR,
+                'error_message': f'Parameter `{attr}` must be either positive integer{msg_allowed_tags}.'
+            },
+            status=400
+        )
 
-    msg_allowed_tags = tags and f"or tag ( {', '.join(tags.keys())} )" or " "
     if is_required:
         raise ApiError(
             {
@@ -94,15 +101,6 @@ def get_positive_number(request: web.Request,
             status=400
         )
 
-    raise ApiError(
-        {
-            'field': attr,
-            'error_code': ErrorCode.VALIDATION_ERROR,
-            'error_message': f'Parameter `{attr}` must be positive integer {msg_allowed_tags} or empty'
-        },
-        status=400
-    )
-
 
 def get_block_range(request: web.Request,
                     tip_block: BlockInfo,
@@ -110,9 +108,10 @@ def get_block_range(request: web.Request,
                     is_asc_order: bool) -> Tuple[int, int]:
     get_block_number = partial(get_positive_number, tags={"latest": latest_block.number, "tip": tip_block.number})
 
-    count = get_positive_number(request, 'block_range_count')
-    start_from = get_block_number(request, 'block_range_start', is_required=True)
     until_to = get_block_number(request, 'block_range_end')
+    start_from = get_block_number(request, 'block_range_start', is_required=True)
+
+    count = get_positive_number(request, 'block_range_count')
 
     # set default value only if count is None
     if count is None and until_to is None:
