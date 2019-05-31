@@ -638,11 +638,11 @@ class Storage:
                 nonce = 0
                 assets_summary = []
                 for row in addr_map.get(address, []):
-                    value = row['value']
-                    decimals = row['decimals']
+                    value = row['value'] or "0"
+                    decimals = row['decimals'] or "0"
 
-                    balance = value and int(value) or ""
-                    decimals = decimals and int(decimals) or ""
+                    balance = value and int(value)
+                    decimals = decimals and int(decimals)
 
                     asset_summary = AssetSummary(
                         balance=str(balance),
