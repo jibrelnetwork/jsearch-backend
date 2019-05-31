@@ -634,12 +634,15 @@ class Storage:
 
             addr_map = {k: list(g) for k, g in groupby(rows, lambda r: r['address'])}
             summary = []
-            for addr in addresses:
-                assets_summary = []
+            for address in addresses:
                 nonce = 0
-                for row in addr_map.get(addr, []):
-                    balance = int(row['value'])
-                    decimals = int(row['decimals']) if row['decimals'] is not None else ""
+                assets_summary = []
+                for row in addr_map.get(address, []):
+                    value = row['value']
+                    decimals = row['decimals']
+
+                    balance = value and int(value) or ""
+                    decimals = decimals and int(decimals) or ""
 
                     asset_summary = AssetSummary(
                         balance=str(balance),
@@ -648,10 +651,11 @@ class Storage:
                         transfers_number=row['tx_number'],
                     )
                     assets_summary.append(asset_summary)
-                    nonce = row['nonce']
+                    if row['nonce']:
+                        nonce = row['nonce']
 
                 item = AddressSummary(
-                    address=addr,
+                    address=address,
                     assets_summary=assets_summary,
                     outgoing_transactions_number=str(nonce)
                 )
