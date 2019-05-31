@@ -113,6 +113,19 @@ class PendingSyncerService(mode.Service):
             end_id = min(end_id, self.sync_range.end)
 
         pending_txs = await self.raw_db.get_pending_txs(start_id, end_id)
-        logger.info("Fetched pending txs", extra={'start_id': start_id, 'end_id': end_id})
+        last_pending_id = await self.raw_db.get_last_pending_tx_id() or 0
+
+        need_to_sync = last_pending_id - end_id
+        if need_to_sync < 0:
+            need_to_sync = 0
+
+        logger.info(
+            "Fetched pending txs",
+            extra={
+                'start_id': start_id,
+                'end_id': end_id,
+                'pending_txs': need_to_sync,
+            }
+        )
 
         return pending_txs
