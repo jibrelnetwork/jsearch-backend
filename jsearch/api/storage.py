@@ -515,6 +515,8 @@ class Storage:
         async with self.pool.acquire() as connection:
             events = await fetch(connection, query)
 
+        events = in_app_distinct(events)
+
         result = OrderedDict()
         for event in events:
             tx_data = event['tx_data']
