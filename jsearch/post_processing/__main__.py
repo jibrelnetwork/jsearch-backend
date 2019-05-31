@@ -17,7 +17,7 @@ MODE_FAST = 'fast'
 
 @click.command()
 @click.argument('action', type=click.Choice(services.ACTION_PROCESS_CHOICES))
-@click.option('--log-level', settings.LOG_LEVEL, help="Log level")
+@click.option('--log-level', default=settings.LOG_LEVEL, help="Log level")
 @click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
 @click.option('--workers', default=30, help="Workers count")
 @click.option('--mode', type=click.Choice([MODE_FAST, MODE_STRICT]), default=MODE_STRICT)

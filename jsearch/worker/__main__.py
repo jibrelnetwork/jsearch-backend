@@ -123,10 +123,10 @@ async def receive_last_block(record: Dict[str, int]):
 
 
 @click.command()
-@click.option('--log-level', settings.LOG_LEVEL)
+@click.option('--log-level', default=settings.LOG_LEVEL)
 @click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
-def main(log_level: str, no_json_logging: bool) -> None:
-    logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_logging))
+def main(log_level: str, no_json_formatter: bool) -> None:
+    logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
     worker.Worker(
         service,
         ApiService(),

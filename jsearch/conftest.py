@@ -6,6 +6,7 @@ from pathlib import Path
 from jsearch.api.app import make_app
 
 pytest_plugins = (
+    "jsearch.tests.plugins.cli",
     "jsearch.tests.plugins.databases.main_db",
 )
 
