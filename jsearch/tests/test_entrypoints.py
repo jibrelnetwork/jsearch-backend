@@ -110,29 +110,6 @@ def test_pending_syncer_entrypoint(
 @pytest.mark.parametrize(
     'call_args, exit_code',
     [
-        ([], CODE_OK),
-        (['invalid', 'set', 'of', 'args'], CODE_ERROR_FROM_CLICK),
-        (['--log-level', 'ERROR', '--no-json-formatter', '--sync-range', '26000-27000'], CODE_OK),
-    ],
-    ids=[
-        "no args",
-        "invalid args",
-        "all args",
-    ]
-)
-def test_pending_syncer_entrypoint(
-        cli_runner: click.testing.CliRunner,
-        call_args: List[str],
-        exit_code: int,
-) -> None:
-    result = cli_runner.invoke(jsearch.pending_syncer.main.run, call_args)
-    assert result.exit_code == exit_code
-
-
-@pytest.mark.usefixtures('_mock_loop_runners')
-@pytest.mark.parametrize(
-    'call_args, exit_code',
-    [
         ([], CODE_ERROR_FROM_CLICK),
         (['invalid', 'set', 'of', 'args'], CODE_ERROR_FROM_CLICK),
         (['0x111'], CODE_OK),
