@@ -5,6 +5,7 @@ import pytest
 
 from pytest_mock import MockFixture
 
+import jsearch.common.last_block
 import jsearch.common.worker
 import jsearch.multiprocessing
 import jsearch.pending_syncer.main
@@ -14,12 +15,23 @@ import jsearch.validation.__main__
 import jsearch.wallet_worker.__main__
 import jsearch.worker.__main__
 
-
 CODE_OK = 0
 CODE_ERROR = 1
 CODE_ERROR_FROM_CLICK = 2
 
 
+@pytest.fixture()
+def _mock_executor(mocker: MockFixture):
+    mocker.patch.object(jsearch.multiprocessing.executor, 'init')
+
+
+@pytest.fixture()
+def _mock_loop_runners(mocker: MockFixture):
+    mocker.patch.object(jsearch.common.worker.Worker, 'execute_from_commandline')
+    mocker.patch.object(jsearch.validation.__main__, 'run')
+
+
+@pytest.mark.usefixtures('_mock_executor', '_mock_loop_runners')
 @pytest.mark.parametrize(
     'call_args, exit_code',
     [
@@ -35,25 +47,20 @@ CODE_ERROR_FROM_CLICK = 2
         "invalid args",
         "required args logs",
         "required args transfers",
-        "all args logs ",
-        "all args transfers ",
+        "all args logs",
+        "all args transfers",
     ]
 )
 def test_post_processing_entrypoint(
-        mocker: MockFixture,
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
 ) -> None:
-
-    mocker.patch.object(jsearch.common.worker.Worker, 'execute_from_commandline')
-    mocker.patch.object(jsearch.multiprocessing.Executor, 'init')
-
     result = cli_runner.invoke(jsearch.post_processing.__main__.main, call_args)
-
     assert result.exit_code == exit_code
 
 
+@pytest.mark.usefixtures('_mock_loop_runners')
 @pytest.mark.parametrize(
     'call_args, exit_code',
     [
@@ -68,19 +75,15 @@ def test_post_processing_entrypoint(
     ]
 )
 def test_syncer_entrypoint(
-        mocker: MockFixture,
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
 ) -> None:
-
-    mocker.patch.object(jsearch.common.worker.Worker, 'execute_from_commandline')
-
     result = cli_runner.invoke(jsearch.syncer.main.run, call_args)
-
     assert result.exit_code == exit_code
 
 
+@pytest.mark.usefixtures('_mock_loop_runners')
 @pytest.mark.parametrize(
     'call_args, exit_code',
     [
@@ -95,19 +98,15 @@ def test_syncer_entrypoint(
     ]
 )
 def test_pending_syncer_entrypoint(
-        mocker: MockFixture,
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
 ) -> None:
-
-    mocker.patch.object(jsearch.common.worker.Worker, 'execute_from_commandline')
-
     result = cli_runner.invoke(jsearch.pending_syncer.main.run, call_args)
-
     assert result.exit_code == exit_code
 
 
+@pytest.mark.usefixtures('_mock_loop_runners')
 @pytest.mark.parametrize(
     'call_args, exit_code',
     [
@@ -122,19 +121,15 @@ def test_pending_syncer_entrypoint(
     ]
 )
 def test_pending_syncer_entrypoint(
-        mocker: MockFixture,
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
 ) -> None:
-
-    mocker.patch.object(jsearch.common.worker.Worker, 'execute_from_commandline')
-
     result = cli_runner.invoke(jsearch.pending_syncer.main.run, call_args)
-
     assert result.exit_code == exit_code
 
 
+@pytest.mark.usefixtures('_mock_loop_runners')
 @pytest.mark.parametrize(
     'call_args, exit_code',
     [
@@ -164,6 +159,7 @@ def test_validation_entrypoint(
     assert result.exit_code == exit_code
 
 
+@pytest.mark.usefixtures('_mock_loop_runners')
 @pytest.mark.parametrize(
     'call_args, exit_code',
     [
@@ -178,19 +174,15 @@ def test_validation_entrypoint(
     ]
 )
 def test_worker_entrypoint(
-        mocker: MockFixture,
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
 ) -> None:
-
-    mocker.patch.object(jsearch.common.worker.Worker, 'execute_from_commandline')
-
     result = cli_runner.invoke(jsearch.worker.__main__.main, call_args)
-
     assert result.exit_code == exit_code
 
 
+@pytest.mark.usefixtures('_mock_loop_runners')
 @pytest.mark.parametrize(
     'call_args, exit_code',
     [
@@ -205,14 +197,9 @@ def test_worker_entrypoint(
     ]
 )
 def test_wallet_worker_entrypoint(
-        mocker: MockFixture,
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
 ) -> None:
-
-    mocker.patch.object(jsearch.common.worker.Worker, 'execute_from_commandline')
-
     result = cli_runner.invoke(jsearch.wallet_worker.__main__.main, call_args)
-
     assert result.exit_code == exit_code
