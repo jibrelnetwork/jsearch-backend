@@ -3,6 +3,7 @@ import json
 from typing import List, Dict, Any
 
 from jsearch.api.models.base_model_ import Model
+from jsearch.common.contracts import ERC20_DEFAULT_DECIMALS
 
 
 class Log(Model):
@@ -357,6 +358,11 @@ class TokenTransfer(Model):
     }
 
     int_to_str = {"amount"}
+
+    def to_dict(self):
+        data = super(TokenTransfer, self).to_dict()
+        data['decimals'] = data['decimals'] or ERC20_DEFAULT_DECIMALS
+        return data
 
 
 class TokenHolder(Model):
