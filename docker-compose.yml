@@ -10,16 +10,14 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        - ENVIRONMENT=development
+        ENVIRONMENT: development
     image: jsearch/tests
     container_name: jsearch_tests
     entrypoint: /bin/sh
     command: -c "flake8 && pytest"
     environment:
-      - JSEARCH_MAIN_DB=postgres://postgres:postgres@main_db/jsearch_main
-      - JSEARCH_RAW_DB=postgres://postgres:postgres@raw_db/jsearch_raw
-      - JSEARCH_MAIN_DB_TEST=postgres://postgres:postgres@main_db/jsearch_main
-      - JSEARCH_RAW_DB_TEST=postgres://postgres:postgres@raw_db/jsearch_raw
+      JSEARCH_MAIN_DB_TEST: postgres://postgres:postgres@main_db/jsearch_main
+      JSEARCH_RAW_DB_TEST: postgres://postgres:postgres@raw_db/jsearch_raw
     env_file:
       - config/dev.env
 
@@ -36,16 +34,15 @@ services:
     image: postgres:11.0-alpine
     container_name: jsearch_raw_db
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=jsearch_raw
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: jsearch_raw
 
   main_db:
     image: postgres:11.0-alpine
     container_name: jsearch_main_db
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=jsearch_main
-
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: jsearch_main
 
