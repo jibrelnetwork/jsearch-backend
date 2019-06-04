@@ -223,7 +223,7 @@ def event_from_tx(address, tx_data, contracts_set):
     :return: event data object
     """
     event_type = get_event_type(tx_data, contracts_set)
-    if event_type is None:
+    if event_type is None or event_type == WalletEventType.ERC20_TRANSFER:
         return None
     event_data = {
         'is_forked': False,
@@ -236,7 +236,7 @@ def event_from_tx(address, tx_data, contracts_set):
         'tx_data': tx_data,
         'event_data': {'sender': tx_data['from'],
                        'recipient': tx_data['to'],
-                       'amount': str(int(tx_data['value'], 16)),
+                       'value': str(int(tx_data['value'], 16)),
                        'status': tx_data['status']}
     }
     return event_data
@@ -255,7 +255,6 @@ def event_from_token_transfer(address, transfer_data, tx_data):
 
     event_type = WalletEventType.ERC20_TRANSFER
     decimals = transfer_data['token_decimals'] or TOKEN_DECIMALS_DEFAULT
-    amount = str(transfer_data['token_value'] / 10 ** decimals)
     event_data = {
         'is_forked': False,
         'address': address,
@@ -267,7 +266,8 @@ def event_from_token_transfer(address, transfer_data, tx_data):
         'tx_data': tx_data,
         'event_data': {'sender': transfer_data['from_address'],
                        'recipient': transfer_data['to_address'],
-                       'amount': amount,
+                       'value': str(transfer_data['token_value']),
+                       'decimals': decimals,
                        'asset': transfer_data['token_address'],
                        'status': transfer_data['status']}
     }
@@ -302,7 +302,7 @@ def event_from_internal_tx(address, internal_tx_data, tx_data):
         'tx_data': tx_data,
         'event_data': {'sender': internal_tx_data['from'],
                        'recipient': internal_tx_data['to'],
-                       'amount': str(internal_tx_data['value']),
+                       'value': str(internal_tx_data['value']),
                        'status': event_status}
     }
     return event_data

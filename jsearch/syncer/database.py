@@ -760,7 +760,6 @@ class MainDB(DBWrapper):
         async with self.engine.acquire() as conn:
             res = await conn.execute(q, params)
             row = await res.fetchone()
-            print('LCE', sync_range, q, params, row)
             return dict(row) if row else None
 
     async def insert_chain_event(self, event):

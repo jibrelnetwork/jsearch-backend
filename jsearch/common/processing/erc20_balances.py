@@ -357,7 +357,7 @@ async def get_balances(owners, batch_size):
     print('BALANCEOF TOTAL TIME', time.time() - gt, batch_size)
     balances = []
     for i, h in enumerate(owners):
-        hex_val = calls_results[i].hex().strip('0x')[:64]
+        hex_val = calls_results[i].hex().replace('0x', '', 1)[:64]
         if hex_val == '':
             balance = 0
         else:

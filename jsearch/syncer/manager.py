@@ -187,6 +187,11 @@ class Manager:
         if next_event is None:
             await asyncio.sleep(self.sleep_on_no_blocks)
             return
+        if self.sync_range[1] and (next_event['block_number'] > self.sync_range[1] or next_event['common_block_number'] > self.sync_range[1]):
+            logger.info('Sync range complete',
+                        extra={'from': self.sync_range[0], 'to': self.sync_range[1]})
+            await asyncio.sleep(10)
+            return
         await self.process_chain_event(next_event)
 
     @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
