@@ -1,6 +1,6 @@
 import json
 import logging
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 import asyncpgsa
 from asyncpg import Connection
@@ -30,7 +30,7 @@ from jsearch.api.database_queries.transactions import (
     get_tx_by_address,
     get_tx_hashes_by_block_hashes_query,
     get_tx_hashes_by_block_hash_query,
-    get_txs_for_events_query)
+    get_txs_for_events_query, get_tx_by_hash)
 from jsearch.api.database_queries.uncles import (
     get_uncle_hashes_by_block_hashes_query,
     get_uncle_hashes_by_block_hash_query,
@@ -338,15 +338,11 @@ class Storage:
             return [models.Uncle(**r) for r in rows]
 
     async def get_transaction(self, tx_hash):
-        fields = models.Transaction.select_fields()
-        query = f"SELECT {fields} FROM transactions WHERE hash=$1"
-
+        query = get_tx_by_hash(tx_hash)
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(query, tx_hash)
-            if row is None:
-                return None
-            row = dict(row)
-            return models.Transaction(**row)
+            row = await fetch_row(conn, query)
+            if row:
+                return models.Transaction(**row)
 
     async def get_receipt(self, tx_hash):
         query = "SELECT * FROM receipts WHERE transaction_hash=$1"
@@ -507,7 +503,7 @@ class Storage:
                                 until_block: int,
                                 limit: int,
                                 order: str,
-                                offset: int) -> Dict[str, List[Dict[str, Any]]]:
+                                offset: int) -> List[Dict[str, Any]]:
         query = get_wallet_events_query(
             address=address,
             from_block=from_block,
@@ -517,16 +513,31 @@ class Storage:
             order=order
         )
         async with self.pool.acquire() as connection:
-            rows = await fetch(connection, query)
+            events = await fetch(connection, query)
 
-        events_per_tx = defaultdict(list)
-        for item in rows:
-            tx_hash = item['tx_hash']
-            data = models.WalletEvent(**item).to_dict()
+        events = in_app_distinct(events)
 
-            events_per_tx[tx_hash].append(data)
+        result = OrderedDict()
+        for event in events:
+            tx_data = event['tx_data']
+            if tx_data:
+                tx = models.Transaction(**json.loads(tx_data)).to_dict()
+            else:
+                tx = {}
 
-        return events_per_tx
+            tx_hash = event['tx_hash']
+            tx_event = models.WalletEvent(**event).to_dict()
+
+            item = result.get(tx_hash)
+            if item:
+                tx_events = item.get('events', [])
+                tx_events.append(tx_event)
+
+                item.update(events=tx_events)
+            else:
+                result[tx_hash] = {'rootTxData': tx, 'events': [tx_event]}
+
+        return [value for key, value in result.items()]
 
     async def get_wallet_assets_transfers(self, addresses: List[str], limit: int, offset: int,
                                           assets: Optional[List[str]] = None) -> List:
@@ -623,12 +634,15 @@ class Storage:
 
             addr_map = {k: list(g) for k, g in groupby(rows, lambda r: r['address'])}
             summary = []
-            for addr in addresses:
-                assets_summary = []
+            for address in addresses:
                 nonce = 0
-                for row in addr_map.get(addr, []):
-                    balance = int(row['value'])
-                    decimals = int(row['decimals']) if row['decimals'] is not None else ""
+                assets_summary = []
+                for row in addr_map.get(address, []):
+                    value = row['value'] or "0"
+                    decimals = row['decimals'] or "0"
+
+                    balance = value and int(value)
+                    decimals = decimals and int(decimals)
 
                     asset_summary = AssetSummary(
                         balance=str(balance),
@@ -637,10 +651,11 @@ class Storage:
                         transfers_number=row['tx_number'],
                     )
                     assets_summary.append(asset_summary)
-                    nonce = row['nonce']
+                    if row['nonce']:
+                        nonce = row['nonce']
 
                 item = AddressSummary(
-                    address=addr,
+                    address=address,
                     assets_summary=assets_summary,
                     outgoing_transactions_number=str(nonce)
                 )

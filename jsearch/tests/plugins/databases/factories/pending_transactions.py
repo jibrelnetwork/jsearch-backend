@@ -38,8 +38,10 @@ class PendingTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
         rename = {'from_': 'from'}
 
     @classmethod
-    def create_eth_transfer(cls, to):
+    def create_eth_transfer(cls, to=None):
         value = hex(randint(0, 999))
+        if not to:
+            to = generate_address()
         return cls.create(value=value, to=to)
 
     @classmethod
