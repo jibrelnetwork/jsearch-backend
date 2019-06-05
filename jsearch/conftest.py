@@ -7,6 +7,7 @@ from jsearch.api.app import make_app
 from jsearch.common import logs
 
 pytest_plugins = (
+    "jsearch.tests.plugins.cli",
     "jsearch.tests.plugins.databases.main_db",
 )
 

@@ -220,6 +220,20 @@ class RawDB(DBWrapper):
 
         return [dict(row) for row in rows]
 
+    async def get_last_pending_tx_id(self):
+        q = """
+        SELECT
+          "id"
+        FROM "pending_transactions" ORDER BY "id" DESC LIMIT 1
+        """
+
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q)
+                row = await cur.fetchone()
+                if row:
+                    return row['id']
+
     async def get_pending_txs_from(self, last_synced_id, limit):
         # TODO (Nick Gashkov): Remove after `Manager` will no longer sync
         # pending transactions.
