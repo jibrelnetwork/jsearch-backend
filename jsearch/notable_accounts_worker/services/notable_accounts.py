@@ -31,4 +31,16 @@ class NotableAccountsService(mode.Service):
         await self.handle_notable_accounts(message)
 
     async def handle_notable_accounts(self, message: Any) -> None:
-        ...
+        notable_accounts = _load_notable_accounts(message)
+
+
+def _load_notable_accounts(message: Any) -> List[structs.NotableAccount]:
+    loaded = list()
+
+    try:
+        for item in message:
+            loaded.append(structs.NotableAccount.from_mapping(item))
+    except (ValueError, TypeError, KeyError) as e:
+        raise InvalidMessageFormat from e
+
+    return loaded
