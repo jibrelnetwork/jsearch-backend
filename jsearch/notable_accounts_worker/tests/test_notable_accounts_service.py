@@ -58,6 +58,8 @@ async def test_notable_accounts_service_does_not_override_an_item_if_requested(
         db: Connection,
         notable_accounts_service: services.NotableAccountsService,
 ) -> None:
+    notable_accounts_service.update_if_exists = False
+
     db.execute(notable_accounts_t.insert().values(
         {
             'address': '0x8da0d80f5007ef1e431dd2127178d224e32c2ef4',

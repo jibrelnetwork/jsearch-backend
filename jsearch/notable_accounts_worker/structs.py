@@ -1,4 +1,4 @@
-from typing import NamedTuple, Tuple, Any, Mapping
+from typing import NamedTuple, Tuple, Any, Mapping, Dict
 
 
 class NotableAccount(NamedTuple):
@@ -13,3 +13,10 @@ class NotableAccount(NamedTuple):
             name=mapping['name'],
             labels=tuple(mapping['labels']),
         )
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            'address': self.address,
+            'name': self.name,
+            'labels': list(self.labels),
+        }
