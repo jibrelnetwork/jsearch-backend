@@ -71,6 +71,7 @@ class Transaction(Model):
         'transaction_index': int,
         'v': str,
         'value': str,
+        'status': bool
     }
 
     attribute_map = {
@@ -88,7 +89,13 @@ class Transaction(Model):
         'transaction_index': 'transactionIndex',
         'v': 'v',
         'value': 'value',
+        'status': 'status'
     }
+
+    def to_dict(self):
+        data = super(Transaction, self).to_dict()
+        data['status'] = bool(data['status'])
+        return data
 
 
 class InternalTransaction(Model):

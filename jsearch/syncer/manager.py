@@ -233,9 +233,3 @@ class Manager:
             )
             c += 1
         return c
-
-
-def sync_block(block_hash, block_number=None, is_forked=False, main_db_dsn=None, raw_db_dsn=None):
-    processor = SyncProcessor(main_db_dsn=main_db_dsn, raw_db_dsn=raw_db_dsn)
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(processor.sync_block(block_hash, block_number))

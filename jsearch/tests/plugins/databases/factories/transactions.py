@@ -41,6 +41,7 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     value = factory.Sequence(lambda n: hex(n))
     contract_call_description = {}
 
+    status = 1
     is_forked = False
 
     class Meta:

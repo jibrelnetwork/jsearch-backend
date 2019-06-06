@@ -11,7 +11,8 @@ def get_default_fields() -> List[Column]:
         wallet_events_t.c.type,
         wallet_events_t.c.event_index,
         wallet_events_t.c.event_data,
-        wallet_events_t.c.tx_hash
+        wallet_events_t.c.tx_hash,
+        wallet_events_t.c.tx_data,
     ]
 
 
