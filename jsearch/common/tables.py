@@ -211,6 +211,14 @@ accounts_base_t = sa.Table(
     sa.Column('root', sa.String),
 )
 
+notable_accounts_t = sa.Table(
+    'notable_accounts',
+    metadata,
+    sa.Column('address', sa.String, primary_key=True),
+    sa.Column('name', sa.String),
+    sa.Column('labels', postgresql.ARRAY(sa.String)),
+)
+
 blocks_t = sa.Table(
     'blocks',
     metadata,
@@ -344,6 +352,7 @@ TABLES = (
     logs_t,
     accounts_state_t,
     accounts_base_t,
+    notable_accounts_t,
     token_holders_t,
     internal_transactions_t,
     pending_transactions_t,
