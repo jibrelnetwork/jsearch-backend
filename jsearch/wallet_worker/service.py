@@ -1,7 +1,5 @@
 import logging
-from typing import List
 
-from mode import Service
 from sqlalchemy.dialects.postgresql import insert
 
 from jsearch.common import services
@@ -11,7 +9,6 @@ from jsearch.common.wallet_events import (
     event_from_token_transfer,
     event_from_tx
 )
-from jsearch.service_bus import service_bus
 from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
 from jsearch.utils import Singleton
 from jsearch.wallet_worker.typing import (
@@ -27,9 +24,6 @@ logger = logging.getLogger('wallet_worker')
 
 
 class DatabaseService(services.DatabaseService, Singleton):
-    def on_init_dependencies(self) -> List[Service]:
-        return [service_bus]
-
     async def _insert_event(self, event_data_from: Event, event_data_to: Event) -> None:
         q = wallet_events_t.insert()
         async with self.engine.acquire() as connection:

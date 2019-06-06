@@ -99,6 +99,7 @@ def main(log_level: str, no_json_formatter: bool) -> None:
     with aiomonitor.start_monitor(loop=loop):
         worker.Worker(
             service,
+            service_bus,
             ApiService(),
             loop=loop,
         ).execute_from_commandline()
