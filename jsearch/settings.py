@@ -14,6 +14,8 @@ JSEARCH_RAW_DB = os.getenv('JSEARCH_RAW_DB', 'postgres://localhost/jsearch_raw')
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 NO_JSON_FORMATTER = bool(int(os.getenv('NO_JSON_FORMATTER', '0')))
 
+NOTABLE_ACCOUNT_UPDATE_IF_EXISTS = bool(int(os.getenv('NOTABLE_ACCOUNT_UPDATE_IF_EXISTS', '1')))
+
 # can get list of connection.
 # examples:
 # kafka-1:19092, kafka-2:192092
