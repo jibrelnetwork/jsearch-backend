@@ -14,7 +14,7 @@ branch_labels = None
 depends_on = None
 
 UP_SQL = """
-CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_wallets_events_block ON wallet_events (block_number);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_wallets_events_address_block ON wallet_events (address, block_number);
 """
 
 DOWN_SQL = """
