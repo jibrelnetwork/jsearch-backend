@@ -18,7 +18,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_wallets_events_address_block ON walle
 """
 
 DOWN_SQL = """
-DROP INDEX ix_wallets_events_block;
+DROP INDEX ix_wallets_events_address_block;
 """
 
 
