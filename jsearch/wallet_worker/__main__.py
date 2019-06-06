@@ -18,7 +18,7 @@ from jsearch.wallet_worker.service import DatabaseService
 
 logger = logging.getLogger('wallet_worker')
 
-service = DatabaseService()
+service = DatabaseService(dsn=settings.JSEARCH_MAIN_DB)
 
 
 @service_bus.listen_stream(ROUTE_HANDLE_TRANSACTIONS, service_name='jsearch_wallet_worker', task_limit=100)

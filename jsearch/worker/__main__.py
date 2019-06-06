@@ -26,14 +26,11 @@ import asyncio
 import logging
 from typing import List, Dict
 
-import backoff
 import click
-import psycopg2
-from aiopg.sa import Engine, create_engine
 from mode import Service
 
 from jsearch import settings
-from jsearch.common import logs
+from jsearch.common import logs, services
 from jsearch.common import worker
 from jsearch.common.last_block import LastBlock
 from jsearch.multiprocessing import executor
@@ -46,22 +43,12 @@ from jsearch.worker.token_balances import get_balance_updates, update_balances
 logger = logging.getLogger('worker')
 
 
-class DatabaseService(Service, Singleton):
-    engine: Engine
-
+class DatabaseService(services.DatabaseService, Singleton):
     def on_init_dependencies(self) -> List[Service]:
         return [service_bus]
 
-    @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
-    async def on_start(self) -> None:
-        self.engine = await create_engine(settings.JSEARCH_MAIN_DB)
 
-    async def on_stop(self) -> None:
-        self.engine.close()
-        await self.engine.wait_closed()
-
-
-service = DatabaseService()
+service = DatabaseService(dsn=settings.JSEARCH_MAIN_DB)
 
 
 @service_bus.listen_stream(ROUTE_HANDLE_REORGANIZATION_EVENTS, service_name='jsearch-worker')

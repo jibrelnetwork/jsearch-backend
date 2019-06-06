@@ -1,13 +1,10 @@
 import logging
-
-import backoff
-import psycopg2
-from aiopg.sa import Engine, create_engine
-from mode import Service
-from sqlalchemy.dialects.postgresql import insert
 from typing import List
 
-from jsearch import settings
+from mode import Service
+from sqlalchemy.dialects.postgresql import insert
+
+from jsearch.common import services
 from jsearch.common.tables import transactions_t, assets_summary_t, wallet_events_t
 from jsearch.common.wallet_events import (
     event_from_internal_tx,
@@ -29,19 +26,9 @@ from jsearch.wallet_worker.typing import (
 logger = logging.getLogger('wallet_worker')
 
 
-class DatabaseService(Service, Singleton):
-    engine: Engine
-
+class DatabaseService(services.DatabaseService, Singleton):
     def on_init_dependencies(self) -> List[Service]:
         return [service_bus]
-
-    @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
-    async def on_start(self) -> None:
-        self.engine = await create_engine(settings.JSEARCH_MAIN_DB)
-
-    async def on_stop(self) -> None:
-        self.engine.close()
-        await self.engine.wait_closed()
 
     async def _insert_event(self, event_data_from: Event, event_data_to: Event) -> None:
         q = wallet_events_t.insert()
