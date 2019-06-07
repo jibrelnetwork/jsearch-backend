@@ -19,6 +19,8 @@ CODE_OK = 0
 CODE_ERROR = 1
 CODE_ERROR_FROM_CLICK = 2
 
+pytestmark = pytest.mark.asyncio
+
 
 pytestmark = pytest.mark.asyncio
 

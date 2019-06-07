@@ -47,7 +47,7 @@ async def pending_syncer_service(
         raw_db_dsn=raw_db_connection_string,
         main_db_dsn=db_connection_string,
         loop=event_loop,
-        sync_range=SyncRange(0, None),
+        sync_range=SyncRange(0, None)
     )
 
     await service.on_start()
@@ -254,5 +254,144 @@ async def test_pending_tx_can_be_saved_with_a_big_value(
             'input': pending_tx_fields['input'],
             'nonce': int(pending_tx_fields['nonce'], 16),
             'value': '1000000000000000000000000000000000',
+        },
+    ]
+
+
+@pytest.mark.usefixtures("mock_service_bus")
+async def test_pending_syncer_processes_related_txs_in_order(
+        db: Engine,
+        raw_db: Engine,
+        pending_syncer_service: PendingSyncerService
+) -> None:
+
+    raw_db.execute(
+        """
+        INSERT INTO pending_transactions (
+          "id",
+          "tx_hash",
+          "status",
+          "fields",
+          "timestamp",
+          "removed",
+          "node_id"
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, [
+            (
+                1,
+                '0xFIRST',
+                '',
+                Json({}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+            (
+                2,
+                '0xFIRST',
+                '',
+                Json({}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+            (
+                3,
+                '0xSECOND',
+                '',
+                Json({}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+            (
+                4,
+                '0xTHIRD',
+                '',
+                Json({}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+            (
+                5,
+                '0xTHIRD',
+                '',
+                Json({}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+            (
+                6,
+                '0xSECOND',
+                '',
+                Json({}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+            (
+                7,
+                '0xSECOND',
+                '',
+                Json({}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+            (
+                8,
+                '0xFIRST',
+                '',
+                Json({}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+            (
+                9,
+                '0xSECOND',
+                '',
+                Json({}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+            (
+                10,
+                '0xFOURTH',
+                '',
+                Json({}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+        ]
+    )
+
+    txs = await pending_syncer_service.get_pending_txs_to_sync(None)
+    await pending_syncer_service.sync_pending_txs(txs)
+
+    pending_txs_query = pending_transactions_t.select().order_by(pending_transactions_t.c.last_synced_id)
+    pending_txs = db.execute(pending_txs_query).fetchall()
+    pending_txs = [{'last_synced_id': tx['last_synced_id'], 'hash': tx['hash']} for tx in pending_txs]
+
+    assert pending_txs == [
+        {
+            'last_synced_id': 5,
+            'hash': '0xTHIRD',
+        },
+        {
+            'last_synced_id': 8,
+            'hash': '0xFIRST',
+        },
+        {
+            'last_synced_id': 9,
+            'hash': '0xSECOND',
+        },
+        {
+            'last_synced_id': 10,
+            'hash': '0xFOURTH',
         },
     ]
