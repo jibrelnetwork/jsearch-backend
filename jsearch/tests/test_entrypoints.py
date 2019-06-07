@@ -19,6 +19,8 @@ CODE_OK = 0
 CODE_ERROR = 1
 CODE_ERROR_FROM_CLICK = 2
 
+pytestmark = pytest.mark.asyncio
+
 
 @pytest.fixture()
 def _mock_executor(mocker: MockFixture):
@@ -51,7 +53,7 @@ def _mock_loop_runners(mocker: MockFixture):
         "all args transfers",
     ]
 )
-def test_post_processing_entrypoint(
+async def test_post_processing_entrypoint(
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
@@ -74,7 +76,7 @@ def test_post_processing_entrypoint(
         "all args",
     ]
 )
-def test_syncer_entrypoint(
+async def test_syncer_entrypoint(
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
@@ -97,7 +99,7 @@ def test_syncer_entrypoint(
         "all args",
     ]
 )
-def test_pending_syncer_entrypoint(
+async def test_pending_syncer_entrypoint(
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
@@ -122,7 +124,7 @@ def test_pending_syncer_entrypoint(
         "all args",
     ]
 )
-def test_validation_entrypoint(
+async def test_validation_entrypoint(
         mocker: MockFixture,
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
@@ -150,7 +152,7 @@ def test_validation_entrypoint(
         "all args",
     ]
 )
-def test_worker_entrypoint(
+async def test_worker_entrypoint(
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
@@ -173,7 +175,7 @@ def test_worker_entrypoint(
         "all args",
     ]
 )
-def test_wallet_worker_entrypoint(
+async def test_wallet_worker_entrypoint(
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
