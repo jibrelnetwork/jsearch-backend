@@ -713,6 +713,10 @@ class MainDB(DBWrapper):
             .values(is_forked=is_forked) \
             .where(uncles_t.c.block_hash.in_(block_hashes))
 
+        update_wallet_events_q = wallet_events_t.update() \
+            .values(is_forked=is_forked) \
+            .where(wallet_events_t.c.block_hash.in_(block_hashes))
+
         await conn.execute(update_block_q)
         await conn.execute(update_txs_q)
         await conn.execute(update_receipts_q)
@@ -722,6 +726,7 @@ class MainDB(DBWrapper):
         await conn.execute(update_uncles_q)
         await conn.execute(update_token_transfers_q)
         await conn.execute(update_assets_transfers_q)
+        await conn.execute(update_wallet_events_q)
         logger.debug(
             'Update fork status',
             extra={

@@ -323,7 +323,11 @@ def events_from_transfers(transfers, transactions):
 
 def events_from_internal_transactions(internal_transactions, transactions):
     tx_map = {tx['hash']: tx for tx in transactions}
-    return [event_from_internal_tx(tx_map[it['parent_tx_hash']]['address'], it, tx_map[it['parent_tx_hash']]) for it in internal_transactions]
+    events = []
+    for it in internal_transactions:
+        events.append(event_from_internal_tx(it['from'], it, tx_map[it['parent_tx_hash']]))
+        events.append(event_from_internal_tx(it['to'], it, tx_map[it['parent_tx_hash']]))
+    return events
 
 
 def assets_from_accounts(accounts):
