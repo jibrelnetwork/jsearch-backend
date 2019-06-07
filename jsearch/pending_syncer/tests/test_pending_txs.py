@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import pytest
+from jsearch.common.structs import SyncRange
 from psycopg2._json import Json
 from sqlalchemy.engine import Engine
 
@@ -46,6 +47,7 @@ async def pending_syncer_service(
         raw_db_dsn=raw_db_connection_string,
         main_db_dsn=db_connection_string,
         loop=event_loop,
+        sync_range=SyncRange(0, None),
     )
 
     await service.on_start()
@@ -62,7 +64,8 @@ async def test_pending_tx_is_not_saved_if_there_is_none(
 ) -> None:
     # No pending TXs are in DB.
 
-    await pending_syncer_service.sync_pending_txs()
+    txs = await pending_syncer_service.get_pending_txs_to_sync(None)
+    await pending_syncer_service.sync_pending_txs(txs)
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
@@ -89,7 +92,7 @@ async def test_pending_tx_is_saved_to_main_db(
         ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, [
             (
-                48283958,
+                1,
                 '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
                 '',
                 Json(pending_tx_fields),
@@ -100,14 +103,15 @@ async def test_pending_tx_is_saved_to_main_db(
         ]
     )
 
-    await pending_syncer_service.sync_pending_txs()
+    txs = await pending_syncer_service.get_pending_txs_to_sync(None)
+    await pending_syncer_service.sync_pending_txs(txs)
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
 
     assert pending_txs == [
         {
-            'last_synced_id': 48283958,
+            'last_synced_id': 1,
             'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
             'status': '',
             'timestamp': datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
@@ -167,7 +171,8 @@ async def test_pending_tx_is_marked_as_removed(
         ]
     )
 
-    await pending_syncer_service.sync_pending_txs()
+    txs = await pending_syncer_service.get_pending_txs_to_sync(None)
+    await pending_syncer_service.sync_pending_txs(txs)
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
@@ -225,7 +230,8 @@ async def test_pending_tx_can_be_saved_with_a_big_value(
         ]
     )
 
-    await pending_syncer_service.sync_pending_txs()
+    txs = await pending_syncer_service.get_pending_txs_to_sync(None)
+    await pending_syncer_service.sync_pending_txs(txs)
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
