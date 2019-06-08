@@ -232,7 +232,7 @@ def event_from_tx(address, tx_data, contracts_set):
         'block_number': tx_data['block_number'],
         'block_hash': tx_data['block_hash'],
         'tx_hash': tx_data['hash'],
-        'event_index': tx_data['transaction_index'] + tx_data['block_number'] * 1000,
+        'event_index': tx_data['block_number'] * 1000000 + tx_data['transaction_index'] * 1000,
         'tx_data': tx_data,
         'event_data': {'sender': tx_data['from'],
                        'recipient': tx_data['to'],
@@ -255,6 +255,7 @@ def event_from_token_transfer(address, transfer_data, tx_data):
 
     event_type = WalletEventType.ERC20_TRANSFER
     decimals = transfer_data['token_decimals'] or TOKEN_DECIMALS_DEFAULT
+    event_index = tx_data['block_number'] * 1000000 + tx_data['transaction_index'] * 1000 + transfer_data['log_index']
     event_data = {
         'is_forked': False,
         'address': address,
@@ -262,7 +263,7 @@ def event_from_token_transfer(address, transfer_data, tx_data):
         'block_number': tx_data['block_number'],
         'block_hash': tx_data['block_hash'],
         'tx_hash': tx_data['hash'],
-        'event_index': tx_data['transaction_index'] + tx_data['block_number'] * 1000,
+        'event_index': event_index,
         'tx_data': tx_data,
         'event_data': {'sender': transfer_data['from_address'],
                        'recipient': transfer_data['to_address'],
@@ -298,7 +299,7 @@ def event_from_internal_tx(address, internal_tx_data, tx_data):
         'block_number': tx_data['block_number'],
         'block_hash': tx_data['block_hash'],
         'tx_hash': tx_data['hash'],
-        'event_index': tx_data['transaction_index'] + tx_data['block_number'] * 1000,
+        'event_index': tx_data['block_number'] * 1000000 + tx_data['transaction_index'] * 1000,
         'tx_data': tx_data,
         'event_data': {'sender': internal_tx_data['from'],
                        'recipient': internal_tx_data['to'],
