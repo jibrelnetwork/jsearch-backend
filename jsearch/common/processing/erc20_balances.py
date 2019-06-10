@@ -9,7 +9,6 @@ from jsearch import settings
 from jsearch.common.contracts import NULL_ADDRESS, ERC20_ABI, ERC20_DEFAULT_DECIMALS
 from jsearch.common.last_block import LastBlock
 from jsearch.common.rpc import ContractCall, eth_call_batch, eth_call
-from jsearch.syncer.database import MainDBSync
 from jsearch.typing import Log, Abi, Contract, Transfers
 from jsearch.utils import split
 from jsearch.service_bus import sync_client
@@ -62,7 +61,7 @@ class BalanceUpdate:
     def key(self):
         return self.token_address, self.account_address
 
-    def apply(self, db: MainDBSync, last_block: int):
+    def apply(self, db, last_block: int):
         changes = None
         balance = None
 
@@ -182,7 +181,7 @@ def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpd
 
 
 def update_token_holder_balances(
-        db: MainDBSync,
+        db,
         transfers: Transfers,
         contracts: Dict[str, Contract],
         last_block: Union[int, str],

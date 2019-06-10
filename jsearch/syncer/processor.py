@@ -13,7 +13,7 @@ from jsearch.common import contracts
 from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.erc20_transfers import logs_to_transfers_decimals
 from jsearch.common.processing.erc20_balances import get_balances
-from jsearch.syncer.database import MainDBSync, RawDBSync, RawDBAsync, MainDBAsync
+from jsearch.syncer.database import RawDBAsync, MainDBAsync
 from jsearch.typing import Logs
 from jsearch.common.processing import wallet
 from jsearch.common.processing.decimals_cache import decimals_cache
@@ -35,7 +35,7 @@ class BlockData(NamedTuple):
     wallet_events: List[Dict[str, Any]]
     assets_summary_updates: List[Dict[str, Any]]
 
-    async def write_to_database(self, main_db: MainDBSync) -> None:
+    async def write_to_database(self, main_db: MainDBAsync) -> None:
         await main_db.write_block_data_proc(
             block_data=self.block,
             uncles_data=self.uncles,
@@ -139,7 +139,7 @@ class SyncProcessor:
         accounts = await self.raw_db.get_block_accounts(block_hash)
         internal_transactions = await self.raw_db.get_internal_transactions(block_hash)
         fetch_time = time.monotonic() - start_time
-        self.raw_db.disconnect()
+        #self.raw_db.disconnect()
 
         block = await self.process_block(
             header=header,
@@ -167,7 +167,7 @@ class SyncProcessor:
             'db_write_time': '{:0.2f}s'.format(db_write_time),
             'bus_write_time': '{:0.2f}s'.format(bus_write_time),
         })
-        self.main_db.disconnect()
+        #await self.main_db.disconnect()
         return True
 
     async def process_block(self, header, body, reward, receipts, accounts, internal_transactions, is_forked) -> BlockData:

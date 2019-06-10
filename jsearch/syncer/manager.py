@@ -157,7 +157,7 @@ class Manager:
             'event_type': event['type'],
             'block_number': event['block_number'] or event['common_block_number'],
             'block_hash': event['block_hash'] or event['common_block_hash'],
-            'time': '{:0.2f}s'.format(time.monotonic() - start_time)
+            'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
         await self.main_db.insert_chain_event(event)
 

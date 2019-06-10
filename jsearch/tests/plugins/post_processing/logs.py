@@ -11,26 +11,26 @@ pytest_plugins = (
 )
 
 
-@pytest.fixture(scope="function")
-def load_logs(db_connection_string) -> Callable[[Logs], Logs]:
-    from jsearch.common.tables import logs_t
-    from jsearch.typing import Logs
-
-    from jsearch.common.utils import as_dicts
-    from jsearch.syncer.database import MainDBSync
-
-    @as_dicts
-    def _wrapper(tx_hash, block_hash) -> Logs:
-        with MainDBSync(db_connection_string) as db:
-            query = select(logs_t.c).where(
-                and_(
-                    logs_t.c.transaction_hash == tx_hash,
-                    logs_t.c.block_hash == block_hash,
-                )
-            )
-            return db.execute(query).fetchall()
-
-    return _wrapper
+# @pytest.fixture(scope="function")
+# def load_logs(db_connection_string) -> Callable[[Logs], Logs]:
+#     from jsearch.common.tables import logs_t
+#     from jsearch.typing import Logs
+#
+#     from jsearch.common.utils import as_dicts
+#     from jsearch.syncer.database import MainDBSync
+#
+#     @as_dicts
+#     def _wrapper(tx_hash, block_hash) -> Logs:
+#         with MainDBSync(db_connection_string) as db:
+#             query = select(logs_t.c).where(
+#                 and_(
+#                     logs_t.c.transaction_hash == tx_hash,
+#                     logs_t.c.block_hash == block_hash,
+#                 )
+#             )
+#             return db.execute(query).fetchall()
+#
+#     return _wrapper
 
 
 @pytest.fixture(scope="function")
