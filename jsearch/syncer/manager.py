@@ -137,8 +137,8 @@ class Manager:
         logger.info("Start Processing Chain Event", extra={
             'event_id': event['id'],
             'event_type': event['type'],
-            'block_number': event['block_number'] or event['common_block_number'],
-            'block_hash': event['block_hash'] or event['common_block_hash'],
+            'block_number': event['block_number'],
+            'block_hash': event['block_hash'],
         })
         if event['type'] == ChainEvent.INSERT:
             await self.process_insert_block(event['block_hash'], event['block_number'])
@@ -155,8 +155,8 @@ class Manager:
         logger.info("Finish Processing Chain Event", extra={
             'event_id': event['id'],
             'event_type': event['type'],
-            'block_number': event['block_number'] or event['common_block_number'],
-            'block_hash': event['block_hash'] or event['common_block_hash'],
+            'block_number': event['block_number'],
+            'block_hash': event['block_hash'],
             'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
         await self.main_db.insert_chain_event(event)
@@ -187,7 +187,7 @@ class Manager:
         if next_event is None:
             await asyncio.sleep(self.sleep_on_no_blocks)
             return
-        if self.sync_range[1] and (next_event['block_number'] > self.sync_range[1] or next_event['common_block_number'] > self.sync_range[1]):
+        if self.sync_range[1] and next_event['block_number'] > self.sync_range[1]:
             logger.info('Sync range complete',
                         extra={'from': self.sync_range[0], 'to': self.sync_range[1]})
             await asyncio.sleep(10)

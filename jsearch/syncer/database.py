@@ -286,13 +286,11 @@ class RawDB(DBWrapper):
 
     async def get_first_chain_event_for_block_range(self, block_range, node_id):
         if block_range[1] is not None:
-            cond = """block_number BETWEEN %s AND %s 
-                        OR common_block_number BETWEEN %s AND %s"""
-            params = list(block_range) + list(block_range)
+            cond = """block_number BETWEEN %s AND %s"""
+            params = list(block_range)
         else:
-            cond = """block_number >= %s 
-                        OR common_block_number >= %s"""
-            params = [block_range[0], block_range[0]]
+            cond = """block_number >= %s"""
+            params = [block_range[0]]
         params.append(node_id)
 
         q = f"""SELECT * FROM chain_events 
@@ -304,7 +302,6 @@ class RawDB(DBWrapper):
                 row = await cur.fetchone()
                 cur.close()
         return row
-
 
     async def get_chain_split(self, split_id):
         q = """SELECT * from chain_splits WHERE id=%s"""
@@ -648,8 +645,8 @@ class MainDB(DBWrapper):
                 return True
 
     async def apply_chain_split(self, split_data):
-        from_block = split_data['common_block_number']
-        to_block = split_data['common_block_number'] + split_data['add_length']
+        from_block = split_data['block_number']
+        to_block = split_data['block_number'] + split_data['add_length']
         query = blocks_t.select().where(and_(blocks_t.c.number > from_block, blocks_t.c.number <= to_block))
         blocks = await self.fetch_all(query)
 
@@ -764,13 +761,11 @@ class MainDB(DBWrapper):
 
     async def get_last_chain_event(self, sync_range, node_id):
         if sync_range[1] is not None:
-            cond = """block_number BETWEEN %s AND %s 
-                        OR common_block_number BETWEEN %s AND %s"""
-            params = list(sync_range) + list(sync_range)
+            cond = """block_number BETWEEN %s AND %s"""
+            params = list(sync_range)
         else:
-            cond = """block_number >= %s 
-                        OR common_block_number >= %s"""
-            params = [sync_range[0], sync_range[0]]
+            cond = """block_number >= %s"""
+            params = [sync_range[0]]
 
         params.insert(0, node_id)
         q = f"""SELECT * FROM chain_events 
