@@ -886,6 +886,9 @@ class MainDBAsync(DBWrapper):
                 'balance': acc['balance'],
             })
 
+        token_holders_updates.sort(key=lambda u: (u['account_address'], u['token_address']))
+        assets_summary_updates.sort(key=lambda u: (u['address'], u['asset_address']))
+
         q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
         j = json.dumps
         async with self.engine.acquire() as conn:

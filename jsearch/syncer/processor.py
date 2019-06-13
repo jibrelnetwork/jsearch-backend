@@ -201,15 +201,15 @@ class SyncProcessor:
         decimals = await decimals_cache.get_many({l['address'] for l in logs_data})
         transfers = logs_to_transfers_decimals(logs_data, block_data, decimals)
 
-        #token_holders_updates = await self.get_token_holders_updates(transfers)
+        token_holders_updates = await self.get_token_holders_updates(transfers, decimals)
 
         wallet_events = wallet.events_from_transactions(transactions_data, contracts_set)
         wallet_events.extend(wallet.events_from_transfers(transfers, transactions_data))
         wallet_events.extend(wallet.events_from_internal_transactions(internal_txs_data, transactions_data))
         wallet_events = [e for e in wallet_events if e is not None]
 
-        #assets_summary_updates = wallet.assets_from_accounts(accounts_data)
-        #assets_summary_updates.extend(wallet.assets_from_token_balance_updates(token_holders_updates))
+        assets_summary_updates = wallet.assets_from_accounts(accounts_data)
+        assets_summary_updates.extend(wallet.assets_from_token_balance_updates(token_holders_updates))
 
         token_holders_updates = []
         assets_summary_updates = []
@@ -378,7 +378,7 @@ class SyncProcessor:
             items.append(data)
         return items
 
-    async def get_token_holders_updates(self, transfers):
+    async def get_token_holders_updates(self, transfers, decimals_map):
         holders = set()
         for t in transfers:
             to_address = t['to_address']
@@ -396,7 +396,7 @@ class SyncProcessor:
                 'account_address': b[0],
                 'token_address': b[1],
                 'balance': b[2],
-                'decimals': 18  # FIXME!!!!! use real decimals
+                'decimals': decimals_map[b[1]],
             }
             updates.append(update)
         return updates
