@@ -246,7 +246,7 @@ class Manager:
         return new_reorgs
 
     async def get_new_chain_splits(self):
-        last_chain_split_num = max(await self.main_db.get_last_chain_split())
+        last_chain_split_num = await self.main_db.get_last_chain_split()
 
         logger.info("Fetched last chain split", extra={'number': last_chain_split_num})
         new_chain_splits = await self.raw_db.get_chain_splits_from(last_chain_split_num, REORGS_BATCH_SIZE)
