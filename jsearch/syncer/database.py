@@ -475,7 +475,7 @@ class MainDB(DBWrapper):
                 )
                 return True
 
-    async def get_last_chain_split(self):
+    async def get_last_chain_split(self) -> int:
         q = """SELECT id FROM chain_splits ORDER BY id DESC LIMIT 1"""
         async with self.engine.acquire() as conn:
             res = await conn.execute(q)
