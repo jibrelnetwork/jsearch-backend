@@ -14,6 +14,8 @@ JSEARCH_RAW_DB = os.getenv('JSEARCH_RAW_DB', 'postgres://localhost/jsearch_raw')
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 NO_JSON_FORMATTER = bool(int(os.getenv('NO_JSON_FORMATTER', '0')))
 
+NOTABLE_ACCOUNT_UPDATE_IF_EXISTS = bool(int(os.getenv('NOTABLE_ACCOUNT_UPDATE_IF_EXISTS', '1')))
+
 # can get list of connection.
 # examples:
 # kafka-1:19092, kafka-2:192092
@@ -50,3 +52,4 @@ POST_PROCESSING_API_PORT = int(os.getenv('POST_PROCESSING_API_PORT', 8080))
 SYNCER_API_PORT = int(os.getenv('SYNCER_API_PORT', 8080))
 WALLET_WORKER_API_PORT = int(os.getenv('WALLET_WORKER_API_PORT', 8080))
 WORKER_API_PORT = int(os.getenv('WORKER_API_PORT', 8080))
+NOTABLES_WORKER_API_PORT = int(os.getenv('NOTABLES_WORKER_API_PORT', 8080))

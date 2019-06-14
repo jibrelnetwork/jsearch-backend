@@ -24,44 +24,24 @@ Communication scheme for token transfer reorganization.
 """
 import asyncio
 import logging
-from typing import List, Dict
+from typing import Dict
 
-import backoff
 import click
-import psycopg2
-from aiopg.sa import Engine, create_engine
-from mode import Service
 
 from jsearch import settings
-from jsearch.common import logs
+from jsearch.common import logs, services
 from jsearch.common import worker
 from jsearch.common.last_block import LastBlock
 from jsearch.multiprocessing import executor
 from jsearch.service_bus import service_bus, ROUTE_HANDLE_REORGANIZATION_EVENTS, ROUTE_HANDLE_LAST_BLOCK
 from jsearch.syncer.database_queries.assets_summary import insert_or_update_assets_summary
-from jsearch.utils import Singleton
 from jsearch.worker.api_service import ApiService
 from jsearch.worker.token_balances import get_balance_updates, update_balances
 
 logger = logging.getLogger('worker')
 
 
-class DatabaseService(Service, Singleton):
-    engine: Engine
-
-    def on_init_dependencies(self) -> List[Service]:
-        return [service_bus]
-
-    @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
-    async def on_start(self) -> None:
-        self.engine = await create_engine(settings.JSEARCH_MAIN_DB)
-
-    async def on_stop(self) -> None:
-        self.engine.close()
-        await self.engine.wait_closed()
-
-
-service = DatabaseService()
+service = services.DatabaseService(dsn=settings.JSEARCH_MAIN_DB)
 
 
 @service_bus.listen_stream(ROUTE_HANDLE_REORGANIZATION_EVENTS, service_name='jsearch-worker')
@@ -129,5 +109,6 @@ def main(log_level: str, no_json_formatter: bool) -> None:
     logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
     worker.Worker(
         service,
+        service_bus,
         ApiService(),
     ).execute_from_commandline()
