@@ -11,10 +11,6 @@ if [ "${RUNMODE}" = "app" ]; then
     gunicorn -c gunicorn-conf.py jsearch.api.app:make_app
 elif [ "${RUNMODE}" = "syncer" ]; then
     jsearch-syncer
-elif [ "${RUNMODE}" = "celerybeat" ]; then
-    celery beat -A jsearch.common.celery -l info
-elif [ "${RUNMODE}" = "celeryworker" ]; then
-    celery worker -A jsearch.common.celery -l info
 else
     echo "Executing script: $@"
     exec "$@"
