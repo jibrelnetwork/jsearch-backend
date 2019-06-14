@@ -254,6 +254,7 @@ class SyncProcessor:
         if 'total_difficulty' not in data:
             data['total_difficulty'] = None
         data['is_sequence_sync'] = True
+        data['logs_bloom'] = ''
         return data
 
     def process_uncles(self,
@@ -272,6 +273,7 @@ class SyncProcessor:
             data['block_number'] = block_number
             hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
             data['is_forked'] = is_forked
+            data['logs_bloom'] = ''
             if 'size' not in data:
                 data['size'] = None
             if 'total_difficulty' not in data:
@@ -310,7 +312,7 @@ class SyncProcessor:
             recpt_data = dict_keys_case_convert(receipt)
             tx = transactions[i*2]
             assert tx['hash'] == recpt_data['transaction_hash']
-
+            recpt_data['logs_bloom'] = ''
             recpt_data['transaction_index'] = i
             recpt_data['to'] = tx['to']
             recpt_data['from'] = tx['from']
