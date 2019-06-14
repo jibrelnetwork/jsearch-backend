@@ -36,9 +36,9 @@ def get_tx_hashes_by_block_hash_query(block_hash: str) -> Query:
 
 def get_tx_hashes_by_block_hashes_query(block_hashes: List[str]) -> Query:
     return select(
-        columns=[transactions_t.c.block_hash, transactions_t.c.hash],
+        columns=[transactions_t.c.block_hash, transactions_t.c.hash, transactions_t.c.transaction_index],
         whereclause=transactions_t.c.block_hash.in_(block_hashes),
-    ).order_by(transactions_t.c.block_hash).distinct()
+    ).order_by(transactions_t.c.transaction_index).distinct()
 
 
 def get_tx_by_hash(tx_hash: str, columns: List[Column] = None) -> Query:
