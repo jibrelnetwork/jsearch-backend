@@ -1,17 +1,20 @@
+import asyncio
 import logging
-from itertools import count
-from typing import Dict, Set, Union
+from pprint import pformat
+
+import aiohttp
+import time
+from eth_abi import encode_abi as eth_abi_encode_abi
+from eth_abi.exceptions import EncodingError
+from eth_utils import to_hex
+from hexbytes import HexBytes
 from typing import List, Optional
-
 from web3 import Web3
+from web3.utils.abi import map_abi_data, get_abi_input_types
+from web3.utils.normalizers import abi_bytes_to_bytes, abi_address_to_hex, abi_string_to_text
 
-from jsearch import settings
-from jsearch.common.contracts import NULL_ADDRESS, ERC20_ABI, ERC20_DEFAULT_DECIMALS
 from jsearch.common.last_block import LastBlock
-from jsearch.common.rpc import ContractCall, eth_call_batch, eth_call
-from jsearch.typing import Log, Abi, Contract, Transfers
-from jsearch.utils import split
-from jsearch.service_bus import sync_client
+from jsearch.common.rpc import EthRequestException, EthCallException
 
 logger = logging.getLogger(__name__)
 
@@ -121,110 +124,25 @@ class BalanceUpdate:
 
 BalanceUpdates = List[BalanceUpdate]
 
-
-def fetch_erc20_token_balance(contract_abi: Abi,
-                              token_address: str,
-                              account_address: str,
-                              block: Optional[Union[str, int]] = 'latest') -> int:
-    token_address_checksum = Web3.toChecksumAddress(token_address)
-    account_address_checksum = Web3.toChecksumAddress(account_address)
-
-    call = ContractCall(
-        abi=contract_abi,
-        address=token_address_checksum,
-        method='balanceOf',
-        args=[account_address_checksum, ],
-        block=block,
-        silent=True
-    )
-
-    return eth_call(call=call)
-
-
-def fetch_erc20_balance_bulk(updates: BalanceUpdates, block: Optional[Union[str, int]] = None) -> BalanceUpdates:
-    calls = []
-    counter = count()
-    for update in updates:
-        call = ContractCall(
-            pk=next(counter),
-            abi=update.abi,
-            address=update.token_as_checksum,
-            method='balanceOf',
-            args=[update.account_as_checksum],
-            block=block,
-            silent=True
-        )
-        calls.append(call)
-    calls_results = eth_call_batch(calls=calls)
-    for call, update in zip(calls, updates):
-        update.value = calls_results.get(call.pk)
-    return updates
-
-
-def logs_to_balance_updates(log: Log, abi: Abi, decimals: int) -> Set[BalanceUpdate]:
-    updates = set()
-    to_address = log['to_address']
-    from_address = log['from_address']
-
-    block = log['block_number']
-    token_address = log['token_address']
-
-    if to_address != NULL_ADDRESS:
-        update = BalanceUpdate(token_address, to_address, block, abi, decimals)
-        updates.add(update)
-
-    if from_address != NULL_ADDRESS:
-        update = BalanceUpdate(token_address, from_address, block, abi, decimals)
-        updates.add(update)
-
-    return updates
-
-
-def update_token_holder_balances(
-        db,
-        transfers: Transfers,
-        contracts: Dict[str, Contract],
-        last_block: Union[int, str],
-        batch_size: int = settings.ETH_NODE_BATCH_REQUEST_SIZE,
-) -> None:
-    updates = set()
-    for transfer in transfers:
-        contract_address = transfer['token_address']
-        contract = contracts.get(contract_address)
-        if contract:
-            abi = contract.get('abi')
-            decimals = contract.get('decimals')
-        else:
-            abi = ERC20_ABI
-            decimals = ERC20_DEFAULT_DECIMALS
-        updates |= logs_to_balance_updates(transfer, abi, decimals)
-
-    for chunk in split(updates, batch_size):
-        updates = fetch_erc20_balance_bulk(chunk, block=last_block)
-        for update in updates:
-            update.apply(db, last_block)
-        sync_client.write_assets_updates([u.to_asset_update() for u in updates if u.value is not None])
-
-
-import asyncio
-import time
-
-from eth_abi import encode_abi as eth_abi_encode_abi
-from eth_abi.exceptions import DecodingError, EncodingError
-from eth_utils import to_hex
-from hexbytes import HexBytes
-from web3 import Web3
-from web3.utils.abi import get_abi_output_types, map_abi_data, get_abi_input_types
-from web3.utils.normalizers import BASE_RETURN_NORMALIZERS, abi_bytes_to_bytes, abi_address_to_hex, abi_string_to_text
-
-
-abi = {'constant': True,
-       'inputs': [{'name': '_owner', 'type': 'address'}],
-       'name': 'balanceOf',
-       'outputs': [{'name': 'balance', 'type': 'uint256'}],
-       'payable': False,
-       'stateMutability': 'view',
-       'type': 'function'}
+abi = {
+    'constant': True,
+    'inputs': [
+        {
+            'name': '_owner',
+            'type': 'address'
+        }
+    ],
+    'name': 'balanceOf',
+    'outputs': [
+        {
+            'name': 'balance',
+            'type': 'uint256'
+        }
+    ],
+    'payable': False,
+    'stateMutability': 'view',
+    'type': 'function'
+}
 
 
 def encode_abi(abi, arguments):
@@ -260,9 +178,13 @@ def get_data(owner):
 
 
 def get_params(contract, data):
-    return [{"to": contract,
-             "data": data},
-             "latest"]
+    return [
+        {
+            "to": contract,
+            "data": data
+        },
+        "latest"
+    ]
 
 
 def get_params_balance(contract, owner):
@@ -289,14 +211,7 @@ def get_decimals_rpc_call(contract, _id):
     return value
 
 
-from jsearch.common.rpc import ContractCall, EthCallException, EthRequestException, pformat, settings
-from itertools import count
-import aiohttp
-from jsearch.common.contracts import ERC20_ABI
-
-
 API_URL = 'https://main-node.jwallet.network'
-#API_URL = 'https://mainnet.infura.io/JmDPRWA8l91sQf5ANQTb'
 
 
 async def eth_call_request(data):
@@ -304,9 +219,11 @@ async def eth_call_request(data):
     async with aiohttp.ClientSession() as session:
         async with session.post(API_URL, json=data) as response:
             if response.status != 200:
-                raise EthRequestException(f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}")
+                raise EthRequestException(
+                    f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}"
+                )
             data = await response.json()
-            print('RPC REQ', API_URL,  time.time() - rs)
+            print('RPC REQ', API_URL, time.time() - rs)
             if any('error' in item for item in data):
                 msg = pformat(data)
                 raise EthCallException(
@@ -353,6 +270,7 @@ async def get_balances(owners, batch_size):
     calls_results = {}
     for res in calls_results_list:
         calls_results.update(res)
+
     print('BALANCEOF TOTAL TIME', time.time() - gt, batch_size)
     balances = []
     for i, h in enumerate(owners):
@@ -372,12 +290,14 @@ async def get_decimals(addresses, batch_size):
         call = get_decimals_rpc_call(addr, i)
         calls.append(call)
         calls_chunks = chunks(calls, batch_size)
+        # TODO: Think about better implementation
 
     coros = [eth_call_batch(calls=c) for c in calls_chunks]
     calls_results_list = await asyncio.gather(*coros)
     calls_results = {}
     for res in calls_results_list:
         calls_results.update(res)
+
     print('DECIMALS TOTAL TIME', time.time() - gt, batch_size)
     decimals = {}
     for i, addr in enumerate(addresses):
@@ -389,4 +309,3 @@ async def get_decimals(addresses, batch_size):
             value = 18
         decimals[addr] = value
     return decimals
-

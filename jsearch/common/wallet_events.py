@@ -18,7 +18,7 @@ class WalletEventType:
     TX_CANCELLATION = 'tx-cancellation'
 
 
-def get_event_type(tx_data: Transaction, is_pending=False) -> Optional[str]:
+def get_event_type(tx_data: Transaction, is_receiver_contract=False, is_pending=False) -> Optional[str]:
     """
     Accord to https://jibrelnetwork.atlassian.net/wiki/spaces/JWALLET/pages/769327162/Ethereum+blockchain+events
     """
@@ -34,7 +34,6 @@ def get_event_type(tx_data: Transaction, is_pending=False) -> Optional[str]:
     method_id = tx_data.get('input', "")[:10]
     is_it_transfer = method_id in (ERC20_METHODS_IDS['transferFrom'], ERC20_METHODS_IDS['transfer'])
 
-    is_receiver_contract = tx_data.get('to_contract') is True
     if is_it_transfer and (is_receiver_contract or is_pending):
         return WalletEventType.ERC20_TRANSFER
 
@@ -44,18 +43,19 @@ def get_event_type(tx_data: Transaction, is_pending=False) -> Optional[str]:
     return None
 
 
-def event_from_tx(address: str, tx_data: Transaction) -> Event:
+def event_from_tx(address: str, tx_data: Transaction, is_receiver_contract=False) -> Event:
     """
     Make wallet event object from TX data
 
     Args:
         address: from address of to address of Transaction - explicitly
         tx_data: full TX data object
+        is_receiver_contract: bool flag
 
     Returns:
         event data object
     """
-    event_type = get_event_type(tx_data)
+    event_type = get_event_type(tx_data, is_receiver_contract=is_receiver_contract)
     if event_type:
         return {
             'is_forked': False,
@@ -64,7 +64,7 @@ def event_from_tx(address: str, tx_data: Transaction) -> Event:
             'block_number': tx_data['block_number'],
             'block_hash': tx_data['block_hash'],
             'tx_hash': tx_data['hash'],
-            'event_index': tx_data['transaction_index'] + tx_data['block_number'] * 1000,
+            'event_index': tx_data['block_number'] * 1000000 + tx_data['transaction_index'] * 1000,
             'tx_data': tx_data,
             'event_data': {
                 'sender': tx_data['from'],
@@ -100,7 +100,11 @@ def event_from_token_transfer(address: str, transfer_data: Transfer, tx_data: Tr
         'block_number': tx_data['block_number'],
         'block_hash': tx_data['block_hash'],
         'tx_hash': tx_data['hash'],
-        'event_index': tx_data['transaction_index'] + tx_data['block_number'] * 1000,
+        'event_index': (
+                tx_data['block_number'] * 1000000 +
+                tx_data['transaction_index'] * 1000 +
+                transfer_data['log_index']
+        ),
         'tx_data': tx_data,
         'event_data': {
             'sender': transfer_data['from_address'],

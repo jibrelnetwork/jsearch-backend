@@ -6,8 +6,6 @@ import backoff
 import time
 
 from jsearch import settings
-from jsearch.service_bus import service_bus
-from jsearch.syncer.database_queries.pending_transactions import prepare_pending_tx
 from jsearch.syncer.processor import SyncProcessor
 
 logger = logging.getLogger(__name__)
@@ -20,7 +18,6 @@ loop = asyncio.get_event_loop()
 
 SYNC_MODE_FAST = 'fast'
 SYNC_MODE_STRICT = 'strict'
-
 
 """
 Dev Note - RawDB filling order:
@@ -36,6 +33,7 @@ chain_splits
 
 """
 
+
 class ChainEvent:
     INSERT = 'created'
     REINSERT = 'reinserted'
@@ -45,6 +43,9 @@ class ChainEvent:
 class Manager:
     """
     Sync manager
+
+
+    TODO: move common async daemon logic (start, stop, wait and etc. ) to generic class
     """
 
     def __init__(self, service, main_db, raw_db, sync_range):
@@ -73,10 +74,7 @@ class Manager:
         self._running = True
 
         service_loops = [
-            # self.sequence_sync_loop(),
             self.chain_events_process_loop(),
-            # self.reorg_loop(),
-            #self.pending_tx_loop(),
         ]
 
         for coro in service_loops:
@@ -146,7 +144,7 @@ class Manager:
             # await self.process_reinsert_block(event['block_hash'], event['block_num'])
             pass
         elif event['type'] == ChainEvent.SPLIT:
-            await self.process_chain_split(event)
+            await self.main_db.apply_chain_split(split_data=event)
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],
@@ -168,15 +166,6 @@ class Manager:
         is_forked = is_block_number_exists or (not is_canonical_parent)
         await self.processor.sync_block(block_hash, block_num, is_forked)
 
-    async def process_chain_split(self, split_data):
-        await self.main_db.apply_chain_split(split_data)
-
-    async def pending_tx_loop(self):
-        logger.info("Entering Pending Tx Loop")
-
-        while self._running is True:
-            await self.get_and_process_pending_txs()
-
     @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def get_and_process_chain_event(self):
         last_event = await self.main_db.get_last_chain_event(self.sync_range, self.node_id)
@@ -184,52 +173,19 @@ class Manager:
             next_event = await self.raw_db.get_first_chain_event_for_block_range(self.sync_range, self.node_id)
         else:
             next_event = await self.raw_db.get_next_chain_event(last_event['id'], self.node_id)
+
         if next_event is None:
             await asyncio.sleep(self.sleep_on_no_blocks)
             return
+
         if self.sync_range[1] and next_event['block_number'] > self.sync_range[1]:
-            logger.info('Sync range complete',
-                        extra={'from': self.sync_range[0], 'to': self.sync_range[1]})
+            logger.info(
+                'Sync range complete',
+                extra={
+                    'from': self.sync_range[0],
+                    'to': self.sync_range[1]
+                }
+            )
             await asyncio.sleep(10)
             return
         await self.process_chain_event(next_event)
-
-    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
-    async def get_and_process_pending_txs(self):
-        start_time = time.monotonic()
-        new_pending_txs = await self.get_new_pending_txs()
-
-        if len(new_pending_txs) == 0:
-            logger.info("No pending txs, sleeping")
-            await asyncio.sleep(self.sleep_on_no_blocks)
-            return
-        for pending_tx in new_pending_txs:
-            data = prepare_pending_tx(pending_tx)
-            await self.main_db.insert_or_update_pending_tx(data)
-
-        proc_time = time.monotonic() - start_time
-        logger.info(
-            "Processed batch of pending txs",
-            extra={
-                'amount': len(new_pending_txs),
-                'total_time': proc_time,
-            }
-        )
-
-    async def get_new_pending_txs(self):
-        last_synced_id = await self.main_db.get_pending_tx_last_synced_id() or 0
-        logger.info("Fetched last pending tx synced ID", extra={'number': last_synced_id})
-
-        return await self.raw_db.get_pending_txs_from(last_synced_id, PENDING_TX_BATCH_SIZE)
-
-    async def process_reorgs(self, reorgs):
-        c = 0
-        for reorg in reorgs:
-            await self.main_db.apply_reorg(reorg)
-            await service_bus.emit_reorganization_event(
-                block_hash=reorg['block_hash'],
-                block_number=reorg['block_number'],
-                reinserted=reorg['reinserted']
-            )
-            c += 1
-        return c

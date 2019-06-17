@@ -1,23 +1,19 @@
 import logging
-from collections import defaultdict
+from copy import copy
 
 import re
 import time
 from typing import Optional, NamedTuple, Dict, Any, List, Tuple
-from copy import copy
 
-from jsearch import service_bus
 from jsearch import settings
 from jsearch.common import contracts
-
-from jsearch.common.processing.logs import process_log_event
-from jsearch.common.processing.erc20_transfers import logs_to_transfers_decimals
-from jsearch.common.processing.erc20_balances import get_balances
-from jsearch.syncer.database import RawDBAsync, MainDBAsync
-from jsearch.typing import Logs
 from jsearch.common.processing import wallet
 from jsearch.common.processing.decimals_cache import decimals_cache
-
+from jsearch.common.processing.erc20_balances import get_balances
+from jsearch.common.processing.erc20_transfers import logs_to_transfers
+from jsearch.common.processing.logs import process_log_event
+from jsearch.syncer.database import RawDBAsync, MainDBAsync
+from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
 
@@ -49,46 +45,6 @@ class BlockData(NamedTuple):
             wallet_events=self.wallet_events,
             assets_summary_updates=self.assets_summary_updates
         )
-        # await main_db.write_block_data_proc(
-        #     block_data=self.block,
-        #     uncles_data=[],
-        #     transactions_data=[],
-        #     receipts_data=[],
-        #     logs_data=[],
-        #     accounts_data=[],
-        #     internal_txs_data=[]
-        # )
-
-    def write_to_bus(self):
-        contracts_set = set()
-        for acc in self.accounts:
-            if acc['code'] != '':
-                contracts_set.add(acc['address'])
-
-        internal_tx_parent_map = defaultdict(list)
-        for internal_tx in self.internal_txs:
-            internal_tx_parent_map[internal_tx['parent_tx_hash']].append(internal_tx)
-
-        tx_status_map = {receipt["transaction_hash"]: receipt["status"] for receipt in self.receipts}
-        assert len(tx_status_map) == len(self.txs)
-
-        for tx in self.txs:
-            receipt_status = tx_status_map[tx['hash']]
-            internal_txs = internal_tx_parent_map[tx['hash']]
-            to_contract = tx['to'] in contracts_set
-            tx.update(
-                internal_transactions=internal_txs,
-                receipt_status=receipt_status,
-                to_contract=to_contract,
-            )
-
-            service_bus.sync_client.write_tx(tx)
-
-        for account in self.accounts:
-            service_bus.sync_client.write_account(account)
-
-        logs = [dict(log, **{'status': tx_status_map[log['transaction_hash']]}) for log in self.logs]
-        service_bus.sync_client.write_logs(logs=logs)
 
 
 class SyncProcessor:
@@ -100,8 +56,8 @@ class SyncProcessor:
         self.raw_db = RawDBAsync(raw_db_dsn or settings.JSEARCH_RAW_DB)
         self.main_db = MainDBAsync(main_db_dsn or settings.JSEARCH_MAIN_DB)
 
-        #service_bus.sync_client.allow_rpc = False
-        #service_bus.sync_client.start()
+        # service_bus.sync_client.allow_rpc = False
+        # service_bus.sync_client.start()
 
     async def sync_block(self, block_hash: str, block_number: int = None, is_forked: bool = False) -> bool:
         """
@@ -109,16 +65,8 @@ class SyncProcessor:
         :return: True if sync is successfull, False if syn fails or block already synced
         """
         logger.debug("Syncing Block", extra={'hash': block_hash, 'number': block_number})
-        start_time = time.monotonic()
         await self.main_db.connect()
         await self.raw_db.connect()
-
-        # self.raw_db.disconnect()
-        # self.main_db.disconnect()
-        # logger.info("Block is synced", extra={'sync_time': time.monotonic() - start_time})
-        #
-        # return
-
 
         start_time = time.monotonic()
         is_block_exist = await self.main_db.is_block_exist(block_hash)
@@ -139,7 +87,6 @@ class SyncProcessor:
         accounts = await self.raw_db.get_block_accounts(block_hash)
         internal_transactions = await self.raw_db.get_internal_transactions(block_hash)
         fetch_time = time.monotonic() - start_time
-        #self.raw_db.disconnect()
 
         block = await self.process_block(
             header=header,
@@ -154,7 +101,6 @@ class SyncProcessor:
 
         await block.write_to_database(self.main_db)
         db_write_time = time.monotonic() - process_time - fetch_time - start_time
-        #block.write_to_bus()
         bus_write_time = time.monotonic() - db_write_time - process_time - fetch_time - start_time
 
         sync_time = time.monotonic() - start_time
@@ -167,12 +113,14 @@ class SyncProcessor:
             'db_write_time': '{:0.2f}s'.format(db_write_time),
             'bus_write_time': '{:0.2f}s'.format(bus_write_time),
         })
-        #await self.main_db.disconnect()
         return True
 
-    async def process_block(self, header, body, reward, receipts, accounts, internal_transactions, is_forked) -> BlockData:
+    async def process_block(self, header, body, reward, receipts, accounts, internal_transactions,
+                            is_forked) -> BlockData:
         """
         Preprocess data fetched from Raw DB to Main DB
+
+        TODO: move it to BlockData.__init__
         """
         uncles: List[Dict[str, Any]] = body['fields']['Uncles'] or []
         transactions: List[Dict[str, Any]] = body['fields']['Transactions'] or []
@@ -199,14 +147,14 @@ class SyncProcessor:
                 contracts_set.add(acc['address'])
 
         decimals = await decimals_cache.get_many({l['address'] for l in logs_data})
-        transfers = logs_to_transfers_decimals(logs_data, block_data, decimals)
+        transfers = logs_to_transfers(logs_data, block_data, decimals)
 
         token_holders_updates = await self.get_token_holders_updates(transfers, decimals)
 
         wallet_events = wallet.events_from_transactions(transactions_data, contracts_set)
         wallet_events.extend(wallet.events_from_transfers(transfers, transactions_data))
         wallet_events.extend(wallet.events_from_internal_transactions(internal_txs_data, transactions_data))
-        wallet_events = [e for e in wallet_events if e is not None]
+        wallet_events = [event for event in wallet_events if event is not None]
 
         assets_summary_updates = wallet.assets_from_accounts(accounts_data)
         assets_summary_updates.extend(wallet.assets_from_token_balance_updates(token_holders_updates))
@@ -289,10 +237,14 @@ class SyncProcessor:
             tx_data['block_hash'] = block_hash
             tx_data['block_number'] = block_number
             tx_data['is_forked'] = is_forked
+
             if tx['to'] is None:
                 tx_data['to'] = contracts.NULL_ADDRESS
+
             tx_data['address'] = tx_data['from']
+
             items.append(tx_data)
+
             tx2_data = copy(tx_data)
             tx2_data['address'] = tx_data['to']
             items.append(tx2_data)
@@ -304,13 +256,13 @@ class SyncProcessor:
                          transactions: List[Dict[str, Any]],
                          block_number: int,
                          block_hash: str,
-                         is_forked: bool) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+                         is_forked: bool) -> Tuple[List[Dict[str, Any]], Logs]:
         rdata: List[Dict[str, Any]] = receipts['fields']['Receipts'] or []
         recpt_items = []
         logs_items = []
         for i, receipt in enumerate(rdata):
             recpt_data = dict_keys_case_convert(receipt)
-            tx = transactions[i*2]
+            tx = transactions[i * 2]
             assert tx['hash'] == recpt_data['transaction_hash']
             recpt_data['logs_bloom'] = ''
             recpt_data['transaction_index'] = i

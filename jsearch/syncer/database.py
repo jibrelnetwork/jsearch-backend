@@ -1,18 +1,14 @@
-import logging
-
-from typing import List, Dict, Any
 import json
+import logging
 from copy import copy
-
 
 import aiopg
 import backoff
 import psycopg2
 from aiopg.sa import create_engine as async_create_engine, Engine
 from psycopg2.extras import DictCursor
-from sqlalchemy import create_engine as sync_create_engine, and_
+from sqlalchemy import and_
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.pool import NullPool
 from typing import List, Dict, Any, Optional
 
 from jsearch.common import contracts
@@ -33,7 +29,6 @@ from jsearch.common.tables import (
     chain_events_t,
     wallet_events_t,
 )
-
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
@@ -477,7 +472,6 @@ class RawDBAsync(DBWrapper):
         return rows
 
 
-
 class MainDB(DBWrapper):
     """
     jSearch Main db wrapper
@@ -650,7 +644,7 @@ class MainDB(DBWrapper):
         query = blocks_t.select().where(and_(blocks_t.c.number > from_block, blocks_t.c.number <= to_block))
         blocks = await self.fetch_all(query)
 
-        #assert len(blocks) == split_data['add_length'] + split_data['drop_length']
+        # assert len(blocks) == split_data['add_length'] + split_data['drop_length']
 
         hash_map = {b['hash']: dict(b) for b in blocks}
 
@@ -842,21 +836,6 @@ class MainDBAsync(DBWrapper):
         row = await self.fetch_one(q, block_hash)
         return row['hash'] == block_hash if row else False
 
-    async def write_block_data(self, block_data, uncles_data, transactions_data, receipts_data,
-                               logs_data, accounts_data, internal_txs_data):
-        """
-        Insert block and all related items in main database
-        """
-        async with self.engine.acquire() as conn:
-            async with conn.begin():
-                await self.insert_block(block_data)
-                await self.insert_uncles(uncles_data)
-                await self.insert_transactions(transactions_data)
-                await self.insert_receipts(receipts_data)
-                await self.insert_logs(logs_data)
-                await self.insert_accounts(accounts_data)
-                await self.insert_internal_transactions(internal_txs_data)
-
     async def write_block_data_proc(self, block_data, uncles_data, transactions_data, receipts_data,
                                     logs_data, accounts_data, internal_txs_data, transfers,
                                     token_holders_updates, wallet_events, assets_summary_updates):
@@ -876,6 +855,7 @@ class MainDBAsync(DBWrapper):
                     'code_hash': acc['code_hash'],
                     'last_known_balance': acc['balance'],
                     'root': acc['root'],
+                    'is_forked': False,
                 })
             accounts_state_data.append({
                 'block_number': acc['block_number'],
@@ -884,6 +864,7 @@ class MainDBAsync(DBWrapper):
                 'nonce': acc['nonce'],
                 'root': acc['root'],
                 'balance': acc['balance'],
+                'is_forked': False,
             })
 
         token_holders_updates.sort(key=lambda u: (u['account_address'], u['token_address']))

@@ -1,4 +1,5 @@
 import logging
+
 from typing import Dict
 
 from jsearch.typing import Log, Contract, Logs, Transfers, Block
@@ -7,24 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 def log_to_transfers(log: Log, block: Block, contract: Contract) -> Transfers:
-    """
-    We should use block as primary sources about forked state.
-    It's may lead to some confuse, but logs will come from service bus queue, where their are immutable.
-    It may lead to next case:
-        given:
-            - syncer handles new batch of transaction logs.
-            - syncer writes transaction logs to service bus
-            - syncer process reorganisation record with block
-                which contains our transaction and mark logs as forked
-        when:
-            - worker handles transaction logs from queue and save token transfers
-        then:
-            - transaction logs was changed in database
-            - transaction logs wasn't changed in queue
-            - token transfers aren't forked, because logs in queue also aren't forked
-    As result of this case we get broken data.
-    To avoid this case we decide - block record is a primary source about forked sign.
-    """
     transfer_body = {
         'block_hash': log['block_hash'],
         'block_number': log['block_number'],
@@ -54,19 +37,7 @@ def log_to_transfers(log: Log, block: Block, contract: Contract) -> Transfers:
     ]
 
 
-def logs_to_transfers(logs: Logs, blocks: Dict[str, Block], contracts: Dict[str, Contract]) -> Transfers:
-    transfers = []
-    for log in logs:
-        if log and log.get('is_token_transfer'):
-            block = blocks.get(log['block_hash'])
-            contract = contracts.get(log['address'])
-
-            log_transfers = log_to_transfers(log, block, contract)
-            transfers.extend(log_transfers)
-    return transfers
-
-
-def logs_to_transfers_decimals(logs: Logs, block: Block, decimals: Dict) -> Transfers:
+def logs_to_transfers(logs: Logs, block: Block, decimals: Dict[str, int]) -> Transfers:
     transfers = []
     for log in logs:
         if log and log.get('is_token_transfer'):

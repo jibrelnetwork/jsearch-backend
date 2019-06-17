@@ -1,4 +1,3 @@
-
 from jsearch.common.processing.erc20_balances import get_decimals
 
 
@@ -23,8 +22,7 @@ class DecimalsCache:
         return decimals
 
     async def fetch_many(self, addresses):
-        res = await get_decimals(addresses, 20)
-        return res
+        return await get_decimals(addresses, 20)
 
 
 decimals_cache = DecimalsCache()
