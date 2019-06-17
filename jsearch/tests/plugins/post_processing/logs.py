@@ -17,7 +17,7 @@ pytest_plugins = (
 #     from jsearch.typing import Logs
 #
 #     from jsearch.common.utils import as_dicts
-#     from jsearch.syncer.database import MainDBSync
+#     from jsearch.common.database import MainDBSync
 #
 #     @as_dicts
 #     def _wrapper(tx_hash, block_hash) -> Logs:

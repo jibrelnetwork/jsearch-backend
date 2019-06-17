@@ -16,7 +16,7 @@ def load_transfers(db_connection_string) -> Callable[[Logs], Transfers]:
     from jsearch.common.tables import token_transfers_t
     from jsearch.typing import Transfers
 
-    from jsearch.syncer.database import MainDBSync
+    from jsearch.common.database import MainDBSync
 
     fields = [
         token_transfers_t.c.address,

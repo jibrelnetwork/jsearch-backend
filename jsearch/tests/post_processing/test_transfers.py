@@ -303,7 +303,7 @@ def test_logs_to_transfer():
 
 def test_insert_transfers_to_db(db, db_connection_string, mocker):
     mocker.patch('time.sleep')
-    from jsearch.syncer.database import MainDBSync
+    from jsearch.common.database import MainDBSync
 
     # given
     transfers = [

@@ -52,7 +52,7 @@ async def test_post_processing_account_balance(mocker,
                                                token_address,
                                                processed_logs):
     from jsearch.common.tables import token_holders_t
-    from jsearch.syncer.database import MainDBSync
+    from jsearch.common.database import MainDBSync
     # given
     # get transfers from logs
     mock_last_block_consumer({"number": 7000000})

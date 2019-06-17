@@ -1,5 +1,6 @@
 from jsearch.common import tables as t
-from jsearch.syncer.database import MainDBSync, MainDB
+from jsearch.common.database import MainDBSync
+from jsearch.syncer.database import MainDB
 
 
 async def test_main_db_get_last_synced_block_empty(db_connection_string):

@@ -4,6 +4,7 @@ from aiopg.sa import SAConnection
 
 from jsearch import settings
 from jsearch.common.contracts import ERC20_ABI, ERC20_DEFAULT_DECIMALS
+from jsearch.common.database import MainDBSync
 from jsearch.common.processing.erc20_balances import (
     BalanceUpdate,
     BalanceUpdates,
@@ -11,7 +12,6 @@ from jsearch.common.processing.erc20_balances import (
 )
 from jsearch.common.processing.utils import fetch_contracts, prefetch_decimals
 from jsearch.multiprocessing import executor
-from jsearch.syncer.database import MainDBSync
 from jsearch.syncer.database_queries.token_transfers import get_token_address_and_accounts_for_block_q
 from jsearch.utils import split
 

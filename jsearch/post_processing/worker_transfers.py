@@ -12,7 +12,7 @@ from jsearch.common.processing.utils import fetch_contracts, prefetch_decimals
 from jsearch.multiprocessing import executor
 from jsearch.common.metrics import Metric, metrics
 from jsearch.service_bus import service_bus, sync_client, ROUTE_HANDLE_LAST_BLOCK, ROUTE_HANDLE_ERC20_TRANSFERS
-from jsearch.syncer.database import MainDBSync
+from jsearch.common.database import MainDBSync
 from jsearch.typing import Contracts, Transfers, Logs
 
 logger = logging.getLogger('worker')
