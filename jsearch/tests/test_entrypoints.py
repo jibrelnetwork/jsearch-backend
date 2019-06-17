@@ -3,7 +3,6 @@ import pytest
 from pytest_mock import MockFixture
 from typing import List
 
-import jsearch.common.last_block
 import jsearch.common.worker
 import jsearch.multiprocessing
 import jsearch.pending_syncer.main
