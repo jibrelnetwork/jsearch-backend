@@ -8,6 +8,7 @@ from jsearch.api.app import make_app
 pytest_plugins = (
     "jsearch.tests.plugins.cli",
     "jsearch.tests.plugins.databases.main_db",
+    "jsearch.tests.plugins.notable_accounts_worker",
 )
 
 

@@ -16,8 +16,8 @@ pytest_plugins = [
 
 
 @pytest.fixture
-async def database_service(db, loop, mock_service_bus):
-    service = DatabaseService()
+async def database_service(db, db_connection_string, loop, mock_service_bus):
+    service = DatabaseService(dsn=db_connection_string)
     await service.on_start()
     yield service
     await service.on_stop()

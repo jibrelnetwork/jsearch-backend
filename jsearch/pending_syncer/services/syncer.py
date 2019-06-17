@@ -3,52 +3,16 @@ import logging
 
 import backoff
 import mode
-from typing import Any, Dict, List, Generator, Callable, Optional
+from typing import Any, Dict, List, Optional
+
+from jsearch.syncer.database_queries.pending_transactions import prepare_pending_tx
 
 from jsearch import settings
-from jsearch.common import metrics
+from jsearch.common import metrics, async_utils
 from jsearch.common.structs import SyncRange
 from jsearch.syncer.database import MainDB, RawDB
-from jsearch.syncer.database_queries.pending_transactions import prepare_pending_tx
-from jsearch.typing import PendingTransactions, AnyCoroutine
 
 logger = logging.getLogger(__name__)
-
-
-async def make_chain(task_before: AnyCoroutine, task: AnyCoroutine) -> AnyCoroutine:
-    await task_before
-    return await task
-
-
-def get_task_generator_from_txs(
-        txs: PendingTransactions,
-        create_task: Callable[[Dict[str, Any], ], AnyCoroutine]
-) -> Generator[AnyCoroutine, None, None]:
-    """
-    We load history of pending transactions
-    and want to save it in another storage.
-    Each transaction can appears several times in
-    loaded chunk of history.
-
-    We must strictly follow for history order.
-
-    Args:
-        txs: list of pending transactions
-        create_task: create coroutine per transaction
-    """
-    last_tasks = {}
-
-    for tx in txs:
-        tx_hash = tx.get('hash')
-        tx_data = prepare_pending_tx(tx)
-        task = create_task(tx_data)
-
-        task_before = last_tasks.get(tx_hash)
-        if task_before:
-            task = make_chain(task_before, task)
-            last_tasks[tx_hash] = task
-
-        yield task
 
 
 class PendingSyncerService(mode.Service):
@@ -87,11 +51,23 @@ class PendingSyncerService(mode.Service):
     @metrics.with_metrics('pending_transactions')
     @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def sync_pending_txs(self, pending_txs) -> int:
-        tasks = get_task_generator_from_txs(
-            txs=pending_txs,
-            create_task=self.main_db.insert_or_update_pending_tx
+        """
+        We load history of pending transactions
+        and want to save it in another storage.
+        Each transaction can appears several times in
+        loaded chunk of history.
+
+        We must strictly follow for history order.
+        """
+
+        tasks = async_utils.chain_dependent_coros(
+            items=[prepare_pending_tx(tx) for tx in pending_txs],
+            item_id_key='hash',
+            create_task=self.main_db.insert_or_update_pending_tx,
         )
+
         await asyncio.gather(*tasks)
+
         return len(pending_txs)
 
     @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
