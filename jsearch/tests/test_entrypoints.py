@@ -22,6 +22,9 @@ CODE_ERROR_FROM_CLICK = 2
 pytestmark = pytest.mark.asyncio
 
 
+pytestmark = pytest.mark.asyncio
+
+
 @pytest.fixture()
 def _mock_executor(mocker: MockFixture):
     mocker.patch.object(jsearch.multiprocessing.executor, 'init')

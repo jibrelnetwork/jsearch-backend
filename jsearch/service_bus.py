@@ -26,6 +26,8 @@ ROUTE_WALLET_HANDLE_TOKEN_TRANSFER = f'{SERVICE_JSEARCH}.token_transfers'
 ROUTE_WALLET_HANDLE_ASSETS_UPDATE = f'{SERVICE_JSEARCH}.asset_updates'
 ROUTE_WALLET_HANDLE_ACCOUNT_UPDATE = f'{SERVICE_JSEARCH}.account_update'
 
+ROUTE_HANDLE_NOTABLE_ACCOUNTS = f'{SERVICE_JSEARCH}.write_notable_accounts'
+
 
 class JsearchSyncServiceBusClient(SyncServiceBusClient):
     def write_logs(self, logs):

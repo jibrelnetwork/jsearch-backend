@@ -23,6 +23,7 @@ setup(
             'jsearch-check = jsearch.validation.__main__:check',
             'jsearch-worker = jsearch.worker.__main__:main',
             'jsearch-wallet-worker = jsearch.wallet_worker.__main__:main',
+            'jsearch-notable-accounts-worker = jsearch.notable_accounts_worker.__main__:main',
         ]
     }
 )
