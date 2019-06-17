@@ -36,8 +36,7 @@ async def cli(event_loop, db_connection_string, aiohttp_client):
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_logs():
-    logs.configure('DEBUG')
-
+    logs.configure('DEBUG', formatter_class='logging.Formatter')
 
 
 @pytest.fixture
