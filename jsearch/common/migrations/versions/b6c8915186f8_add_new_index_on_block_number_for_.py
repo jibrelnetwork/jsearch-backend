@@ -7,7 +7,7 @@ Create Date: 2019-06-05 22:47:57.131477
 """
 from alembic import op
 
-# revision identifiers, used by Alembic.
+# revision identifiers, used by Alembic
 revision = 'b6c8915186f8'
 down_revision = 'c3b0dfc27a06'
 branch_labels = None
