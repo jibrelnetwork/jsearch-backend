@@ -193,6 +193,7 @@ async def test_apply_chain_split(db, db_connection_string):
        8, 0x66, 6, created, NULL, NULL, node1, t6
        9, NULL, NULL, split, NULL, 1, node1, t6
      """
+    # given
     db.execute('INSERT INTO blocks (number, hash, parent_hash, is_forked) values (%s, %s, %s, %s)', [
         (1, '0x1', '0x0', False),
         (2, '0x2', '0x1', False),
@@ -204,12 +205,13 @@ async def test_apply_chain_split(db, db_connection_string):
         (6, '0x66', '0x55', True),
     ])
 
+    # when
     main_db = MainDB(db_connection_string)
     await main_db.connect()
 
     split_data = {
-        'common_block_hash': '0x3',
-        'common_block_number': 3,
+        'block_hash': '0x3',
+        'block_number': 3,
         'add_block_hash': '0x66',
         'drop_block_hash': '0x5',
         'add_length': 3,
@@ -217,6 +219,7 @@ async def test_apply_chain_split(db, db_connection_string):
     }
     await main_db.apply_chain_split(split_data)
 
+    # then
     blocks_forks = {b['hash']: b['is_forked'] for b in db.execute(t.blocks_t.select()).fetchall()}
     assert blocks_forks == {
         '0x1': False,
