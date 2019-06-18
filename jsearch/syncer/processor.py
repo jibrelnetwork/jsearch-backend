@@ -33,17 +33,17 @@ class BlockData(NamedTuple):
 
     async def write_to_database(self, main_db: MainDBAsync) -> None:
         await main_db.write_block_data_proc(
-            block_data=self.block,
-            uncles_data=self.uncles,
-            transactions_data=self.txs,
-            receipts_data=self.receipts,
-            logs_data=self.logs,
             accounts_data=self.accounts,
+            assets_summary_updates=self.assets_summary_updates,
+            block_data=self.block,
             internal_txs_data=self.internal_txs,
-            transfers=self.transfers,
+            logs_data=self.logs,
+            receipts_data=self.receipts,
             token_holders_updates=self.token_holders_updates,
+            transactions_data=self.txs,
+            transfers=self.transfers,
+            uncles_data=self.uncles,
             wallet_events=self.wallet_events,
-            assets_summary_updates=self.assets_summary_updates
         )
 
 
@@ -61,8 +61,13 @@ class SyncProcessor:
 
     async def sync_block(self, block_hash: str, block_number: int = None, is_forked: bool = False) -> bool:
         """
-        :param block_number: number of block to sync
-        :return: True if sync is successfull, False if syn fails or block already synced
+        Args:
+            block_hash: number of block to sync
+            block_number: 
+            is_forked: 
+
+        Returns:
+            True if sync is successfull, False if syn fails or block already synced
         """
         logger.debug("Syncing Block", extra={'hash': block_hash, 'number': block_number})
         await self.main_db.connect()
@@ -73,10 +78,12 @@ class SyncProcessor:
         if is_block_exist is True:
             logger.debug("Block already exists", extra={'hash': block_hash})
             return False
+
         receipts = await self.raw_db.get_block_receipts(block_hash)
         if receipts is None:
             logger.debug("Block is not ready, no receipts", extra={'hash': block_hash})
             return False
+
         reward = await self.raw_db.get_reward(block_hash)
         if reward is None:
             logger.debug("Block is not ready, no reward", extra={'hash': block_hash})

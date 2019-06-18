@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import insert
 from typing import List, Dict, Any, Optional
 
 from jsearch.common import contracts
+from jsearch.common.processing.accounts import accounts_to_state_and_base_data
 from jsearch.common.tables import (
     accounts_base_t,
     accounts_state_t,
@@ -842,30 +843,7 @@ class MainDBAsync(DBWrapper):
         """
         Insert block and all related items in main database
         """
-
-        accounts_state_data = []
-        accounts_base_data = []
-        address_set = set()
-        for acc in accounts_data:
-            if acc['address'] not in address_set:
-                address_set.add(acc['address'])
-                accounts_base_data.append({
-                    'address': acc['address'],
-                    'code': acc['code'],
-                    'code_hash': acc['code_hash'],
-                    'last_known_balance': acc['balance'],
-                    'root': acc['root'],
-                    'is_forked': False,
-                })
-            accounts_state_data.append({
-                'block_number': acc['block_number'],
-                'block_hash': acc['block_hash'],
-                'address': acc['address'],
-                'nonce': acc['nonce'],
-                'root': acc['root'],
-                'balance': acc['balance'],
-                'is_forked': False,
-            })
+        accounts_state_data, accounts_base_data = accounts_to_state_and_base_data(accounts_data)
 
         token_holders_updates.sort(key=lambda u: (u['account_address'], u['token_address']))
         assets_summary_updates.sort(key=lambda u: (u['address'], u['asset_address']))

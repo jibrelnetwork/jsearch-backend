@@ -5,46 +5,46 @@ from jsearch.common.database import MainDBSync
 from jsearch.syncer.database import MainDB, MainDBAsync
 
 
-async def test_main_db_get_last_synced_block_empty(db_connection_string):
-    main_db = MainDB(db_connection_string)
+async def test_main_db_get_last_synced_block_empty(db_dsn):
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_latest_synced_block_number([1, None])
     assert res is None
 
 
-async def test_main_db_get_last_synced_block_no_miss(db, db_connection_string):
+async def test_main_db_get_last_synced_block_no_miss(db, db_dsn):
     db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
         (1, 'aa'),
         (2, 'ab'),
         (3, 'ac'),
         (4, 'ad'),
     ])
-    main_db = MainDB(db_connection_string)
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_latest_synced_block_number([1, None])
     assert res == 4
 
 
-async def test_main_db_get_last_synced_block_has_miss(db, db_connection_string):
+async def test_main_db_get_last_synced_block_has_miss(db, db_dsn):
     db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
         (1, 'aa'),
         (2, 'ab'),
         (4, 'ad'),
     ])
-    main_db = MainDB(db_connection_string)
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_latest_synced_block_number([1, None])
     assert res == 4
 
 
-async def test_main_db_get_missed_blocks_empty(db, db_connection_string):
-    main_db = MainDB(db_connection_string)
+async def test_main_db_get_missed_blocks_empty(db, db_dsn):
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_missed_blocks_numbers(10)
     assert res == []
 
 
-async def test_main_db_get_missed_blocks(db, db_connection_string):
+async def test_main_db_get_missed_blocks(db, db_dsn):
     db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
         (1, 'aa'),
         (2, 'ab'),
@@ -52,13 +52,13 @@ async def test_main_db_get_missed_blocks(db, db_connection_string):
         (5, 'ac'),
         (7, 'ae'),
     ])
-    main_db = MainDB(db_connection_string)
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_missed_blocks_numbers(10)
     assert res == [3, 6]
 
 
-async def test_main_db_get_missed_blocks_limit2(db, db_connection_string):
+async def test_main_db_get_missed_blocks_limit2(db, db_dsn):
     db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
         (1, 'aa'),
         (2, 'ab'),
@@ -67,16 +67,16 @@ async def test_main_db_get_missed_blocks_limit2(db, db_connection_string):
         (7, 'ae'),
         (9, 'af'),
     ])
-    main_db = MainDB(db_connection_string)
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_missed_blocks_numbers(2)
     assert res == [3, 6]
 
 
-async def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
+async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
     from jsearch.syncer.processor import BlockData
 
-    main_db = MainDBSync(db_connection_string)
+    main_db = MainDBSync(db_dsn)
     main_db.connect()
     d = main_db_dump
     block = d['blocks'][2]
@@ -127,7 +127,7 @@ async def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
         transfers=[],
         wallet_events=[],
     )
-    async with MainDBAsync(db_connection_string) as async_db:
+    async with MainDBAsync(db_dsn) as async_db:
         await block.write_to_database(async_db)
 
     db_blocks = db.execute(t.blocks_t.select()).fetchall()
@@ -181,7 +181,7 @@ async def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
     ]
 
 
-async def test_apply_chain_split(db, db_connection_string):
+async def test_apply_chain_split(db, db_dsn):
     """
        1, 0x1, 1, created, NULL, NULL, node1, t1
        2, 0x2, 2, created, NULL, NULL, node1, t2
@@ -206,7 +206,7 @@ async def test_apply_chain_split(db, db_connection_string):
     ])
 
     # when
-    main_db = MainDB(db_connection_string)
+    main_db = MainDB(db_dsn)
     await main_db.connect()
 
     split_data = {

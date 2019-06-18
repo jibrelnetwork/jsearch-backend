@@ -3,6 +3,9 @@ from typing import Any, Dict, NewType, List, Callable, Awaitable, Coroutine
 Abi = List[Dict[str, Any]]
 Abi_ERC20 = NewType('Abi_ERC20', Abi)
 
+Account = Dict[str, Any]
+Accounts = List[Account]
+
 Log = Dict[str, Any]
 Logs = List[Log]
 

@@ -38,13 +38,13 @@ pytestmark = pytest.mark.asyncio
 @pytest.fixture()
 async def pending_syncer_service(
         event_loop: asyncio.AbstractEventLoop,
-        db_connection_string: str,
-        raw_db_connection_string: str,
+        db_dsn,
+        raw_db_dsn,
 ) -> PendingSyncerService:
 
     service = PendingSyncerService(
-        raw_db_dsn=raw_db_connection_string,
-        main_db_dsn=db_connection_string,
+        raw_db_dsn=raw_db_dsn,
+        main_db_dsn=db_dsn,
         loop=event_loop,
     )
 
@@ -56,8 +56,8 @@ async def pending_syncer_service(
 @pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_tx_is_not_saved_if_there_is_none(
         db: Engine,
-        raw_db_connection_string: str,
-        db_connection_string: str,
+        raw_db_dsn,
+        db_dsn,
         pending_syncer_service: PendingSyncerService
 ) -> None:
     # No pending TXs are in DB.
