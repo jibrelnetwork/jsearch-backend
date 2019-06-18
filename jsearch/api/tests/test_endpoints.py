@@ -946,13 +946,6 @@ async def test_account_get_mined_blocks(cli, main_db_data):
     assert len(res) == 0
 
 
-async def test_on_new_contracts_added(cli, mocker):
-    m = mocker.patch('jsearch.api.handlers.contracts.tasks.on_new_contracts_added_task')
-    resp = await cli.post('/_on_new_contracts_added', json={'address': 'abc', 'abi': 'ABI'})
-    assert resp.status == 200
-    m.delay.assert_called_with('abc')
-
-
 async def test_get_token_holders(cli, main_db_data):
     resp = await cli.get(f'/v1/tokens/t1/holders')
     assert resp.status == 200

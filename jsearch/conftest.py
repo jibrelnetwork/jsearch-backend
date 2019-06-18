@@ -99,11 +99,3 @@ def uncles(db, main_db_data):
     yield uncles
 
     db.execute('DELETE FROM uncles')
-
-
-@pytest.fixture(scope='session')
-def celery_config():
-    return {
-        'broker_url': 'redis://',
-        'result_backend': 'redis://',
-    }
