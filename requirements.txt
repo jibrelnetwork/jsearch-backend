@@ -10,6 +10,7 @@ backoff==1.7.1
 cachetools==3.0.0
 Click==7.0
 ConfigArgParse==0.13.0
+dsnparse==0.1.12
 eth-abi==1.1.1
 eth-utils==1.4.1
 ethereum==2.3.1
