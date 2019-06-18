@@ -9,6 +9,7 @@ pytest_plugins = (
     "jsearch.tests.plugins.cli",
     "jsearch.tests.plugins.databases.main_db",
     "jsearch.tests.plugins.notable_accounts_worker",
+    "jsearch.tests.plugins.sync_manager",
 )
 
 

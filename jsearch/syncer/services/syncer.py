@@ -13,7 +13,7 @@ class SyncerService(mode.Service):
     def __init__(self, sync_range, *args, **kwargs):
         self.raw_db = RawDB(settings.JSEARCH_RAW_DB)
         self.main_db = MainDB(settings.JSEARCH_MAIN_DB)
-        self.manager = Manager(self, self.main_db, self.raw_db, sync_range=sync_range)
+        self.manager = Manager(self.main_db, self.raw_db, sync_range)
 
         super(SyncerService, self).__init__(*args, **kwargs)
 

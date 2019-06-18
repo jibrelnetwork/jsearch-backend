@@ -16,8 +16,6 @@ SLEEP_ON_NO_BLOCKS_DEFAULT = 1
 REORGS_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL / 2
 PENDING_TX_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL * 2
 
-loop = asyncio.get_event_loop()
-
 SYNC_MODE_FAST = 'fast'
 SYNC_MODE_STRICT = 'strict'
 
@@ -27,8 +25,7 @@ class Manager:
     Sync manager
     """
 
-    def __init__(self, service, main_db, raw_db, sync_range):
-        self.service = service
+    def __init__(self, main_db, raw_db, sync_range):
         self.main_db = main_db
         self.raw_db = raw_db
         self.sync_range = sync_range
@@ -40,6 +37,8 @@ class Manager:
 
         self.latest_available_block_num = None
         self.tasks = []
+
+        self.loop = asyncio.get_event_loop()
 
     async def start(self):
         logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
@@ -122,7 +121,7 @@ class Manager:
         if len(blocks_to_sync) == 0:
             await asyncio.sleep(self.sleep_on_no_blocks)
             return
-        coros = [loop.run_in_executor(self.executor, sync_block, b[0], b[1]) for b in blocks_to_sync]
+        coros = [self.loop.run_in_executor(self.executor, sync_block, b[0], b[1]) for b in blocks_to_sync]
         results = await asyncio.gather(*coros)
         synced_blocks_cnt = sum(results)
 

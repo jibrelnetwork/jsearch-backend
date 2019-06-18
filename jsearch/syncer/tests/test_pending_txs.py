@@ -3,8 +3,6 @@ import pytest
 from psycopg2._json import Json
 
 from jsearch.common.tables import pending_transactions_t
-from jsearch.syncer.database import RawDB, MainDB
-from jsearch.syncer.manager import Manager
 
 pytest_plugins = (
     'jsearch.tests.plugins.databases.raw_db',
@@ -32,15 +30,8 @@ pending_tx_fields = {
 
 
 @pytest.mark.usefixtures("mock_service_bus")
-async def test_pending_tx_is_not_saved_if_there_is_none(db, db_connection_string, raw_db_connection_string):
-    raw_db_wrapper = RawDB(raw_db_connection_string)
-    main_db_wrapper = MainDB(db_connection_string)
-    manager = Manager(None, main_db_wrapper, raw_db_wrapper, None)
-
-    await raw_db_wrapper.connect()
-    await main_db_wrapper.connect()
-
-    await manager.get_and_process_pending_txs()
+async def test_pending_tx_is_not_saved_if_there_is_none(db, syncer_manager):
+    await syncer_manager.get_and_process_pending_txs()
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
@@ -49,14 +40,7 @@ async def test_pending_tx_is_not_saved_if_there_is_none(db, db_connection_string
 
 
 @pytest.mark.usefixtures("mock_service_bus")
-async def test_pending_tx_is_saved_to_main_db(db, raw_db, db_connection_string, raw_db_connection_string):
-    raw_db_wrapper = RawDB(raw_db_connection_string)
-    main_db_wrapper = MainDB(db_connection_string)
-    manager = Manager(None, main_db_wrapper, raw_db_wrapper, None)
-
-    await raw_db_wrapper.connect()
-    await main_db_wrapper.connect()
-
+async def test_pending_tx_is_saved_to_main_db(db, raw_db, syncer_manager):
     raw_db.execute(
         """
         INSERT INTO pending_transactions (
@@ -81,7 +65,7 @@ async def test_pending_tx_is_saved_to_main_db(db, raw_db, db_connection_string, 
         ]
     )
 
-    await manager.get_and_process_pending_txs()
+    await syncer_manager.get_and_process_pending_txs()
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
@@ -109,19 +93,7 @@ async def test_pending_tx_is_saved_to_main_db(db, raw_db, db_connection_string, 
 
 
 @pytest.mark.usefixtures("mock_service_bus")
-async def test_pending_tx_is_marked_as_removed(
-        db,
-        raw_db,
-        db_connection_string,
-        raw_db_connection_string,
-):
-    raw_db_wrapper = RawDB(raw_db_connection_string)
-    main_db_wrapper = MainDB(db_connection_string)
-    manager = Manager(None, main_db_wrapper, raw_db_wrapper, None)
-
-    await raw_db_wrapper.connect()
-    await main_db_wrapper.connect()
-
+async def test_pending_tx_is_marked_as_removed(db, raw_db, syncer_manager):
     raw_db.execute(
         """
         INSERT INTO pending_transactions (
@@ -155,7 +127,7 @@ async def test_pending_tx_is_marked_as_removed(
         ]
     )
 
-    await manager.get_and_process_pending_txs()
+    await syncer_manager.get_and_process_pending_txs()
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]
@@ -183,19 +155,7 @@ async def test_pending_tx_is_marked_as_removed(
 
 
 @pytest.mark.usefixtures("mock_service_bus")
-async def test_pending_tx_can_be_saved_with_a_big_value(
-        db,
-        raw_db,
-        db_connection_string,
-        raw_db_connection_string,
-):
-    raw_db_wrapper = RawDB(raw_db_connection_string)
-    main_db_wrapper = MainDB(db_connection_string)
-    manager = Manager(None, main_db_wrapper, raw_db_wrapper, None)
-
-    await raw_db_wrapper.connect()
-    await main_db_wrapper.connect()
-
+async def test_pending_tx_can_be_saved_with_a_big_value(db, raw_db, syncer_manager):
     raw_db.execute(
         """
         INSERT INTO pending_transactions (
@@ -220,7 +180,7 @@ async def test_pending_tx_can_be_saved_with_a_big_value(
         ]
     )
 
-    await manager.get_and_process_pending_txs()
+    await syncer_manager.get_and_process_pending_txs()
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
     pending_txs = [dict(tx) for tx in pending_txs]

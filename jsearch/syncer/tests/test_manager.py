@@ -2,8 +2,6 @@ import pytest
 from sqlalchemy import and_
 
 from jsearch.common.tables import blocks_t, chain_splits_t, assets_transfers_t, wallet_events_t
-from jsearch.syncer.database import RawDB, MainDB
-from jsearch.syncer.manager import Manager
 from jsearch.syncer.processor import SyncProcessor
 
 pytest_plugins = (
@@ -20,23 +18,19 @@ pytest_plugins = (
     'jsearch.tests.plugins.databases.factories.contracts',
     'jsearch.tests.plugins.databases.factories.reorgs',
     'jsearch.tests.plugins.databases.factories.wallet_events',
+    'jsearch.tests.plugins.databases.factories.transactions',
 )
 
 
 @pytest.mark.usefixtures('mock_service_bus_sync_client', 'mock_service_bus')
-async def test_process_chain_split(raw_db_sample, db, raw_db_connection_string, db_connection_string):
+async def test_process_chain_split(raw_db_sample, db, raw_db_connection_string, db_connection_string, syncer_manager):
     s = raw_db_sample
     processor = SyncProcessor(raw_db_connection_string, db_connection_string)
     for h in s['headers']:
         processor.sync_block(h['block_hash'])
-    raw_db = RawDB(raw_db_connection_string)
-    main_db = MainDB(db_connection_string)
-    await main_db.connect()
-    await raw_db.connect()
-    manager = Manager(None, main_db, raw_db, '6000000-')
 
     splits = raw_db_sample['chain_splits']
-    await manager.process_chain_split(splits[0])
+    await syncer_manager.process_chain_split(splits[0])
 
     b3f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][2]['block_hash'])).fetchone()
     b3 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][3]['block_hash'])).fetchone()
@@ -52,7 +46,7 @@ async def test_process_chain_split(raw_db_sample, db, raw_db_connection_string, 
     assert b5.is_forked is False
     assert b5f.is_forked is False
 
-    await manager.process_chain_split(splits[1])
+    await syncer_manager.process_chain_split(splits[1])
 
     b3f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][2]['block_hash'])).fetchone()
     b3 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][3]['block_hash'])).fetchone()
@@ -125,9 +119,8 @@ async def test_reorganization_for_token_transfers_is_forked_state(
         block_factory,
         transfer_factory,
         reorg_factory,
-        raw_db_connection_string,
-        db_connection_string,
         is_forked,
+        syncer_manager,
 ):
     from jsearch.common.tables import token_transfers_t
     # given
@@ -167,16 +160,14 @@ async def test_reorganization_for_token_transfers_is_forked_state(
 
     # when
     # apply reorganization record
-    async with RawDB(raw_db_connection_string) as raw_db, MainDB(db_connection_string) as main_db:
-        manager = Manager(None, main_db, raw_db, '6000000-')
-        await manager.process_reorgs([{
-            'block_hash': reorg.block_hash,
-            'block_number': reorg.block_number,
-            'reinserted': reorg.reinserted,
-            'id': reorg.id,
-            'node_id': reorg.node_id,
-            'header': 'header'  # why do we need pop header?
-        }])
+    await syncer_manager.process_reorgs([{
+        'block_hash': reorg.block_hash,
+        'block_number': reorg.block_number,
+        'reinserted': reorg.reinserted,
+        'id': reorg.id,
+        'node_id': reorg.node_id,
+        'header': 'header'  # why do we need pop header?
+    }])
 
     # then
     # check transfer fork status
@@ -206,9 +197,8 @@ async def test_reorganization_for_assets_transfers_is_forked_state(
         token_factory,
         block_factory,
         reorg_factory,
-        raw_db_connection_string,
-        db_connection_string,
         is_forked,
+        syncer_manager,
 ):
     # given
     # create reorganization event
@@ -239,16 +229,14 @@ async def test_reorganization_for_assets_transfers_is_forked_state(
 
     # when
     # apply reorganization record
-    async with RawDB(raw_db_connection_string) as raw_db, MainDB(db_connection_string) as main_db:
-        manager = Manager(None, main_db, raw_db, '6000000-')
-        await manager.process_reorgs([{
-            'block_hash': reorg.block_hash,
-            'block_number': reorg.block_number,
-            'reinserted': reorg.reinserted,
-            'id': reorg.id,
-            'node_id': reorg.node_id,
-            'header': 'header'  # why do we need pop header?
-        }])
+    await syncer_manager.process_reorgs([{
+        'block_hash': reorg.block_hash,
+        'block_number': reorg.block_number,
+        'reinserted': reorg.reinserted,
+        'id': reorg.id,
+        'node_id': reorg.node_id,
+        'header': 'header'  # why do we need pop header?
+    }])
 
     # then
     # check transfer fork status
@@ -277,9 +265,8 @@ async def test_reorganization_for_wallet_events_is_forked_state(
         reorg_factory,
         transaction_factory,
         wallet_events_factory,
-        raw_db_connection_string,
-        db_connection_string,
         is_forked,
+        syncer_manager,
 ):
     # given
     # create reorganization event
@@ -292,16 +279,14 @@ async def test_reorganization_for_wallet_events_is_forked_state(
 
     # when
     # apply reorganization record
-    async with RawDB(raw_db_connection_string) as raw_db, MainDB(db_connection_string) as main_db:
-        manager = Manager(None, main_db, raw_db, '6000000-')
-        await manager.process_reorgs([{
-            'block_hash': reorg.block_hash,
-            'block_number': reorg.block_number,
-            'reinserted': reorg.reinserted,
-            'id': reorg.id,
-            'node_id': reorg.node_id,
-            'header': 'header'
-        }])
+    await syncer_manager.process_reorgs([{
+        'block_hash': reorg.block_hash,
+        'block_number': reorg.block_number,
+        'reinserted': reorg.reinserted,
+        'id': reorg.id,
+        'node_id': reorg.node_id,
+        'header': 'header'
+    }])
 
     # then
     # check wallet event status
