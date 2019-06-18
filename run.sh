@@ -15,11 +15,12 @@ wait_kafka_ready () {
 
     dockerize ${KAFKA_WAIT}
 }
+
 wait_raw_db_ready () {
-    dockerize -wait tcp://${JSEARCH_RAW_DB_HOST}:${JSEARCH_RAW_DB_PORT}
+    dockerize -wait tcp://`python -c 'import dsnparse; p = dsnparse.parse_environ("JSEARCH_RAW_DB", hostname="localhost", port="5432"); print(p.hostloc)'`
 }
 wait_main_db_ready () {
-    dockerize -wait tcp://${JSEARCH_MAIN_DB_HOST}:${JSEARCH_MAIN_DB_PORT}
+    dockerize -wait tcp://`python -c 'import dsnparse; p = dsnparse.parse_environ("JSEARCH_MAIN_DB", hostname="localhost", port="5432"); print(p.hostloc)'`
 }
 
 
