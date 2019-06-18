@@ -14,6 +14,8 @@ JSEARCH_RAW_DB = os.getenv('JSEARCH_RAW_DB', 'postgres://localhost/jsearch_raw')
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 NO_JSON_FORMATTER = bool(int(os.getenv('NO_JSON_FORMATTER', '0')))
 
+NOTABLE_ACCOUNT_UPDATE_IF_EXISTS = bool(int(os.getenv('NOTABLE_ACCOUNT_UPDATE_IF_EXISTS', '1')))
+
 # can get list of connection.
 # examples:
 # kafka-1:19092, kafka-2:192092
@@ -27,8 +29,6 @@ ETH_BALANCE_BLOCK_OFFSET = os.getenv('ETH_BALANCE_BLOCK_OFFSET', 6)
 ETH_NODE_URL = os.getenv('ETH_NODE_URL', 'https://main-node.jwallet.network')
 ETH_NODE_BATCH_REQUEST_SIZE = int(os.getenv('ETH_NODE_BATCH_REQUEST_SIZE', '50'))
 
-JSEARCH_CELERY_BROKER = os.getenv('JSEARCH_CELERY_BROKER', 'redis://localhost:6379/0')
-JSEARCH_CELERY_BACKEND = os.getenv('JSEARCH_CELERY_BACKEND', 'redis://localhost:6379/0')
 JSEARCH_CONTRACTS_API = os.getenv('JSEARCH_CONTRACTS_API', 'http://localhost:8100')
 JSEARCH_COMPILER_API = os.getenv('JSEARCH_COMPILER_API', 'http://localhost:8101')
 JSEARCH_SYNC_PARALLEL = int(os.getenv('JSEARCH_SYNC_PARALLEL', '10'))
@@ -52,3 +52,4 @@ POST_PROCESSING_API_PORT = int(os.getenv('POST_PROCESSING_API_PORT', 8080))
 SYNCER_API_PORT = int(os.getenv('SYNCER_API_PORT', 8080))
 WALLET_WORKER_API_PORT = int(os.getenv('WALLET_WORKER_API_PORT', 8080))
 WORKER_API_PORT = int(os.getenv('WORKER_API_PORT', 8080))
+NOTABLES_WORKER_API_PORT = int(os.getenv('NOTABLES_WORKER_API_PORT', 8080))

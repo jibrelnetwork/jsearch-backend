@@ -9,6 +9,7 @@ from jsearch.common import logs
 pytest_plugins = (
     "jsearch.tests.plugins.cli",
     "jsearch.tests.plugins.databases.main_db",
+    "jsearch.tests.plugins.notable_accounts_worker",
 )
 
 
@@ -96,11 +97,3 @@ def uncles(db, main_db_data):
     yield uncles
 
     db.execute('DELETE FROM uncles')
-
-
-@pytest.fixture(scope='session')
-def celery_config():
-    return {
-        'broker_url': 'redis://',
-        'result_backend': 'redis://',
-    }

@@ -32,4 +32,5 @@ PendingTransactions = List[PendingTransaction]
 AssetUpdate = Dict[str, Any]
 AssetTransfer = Dict[str, Any]
 
-AnyCoroutine = Coroutine[Any, None, None]
+AnyCoroutine = Coroutine[Any, Any, Any]
+AnyCoroutineMaker = Callable[..., AnyCoroutine]

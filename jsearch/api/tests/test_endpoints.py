@@ -7,6 +7,8 @@ from aiohttp import ClientResponse
 from asynctest import CoroutineMock
 from typing import Optional, Set, Union
 
+from sqlalchemy import select
+
 from jsearch import settings
 from jsearch.api.error_code import ErrorCode
 from jsearch.common.tables import (
@@ -23,6 +25,7 @@ from jsearch.tests.entities import (
 pytest_plugins = [
     'jsearch.tests.plugins.databases.main_db',
     'jsearch.tests.plugins.databases.dumps',
+    'jsearch.tests.plugins.databases.factories.blocks',
     'jsearch.tests.plugins.databases.factories.transactions',
     'jsearch.tests.plugins.databases.factories.internal_transactions',
     'jsearch.tests.plugins.databases.factories.pending_transactions',
@@ -943,13 +946,6 @@ async def test_account_get_mined_blocks(cli, main_db_data):
     res = (await resp.json())['data']
 
     assert len(res) == 0
-
-
-async def test_on_new_contracts_added(cli, mocker):
-    m = mocker.patch('jsearch.api.handlers.contracts.tasks.on_new_contracts_added_task')
-    resp = await cli.post('/_on_new_contracts_added', json={'address': 'abc', 'abi': 'ABI'})
-    assert resp.status == 200
-    m.delay.assert_called_with('abc')
 
 
 async def test_get_token_holders(cli, main_db_data):
@@ -2343,3 +2339,38 @@ async def test_get_wallet_events_pending_txs_limit(cli,
     # then
 
     assert len(response_json['data']['pending_events']) == 100
+
+
+async def test_get_blocks_transactions_preserves_order(cli,
+                                                       db,
+                                                       block_factory,
+                                                       transaction_factory):
+    def _ordered_txs_for_block(number):
+        return db.execute(
+            select(
+                columns=[
+                    transactions_t.c.hash,
+                    transactions_t.c.block_hash,
+                    transactions_t.c.transaction_index,
+                ],
+                whereclause=transactions_t.c.block_number == number,
+            ).order_by(transactions_t.c.block_hash, transactions_t.c.transaction_index).distinct()
+        ).fetchall()
+
+    # given
+    for block_number in ('7400000', '7500000'):
+        block = block_factory.create(number=block_number)
+
+        for transaction_index in range(0, 5):
+            transaction_factory.create_for_block(block, transaction_index=transaction_index)
+
+    # when
+    response = await cli.get('v1/blocks')
+    response_json = await response.json()
+
+    block_one = response_json['data'][0]
+    block_two = response_json['data'][1]
+
+    # then
+    assert block_one['transactions'] == [t['hash'] for t in _ordered_txs_for_block(7500000)]
+    assert block_two['transactions'] == [t['hash'] for t in _ordered_txs_for_block(7400000)]
