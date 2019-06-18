@@ -98,15 +98,6 @@ class MainDBSync(DBWrapperSync):
         q = select([transactions_t]).where(transactions_t.c.to == address)
         return self.conn.execute(q).fetchall()
 
-    def reset_processing_on_logs(self, contract_address):
-        """
-        Activate pipeline:
-            - jsearch-post-processing logs (decode events)
-            - jsearch-post-processing transfers (apply update of balance token holders)
-        """
-        query = f"UPDATE logs SET is_processed = false WHERE address = '{contract_address}';"
-        self.conn.execute(query)
-
 
 def get_main_db():
     db = MainDBSync(settings.JSEARCH_MAIN_DB)

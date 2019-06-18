@@ -4,7 +4,6 @@ import aiohttp
 
 from jsearch import settings
 from jsearch.api.helpers import api_success
-from jsearch.common import tasks
 from jsearch.common.contracts import cut_contract_metadata_hash, is_erc20_compatible
 
 logger = logging.getLogger(__name__)
@@ -51,12 +50,3 @@ async def verify_contract(request):
     else:
         verification_passed = False
     return api_success({'verification_passed': verification_passed})
-
-
-async def on_new_contracts_added(request):
-    data = await request.json()
-    address = data['address']
-    address = address and address.lower()
-    if settings.ENABLE_RESET_POST_PROCESSING:
-        tasks.on_new_contracts_added_task.delay(address)
-    return api_success({})
