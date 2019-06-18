@@ -639,12 +639,13 @@ class MainDB(DBWrapper):
                 return True
 
     async def apply_chain_split(self, split_data):
+        """
+        TODO: move split data to named tuple or dataclass
+        """
         from_block = split_data['block_number']
         to_block = split_data['block_number'] + split_data['add_length']
         query = blocks_t.select().where(and_(blocks_t.c.number > from_block, blocks_t.c.number <= to_block))
         blocks = await self.fetch_all(query)
-
-        # assert len(blocks) == split_data['add_length'] + split_data['drop_length']
 
         hash_map = {b['hash']: dict(b) for b in blocks}
 
@@ -660,9 +661,8 @@ class MainDB(DBWrapper):
             next_block = hash_map[old_chain_fragment[-1]['parent_hash']]
             old_chain_fragment.append(next_block)
 
-        split_data['add_length']
         async with self.engine.acquire() as conn:
-            async with conn.begin() as tx:
+            async with conn.begin():
                 await self.update_fork_status([b['hash'] for b in old_chain_fragment], is_forked=True, conn=conn)
                 await self.update_fork_status([b['hash'] for b in new_chain_fragment], is_forked=False, conn=conn)
 
