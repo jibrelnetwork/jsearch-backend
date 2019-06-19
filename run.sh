@@ -50,7 +50,7 @@ fi
 
 if [[ "$@" = "app" ]]; then
     python manage.py upgrade head
-    gunicorn -c gunicorn-conf.py jsearch.api.conapp:make_app
+    gunicorn -c gunicorn-conf.py jsearch.api.app:make_app
 else
     exec "$@"
 fi
