@@ -56,9 +56,6 @@ class SyncProcessor:
         self.raw_db = RawDBAsync(raw_db_dsn or settings.JSEARCH_RAW_DB)
         self.main_db = MainDBAsync(main_db_dsn or settings.JSEARCH_MAIN_DB)
 
-        # service_bus.sync_client.allow_rpc = False
-        # service_bus.sync_client.start()
-
     async def sync_block(self, block_hash: str, block_number: int = None, is_forked: bool = False) -> bool:
         """
         Args:

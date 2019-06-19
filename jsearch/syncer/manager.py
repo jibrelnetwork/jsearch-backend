@@ -141,7 +141,6 @@ class Manager:
         if event['type'] == ChainEvent.INSERT:
             await self.process_insert_block(event['block_hash'], event['block_number'])
         elif event['type'] == ChainEvent.REINSERT:
-            # await self.process_reinsert_block(event['block_hash'], event['block_num'])
             pass
         elif event['type'] == ChainEvent.SPLIT:
             await self.main_db.apply_chain_split(split_data=event)

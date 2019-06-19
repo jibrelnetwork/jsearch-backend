@@ -116,7 +116,7 @@ async def eth_call_request(data):
                     f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}"
                 )
             data = await response.json()
-            print('RPC REQ', API_URL, time.time() - rs)
+            logging.debug('RPC REQ', extra={'API_URL': API_URL, 'time': time.time() - rs})
             if any('error' in item for item in data):
                 msg = pformat(data)
                 raise EthCallException(
@@ -134,7 +134,6 @@ async def eth_call(call):
 
 
 async def eth_call_batch(calls):
-    # data = [call.encode() for call in calls]
     data = [item for item in calls if item]
 
     response = await eth_call_request(data)
