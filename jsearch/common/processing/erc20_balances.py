@@ -116,7 +116,6 @@ async def eth_call_request(data):
                     f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}"
                 )
             data = await response.json()
-            print('RPC REQ', API_URL, time.time() - rs)
             if any('error' in item for item in data):
                 msg = pformat(data)
                 raise EthCallException(
@@ -151,11 +150,10 @@ def chunks(l, n):
 
 async def get_balances(owners, batch_size):
     calls = []
-    gt = time.time()
+    gt = time.monotonic()
     for i, h in enumerate(owners):
         call = get_balance_rpc_call(h[1], h[0], i)
         calls.append(call)
-    print('RPC GEN TIME', time.time() - gt, len(owners))
 
     calls_chunks = chunks(calls, batch_size)
     coros = [eth_call_batch(calls=c) for c in calls_chunks]
@@ -164,7 +162,7 @@ async def get_balances(owners, batch_size):
     for res in calls_results_list:
         calls_results.update(res)
 
-    print('BALANCEOF TOTAL TIME', time.time() - gt, batch_size)
+    logger.info('balanceOf total time', extra={'time': time.monotonic() - gt, 'batch_size': batch_size})
     balances = []
     for i, h in enumerate(owners):
         hex_val = calls_results[i].hex().replace('0x', '', 1)[:64]
@@ -178,7 +176,7 @@ async def get_balances(owners, batch_size):
 
 async def get_decimals(addresses, batch_size):
     calls = []
-    gt = time.time()
+    gt = time.monotonic()
     for i, addr in enumerate(addresses):
         call = get_decimals_rpc_call(addr, i)
         calls.append(call)
@@ -191,7 +189,7 @@ async def get_decimals(addresses, batch_size):
     for res in calls_results_list:
         calls_results.update(res)
 
-    print('DECIMALS TOTAL TIME', time.time() - gt, batch_size)
+    logger.info('decimals total time', extra={'time': time.monotonic() - gt, 'batch_size': batch_size})
     decimals = {}
     for i, addr in enumerate(addresses):
         try:
