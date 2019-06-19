@@ -289,9 +289,11 @@ class RawDB(DBWrapper):
             params = [block_range[0]]
         params.append(node_id)
 
-        q = f"""SELECT * FROM chain_events 
-                    WHERE {cond}  AND node_id=%s
-                    ORDER BY id ASC LIMIT 1"""
+        q = f"""
+            SELECT * FROM chain_events
+            WHERE {cond}  AND node_id=%s
+            ORDER BY id ASC LIMIT 1
+        """
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(q, params)
@@ -307,8 +309,6 @@ class RawDB(DBWrapper):
                 row = await cur.fetchone()
                 cur.close()
         return row
-
-        return rows
 
     async def is_canonical_block(self, block_hash):
         q = """SELECT id, reinserted FROM reorgs WHERE block_hash=%s ORDER BY id DESC"""
@@ -537,7 +537,8 @@ class MainDB(DBWrapper):
             condition = 'number BETWEEN %s AND %s'
             params = blocks_range
 
-        q = """SELECT * FROM blocks WHERE number = (SELECT MAX(number) 
+        q = """
+            SELECT * FROM blocks WHERE number = (SELECT MAX(number)
                 FROM blocks
                 WHERE is_forked=false AND {cond}""".format(cond=condition)
         async with self.engine.acquire() as conn:
@@ -763,8 +764,8 @@ class MainDB(DBWrapper):
             params = [sync_range[0]]
 
         params.insert(0, node_id)
-        q = f"""SELECT * FROM chain_events 
-                    WHERE node_id=%s AND ({cond}) 
+        q = f"""SELECT * FROM chain_events
+                    WHERE node_id=%s AND ({cond})
                     ORDER BY id DESC LIMIT 1"""
         async with self.engine.acquire() as conn:
             res = await conn.execute(q, params)

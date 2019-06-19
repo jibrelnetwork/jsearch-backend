@@ -63,8 +63,8 @@ class SyncProcessor:
         """
         Args:
             block_hash: number of block to sync
-            block_number: 
-            is_forked: 
+            block_number:
+            is_forked:
 
         Returns:
             True if sync is successfull, False if syn fails or block already synced

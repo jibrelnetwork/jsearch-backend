@@ -12,6 +12,7 @@ from web3 import Web3
 from web3.utils.abi import map_abi_data, get_abi_input_types
 from web3.utils.normalizers import abi_bytes_to_bytes, abi_address_to_hex, abi_string_to_text
 
+from jsearch import settings
 from jsearch.common.rpc import EthRequestException, EthCallException
 
 logger = logging.getLogger(__name__)
