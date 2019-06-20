@@ -31,6 +31,8 @@ pytest_plugins = [
     'jsearch.tests.plugins.databases.factories.pending_transactions',
     'jsearch.tests.plugins.databases.factories.wallet_events',
     'jsearch.tests.plugins.databases.factories.chain_splits',
+    'jsearch.tests.plugins.databases.factories.blocks',
+    'jsearch.tests.plugins.databases.factories.accounts',
     'jsearch.tests.plugins.databases.factories.reorgs',
 ]
 

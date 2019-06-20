@@ -1,17 +1,18 @@
-import datetime
 import os
-from uuid import uuid4
 
+import datetime
 from eth_utils import to_normalized_address, keccak
 from requests import Session
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
+from uuid import uuid4
 
-engine = create_engine(
-    os.environ.get('JSEARCH_MAIN_DB_TEST', "postgres://postgres:postgres@test_db/jsearch_main_test")
-)
-session: Session = scoped_session(sessionmaker(bind=engine, autocommit=True, autoflush=True))
+main_db_dsn = os.environ.get('JSEARCH_MAIN_DB_TEST', "postgres://postgres:postgres@test_db/jsearch_main_test")
+main_db_engine = create_engine(main_db_dsn)
+
+session: Session = scoped_session(sessionmaker(bind=main_db_engine, autocommit=True, autoflush=True))
+
 Base = declarative_base()
 
 

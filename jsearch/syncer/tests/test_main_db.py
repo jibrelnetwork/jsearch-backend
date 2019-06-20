@@ -1,47 +1,50 @@
+from decimal import Decimal
+
 from jsearch.common import tables as t
-from jsearch.syncer.database import MainDBSync, MainDB
+from jsearch.common.database import MainDBSync
+from jsearch.syncer.database import MainDB, MainDBAsync
 
 
-async def test_main_db_get_last_synced_block_empty(db_connection_string):
-    main_db = MainDB(db_connection_string)
+async def test_main_db_get_last_synced_block_empty(db_dsn):
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_latest_synced_block_number([1, None])
     assert res is None
 
 
-async def test_main_db_get_last_synced_block_no_miss(db, db_connection_string):
+async def test_main_db_get_last_synced_block_no_miss(db, db_dsn):
     db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
         (1, 'aa'),
         (2, 'ab'),
         (3, 'ac'),
         (4, 'ad'),
     ])
-    main_db = MainDB(db_connection_string)
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_latest_synced_block_number([1, None])
     assert res == 4
 
 
-async def test_main_db_get_last_synced_block_has_miss(db, db_connection_string):
+async def test_main_db_get_last_synced_block_has_miss(db, db_dsn):
     db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
         (1, 'aa'),
         (2, 'ab'),
         (4, 'ad'),
     ])
-    main_db = MainDB(db_connection_string)
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_latest_synced_block_number([1, None])
     assert res == 4
 
 
-async def test_main_db_get_missed_blocks_empty(db, db_connection_string):
-    main_db = MainDB(db_connection_string)
+async def test_main_db_get_missed_blocks_empty(db, db_dsn):
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_missed_blocks_numbers(10)
     assert res == []
 
 
-async def test_main_db_get_missed_blocks(db, db_connection_string):
+async def test_main_db_get_missed_blocks(db, db_dsn):
     db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
         (1, 'aa'),
         (2, 'ab'),
@@ -49,13 +52,13 @@ async def test_main_db_get_missed_blocks(db, db_connection_string):
         (5, 'ac'),
         (7, 'ae'),
     ])
-    main_db = MainDB(db_connection_string)
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_missed_blocks_numbers(10)
     assert res == [3, 6]
 
 
-async def test_main_db_get_missed_blocks_limit2(db, db_connection_string):
+async def test_main_db_get_missed_blocks_limit2(db, db_dsn):
     db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
         (1, 'aa'),
         (2, 'ab'),
@@ -64,14 +67,16 @@ async def test_main_db_get_missed_blocks_limit2(db, db_connection_string):
         (7, 'ae'),
         (9, 'af'),
     ])
-    main_db = MainDB(db_connection_string)
+    main_db = MainDB(db_dsn)
     await main_db.connect()
     res = await main_db.get_missed_blocks_numbers(2)
     assert res == [3, 6]
 
 
-def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
-    main_db = MainDBSync(db_connection_string)
+async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
+    from jsearch.syncer.processor import BlockData
+
+    main_db = MainDBSync(db_dsn)
     main_db.connect()
     d = main_db_dump
     block = d['blocks'][2]
@@ -91,6 +96,14 @@ def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
     receipts_statuses = {item['transaction_hash']: item['status'] for item in receipts}
     transactions = [{'status': receipts_statuses[tx['hash']], **tx} for tx in transactions]
 
+    txs = []
+    for tx in transactions:
+        rt1 = {'address': tx['from'], **tx}
+        rt2 = {'address': tx['to'], **tx}
+
+        txs.append(rt1)
+        txs.append(rt2)
+
     accounts = []
     for state in accounts_states:
         base = accounts_bases[state['address']]
@@ -101,15 +114,21 @@ def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
 
         accounts.append(account)
 
-    main_db.write_block_data(
-        block_data=block,
-        uncles_data=uncles,
-        transactions_data=transactions,
-        receipts_data=receipts,
-        logs_data=logs,
-        accounts_data=accounts,
-        internal_txs_data=internal_txs
+    block = BlockData(
+        block=block,
+        uncles=uncles,
+        txs=txs,
+        receipts=receipts,
+        logs=logs,
+        accounts=accounts,
+        internal_txs=internal_txs,
+        assets_summary_updates=[],
+        token_holders_updates=[],
+        transfers=[],
+        wallet_events=[],
     )
+    async with MainDBAsync(db_dsn) as async_db:
+        await block.write_to_database(async_db)
 
     db_blocks = db.execute(t.blocks_t.select()).fetchall()
     db_transactions = db.execute(t.transactions_t.select()).fetchall()
@@ -118,16 +137,8 @@ def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
     db_accounts_base = db.execute(t.accounts_base_t.select()).fetchall()
     db_accounts_state = db.execute(t.accounts_state_t.select()).fetchall()
 
-    result_transactions = []
-    for tx in transactions:
-        rt1 = {'address': tx['from'], **tx}
-        rt2 = {'address': tx['to'], **tx}
-
-        result_transactions.append(rt1)
-        result_transactions.append(rt2)
-
-    assert dict(db_blocks[0]) == block
-    assert [dict(tx) for tx in db_transactions] == result_transactions
+    assert dict(db_blocks[0]) == block.block
+    assert [dict(tx) for tx in db_transactions] == txs
     assert [dict(r) for r in db_receipts] == receipts
     assert [dict(l) for l in db_logs] == logs
     assert [dict(a) for a in db_accounts_base] == [
@@ -154,7 +165,7 @@ def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
             'address': accounts[0]['address'],
             'nonce': accounts[0]['nonce'],
             'root': accounts[0]['root'],
-            'balance': accounts[0]['balance'],
+            'balance': Decimal(accounts[0]['balance']),
             'is_forked': False,
 
         },
@@ -164,19 +175,59 @@ def test_maindb_write_block_data(db, main_db_dump, db_connection_string):
             'address': accounts[1]['address'],
             'nonce': accounts[1]['nonce'],
             'root': accounts[1]['root'],
-            'balance': accounts[1]['balance'],
+            'balance': Decimal(accounts[1]['balance']),
             'is_forked': False,
         },
     ]
 
 
-async def test_main_db_is_block_exist(db, db_connection_string):
-    db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
-        (1, 'aa'),
+async def test_apply_chain_split(db, db_dsn):
+    """
+       1, 0x1, 1, created, NULL, NULL, node1, t1
+       2, 0x2, 2, created, NULL, NULL, node1, t2
+       3, 0x3, 3, created, NULL, NULL, node1, t3
+       4, 0x4, 4, created, NULL, NULL, node1, t4
+       5, 0x5, 5, created, NULL, NULL, node1, t5
+       6, 0x44, 4, created, NULL, NULL, node1, t6
+       7, 0x55, 5, created, NULL, NULL, node1, t6
+       8, 0x66, 6, created, NULL, NULL, node1, t6
+       9, NULL, NULL, split, NULL, 1, node1, t6
+     """
+    # given
+    db.execute('INSERT INTO blocks (number, hash, parent_hash, is_forked) values (%s, %s, %s, %s)', [
+        (1, '0x1', '0x0', False),
+        (2, '0x2', '0x1', False),
+        (3, '0x3', '0x2', False),
+        (4, '0x4', '0x3', False),
+        (5, '0x5', '0x4', False),
+        (4, '0x44', '0x3', True),
+        (5, '0x55', '0x44', True),
+        (6, '0x66', '0x55', True),
     ])
-    main_db = MainDBSync(db_connection_string)
-    main_db.connect()
-    res = main_db.is_block_exist('aa')
-    assert res is True
-    res = main_db.is_block_exist('xx')
-    assert res is False
+
+    # when
+    main_db = MainDB(db_dsn)
+    await main_db.connect()
+
+    split_data = {
+        'block_hash': '0x3',
+        'block_number': 3,
+        'add_block_hash': '0x66',
+        'drop_block_hash': '0x5',
+        'add_length': 3,
+        'drop_length': 2
+    }
+    await main_db.apply_chain_split(split_data)
+
+    # then
+    blocks_forks = {b['hash']: b['is_forked'] for b in db.execute(t.blocks_t.select()).fetchall()}
+    assert blocks_forks == {
+        '0x1': False,
+        '0x2': False,
+        '0x3': False,
+        '0x4': True,
+        '0x5': True,
+        '0x44': False,
+        '0x55': False,
+        '0x66': False,
+    }
