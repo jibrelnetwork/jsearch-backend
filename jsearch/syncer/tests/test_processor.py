@@ -269,7 +269,8 @@ async def test_sync_block_check_assets_balances(db, raw_db_sample, raw_db_dsn, d
 
     In blocks 6000001 we have:
         - 20 transfers
-        - 69 either transfers
+        - 69 ether transfers
+        - 37 ether transfers from internal txs
         - 35 calls
         - - - - - - - - -
         119 transactions
@@ -299,7 +300,7 @@ async def test_sync_block_check_assets_balances(db, raw_db_sample, raw_db_dsn, d
     calls = [item for item in wallet_events if item['type'] == WalletEventType.CONTRACT_CALL]
 
     assert len(token_transfers) == 20 * 2
-    assert len(ether_transfers) == 69 * 2
+    assert len(ether_transfers) == (69 + 37) * 2
     assert len(calls) == 35 * 2
 
 
