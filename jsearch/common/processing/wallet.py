@@ -1,8 +1,27 @@
-from jsearch.common.wallet_events import event_from_tx, event_from_token_transfer, event_from_internal_tx
+from jsearch.common.wallet_events import (
+    event_from_internal_tx,
+    event_from_token_transfer,
+    event_from_tx,
+    WalletEventType,
+)
 
 
-def events_from_transactions(transactions, contracts_set):
-    return [event_from_tx(tx['address'], tx, is_receiver_contract=tx['to'] in contracts_set) for tx in transactions]
+def events_from_transactions(transactions, contracts_set, excluded_types=(WalletEventType.ERC20_TRANSFER,)):
+    """
+    Args:
+        transactions: raw txs data
+        contracts_set: set of known contracts
+        excluded_types: excluded events types
+
+    Notes:
+        we excluded by default only erc20-transfer transaction
+        we cannot fill such types of events from tx data
+
+        we have another data source for erc20 transfer events -
+        table `token_transfers`
+    """
+    events = (event_from_tx(tx['address'], tx, is_receiver_contract=tx['to'] in contracts_set) for tx in transactions)
+    return [event for event in events if event and event['type'] not in excluded_types]
 
 
 def events_from_transfers(transfers, transactions):
