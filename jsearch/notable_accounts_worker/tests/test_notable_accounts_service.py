@@ -1,7 +1,6 @@
-from typing import Any
-
 import pytest
 from sqlalchemy.engine import Connection
+from typing import Any
 
 from jsearch.common.tables import notable_accounts_t
 from jsearch.notable_accounts_worker import services
@@ -31,7 +30,6 @@ async def test_notable_accounts_service_inserts_a_single_item_to_database(
         db: Connection,
         notable_accounts_service: services.NotableAccountsService,
 ) -> None:
-
     await notable_accounts_service.handle_notable_accounts(
         [
             {
@@ -94,7 +92,6 @@ async def test_notable_accounts_service_overrides_an_item_if_requested(
         db: Connection,
         notable_accounts_service: services.NotableAccountsService,
 ) -> None:
-
     db.execute(notable_accounts_t.insert().values(
         {
             'address': '0x8da0d80f5007ef1e431dd2127178d224e32c2ef4',

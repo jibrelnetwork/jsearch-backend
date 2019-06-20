@@ -8,12 +8,11 @@ from jsearch.notable_accounts_worker import services
 @pytest.fixture()
 @pytest.mark.usefixtures('mock_service_bus', 'db')
 async def notable_accounts_service(
-        db_connection_string: str,
+        db_dsn: str,
         loop: asyncio.AbstractEventLoop,
 ) -> services.NotableAccountsService:
-
     service = services.NotableAccountsService(
-        db_dsn=db_connection_string,
+        db_dsn=db_dsn,
         update_if_exists=True,
         loop=loop
     )

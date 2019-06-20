@@ -75,6 +75,22 @@ CREATE TABLE IF NOT EXISTS reorgs (
     node_id varchar(70)
 );
 
+CREATE TABLE IF NOT EXISTS chain_events (
+    id bigint primary key,
+    block_number bigint,
+    block_hash  varchar(70),
+    parent_block_hash varchar(70),
+    type varchar(20),
+    common_block_number bigint,
+    common_block_hash  varchar(70),
+    drop_length bigint,
+    drop_block_hash varchar(70),
+    add_length bigint,
+    add_block_hash varchar(70),
+    node_id varchar(70),
+    created_at timestamp
+);
+
 
 CREATE INDEX IF NOT EXISTS ix_internal_transactions_block_number ON internal_transactions(block_number);
 

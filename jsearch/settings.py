@@ -29,13 +29,16 @@ ETH_BALANCE_BLOCK_OFFSET = os.getenv('ETH_BALANCE_BLOCK_OFFSET', 6)
 ETH_NODE_URL = os.getenv('ETH_NODE_URL', 'https://main-node.jwallet.network')
 ETH_NODE_BATCH_REQUEST_SIZE = int(os.getenv('ETH_NODE_BATCH_REQUEST_SIZE', '50'))
 
+ETH_NODE_ID = os.getenv('ETH_NODE_ID', '0x83f47b4ec7fc8a709e649df7fd2a77d34119dbd0a2e47b5430e85033108142e9')
+# we hardcode this node id, because we have not logic make switch between nodes.
+# but still we need to think about such logic implementation
+
 JSEARCH_CONTRACTS_API = os.getenv('JSEARCH_CONTRACTS_API', 'http://localhost:8100')
 JSEARCH_COMPILER_API = os.getenv('JSEARCH_COMPILER_API', 'http://localhost:8101')
 JSEARCH_SYNC_PARALLEL = int(os.getenv('JSEARCH_SYNC_PARALLEL', '10'))
 
 PENDING_TX_BATCH_SIZE = int(os.getenv('PENDING_TX_BATCH_SIZE', '300'))
 PENDING_TX_SLEEP_ON_NO_TXS = int(os.getenv('PENDING_TX_SLEEP_ON_NO_TXS', '1'))
-
 
 ENABLE_RESET_POST_PROCESSING = bool(os.getenv('JSEARCH_API_ENABLE_RESET_LOGS_PROCESSING', True))
 RAVEN_DSN = os.getenv('RAVEN_DSN')
