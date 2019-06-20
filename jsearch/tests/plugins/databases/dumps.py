@@ -14,16 +14,16 @@ DUMPS_FOLDER = Path(__file__).parent / "dumps"
 
 @pytest.fixture(scope="session")
 def db_dump_on_fuck_token_transfer_case(
-        db_connection_string,
-        raw_db_connection_string,
+        db_dsn,
+        raw_db_dsn,
         transfer_on_fuck_token_contract
 ):
     sync_blocks(
         blocks=transfer_on_fuck_token_contract,
-        main_db_dsn=db_connection_string,
-        raw_db_dsn=raw_db_connection_string,
+        main_db_dsn=db_dsn,
+        raw_db_dsn=raw_db_dsn,
     )
-    return get_dump(connection_string=db_connection_string)
+    return get_dump(connection_string=db_dsn)
 
 
 @pytest.fixture(scope="function")

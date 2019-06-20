@@ -58,8 +58,8 @@ async def healthcheck(request: web.Request) -> web.Response:
 
 
 async def on_startup(app: web.Application) -> None:
-    app['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB)
-    app['db_pool_raw'] = await asyncpg.create_pool(settings.JSEARCH_RAW_DB)
+    app['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB, min_size=1, max_size=1)
+    app['db_pool_raw'] = await asyncpg.create_pool(settings.JSEARCH_RAW_DB, min_size=1, max_size=1)
     app['kafka_consumer'] = aiokafka.AIOKafkaConsumer(
         loop=app.loop,
         bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,

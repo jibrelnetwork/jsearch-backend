@@ -1,15 +1,19 @@
 import logging
-from collections import defaultdict
+from copy import copy
 
 import re
 import time
 from typing import Optional, NamedTuple, Dict, Any, List, Tuple
 
-from jsearch import service_bus
 from jsearch import settings
 from jsearch.common import contracts
-from jsearch.syncer.database import MainDBSync, RawDBSync
-from jsearch.typing import Logs, Transaction
+from jsearch.common.processing import wallet
+from jsearch.common.processing.decimals_cache import decimals_cache
+from jsearch.common.processing.erc20_balances import get_balances
+from jsearch.common.processing.erc20_transfers import logs_to_transfers
+from jsearch.common.processing.logs import process_log_event
+from jsearch.syncer.database import RawDBAsync, MainDBAsync
+from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
 
@@ -22,48 +26,25 @@ class BlockData(NamedTuple):
     receipts: List[Dict[str, Any]]
     accounts: List[Dict[str, Any]]
     internal_txs: List[Dict[str, Any]]
+    transfers: List[Dict[str, Any]]
+    token_holders_updates: List[Dict[str, Any]]
+    wallet_events: List[Dict[str, Any]]
+    assets_summary_updates: List[Dict[str, Any]]
 
-    def write_to_database(self, main_db: MainDBSync) -> None:
-        main_db.write_block_data(
-            block_data=self.block,
-            uncles_data=self.uncles,
-            transactions_data=self.txs,
-            receipts_data=self.receipts,
-            logs_data=self.logs,
+    async def write_to_database(self, main_db: MainDBAsync) -> None:
+        await main_db.write_block_data_proc(
             accounts_data=self.accounts,
-            internal_txs_data=self.internal_txs
+            assets_summary_updates=self.assets_summary_updates,
+            block_data=self.block,
+            internal_txs_data=self.internal_txs,
+            logs_data=self.logs,
+            receipts_data=self.receipts,
+            token_holders_updates=self.token_holders_updates,
+            transactions_data=self.txs,
+            transfers=self.transfers,
+            uncles_data=self.uncles,
+            wallet_events=self.wallet_events,
         )
-
-    def write_to_bus(self):
-        contracts_set = set()
-        for acc in self.accounts:
-            if acc['code'] != '':
-                contracts_set.add(acc['address'])
-
-        internal_tx_parent_map = defaultdict(list)
-        for internal_tx in self.internal_txs:
-            internal_tx_parent_map[internal_tx['parent_tx_hash']].append(internal_tx)
-
-        tx_status_map = {receipt["transaction_hash"]: receipt["status"] for receipt in self.receipts}
-        assert len(tx_status_map) == len(self.txs)
-
-        for tx in self.txs:
-            receipt_status = tx_status_map[tx['hash']]
-            internal_txs = internal_tx_parent_map[tx['hash']]
-            to_contract = tx['to'] in contracts_set
-            tx.update(
-                internal_transactions=internal_txs,
-                receipt_status=receipt_status,
-                to_contract=to_contract,
-            )
-
-            service_bus.sync_client.write_tx(tx)
-
-        for account in self.accounts:
-            service_bus.sync_client.write_account(account)
-
-        logs = [dict(log, **{'status': tx_status_map[log['transaction_hash']]}) for log in self.logs]
-        service_bus.sync_client.write_logs(logs=logs)
 
 
 class SyncProcessor:
@@ -72,62 +53,78 @@ class SyncProcessor:
     """
 
     def __init__(self, raw_db_dsn: Optional[str] = None, main_db_dsn: Optional[str] = None):
-        self.raw_db = RawDBSync(raw_db_dsn or settings.JSEARCH_RAW_DB)
-        self.main_db = MainDBSync(main_db_dsn or settings.JSEARCH_MAIN_DB)
+        self.raw_db = RawDBAsync(raw_db_dsn or settings.JSEARCH_RAW_DB)
+        self.main_db = MainDBAsync(main_db_dsn or settings.JSEARCH_MAIN_DB)
 
-        service_bus.sync_client.allow_rpc = False
-        service_bus.sync_client.start()
-
-    def sync_block(self, block_hash: str, block_number: int = None) -> bool:
+    async def sync_block(self, block_hash: str, block_number: int = None, is_forked: bool = False) -> bool:
         """
-        :param block_number: number of block to sync
-        :return: True if sync is successfull, False if syn fails or block already synced
+        Args:
+            block_hash: number of block to sync
+            block_number:
+            is_forked:
+
+        Returns:
+            True if sync is successfull, False if syn fails or block already synced
         """
         logger.debug("Syncing Block", extra={'hash': block_hash, 'number': block_number})
-
-        self.main_db.connect()
-        self.raw_db.connect()
+        await self.main_db.connect()
+        await self.raw_db.connect()
 
         start_time = time.monotonic()
-        is_block_exist = self.main_db.is_block_exist(block_hash)
+        is_block_exist = await self.main_db.is_block_exist(block_hash)
         if is_block_exist is True:
             logger.debug("Block already exists", extra={'hash': block_hash})
             return False
-        receipts = self.raw_db.get_block_receipts(block_hash)
+
+        receipts = await self.raw_db.get_block_receipts(block_hash)
         if receipts is None:
             logger.debug("Block is not ready, no receipts", extra={'hash': block_hash})
             return False
-        reward = self.raw_db.get_reward(block_hash)
+
+        reward = await self.raw_db.get_reward(block_hash)
         if reward is None:
             logger.debug("Block is not ready, no reward", extra={'hash': block_hash})
             return False
 
-        header = self.raw_db.get_header_by_hash(block_hash)
-        body = self.raw_db.get_block_body(block_hash)
-        accounts = self.raw_db.get_block_accounts(block_hash)
-        internal_transactions = self.raw_db.get_internal_transactions(block_hash)
-        self.raw_db.disconnect()
+        header = await self.raw_db.get_header_by_hash(block_hash)
+        body = await self.raw_db.get_block_body(block_hash)
+        accounts = await self.raw_db.get_block_accounts(block_hash)
+        internal_transactions = await self.raw_db.get_internal_transactions(block_hash)
+        fetch_time = time.monotonic() - start_time
 
-        block = self.process_block(
+        block = await self.process_block(
             header=header,
             body=body,
             accounts=accounts,
             receipts=receipts,
             reward=reward,
-            internal_transactions=internal_transactions
+            internal_transactions=internal_transactions,
+            is_forked=is_forked
         )
+        process_time = time.monotonic() - fetch_time - start_time
 
-        block.write_to_database(self.main_db)
-        block.write_to_bus()
+        await block.write_to_database(self.main_db)
+        db_write_time = time.monotonic() - process_time - fetch_time - start_time
+        bus_write_time = time.monotonic() - db_write_time - process_time - fetch_time - start_time
 
         sync_time = time.monotonic() - start_time
-        logger.debug("Block is synced", extra={'hash': block_hash, 'number': block_number, 'sync_time': sync_time})
-        self.main_db.disconnect()
+        logger.info("Block is synced", extra={
+            'hash': block_hash,
+            'number': block_number,
+            'sync_time': '{:0.2f}s'.format(sync_time),
+            'fetch_time': '{:0.2f}s'.format(fetch_time),
+            'process_time': '{:0.2f}s'.format(process_time),
+            'db_write_time': '{:0.2f}s'.format(db_write_time),
+            'bus_write_time': '{:0.2f}s'.format(bus_write_time),
+        })
         return True
 
-    def process_block(self, header, body, reward, receipts, accounts, internal_transactions) -> BlockData:
+    async def process_block(self, header, body, reward, receipts, accounts, internal_transactions,
+                            is_forked) -> BlockData:
         """
         Preprocess data fetched from Raw DB to Main DB
+
+        TODO: move it to BlockData.__init__
         """
         uncles: List[Dict[str, Any]] = body['fields']['Uncles'] or []
         transactions: List[Dict[str, Any]] = body['fields']['Transactions'] or []
@@ -135,17 +132,39 @@ class SyncProcessor:
         block_hash: str = header['block_hash']
 
         block_reward, uncles_rewards = self.process_rewards(reward, block_number)
-        block_data = self.process_header(header, block_reward)
-        uncles_data = self.process_uncles(uncles, uncles_rewards, block_number, block_hash)
-        transactions_data = self.process_transactions(transactions, block_number, block_hash)
-        receipts_data, transactions_data, logs_data = self.process_receipts(
+        block_data = self.process_header(header, block_reward, is_forked)
+        uncles_data = self.process_uncles(uncles, uncles_rewards, block_number, block_hash, is_forked)
+        transactions_data = self.process_transactions(transactions, block_number, block_hash, is_forked)
+        receipts_data, logs_data = self.process_receipts(
             receipts=receipts,
             transactions=transactions_data,
             block_number=block_number,
-            block_hash=block_hash
+            block_hash=block_hash,
+            is_forked=is_forked
         )
-        accounts_data = self.process_accounts(accounts, block_number, block_hash)
-        internal_txs_data = self.process_internal_txs(internal_transactions)
+        accounts_data = self.process_accounts(accounts, block_number, block_hash, is_forked)
+        internal_txs_data = self.process_internal_txs(internal_transactions, is_forked)
+
+        contracts_set = set()
+        for acc in accounts_data:
+            if acc['code'] != '':
+                contracts_set.add(acc['address'])
+
+        decimals = await decimals_cache.get_many({l['address'] for l in logs_data})
+        transfers = logs_to_transfers(logs_data, block_data, decimals)
+
+        token_holders_updates = await self.get_token_holders_updates(transfers, decimals)
+
+        wallet_events = wallet.events_from_transactions(transactions_data, contracts_set)
+        wallet_events.extend(wallet.events_from_transfers(transfers, transactions_data))
+        wallet_events.extend(wallet.events_from_internal_transactions(internal_txs_data, transactions_data))
+        wallet_events = [event for event in wallet_events if event is not None]
+
+        assets_summary_updates = wallet.assets_from_accounts(accounts_data)
+        assets_summary_updates.extend(wallet.assets_from_token_balance_updates(token_holders_updates))
+
+        token_holders_updates = []
+        assets_summary_updates = []
 
         return BlockData(
             block=block_data,
@@ -154,7 +173,11 @@ class SyncProcessor:
             logs=logs_data,
             accounts=accounts_data,
             txs=transactions_data,
-            internal_txs=internal_txs_data
+            internal_txs=internal_txs_data,
+            transfers=transfers,
+            token_holders_updates=token_holders_updates,
+            wallet_events=wallet_events,
+            assets_summary_updates=assets_summary_updates
         )
 
     def process_rewards(self,
@@ -173,17 +196,25 @@ class SyncProcessor:
             uncles_rewards = reward_data['Uncles']
         return block_reward, uncles_rewards
 
-    def process_header(self, header: Dict[str, Any], reward: Dict[str, Any]) -> Dict[str, Any]:
+    def process_header(self, header: Dict[str, Any], reward: Dict[str, Any], is_forked: bool) -> Dict[str, Any]:
         data = dict_keys_case_convert(header['fields'])
         data.update(reward)
         hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
+        data['is_forked'] = is_forked
+        if 'size' not in data:
+            data['size'] = None
+        if 'total_difficulty' not in data:
+            data['total_difficulty'] = None
+        data['is_sequence_sync'] = True
+        data['logs_bloom'] = ''
         return data
 
     def process_uncles(self,
                        uncles: List[Dict[str, Any]],
                        rewards: List[Dict[str, Any]],
                        block_number: int,
-                       block_hash: str) -> List[Dict[str, Any]]:
+                       block_hash: str,
+                       is_forked: bool) -> List[Dict[str, Any]]:
         items = []
         for i, uncle in enumerate(uncles):
             rwd = rewards[i]
@@ -193,34 +224,51 @@ class SyncProcessor:
             data['block_hash'] = block_hash
             data['block_number'] = block_number
             hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
+            data['is_forked'] = is_forked
+            data['logs_bloom'] = ''
+            if 'size' not in data:
+                data['size'] = None
+            if 'total_difficulty' not in data:
+                data['total_difficulty'] = None
             items.append(data)
         return items
 
-    def process_transactions(self, transactions, block_number, block_hash):
+    def process_transactions(self, transactions, block_number, block_hash, is_forked):
         items = []
         for i, tx in enumerate(transactions):
             tx_data = dict_keys_case_convert(tx)
             tx_data['transaction_index'] = i
             tx_data['block_hash'] = block_hash
             tx_data['block_number'] = block_number
+            tx_data['is_forked'] = is_forked
+
             if tx['to'] is None:
                 tx_data['to'] = contracts.NULL_ADDRESS
+
+            tx_data['address'] = tx_data['from']
+
             items.append(tx_data)
+
+            tx2_data = copy(tx_data)
+            tx2_data['address'] = tx_data['to']
+            items.append(tx2_data)
+
         return items
 
     def process_receipts(self,
                          receipts: Dict[str, Any],
                          transactions: List[Dict[str, Any]],
                          block_number: int,
-                         block_hash: str) -> Tuple[List[Dict[str, Any]], List[Transaction], List[Dict[str, Any]]]:
+                         block_hash: str,
+                         is_forked: bool) -> Tuple[List[Dict[str, Any]], Logs]:
         rdata: List[Dict[str, Any]] = receipts['fields']['Receipts'] or []
         recpt_items = []
         logs_items = []
         for i, receipt in enumerate(rdata):
             recpt_data = dict_keys_case_convert(receipt)
-            tx = transactions[i]
+            tx = transactions[i * 2]
             assert tx['hash'] == recpt_data['transaction_hash']
-
+            recpt_data['logs_bloom'] = ''
             recpt_data['transaction_index'] = i
             recpt_data['to'] = tx['to']
             recpt_data['from'] = tx['from']
@@ -233,17 +281,18 @@ class SyncProcessor:
             })
 
             logs = recpt_data.pop('logs') or []
-            logs = self.process_logs(logs, status=recpt_data['status'])
-            logs_items.extend(logs)
-
+            recpt_data['block_hash'] = block_hash
+            recpt_data['block_number'] = block_number
+            recpt_data['is_forked'] = is_forked
             hex_vals_to_int(recpt_data, ['cumulative_gas_used', 'gas_used', 'status'])
             recpt_items.append(recpt_data)
+            tx['status'] = recpt_data['status']
+            transactions[i * 2 + 1]['status'] = recpt_data['status']
+            logs = self.process_logs(logs, status=recpt_data['status'], is_forked=is_forked)
+            logs_items.extend(logs)
+        return recpt_items, logs_items
 
-            tx['status'] = int(recpt_data['status'])
-
-        return recpt_items, transactions, logs_items
-
-    def process_logs(self, logs: Logs, status: bool) -> Logs:
+    def process_logs(self, logs: Logs, status: bool, is_forked: bool) -> Logs:
         items = []
         for log_record in logs:
             data = dict_keys_case_convert(log_record)
@@ -255,23 +304,27 @@ class SyncProcessor:
             data['event_type'] = None
             data['event_args'] = None
             data['status'] = status
+            data['is_forked'] = is_forked
+            data = process_log_event(data)
             items.append(data)
         return items
 
     def process_accounts(self,
                          accounts: List[Dict[str, Any]],
                          block_number: int,
-                         block_hash: str) -> List[Dict[str, Any]]:
+                         block_hash: str,
+                         is_forked: bool) -> List[Dict[str, Any]]:
         items = []
         for account in accounts:
             data = dict_keys_case_convert(account['fields'])
             data['address'] = account['address'].lower()
             data['block_number'] = block_number
             data['block_hash'] = block_hash
+            data['is_forked'] = is_forked
             items.append(data)
         return items
 
-    def process_internal_txs(self, internal_txs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def process_internal_txs(self, internal_txs: List[Dict[str, Any]], is_forked: bool) -> List[Dict[str, Any]]:
         items = []
         for i, tx in enumerate(internal_txs, 1):
             data = dict_keys_case_convert(tx['fields'])
@@ -279,8 +332,32 @@ class SyncProcessor:
             data['transaction_index'] = i
             del data['operation']
             data['op'] = tx['type']
+            data['is_forked'] = is_forked
             items.append(data)
         return items
+
+    async def get_token_holders_updates(self, transfers, decimals_map):
+        holders = set()
+        for t in transfers:
+            to_address = t['to_address']
+            from_address = t['from_address']
+            token_address = t['token_address']
+            if to_address != contracts.NULL_ADDRESS:
+                holders.add((to_address, token_address))
+            if from_address != contracts.NULL_ADDRESS:
+                holders.add((from_address, token_address))
+
+        balances = await get_balances(list(holders), 20)
+        updates = []
+        for b in balances:
+            update = {
+                'account_address': b[0],
+                'token_address': b[1],
+                'balance': b[2],
+                'decimals': decimals_map[b[1]],
+            }
+            updates.append(update)
+        return updates
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
