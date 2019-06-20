@@ -285,6 +285,6 @@ async def test_sync_block_check_assets_balances(db, raw_db_sample, raw_db_dsn, d
     token_transfers = [item for item in wallet_events if item['type'] == WalletEventType.ERC20_TRANSFER]
     calls = [item for item in wallet_events if item['type'] == WalletEventType.CONTRACT_CALL]
 
-    assert len(token_transfers) == 40
-    assert len(ether_transfers) == 138
-    assert len(calls) == 70
+    assert len(token_transfers) == 20 * 2
+    assert len(ether_transfers) == 69 * 2
+    assert len(calls) == 35 * 2
