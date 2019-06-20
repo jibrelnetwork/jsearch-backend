@@ -155,9 +155,11 @@ class SyncProcessor:
 
         token_holders_updates = await self.get_token_holders_updates(transfers, decimals)
 
-        wallet_events = wallet.events_from_transactions(transactions_data, contracts_set)
-        wallet_events.extend(wallet.events_from_transfers(transfers, transactions_data))
-        wallet_events.extend(wallet.events_from_internal_transactions(internal_txs_data, transactions_data))
+        wallet_events = [
+            *wallet.events_from_transactions(transactions_data, contracts_set=contracts_set),
+            *wallet.events_from_transfers(transfers, transactions_data),
+            *wallet.events_from_internal_transactions(internal_txs_data, transactions_data),
+        ]
         wallet_events = [event for event in wallet_events if event is not None]
 
         assets_summary_updates = wallet.assets_from_accounts(accounts_data)

@@ -3,7 +3,17 @@ import decimal
 import pytest
 
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
-from jsearch.common.tables import blocks_t, transactions_t, receipts_t, logs_t, accounts_state_t, accounts_base_t, internal_transactions_t
+from jsearch.common.tables import (
+    blocks_t,
+    transactions_t,
+    receipts_t,
+    logs_t,
+    accounts_state_t,
+    accounts_base_t,
+    wallet_events_t,
+    internal_transactions_t,
+)
+from jsearch.common.wallet_events import WalletEventType
 from jsearch.syncer.processor import SyncProcessor, dict_keys_case_convert
 
 pytest_plugins = [
@@ -147,6 +157,25 @@ async def test_sync_block_check_blocks(db, raw_db_sample, raw_db_dsn, db_dsn, bl
 
 
 async def test_sync_block_check_txs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_txs):
+    """
+    We test on 6000001 block.
+    We can calculate transactions count for test blocks.
+    And we can check transactions count in this tests.
+
+    In blocks 6000001 we have:
+        119 transactions
+
+    It is historical data and we can freeze it.
+
+    Notes:
+        We have denormalization for transactions.
+        It leads to records doubling.
+
+        Each events produce two record, which changed by
+        address:
+          - one record has address from "from" column
+          - another record has address from "to" column
+    """
     # when
     await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
 
@@ -154,6 +183,8 @@ async def test_sync_block_check_txs(db, raw_db_sample, raw_db_dsn, db_dsn, block
     transactions = db.execute(
         transactions_t.select().order_by(transactions_t.c.block_number, transactions_t.c.transaction_index)
     ).fetchall()
+
+    assert len(transactions) == 119 * 2
 
     for i, origin in zip(range(0, len(block_txs) * 2, 2), block_txs):
         assert transactions[i].hash == origin['hash']
@@ -228,6 +259,48 @@ async def test_sync_block_check_accounts(db, raw_db_sample, raw_db_dsn, db_dsn, 
         assert accounts_state[i]['address'] == origin['address'].lower()
         assert accounts_state[i]['balance'] == int(origin['balance'])
         assert accounts_state[i].is_forked is False
+
+
+async def test_sync_block_check_assets_balances(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
+    """
+    We test on 6000001 block.
+    We can calculate events count for test blocks.
+    And we can check events count in this tests.
+
+    In blocks 6000001 we have:
+        - 20 transfers
+        - 69 either transfers
+        - 35 calls
+        - - - - - - - - -
+        119 transactions
+
+    It is historical data and we can freeze it.
+
+    Notes:
+        We have denormalization for wallet events.
+        It leads to records doubling.
+
+        Each events produce two record, which changed by
+        address:
+          - one record has address from "from" column
+          - another record has address from "to" column
+    """
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    wallet_events = db.execute(
+        wallet_events_t.select().order_by(wallet_events_t.c.address, wallet_events_t.c.type)
+    ).fetchall()
+    wallet_events = list(map(dict, wallet_events))
+
+    ether_transfers = [item for item in wallet_events if item['type'] == WalletEventType.ETH_TRANSFER]
+    token_transfers = [item for item in wallet_events if item['type'] == WalletEventType.ERC20_TRANSFER]
+    calls = [item for item in wallet_events if item['type'] == WalletEventType.CONTRACT_CALL]
+
+    assert len(token_transfers) == 20 * 2
+    assert len(ether_transfers) == 69 * 2
+    assert len(calls) == 35 * 2
 
 
 async def test_sync_block_check_internal_txs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_internal_txs):
