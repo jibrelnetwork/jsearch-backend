@@ -65,7 +65,7 @@ class Manager:
         self.sync_mode = SYNC_MODE_STRICT
         self.tasks = []
         self.tip = None
-        self.node_id = '0x83f47b4ec7fc8a709e649df7fd2a77d34119dbd0a2e47b5430e85033108142e9'
+        self.node_id = settings.ETH_NODE_ID
 
         self.processor = SyncProcessor()
 
