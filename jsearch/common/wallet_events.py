@@ -148,7 +148,11 @@ def event_from_internal_tx(address: str,
         'block_number': tx_data['block_number'],
         'block_hash': tx_data['block_hash'],
         'tx_hash': tx_data['hash'],
-        'event_index': tx_data['transaction_index'] + tx_data['block_number'] * 1000,
+        'event_index': (
+                tx_data['block_number'] * 1000000 +
+                tx_data['transaction_index'] * 1000 +
+                internal_tx_data['transaction_index']
+        ),
         'tx_data': tx_data,
         'event_data': {
             'sender': internal_tx_data['from'],
