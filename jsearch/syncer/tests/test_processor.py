@@ -1,7 +1,9 @@
+import decimal
+
 import pytest
 
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
-from jsearch.common.tables import blocks_t, transactions_t, receipts_t, logs_t, accounts_state_t, accounts_base_t
+from jsearch.common.tables import blocks_t, transactions_t, receipts_t, logs_t, accounts_state_t, accounts_base_t, internal_transactions_t
 from jsearch.syncer.processor import SyncProcessor, dict_keys_case_convert
 
 pytest_plugins = [
@@ -25,6 +27,11 @@ def block_hash(raw_db_sample):
 @pytest.fixture
 def fixture_bodies(raw_db_sample, block_hash):
     return raw_db_sample['bodies']
+
+
+@pytest.fixture
+def fixture_internal_transactions(raw_db_sample, block_hash):
+    return raw_db_sample['internal_transactions']
 
 
 @pytest.fixture
@@ -118,6 +125,11 @@ def block_tx_logs(fixture_logs, block_hash):
 @pytest.fixture
 def block_accounts(fixture_accounts, block_hash):
     return [tx for tx in fixture_accounts if tx['block_hash'] == block_hash]
+
+
+@pytest.fixture
+def block_internal_txs(fixture_internal_transactions, block_hash):
+    return [tx for tx in fixture_internal_transactions if tx['block_hash'] == block_hash]
 
 
 async def test_sync_block_check_blocks(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_body):
@@ -216,3 +228,33 @@ async def test_sync_block_check_accounts(db, raw_db_sample, raw_db_dsn, db_dsn, 
         assert accounts_state[i]['address'] == origin['address'].lower()
         assert accounts_state[i]['balance'] == int(origin['balance'])
         assert accounts_state[i].is_forked is False
+
+
+async def test_sync_block_check_internal_txs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_internal_txs):
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    internal_txs = db.execute(internal_transactions_t.select()).fetchall()
+    internal_txs = [dict(tx) for tx in internal_txs]
+
+    internal_txs = sorted(internal_txs, key=lambda x: (x['parent_tx_hash'], x['transaction_index']))
+    block_internal_txs = sorted(block_internal_txs, key=lambda x: (x['parent_tx_hash'], x['index']))
+
+    for i, origin in enumerate(block_internal_txs):
+        assert internal_txs[i] == {
+            'block_number': origin['block_number'],
+            'block_hash': origin['block_hash'],
+            'parent_tx_hash': origin['parent_tx_hash'],
+            'op': origin['fields']['Operation'],
+            'call_depth': origin['fields']['CallDepth'],
+            'timestamp': origin['fields']['TimeStamp'],
+            'from': origin['fields']['From'],
+            'to': origin['fields']['To'],
+            'value': decimal.Decimal(origin['fields']['Value']),
+            'gas_limit': origin['fields']['GasLimit'],
+            'payload': origin['fields']['Payload'],
+            'status': origin['fields']['Status'],
+            'transaction_index': origin['fields']['Index'],
+            'is_forked': False,
+        }
