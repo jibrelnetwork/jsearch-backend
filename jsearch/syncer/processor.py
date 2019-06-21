@@ -328,10 +328,10 @@ class SyncProcessor:
 
     def process_internal_txs(self, internal_txs: List[Dict[str, Any]], is_forked: bool) -> List[Dict[str, Any]]:
         items = []
-        for i, tx in enumerate(internal_txs, 1):
+        for tx in internal_txs:
             data = dict_keys_case_convert(tx['fields'])
             data['timestamp'] = data.pop('time_stamp')
-            data['transaction_index'] = i
+            data['transaction_index'] = tx['index']
             del data['operation']
             data['op'] = tx['type']
             data['is_forked'] = is_forked
