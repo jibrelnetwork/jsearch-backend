@@ -171,7 +171,7 @@ class Manager:
         if last_event is None:
             next_event = await self.raw_db.get_first_chain_event_for_block_range(self.sync_range, self.node_id)
         else:
-            next_event = await self.raw_db.get_next_chain_event(last_event['id'], self.node_id)
+            next_event = await self.raw_db.get_next_chain_event(self.sync_range, last_event['id'], self.node_id)
 
         if next_event is None:
             await asyncio.sleep(self.sleep_on_no_blocks)
