@@ -271,11 +271,22 @@ class RawDB(DBWrapper):
                 cur.close()
         return row
 
-    async def get_next_chain_event(self, event_id, node_id):
-        q = """SELECT * FROM chain_events WHERE id > %s AND node_id=%s ORDER BY id ASC LIMIT 1"""
+    async def get_next_chain_event(self, block_range, event_id, node_id):
+        params = [event_id, node_id]
+        if block_range[1] is not None:
+            block_cond = """block_number BETWEEN %s AND %s"""
+            params += list(block_range)
+        else:
+            block_cond = """block_number >= %s"""
+            params.append(block_range[0])
+        q = f"""SELECT * FROM chain_events WHERE 
+                    id > %s 
+                    AND node_id=%s 
+                    AND {block_cond} 
+                  ORDER BY id ASC LIMIT 1"""
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(q, [event_id, node_id])
+                await cur.execute(q, params)
                 row = await cur.fetchone()
                 cur.close()
         return row
