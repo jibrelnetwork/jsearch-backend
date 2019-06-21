@@ -89,6 +89,7 @@ internal_transactions_t = sa.Table(
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, primary_key=True),
     sa.Column('parent_tx_hash', sa.String, primary_key=True),
+    sa.Column('tx_origin', sa.String),
     sa.Column('op', sa.String),
     sa.Column('call_depth', HexInteger),
     sa.Column('timestamp', HexInteger),
