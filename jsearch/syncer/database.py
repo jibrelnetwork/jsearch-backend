@@ -279,10 +279,10 @@ class RawDB(DBWrapper):
         else:
             block_cond = """block_number >= %s"""
             params.append(block_range[0])
-        q = f"""SELECT * FROM chain_events WHERE 
-                    id > %s 
-                    AND node_id=%s 
-                    AND {block_cond} 
+        q = f"""SELECT * FROM chain_events WHERE
+                    id > %s
+                    AND node_id=%s
+                    AND {block_cond}
                   ORDER BY id ASC LIMIT 1"""
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
