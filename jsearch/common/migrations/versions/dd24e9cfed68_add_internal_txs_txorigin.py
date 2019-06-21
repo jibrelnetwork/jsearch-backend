@@ -17,17 +17,14 @@ depends_on = None
 
 UP_SQL = """
 ALTER TABLE internal_transactions ADD COLUMN tx_origin CHARACTER VARYING;
-CREATE INDEX CONCURRENTLY ix_internal_transactions_tx_origin ON internal_transactions("tx_origin");
 """
 
 DOWN_SQL = """
 ALTER TABLE internal_transactions DROP COLUMN tx_origin;
-DROP INDEX ix_internal_transactions_tx_origin;
 """
 
 
 def upgrade():
-    op.execute("COMMIT")  # HACK: stop transaction and do action concurrently
     op.execute(UP_SQL)
 
 
