@@ -218,45 +218,47 @@ def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> E
         }
 
 
+# Logs, TXs and internal TXs share last four digits of the event index:
+#   * 0000 occupied by TXs.
+#   * 0001..4999 occupied by internal TXs' indices.
+#   * 5000..9999 occupied by logs' indices.
+#
+# Logs must occupy 5000..9999 because they are enumerated starting from zero by
+# geth-fork and log with index 0 can lead to collision with event from plain
+# transaction which also has `item_index=0`.
+
+
 def make_event_index_for_tx(block_number: int, transaction_index: int) -> int:
-    return _make_event_index(block_number, transaction_index)
+    return _make_event_index(block_number, transaction_index, item_index=0)
 
 
 def make_event_index_for_log(block_number: int, transaction_index: int, log_index: int) -> int:
-    return _make_event_index(block_number, transaction_index, log_index=log_index)
+    return _make_event_index(block_number, transaction_index, item_index=5000 + log_index)
 
 
 def make_event_index_for_internal_tx(block_number: int, transaction_index: int, internal_tx_index: int) -> int:
-    return _make_event_index(block_number, transaction_index, internal_tx_index=internal_tx_index)
+    return _make_event_index(block_number, transaction_index, item_index=internal_tx_index)
 
 
 def _make_event_index(
         block_number: int,
         transaction_index: int,
-        log_index: Optional[int] = None,
-        internal_tx_index: Optional[int] = None,
+        item_index: int,
 ) -> int:
     """
-    >>> _make_event_index(7800000, 230, None, None)
-    7800000230000
-    >>> _make_event_index(7800000, 230, 12, None)
-    7800000230012
-    >>> _make_event_index(8500000, 187, None, 42)
-    8500000187042
+    This functions forms an event index based on different input params.
+
+    Event index is used for sorting wallet events and consists of:
+      * Block number.
+      * TX index.
+      * Item index (either a log or an internal TX index or zero for TX).
+
+    Examples:
+        >>> _make_event_index(7800000, 230, 0)  # From TX.
+        78000002300000
+        >>> _make_event_index(7800000, 230, 5012)  # From log.
+        78000002305012
+        >>> _make_event_index(8500000, 187, 42)  # From internal TX.
+        85000001870042
     """
-    if log_index is not None and internal_tx_index is not None:
-        raise ValueError(
-            "Cannot make index if both 'log_index' and 'internal_transaction_index'"
-            "are provided."
-        )
-
-    event_index = block_number * 1000000 + transaction_index * 1000
-
-    if log_index is not None:
-        event_index += log_index
-    elif internal_tx_index is not None:
-        event_index += internal_tx_index
-    else:
-        event_index += 0  # Just being explicit.
-
-    return event_index
+    return block_number * 10000000 + transaction_index * 10000 + item_index

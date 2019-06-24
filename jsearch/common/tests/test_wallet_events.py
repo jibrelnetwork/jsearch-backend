@@ -11,9 +11,9 @@ from jsearch.tests.plugins.databases.factories.transactions import TransactionFa
 @pytest.mark.parametrize(
     "block_number,transaction_index,expected_event_index",
     (
-        (4, 12, 4012000),
-        (1, 323, 1323000),
-        (999, 999, 999999000),
+        (4, 12, 40120000),
+        (1, 323, 13230000),
+        (999, 999, 9999990000),
     )
 )
 def test_event_from_tx_event_index_is_formed_correctly(
@@ -39,9 +39,9 @@ def test_event_from_tx_event_index_is_formed_correctly(
 @pytest.mark.parametrize(
     "block_number,transaction_index,log_index,expected_event_index",
     (
-        (4, 12, 123, 4012123),
-        (1, 323, 0, 1323000),
-        (999, 999, 9, 999999009),
+        (4, 12, 123, 40125123),
+        (1, 323, 0, 13235000),
+        (999, 999, 9, 9999995009),
     )
 )
 def test_event_from_token_transfer_event_index_is_formed_correctly(
@@ -69,9 +69,9 @@ def test_event_from_token_transfer_event_index_is_formed_correctly(
 @pytest.mark.parametrize(
     "block_number,transaction_index,internal_transaction_index,expected_event_index",
     (
-        (4, 12, 123, 4012123),
-        (1, 323, 0, 1323000),
-        (999, 999, 9, 999999009),
+        (4, 12, 123, 40120123),
+        (1, 323, 0, 13230000),
+        (999, 999, 9, 9999990009),
     )
 )
 def test_get_event_from_internal_tx_event_index_is_formed_correctly(
@@ -128,6 +128,6 @@ def test_different_events_have_same_magnitude(
     event_index_from_itxs = event_from_itxs["event_index"]
     event_index_from_logs = event_from_logs["event_index"]
 
-    assert event_index_from__txs == 123456000
-    assert event_index_from_itxs == 123456789
-    assert event_index_from_logs == 123456789
+    assert event_index_from__txs == 1234560000
+    assert event_index_from_itxs == 1234560789
+    assert event_index_from_logs == 1234565789
