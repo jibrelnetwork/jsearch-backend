@@ -8,6 +8,21 @@ pytest_plugins = (
     "jsearch.tests.plugins.cli",
     "jsearch.tests.plugins.databases.main_db",
     "jsearch.tests.plugins.notable_accounts_worker",
+    "jsearch.tests.plugins.databases.factories.accounts",
+    "jsearch.tests.plugins.databases.factories.assets_summary",
+    "jsearch.tests.plugins.databases.factories.assets_transfers",
+    "jsearch.tests.plugins.databases.factories.blocks",
+    "jsearch.tests.plugins.databases.factories.chain_splits",
+    "jsearch.tests.plugins.databases.factories.common",
+    "jsearch.tests.plugins.databases.factories.contracts",
+    "jsearch.tests.plugins.databases.factories.internal_transactions",
+    "jsearch.tests.plugins.databases.factories.notable_accounts",
+    "jsearch.tests.plugins.databases.factories.pending_transactions",
+    "jsearch.tests.plugins.databases.factories.reorgs",
+    "jsearch.tests.plugins.databases.factories.token_holder",
+    "jsearch.tests.plugins.databases.factories.token_transfers",
+    "jsearch.tests.plugins.databases.factories.transactions",
+    "jsearch.tests.plugins.databases.factories.wallet_events",
 )
 
 

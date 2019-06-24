@@ -40,6 +40,7 @@ class TokenTransferFactory(factory.alchemy.SQLAlchemyModelFactory):
     timestamp = factory.LazyFunction(time.time)
 
     is_forked = False
+    status = factory.LazyFunction(lambda: randint(0, 1))
 
     class Meta:
         model = TokenTransferModel
