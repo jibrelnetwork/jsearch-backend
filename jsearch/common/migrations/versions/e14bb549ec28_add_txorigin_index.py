@@ -18,7 +18,9 @@ depends_on = None
 
 
 UP_SQL = """
-CREATE INDEX CONCURRENTLY ix_internal_transactions_tx_origin ON internal_transactions("tx_origin");
+CREATE INDEX CONCURRENTLY ix_internal_transactions_tx_origin
+ON internal_transactions("tx_origin")
+WHERE is_forked = false;
 """
 
 DOWN_SQL = """
