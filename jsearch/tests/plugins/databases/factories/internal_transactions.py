@@ -26,6 +26,7 @@ class InternalTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     block_number = factory.Sequence(lambda n: n)
     block_hash = factory.LazyFunction(generate_address)
     parent_tx_hash = factory.LazyFunction(generate_address)
+    tx_origin = factory.LazyFunction(generate_address)
     op = 'call'
     call_depth = 1
     from_ = factory.LazyFunction(generate_address)

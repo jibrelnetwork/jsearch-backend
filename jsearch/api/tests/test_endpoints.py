@@ -1381,6 +1381,7 @@ async def test_get_account_internal_transactions(cli, transaction_factory, inter
         'block_number': 42,
         'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
         'parent_tx_hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+        'tx_origin': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
         'op': 'suicide',
         'call_depth': NotImplemented,
         'from_': NotImplemented,

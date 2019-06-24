@@ -320,6 +320,7 @@ async def test_sync_block_check_internal_txs(db, raw_db_sample, raw_db_dsn, db_d
             'block_number': origin['block_number'],
             'block_hash': origin['block_hash'],
             'parent_tx_hash': origin['parent_tx_hash'],
+            'tx_origin': origin['fields']['TxOrigin'],
             'op': origin['fields']['Operation'],
             'call_depth': origin['fields']['CallDepth'],
             'timestamp': origin['fields']['TimeStamp'],
