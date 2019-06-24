@@ -109,3 +109,25 @@ def test_get_event_from_pending_tx_event_index_is_formed_correctly(
     event_index = event["event_index"]
 
     assert event_index == 0
+
+
+def test_different_events_have_same_magnitude(
+        transaction_factory: TransactionFactory,
+        transfer_factory: TokenTransferFactory,
+        internal_transaction_factory: InternalTransactionFactory,
+) -> None:
+    tx = factory.build(dict, FACTORY_CLASS=transaction_factory, block_number=123, transaction_index=456, value='0x1')
+    itx = factory.build(dict, FACTORY_CLASS=internal_transaction_factory, transaction_index=789, value=1)
+    transfer = factory.build(dict, FACTORY_CLASS=transfer_factory, log_index=789)
+
+    event_from__txs = wallet_events.event_from_tx(address=tx["from"], tx_data=tx)
+    event_from_itxs = wallet_events.event_from_internal_tx(address=tx["from"], tx_data=tx, internal_tx_data=itx)
+    event_from_logs = wallet_events.event_from_token_transfer(address=tx["from"], tx_data=tx, transfer_data=transfer)
+
+    event_index_from__txs = event_from__txs["event_index"]
+    event_index_from_itxs = event_from_itxs["event_index"]
+    event_index_from_logs = event_from_logs["event_index"]
+
+    assert event_index_from__txs == 123456000
+    assert event_index_from_itxs == 123456789
+    assert event_index_from_logs == 123456789
