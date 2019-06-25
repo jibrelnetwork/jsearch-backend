@@ -1,0 +1,93 @@
+[
+  {
+    "id": 13341408,
+    "block_number": 8020425,
+    "block_hash": "0xc612bbb64b83b23729ff542d7ced2617d028834681893a8ea28bb2dcfc01ddc9",
+    "address": "0x52bc44d5378309EE2abF1539BF71dE1b7d7bE3b5",
+    "fields": {
+      "Uncles": [],
+      "TimeStamp": 1561375211,
+      "TxsReward": 14912980797842000,
+      "BlockMiner": "0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5",
+      "BlockNumber": 8020425,
+      "BlockReward": 2000000000000000000,
+      "UnclesReward": 0,
+      "UncleInclusionReward": 0
+    },
+    "created_at": "2019-06-24T11:20:18.424983"
+  },
+  {
+    "id": 13341410,
+    "block_number": 8020426,
+    "block_hash": "0xa388792fc1fa244083f7d5ad4a2843ac3ea0b23cc543078e1b18085f309fb44f",
+    "address": "0x52bc44d5378309EE2abF1539BF71dE1b7d7bE3b5",
+    "fields": {
+      "Uncles": [],
+      "TimeStamp": 1561375217,
+      "TxsReward": 27261853170419462,
+      "BlockMiner": "0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5",
+      "BlockNumber": 8020426,
+      "BlockReward": 2000000000000000000,
+      "UnclesReward": 0,
+      "UncleInclusionReward": 0
+    },
+    "created_at": "2019-06-24T11:20:24.377902"
+  },
+  {
+    "id": 13341409,
+    "block_number": 8020426,
+    "block_hash": "0x017ec98d0946bb0c008507871e3d865ec9a2dab6966b027d3c16aafa54407d4a",
+    "address": "0x06B8C5883Ec71bC3f4B332081519f23834c8706E",
+    "fields": {
+      "Uncles": [],
+      "TimeStamp": 1561375218,
+      "TxsReward": 28976914170419462,
+      "BlockMiner": "0x06b8c5883ec71bc3f4b332081519f23834c8706e",
+      "BlockNumber": 8020426,
+      "BlockReward": 2000000000000000000,
+      "UnclesReward": 0,
+      "UncleInclusionReward": 0
+    },
+    "created_at": "2019-06-24T11:20:22.255654"
+  },
+  {
+    "id": 13341411,
+    "block_number": 8020427,
+    "block_hash": "0xd6a8f9d468a7e2a916482211c0bf2fa0314178e2ef4979961a9e44d499046c86",
+    "address": "0x829BD824B016326A401d083B33D092293333A830",
+    "fields": {
+      "Uncles": [
+        {
+          "Miner": "0x06b8c5883ec71bc3f4b332081519f23834c8706e",
+          "UncleReward": 1750000000000000000,
+          "UnclePosition": 0
+        }
+      ],
+      "TimeStamp": 1561375223,
+      "TxsReward": 54372582377929400,
+      "BlockMiner": "0x829bd824b016326a401d083b33d092293333a830",
+      "BlockNumber": 8020427,
+      "BlockReward": 2000000000000000000,
+      "UnclesReward": 1750000000000000000,
+      "UncleInclusionReward": 62500000000000000
+    },
+    "created_at": "2019-06-24T11:20:34.742538"
+  },
+  {
+    "id": 13341413,
+    "block_number": 8020428,
+    "block_hash": "0x6727384c6ffeaf511faf183ffdfd68d4ea2ddea362ca041dc3893a72ac150b87",
+    "address": "0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8",
+    "fields": {
+      "Uncles": [],
+      "TimeStamp": 1561375234,
+      "TxsReward": 45088938283527860,
+      "BlockMiner": "0xea674fdde714fd979de3edf0f56aa9716b898ec8",
+      "BlockNumber": 8020428,
+      "BlockReward": 2000000000000000000,
+      "UnclesReward": 0,
+      "UncleInclusionReward": 0
+    },
+    "created_at": "2019-06-24T11:20:46.436112"
+  }
+]

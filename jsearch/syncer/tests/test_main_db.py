@@ -3,6 +3,7 @@ from decimal import Decimal
 from jsearch.common import tables as t
 from jsearch.common.database import MainDBSync
 from jsearch.syncer.database import MainDB, MainDBAsync
+from jsearch.syncer.manager import process_chain_split
 
 
 async def test_main_db_get_last_synced_block_empty(db_dsn):
@@ -128,7 +129,7 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
         wallet_events=[],
     )
     async with MainDBAsync(db_dsn) as async_db:
-        await block.write_to_database(async_db)
+        await block.write(async_db)
 
     db_blocks = db.execute(t.blocks_t.select()).fetchall()
     db_transactions = db.execute(t.transactions_t.select()).fetchall()
@@ -217,7 +218,7 @@ async def test_apply_chain_split(db, db_dsn):
         'add_length': 3,
         'drop_length': 2
     }
-    await main_db.apply_chain_split(split_data)
+    await process_chain_split(main_db, split_data)
 
     # then
     blocks_forks = {b['hash']: b['is_forked'] for b in db.execute(t.blocks_t.select()).fetchall()}
