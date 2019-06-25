@@ -37,9 +37,8 @@ from jsearch.common.tables import (
     chain_events_t,
     wallet_events_t,
 )
-from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.accounts import get_accounts_state_for_blocks_query, get_last_ether_balances_query
-from jsearch.syncer.database_queries.assets_summary import delete_ether_summary_query, upsert_assets_summary_query
+from jsearch.syncer.database_queries.assets_summary import delete_summary_summary_query, upsert_assets_summary_query
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.token_transfers import (
     get_transfers_from_query,
@@ -363,9 +362,78 @@ class RawDB(DBWrapper):
             return True
         return False
 
+    async def fetch_rows(self, q, params):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, params)
+                rows = await cur.fetchall()
+                cur.close()
+        return rows
+
+    async def fetch_row(self, q, params):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(q, params)
+                row = await cur.fetchone()
+                cur.close()
+        return row
+
+    async def get_header_by_hash(self, block_hash):
+        q = """SELECT "block_number", "block_hash", "fields" FROM "headers" WHERE "block_hash"=%s"""
+        row = await self.fetch_row(q, [block_hash])
+        return row
+
+    async def get_header_by_block_number(self, block_number):
+        q = """SELECT "block_number", "block_hash", "fields" FROM "headers" WHERE "block_number"=%s"""
+        row = await self.fetch_row(q, [block_number])
+        return row
+
+    async def get_block_accounts(self, block_hash):
+        q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "accounts" WHERE "block_hash"=%s"""
+        rows = await self.fetch_rows(q, [block_hash])
+        return rows
+
+    async def get_block_body(self, block_hash):
+        q = """SELECT "block_number", "block_hash", "fields" FROM "bodies" WHERE "block_hash"=%s"""
+        row = await self.fetch_row(q, [block_hash])
+        return row
+
+    async def get_block_receipts(self, block_hash):
+        q = """SELECT "block_number", "block_hash", "fields" FROM "receipts" WHERE "block_hash"=%s"""
+        row = await self.fetch_row(q, [block_hash])
+        return row
+
+    async def get_reward(self, block_hash):
+        q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "rewards" WHERE "block_hash"=%s"""
+        rows = await self.fetch_rows(q, [block_hash])
+        if len(rows) > 1:
+            for r in rows:
+                if r['address'] != contracts.NULL_ADDRESS:
+                    return r
+        elif len(rows) == 1:
+            return rows[0]
+        else:
+            return None
+
+    async def get_internal_transactions(self, block_hash):
+
+        q = """
+        SELECT
+          "id",
+          "block_number",
+          "block_hash",
+          "parent_tx_hash",
+          "index",
+          "type",
+          "timestamp",
+          "fields"
+        FROM "internal_transactions" WHERE "block_hash"=%s"""
+
+        rows = await self.fetch_rows(q, [block_hash])
+        return rows
+
 
 class RawDBSync(DBWrapper):
-
     def connect(self):
         self.conn = psycopg2.connect(self.connection_string, cursor_factory=DictCursor)
 
@@ -441,78 +509,6 @@ class RawDBSync(DBWrapper):
         return rows
 
 
-class RawDBAsync(DBWrapper):
-
-    async def fetch_rows(self, q, params):
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, params)
-                rows = await cur.fetchall()
-                cur.close()
-        return rows
-
-    async def fetch_row(self, q, params):
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, params)
-                row = await cur.fetchone()
-                cur.close()
-        return row
-
-    async def get_header_by_hash(self, block_hash):
-        q = """SELECT "block_number", "block_hash", "fields" FROM "headers" WHERE "block_hash"=%s"""
-        row = await self.fetch_row(q, [block_hash])
-        return row
-
-    async def get_header_by_block_number(self, block_number):
-        q = """SELECT "block_number", "block_hash", "fields" FROM "headers" WHERE "block_number"=%s"""
-        row = await self.fetch_row(q, [block_number])
-        return row
-
-    async def get_block_accounts(self, block_hash):
-        q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "accounts" WHERE "block_hash"=%s"""
-        rows = await self.fetch_rows(q, [block_hash])
-        return rows
-
-    async def get_block_body(self, block_hash):
-        q = """SELECT "block_number", "block_hash", "fields" FROM "bodies" WHERE "block_hash"=%s"""
-        row = await self.fetch_row(q, [block_hash])
-        return row
-
-    async def get_block_receipts(self, block_hash):
-        q = """SELECT "block_number", "block_hash", "fields" FROM "receipts" WHERE "block_hash"=%s"""
-        row = await self.fetch_row(q, [block_hash])
-        return row
-
-    async def get_reward(self, block_hash):
-        q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "rewards" WHERE "block_hash"=%s"""
-        rows = await self.fetch_rows(q, [block_hash])
-        if len(rows) > 1:
-            for r in rows:
-                if r['address'] != contracts.NULL_ADDRESS:
-                    return r
-        elif len(rows) == 1:
-            return rows[0]
-        else:
-            return None
-
-    async def get_internal_transactions(self, block_hash):
-        q = """
-        SELECT
-          "id",
-          "block_number",
-          "block_hash",
-          "parent_tx_hash",
-          "index",
-          "type",
-          "timestamp",
-          "fields"
-        FROM "internal_transactions" WHERE "block_hash"=%s"""
-
-        rows = await self.fetch_rows(q, [block_hash])
-        return rows
-
-
 class MainDB(DBWrapper):
     """
     jSearch Main db wrapper
@@ -546,6 +542,11 @@ class MainDB(DBWrapper):
         async with self.engine.acquire() as connection:
             cursor = await connection.execute(query, params)
             return await cursor.fetchall()
+
+    async def fetch_one(self, query, *params):
+        async with self.engine.acquire() as connection:
+            cursor = await connection.execute(query, params)
+            return await cursor.fetchone()
 
     async def get_latest_synced_block_number(self, blocks_range):
         """
@@ -750,7 +751,7 @@ class MainDB(DBWrapper):
                     await conn.execute(query)
 
                 for address in delete_states:
-                    query = delete_ether_summary_query(address=address, asset_address=ETHER_ASSET_ADDRESS)
+                    query = delete_summary_summary_query(address=address, asset_address=ETHER_ASSET_ADDRESS)
                     await conn.execute(query)
 
     async def update_fork_status(self, block_hashes, is_forked, conn):
@@ -862,11 +863,6 @@ class MainDB(DBWrapper):
         async with self.engine.acquire() as conn:
             await conn.execute(q)
 
-    @as_dicts
-    async def get_blocks(self, hashes: List[str]):
-        query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
-        return await self.fetch_all(query)
-
     async def get_pending_tx_last_synced_id(self) -> Optional[int]:
         q = pending_transactions_t.select()
         q = q.order_by(pending_transactions_t.c.last_synced_id.desc())
@@ -881,42 +877,6 @@ class MainDB(DBWrapper):
     async def insert_or_update_pending_tx(self, pending_tx: Dict[str, Any]) -> None:
         query = insert_or_update_pending_tx_q(pending_tx)
         await self.execute(query)
-
-
-class MainDBAsync(DBWrapper):
-    engine: Engine
-
-    async def __aenter__(self):
-        await self.connect()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.disconnect()
-        if exc_type:
-            return False
-
-    async def connect(self):
-        self.engine = await async_create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
-
-    async def disconnect(self):
-        self.engine.close()
-        await self.engine.wait_closed()
-
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
-    async def execute(self, query, *params):
-        async with self.engine.acquire() as connection:
-            return await connection.execute(query, params)
-
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
-    async def fetch_all(self, query, *params):
-        async with self.engine.acquire() as connection:
-            cursor = await connection.execute(query, params)
-            return await cursor.fetchall()
-
-    async def fetch_one(self, query, *params):
-        async with self.engine.acquire() as connection:
-            cursor = await connection.execute(query, params)
-            return await cursor.fetchone()
 
     async def is_block_exist(self, block_hash):
         q = """SELECT hash from blocks WHERE hash=%s"""
@@ -1036,7 +996,6 @@ class MainDBAsync(DBWrapper):
             values(**values)
         self.execute(query)
 
-    @as_dicts
     async def get_blocks(self, hashes):
         query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
         return await self.execute(query)

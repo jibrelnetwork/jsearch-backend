@@ -34,7 +34,7 @@ def upsert_assets_summary_query(
     )
 
 
-def delete_ether_summary_query(address: str, asset_address=str) -> Query:
+def delete_summary_summary_query(address: str, asset_address: str) -> Query:
     return delete(assets_summary_t).where(
         and_(
             assets_summary_t.c.address == address,

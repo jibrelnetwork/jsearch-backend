@@ -3,16 +3,15 @@ from copy import copy
 
 import re
 import time
-from typing import Optional, NamedTuple, Dict, Any, List, Tuple
+from typing import NamedTuple, Dict, Any, List, Tuple
 
-from jsearch import settings
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
 from jsearch.common.processing.decimals_cache import decimals_cache
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.wallet import get_balance_updates, AssetBalanceUpdates
-from jsearch.syncer.database import RawDBAsync, MainDBAsync
+from jsearch.syncer.database import RawDB, MainDB
 from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
@@ -27,11 +26,11 @@ class BlockData(NamedTuple):
     accounts: List[Dict[str, Any]]
     internal_txs: List[Dict[str, Any]]
     transfers: List[Dict[str, Any]]
-    token_holders_updates: List[Dict[str, Any]]
+    token_holders_updates: AssetBalanceUpdates
     wallet_events: List[Dict[str, Any]]
     assets_summary_updates: List[Dict[str, Any]]
 
-    async def write(self, main_db: MainDBAsync) -> None:
+    async def write(self, main_db: MainDB) -> None:
         await main_db.write_block_data_proc(
             accounts_data=self.accounts,
             assets_summary_updates=self.assets_summary_updates,
@@ -52,9 +51,9 @@ class SyncProcessor:
     Raw-to-Main DB data sync processor
     """
 
-    def __init__(self, raw_db_dsn: Optional[str] = None, main_db_dsn: Optional[str] = None):
-        self.raw_db = RawDBAsync(raw_db_dsn or settings.JSEARCH_RAW_DB)
-        self.main_db = MainDBAsync(main_db_dsn or settings.JSEARCH_MAIN_DB)
+    def __init__(self, raw_db: RawDB, main_db: MainDB):
+        self.raw_db = raw_db
+        self.main_db = main_db
 
     async def sync_block(self, block_hash: str, block_number: int = None, is_forked: bool = False) -> bool:
         """

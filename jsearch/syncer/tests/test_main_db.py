@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from jsearch.common import tables as t
 from jsearch.common.database import MainDBSync
-from jsearch.syncer.database import MainDB, MainDBAsync
+from jsearch.syncer.database import MainDB
 from jsearch.syncer.manager import process_chain_split
 
 
@@ -128,7 +128,7 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
         transfers=[],
         wallet_events=[],
     )
-    async with MainDBAsync(db_dsn) as async_db:
+    async with MainDB(db_dsn) as async_db:
         await block.write(async_db)
 
     db_blocks = db.execute(t.blocks_t.select()).fetchall()

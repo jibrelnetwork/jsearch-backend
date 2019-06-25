@@ -42,14 +42,17 @@ class ChainEvent:
     SPLIT = 'split'
 
 
-async def process_insert_block(raw_db: RawDB, main_db: MainDB, block_hash: str, block_num: int) -> None:
+async def process_insert_block(raw_db: RawDB,
+                               main_db: MainDB,
+                               block_hash: str,
+                               block_num: int) -> None:
     parent_hash = await raw_db.get_parent_hash(block_hash)
     is_block_number_exists = await main_db.is_block_number_exists(block_num)
 
     is_canonical_parent = await raw_db.is_canonical_block(parent_hash)
     is_forked = is_block_number_exists or (not is_canonical_parent)
 
-    await SyncProcessor().sync_block(block_hash, block_num, is_forked)
+    await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(block_hash, block_num, is_forked)
 
 
 async def process_chain_split(main_db: MainDB, split_data: Dict[str, Any]) -> None:
