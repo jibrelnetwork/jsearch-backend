@@ -54,6 +54,11 @@ def raw_db_dsn():
     )
 
 
+@pytest.fixture(scope='function', autouse=True)
+def mock_settings(mocker, raw_db_dsn):
+    mocker.patch('jsearch.settings.JSEARCH_RAW_DB', raw_db_dsn)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def raw_db_create_tables(request, raw_db_dsn):
     setup_database(connection_string=raw_db_dsn)
