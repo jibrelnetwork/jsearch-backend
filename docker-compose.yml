@@ -4,8 +4,8 @@ services:
   tests:
     &tests
     depends_on:
-      - main_db
-      - raw_db
+      - test_main_db
+      - test_raw_db
     build:
       context: .
       dockerfile: Dockerfile
@@ -16,8 +16,8 @@ services:
     entrypoint: /bin/sh
     command: -c "flake8 && pytest"
     environment:
-      JSEARCH_MAIN_DB_TEST: postgres://postgres:postgres@main_db/jsearch_main
-      JSEARCH_RAW_DB_TEST: postgres://postgres:postgres@raw_db/jsearch_raw
+      JSEARCH_MAIN_DB_TEST: postgres://postgres:postgres@test_main_db/jsearch-main
+      JSEARCH_RAW_DB_TEST: postgres://postgres:postgres@test_raw_db/jsearch-raw
     env_file:
       - config/dev.env
 
@@ -30,19 +30,19 @@ services:
       - ./:/app
 
 
-  raw_db:
+  test_raw_db:
     image: postgres:11.0-alpine
-    container_name: jsearch_raw_db
+    container_name: jsearch_test_raw_db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: jsearch_raw
+      POSTGRES_DB: jsearch-raw
 
-  main_db:
+  test_main_db:
     image: postgres:11.0-alpine
-    container_name: jsearch_main_db
+    container_name: jsearch_test_main_db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: jsearch_main
+      POSTGRES_DB: jsearch-main
 
