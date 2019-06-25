@@ -41,7 +41,7 @@ async def test_chain_split_token_check_ether_summary(db, raw_db_split_sample, ra
     We know about differences in ether balances for blocks.
     This is history data.
 
-                    account address                |         balances in fork       |    expected_balance in canonical chain
+                    account address                |         balances in fork       |  expected_balance in chain
         0xe75fe8be89d97101d1d84878bb876a1e6b12b83e |            3560031043197580749 | 3558388802072277453
         0xd87533f6450a125905e7d487910f2a12e75b2ef8 |             467861372000000000 | 467075624000000000
         0x85176612cc64c822a5e7a4746a9a764841378b8b |             319857145927679600 | 319026064927679600
