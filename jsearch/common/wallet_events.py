@@ -64,7 +64,7 @@ def event_from_tx(address: str, tx_data: Transaction, is_receiver_contract=False
             'block_number': tx_data['block_number'],
             'block_hash': tx_data['block_hash'],
             'tx_hash': tx_data['hash'],
-            'event_index': tx_data['block_number'] * 1000000 + tx_data['transaction_index'] * 1000,
+            'event_index': make_event_index_for_tx(tx_data['block_number'], tx_data['transaction_index']),
             'tx_data': tx_data,
             'event_data': {
                 'sender': tx_data['from'],
@@ -100,10 +100,10 @@ def event_from_token_transfer(address: str, transfer_data: Transfer, tx_data: Tr
         'block_number': tx_data['block_number'],
         'block_hash': tx_data['block_hash'],
         'tx_hash': tx_data['hash'],
-        'event_index': (
-                tx_data['block_number'] * 1000000 +
-                tx_data['transaction_index'] * 1000 +
-                transfer_data['log_index']
+        'event_index': make_event_index_for_log(
+            tx_data['block_number'],
+            tx_data['transaction_index'],
+            transfer_data['log_index']
         ),
         'tx_data': tx_data,
         'event_data': {
@@ -148,10 +148,10 @@ def event_from_internal_tx(address: str,
         'block_number': tx_data['block_number'],
         'block_hash': tx_data['block_hash'],
         'tx_hash': tx_data['hash'],
-        'event_index': (
-                tx_data['block_number'] * 1000000 +
-                tx_data['transaction_index'] * 1000 +
-                internal_tx_data['transaction_index']
+        'event_index': make_event_index_for_internal_tx(
+            tx_data['block_number'],
+            tx_data['transaction_index'],
+            internal_tx_data['transaction_index']
         ),
         'tx_data': tx_data,
         'event_data': {
@@ -216,3 +216,49 @@ def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> E
                 'amount': amount,
             }
         }
+
+
+# Logs, TXs and internal TXs share last four digits of the event index:
+#   * 0000 occupied by TXs.
+#   * 0001..4999 occupied by internal TXs' indices.
+#   * 5000..9999 occupied by logs' indices.
+#
+# Logs must occupy 5000..9999 because they are enumerated starting from zero by
+# geth-fork and log with index 0 can lead to collision with event from plain
+# transaction which also has `item_index=0`.
+
+
+def make_event_index_for_tx(block_number: int, transaction_index: int) -> int:
+    return _make_event_index(block_number, transaction_index, item_index=0)
+
+
+def make_event_index_for_log(block_number: int, transaction_index: int, log_index: int) -> int:
+    return _make_event_index(block_number, transaction_index, item_index=5000 + log_index)
+
+
+def make_event_index_for_internal_tx(block_number: int, transaction_index: int, internal_tx_index: int) -> int:
+    return _make_event_index(block_number, transaction_index, item_index=internal_tx_index)
+
+
+def _make_event_index(
+        block_number: int,
+        transaction_index: int,
+        item_index: int,
+) -> int:
+    """
+    This functions forms an event index based on different input params.
+
+    Event index is used for sorting wallet events and consists of:
+      * Block number.
+      * TX index.
+      * Item index (either a log or an internal TX index or zero for TX).
+
+    Examples:
+        >>> _make_event_index(7800000, 230, 0)  # From TX.
+        78000002300000
+        >>> _make_event_index(7800000, 230, 5012)  # From log.
+        78000002305012
+        >>> _make_event_index(8500000, 187, 42)  # From internal TX.
+        85000001870042
+    """
+    return block_number * 10000000 + transaction_index * 10000 + item_index
