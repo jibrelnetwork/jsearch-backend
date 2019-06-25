@@ -30,6 +30,7 @@ PendingTransaction = Dict[str, Any]
 PendingTransactions = List[PendingTransaction]
 
 AssetUpdate = Dict[str, Any]
+AssetUpdates = List[AssetUpdate]
 AssetTransfer = Dict[str, Any]
 
 AnyCoroutine = Coroutine[Any, Any, Any]

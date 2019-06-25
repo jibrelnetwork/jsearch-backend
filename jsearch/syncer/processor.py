@@ -9,9 +9,9 @@ from jsearch import settings
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
 from jsearch.common.processing.decimals_cache import decimals_cache
-from jsearch.common.processing.erc20_balances import get_balances
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
+from jsearch.common.processing.wallet import get_balance_updates, AssetBalanceUpdates
 from jsearch.syncer.database import RawDBAsync, MainDBAsync
 from jsearch.typing import Logs
 
@@ -31,7 +31,7 @@ class BlockData(NamedTuple):
     wallet_events: List[Dict[str, Any]]
     assets_summary_updates: List[Dict[str, Any]]
 
-    async def write_to_database(self, main_db: MainDBAsync) -> None:
+    async def write(self, main_db: MainDBAsync) -> None:
         await main_db.write_block_data_proc(
             accounts_data=self.accounts,
             assets_summary_updates=self.assets_summary_updates,
@@ -64,7 +64,7 @@ class SyncProcessor:
             is_forked:
 
         Returns:
-            True if sync is successfull, False if syn fails or block already synced
+            True if sync is successful, False if syn fails or block already synced
         """
         logger.debug("Syncing Block", extra={'hash': block_hash, 'number': block_number})
         await self.main_db.connect()
@@ -103,7 +103,7 @@ class SyncProcessor:
         )
         process_time = time.monotonic() - fetch_time - start_time
 
-        await block.write_to_database(self.main_db)
+        await block.write(self.main_db)
         db_write_time = time.monotonic() - process_time - fetch_time - start_time
         bus_write_time = time.monotonic() - db_write_time - process_time - fetch_time - start_time
 
@@ -338,28 +338,20 @@ class SyncProcessor:
             items.append(data)
         return items
 
-    async def get_token_holders_updates(self, transfers, decimals_map):
+    async def get_token_holders_updates(self, transfers, decimals_map) -> AssetBalanceUpdates:
         holders = set()
-        for t in transfers:
-            to_address = t['to_address']
-            from_address = t['from_address']
-            token_address = t['token_address']
+        for transfer in transfers:
+            to_address = transfer['to_address']
+            from_address = transfer['from_address']
+            token_address = transfer['token_address']
+
             if to_address != contracts.NULL_ADDRESS:
                 holders.add((to_address, token_address))
+
             if from_address != contracts.NULL_ADDRESS:
                 holders.add((from_address, token_address))
 
-        balances = await get_balances(list(holders), 20)
-        updates = []
-        for b in balances:
-            update = {
-                'account_address': b[0],
-                'token_address': b[1],
-                'balance': b[2],
-                'decimals': decimals_map[b[1]],
-            }
-            updates.append(update)
-        return updates
+        return await get_balance_updates(holders, decimals_map)
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')

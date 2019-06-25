@@ -27,7 +27,7 @@ if ',' in KAFKA_BOOTSTRAP_SERVERS:
 ETH_BALANCE_BLOCK_OFFSET = os.getenv('ETH_BALANCE_BLOCK_OFFSET', 6)
 
 ETH_NODE_URL = os.getenv('ETH_NODE_URL', 'https://main-node.jwallet.network')
-ETH_NODE_BATCH_REQUEST_SIZE = int(os.getenv('ETH_NODE_BATCH_REQUEST_SIZE', '50'))
+ETH_NODE_BATCH_REQUEST_SIZE = int(os.getenv('ETH_NODE_BATCH_REQUEST_SIZE', '20'))
 
 ETH_NODE_ID = os.getenv('ETH_NODE_ID', '0x83f47b4ec7fc8a709e649df7fd2a77d34119dbd0a2e47b5430e85033108142e9')
 # we hardcode this node id, because we have not logic make switch between nodes.

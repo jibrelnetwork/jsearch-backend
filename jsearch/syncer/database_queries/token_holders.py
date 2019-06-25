@@ -4,7 +4,7 @@ from sqlalchemy.orm import Query
 from jsearch.common.tables import token_holders_t
 
 
-def update_token_holder_balance_q(token_address: str, account_address, balance: int, decimals: int) -> Query:
+def upsert_token_holder_balance_q(token_address: str, account_address, balance: int, decimals: int) -> Query:
     insert_query = insert(token_holders_t).values(
         token_address=token_address,
         account_address=account_address,

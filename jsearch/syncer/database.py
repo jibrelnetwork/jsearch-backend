@@ -1,11 +1,12 @@
 import json
 import logging
+from collections import defaultdict
 from copy import copy
 
 import aiopg
 import backoff
 import psycopg2
-from aiopg.sa import create_engine as async_create_engine, Engine
+from aiopg.sa import create_engine as async_create_engine, Engine, SAConnection
 from psycopg2.extras import DictCursor
 from sqlalchemy import and_
 from sqlalchemy.dialects.postgresql import insert
@@ -13,6 +14,12 @@ from typing import List, Dict, Any, Optional
 
 from jsearch.common import contracts
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
+from jsearch.common.processing.decimals_cache import decimals_cache
+from jsearch.common.processing.wallet import (
+    ETHER_ASSET_ADDRESS,
+    assets_from_accounts,
+    get_balance_updates
+)
 from jsearch.common.tables import (
     accounts_base_t,
     accounts_state_t,
@@ -31,12 +38,15 @@ from jsearch.common.tables import (
     wallet_events_t,
 )
 from jsearch.common.utils import as_dicts
+from jsearch.syncer.database_queries.accounts import get_accounts_state_for_blocks_query, get_last_ether_balances_query
+from jsearch.syncer.database_queries.assets_summary import delete_ether_summary_query, upsert_assets_summary_query
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
-from jsearch.syncer.database_queries.token_holders import update_token_holder_balance_q
 from jsearch.syncer.database_queries.token_transfers import (
     get_transfers_from_query,
-    get_transfers_to_query
+    get_transfers_to_query,
+    get_token_address_and_accounts_for_blocks_q
 )
+from jsearch.typing import Blocks, Block
 
 MAIN_DB_POOL_SIZE = 2
 
@@ -53,6 +63,25 @@ class ConnectionError(DatabaseError):
     """
     Any problem with database connection
     """
+
+
+async def get_last_ether_states_for_addresses_in_blocks(
+        connection: SAConnection,
+        blocks_hashes: List[str]
+) -> List[Dict[str, Any]]:
+    """
+    Args:
+        connection: connection to db
+        blocks_hashes: list of blocks hashes
+
+    Returns:
+        last states for addresses affected by blocks
+    """
+    query = get_last_ether_balances_query(blocks_hashes)
+    async with connection.execute(query) as cursor:
+        results = await cursor.fetchall()
+
+    return results
 
 
 class DBWrapper:
@@ -570,6 +599,22 @@ class MainDB(DBWrapper):
                 rows = rows[:-1]
             return [r['start'] for r in rows]
 
+    async def get_token_owners_for_blocks(self, blocks_hashes: List[str]) -> Dict[str, List[str]]:
+        query = get_token_address_and_accounts_for_blocks_q(blocks_hashes)
+
+        token_owners = defaultdict(list)
+
+        for item in await self.fetch_all(query):
+            token = item['token_address']
+            owner = item['address']
+            token_owners[token].append(owner)
+
+        return token_owners
+
+    async def get_accounts_addresses_for_blocks(self, blocks_hashes: List[str]) -> List[str]:
+        query = get_accounts_state_for_blocks_query(blocks_hashes=blocks_hashes)
+        return list({item['address'] for item in await self.fetch_all(query)})
+
     async def apply_reorg(self, reorg):
         reorg = dict(reorg)
 
@@ -651,33 +696,62 @@ class MainDB(DBWrapper):
                 )
                 return True
 
-    async def apply_chain_split(self, split_data):
-        """
-        TODO: move split data to named tuple or dataclass
-        """
-        from_block = split_data['block_number']
-        to_block = split_data['block_number'] + split_data['add_length']
+    async def get_hash_map_from_block_range(self, from_block: int, to_block: int) -> Dict[str, Block]:
         query = blocks_t.select().where(and_(blocks_t.c.number > from_block, blocks_t.c.number <= to_block))
         blocks = await self.fetch_all(query)
 
-        hash_map = {b['hash']: dict(b) for b in blocks}
+        return {b['hash']: dict(b) for b in blocks}
 
-        new_head = hash_map[split_data['add_block_hash']]
-        new_chain_fragment = [new_head]
-        while len(new_chain_fragment) < split_data['add_length']:
-            next_block = hash_map[new_chain_fragment[-1]['parent_hash']]
-            new_chain_fragment.append(next_block)
-
-        old_head = hash_map[split_data['drop_block_hash']]
-        old_chain_fragment = [old_head]
-        while len(old_chain_fragment) < split_data['drop_length']:
-            next_block = hash_map[old_chain_fragment[-1]['parent_hash']]
-            old_chain_fragment.append(next_block)
+    async def apply_chain_split(
+            self,
+            old_chain_fragment: Blocks,
+            new_chain_fragment: Blocks,
+    ) -> None:
 
         async with self.engine.acquire() as conn:
             async with conn.begin():
                 await self.update_fork_status([b['hash'] for b in old_chain_fragment], is_forked=True, conn=conn)
                 await self.update_fork_status([b['hash'] for b in new_chain_fragment], is_forked=False, conn=conn)
+
+                # get token balance updates
+                affected_blocks = list(
+                    {b['hash'] for b in old_chain_fragment} | {b['hash'] for b in new_chain_fragment}
+                )
+                token_owners = await self.get_token_owners_for_blocks(blocks_hashes=affected_blocks)
+
+                all_owners = set()
+                for token, owners in token_owners.items():
+                    for owner in owners:
+                        all_owners.add((owner, token))
+
+                tokens = set(token_owners.keys())
+
+                decimals_map = await decimals_cache.get_many(addresses=tokens)
+                token_updates = await get_balance_updates(holders=all_owners, decimals_map=decimals_map)
+
+                # get ether balance updates
+                accounts_addresses = await self.get_accounts_addresses_for_blocks(affected_blocks)
+                accounts_states = await get_last_ether_states_for_addresses_in_blocks(conn, affected_blocks)
+                accounts_states_map = {item['address']: item for item in accounts_states}
+
+                delete_states = set(accounts_addresses) - set(accounts_states_map.keys())
+                ether_updates = assets_from_accounts(accounts=accounts_states)
+
+                # affected_address
+                for balance_update in token_updates:
+                    query = balance_update.to_upsert_assets_summary_query()
+                    await conn.execute(query)
+
+                    query = balance_update.to_upsert_token_holder_query()
+                    await conn.execute(query)
+
+                for account_state in ether_updates:
+                    query = upsert_assets_summary_query(**account_state)
+                    await conn.execute(query)
+
+                for address in delete_states:
+                    query = delete_ether_summary_query(address=address, asset_address=ETHER_ASSET_ADDRESS)
+                    await conn.execute(query)
 
     async def update_fork_status(self, block_hashes, is_forked, conn):
         update_block_q = blocks_t.update() \
@@ -739,7 +813,7 @@ class MainDB(DBWrapper):
             },
         )
 
-    async def is_block_number_exists(self, block_hash, block_num):
+    async def is_block_number_exists(self, block_num):
         q = blocks_t.select().where(blocks_t.c.number == block_num)
         async with self.engine.acquire() as conn:
             res = await conn.execute(q)
@@ -961,15 +1035,6 @@ class MainDBAsync(DBWrapper):
                        logs_t.c.log_index == log_index)). \
             values(**values)
         self.execute(query)
-
-    async def update_token_holder_balance(self, token_address: str, account_address: str, balance: int, decimals: int):
-        query = update_token_holder_balance_q(
-            token_address=token_address,
-            account_address=account_address,
-            balance=balance,
-            decimals=decimals
-        )
-        return await self.execute(query)
 
     @as_dicts
     async def get_blocks(self, hashes):
