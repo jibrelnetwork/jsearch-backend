@@ -80,7 +80,11 @@ class PendingSyncerService(mode.Service):
         # this causes slight refactoring of the `jsearch.syncer.manager.Manager`
         # which causes merge conflicts.
         if last_synced_id is None:
-            start_id = self.sync_range.start
+            # WTF: There're cases, when no TXs has been synced yet, and first
+            # TX's number is way ahead (e.g. table has been truncated, but
+            # 'id_seq' have't changed).
+            raw_db_start_id = await self.raw_db.get_first_pending_tx_id()
+            start_id = max(self.sync_range.start, raw_db_start_id)
         else:
             start_id = last_synced_id + 1
 
@@ -89,7 +93,7 @@ class PendingSyncerService(mode.Service):
             end_id = min(end_id, self.sync_range.end)
 
         pending_txs = await self.raw_db.get_pending_txs(start_id, end_id)
-        last_pending_id = await self.raw_db.get_last_pending_tx_id() or 0
+        last_pending_id = await self.raw_db.get_last_pending_tx_id()
 
         need_to_sync = last_pending_id - end_id
         if need_to_sync < 0:

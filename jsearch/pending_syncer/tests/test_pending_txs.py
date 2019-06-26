@@ -64,7 +64,7 @@ async def test_pending_tx_is_not_saved_if_there_is_none(
 ) -> None:
     # No pending TXs are in DB.
 
-    txs = await pending_syncer_service.get_pending_txs_to_sync(None)
+    txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
     await pending_syncer_service.sync_pending_txs(txs)
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
@@ -103,7 +103,7 @@ async def test_pending_tx_is_saved_to_main_db(
         ]
     )
 
-    txs = await pending_syncer_service.get_pending_txs_to_sync(None)
+    txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
     await pending_syncer_service.sync_pending_txs(txs)
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
@@ -171,7 +171,7 @@ async def test_pending_tx_is_marked_as_removed(
         ]
     )
 
-    txs = await pending_syncer_service.get_pending_txs_to_sync(None)
+    txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
     await pending_syncer_service.sync_pending_txs(txs)
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
@@ -230,7 +230,7 @@ async def test_pending_tx_can_be_saved_with_a_big_value(
         ]
     )
 
-    txs = await pending_syncer_service.get_pending_txs_to_sync(None)
+    txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
     await pending_syncer_service.sync_pending_txs(txs)
 
     pending_txs = db.execute(pending_transactions_t.select()).fetchall()
@@ -370,7 +370,7 @@ async def test_pending_syncer_processes_related_txs_in_order(
         ]
     )
 
-    txs = await pending_syncer_service.get_pending_txs_to_sync(None)
+    txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
     await pending_syncer_service.sync_pending_txs(txs)
 
     pending_txs_query = pending_transactions_t.select().order_by(pending_transactions_t.c.last_synced_id)
@@ -395,3 +395,39 @@ async def test_pending_syncer_processes_related_txs_in_order(
             'hash': '0xFOURTH',
         },
     ]
+
+
+@pytest.mark.usefixtures("mock_service_bus")
+async def test_pending_syncer_can_fetch_txs_if_none_synced_yet_and_first_one_is_far_away(
+        db: Engine,
+        raw_db: Engine,
+        pending_syncer_service: PendingSyncerService
+) -> None:
+
+    raw_db.execute(
+        """
+        INSERT INTO pending_transactions (
+          "id",
+          "tx_hash",
+          "status",
+          "fields",
+          "timestamp",
+          "removed",
+          "node_id"
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, [
+            (
+                10000000,
+                '0xFIRST',
+                '',
+                Json({}),
+                str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                False,
+                '1',
+            ),
+        ],
+    )
+
+    txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
+
+    assert len(txs) == 1
