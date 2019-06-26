@@ -242,44 +242,35 @@ class RawDB(DBWrapper):
                 rows = await cur.fetchall()
                 cur.close()
 
+        logger.info(
+            "Fetched batch of pending TXs",
+            extra={
+                'start_id': start_id,
+                'end_id': end_id,
+                'count': len(rows),
+            },
+        )
+
         return [dict(row) for row in rows]
 
-    async def get_last_pending_tx_id(self):
-        q = """
-        SELECT
-          "id"
-        FROM "pending_transactions" ORDER BY "id" DESC LIMIT 1
-        """
+    async def get_last_pending_tx_id(self) -> int:
+        return await self._get_boundary_pending_tx_id(boundary='max')
+
+    async def get_first_pending_tx_id(self) -> int:
+        return await self._get_boundary_pending_tx_id(boundary='min')
+
+    async def _get_boundary_pending_tx_id(self, boundary: str) -> int:
+        if boundary not in {'min', 'max'}:
+            raise ValueError(f'"boundary" must be either "min" or "max", got "{boundary}"')
+
+        q = f'SELECT {boundary}("id") AS boundary_id FROM "pending_transactions"'
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(q)
                 row = await cur.fetchone()
-                if row:
-                    return row['id']
 
-    async def get_pending_txs_from(self, last_synced_id, limit):
-        # TODO (Nick Gashkov): Remove after `Manager` will no longer sync
-        # pending transactions.
-        q = """
-        SELECT
-          "id",
-          "tx_hash",
-          "status",
-          "fields",
-          "timestamp",
-          "removed",
-          "node_id"
-        FROM "pending_transactions" WHERE "id" > %s ORDER BY "id" LIMIT %s
-        """
-
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, [last_synced_id, limit])
-                rows = await cur.fetchall()
-                cur.close()
-
-        return [dict(row) for row in rows]
+        return row and row['boundary_id'] or 0
 
     async def get_parent_hash(self, block_hash):
         q = """SELECT fields FROM headers WHERE block_hash=%s"""
