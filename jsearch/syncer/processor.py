@@ -165,9 +165,6 @@ class SyncProcessor:
         assets_summary_updates = wallet.assets_from_accounts(accounts_data)
         assets_summary_updates.extend(wallet.assets_from_token_balance_updates(token_holders_updates))
 
-        token_holders_updates = []
-        assets_summary_updates = []
-
         return BlockData(
             block=block_data,
             uncles=uncles_data,
