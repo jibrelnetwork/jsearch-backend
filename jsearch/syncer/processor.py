@@ -3,16 +3,15 @@ from copy import copy
 
 import re
 import time
-from typing import Optional, NamedTuple, Dict, Any, List, Tuple
+from typing import NamedTuple, Dict, Any, List, Tuple
 
-from jsearch import settings
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
 from jsearch.common.processing.decimals_cache import decimals_cache
-from jsearch.common.processing.erc20_balances import get_balances
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
-from jsearch.syncer.database import RawDBAsync, MainDBAsync
+from jsearch.common.processing.wallet import get_balance_updates, AssetBalanceUpdates
+from jsearch.syncer.database import RawDB, MainDB
 from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
@@ -31,7 +30,7 @@ class BlockData(NamedTuple):
     wallet_events: List[Dict[str, Any]]
     assets_summary_updates: List[Dict[str, Any]]
 
-    async def write_to_database(self, main_db: MainDBAsync) -> None:
+    async def write(self, main_db: MainDB) -> None:
         await main_db.write_block_data_proc(
             accounts_data=self.accounts,
             assets_summary_updates=self.assets_summary_updates,
@@ -52,9 +51,9 @@ class SyncProcessor:
     Raw-to-Main DB data sync processor
     """
 
-    def __init__(self, raw_db_dsn: Optional[str] = None, main_db_dsn: Optional[str] = None):
-        self.raw_db = RawDBAsync(raw_db_dsn or settings.JSEARCH_RAW_DB)
-        self.main_db = MainDBAsync(main_db_dsn or settings.JSEARCH_MAIN_DB)
+    def __init__(self, raw_db: RawDB, main_db: MainDB):
+        self.raw_db = raw_db
+        self.main_db = main_db
 
     async def sync_block(self, block_hash: str, block_number: int = None, is_forked: bool = False) -> bool:
         """
@@ -64,7 +63,7 @@ class SyncProcessor:
             is_forked:
 
         Returns:
-            True if sync is successfull, False if syn fails or block already synced
+            True if sync is successful, False if syn fails or block already synced
         """
         logger.debug("Syncing Block", extra={'hash': block_hash, 'number': block_number})
         await self.main_db.connect()
@@ -103,7 +102,7 @@ class SyncProcessor:
         )
         process_time = time.monotonic() - fetch_time - start_time
 
-        await block.write_to_database(self.main_db)
+        await block.write(self.main_db)
         db_write_time = time.monotonic() - process_time - fetch_time - start_time
         bus_write_time = time.monotonic() - db_write_time - process_time - fetch_time - start_time
 
@@ -164,6 +163,8 @@ class SyncProcessor:
 
         assets_summary_updates = wallet.assets_from_accounts(accounts_data)
         assets_summary_updates.extend(wallet.assets_from_token_balance_updates(token_holders_updates))
+
+        token_holders_updates = [i.as_token_holder_update() for i in token_holders_updates]
 
         return BlockData(
             block=block_data,
@@ -335,28 +336,20 @@ class SyncProcessor:
             items.append(data)
         return items
 
-    async def get_token_holders_updates(self, transfers, decimals_map):
+    async def get_token_holders_updates(self, transfers, decimals_map) -> AssetBalanceUpdates:
         holders = set()
-        for t in transfers:
-            to_address = t['to_address']
-            from_address = t['from_address']
-            token_address = t['token_address']
+        for transfer in transfers:
+            to_address = transfer['to_address']
+            from_address = transfer['from_address']
+            token_address = transfer['token_address']
+
             if to_address != contracts.NULL_ADDRESS:
                 holders.add((to_address, token_address))
+
             if from_address != contracts.NULL_ADDRESS:
                 holders.add((from_address, token_address))
 
-        balances = await get_balances(list(holders), 20)
-        updates = []
-        for b in balances:
-            update = {
-                'account_address': b[0],
-                'token_address': b[1],
-                'balance': b[2],
-                'decimals': decimals_map[b[1]],
-            }
-            updates.append(update)
-        return updates
+        return await get_balance_updates(holders, decimals_map)
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')

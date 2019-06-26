@@ -4,8 +4,10 @@ import logging
 
 import backoff
 import time
+from typing import Dict, Any
 
 from jsearch import settings
+from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.processor import SyncProcessor
 
 logger = logging.getLogger(__name__)
@@ -40,6 +42,45 @@ class ChainEvent:
     SPLIT = 'split'
 
 
+async def process_insert_block(raw_db: RawDB,
+                               main_db: MainDB,
+                               block_hash: str,
+                               block_num: int) -> None:
+    parent_hash = await raw_db.get_parent_hash(block_hash)
+    is_block_number_exists = await main_db.is_block_number_exists(block_num)
+
+    is_canonical_parent = await raw_db.is_canonical_block(parent_hash)
+    is_forked = is_block_number_exists or (not is_canonical_parent)
+
+    await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(block_hash, block_num, is_forked)
+
+
+async def process_chain_split(main_db: MainDB, split_data: Dict[str, Any]) -> None:
+    from_block = split_data['block_number']
+    to_block = split_data['block_number'] + split_data['add_length']
+
+    hash_map = await main_db.get_hash_map_from_block_range(from_block, to_block)
+
+    # get chains
+    new_head = hash_map[split_data['add_block_hash']]
+    new_chain_fragment = [new_head]
+
+    while len(new_chain_fragment) < split_data['add_length']:
+        next_block = hash_map[new_chain_fragment[-1]['parent_hash']]
+        new_chain_fragment.append(next_block)
+
+    old_head = hash_map[split_data['drop_block_hash']]
+    old_chain_fragment = [old_head]
+    while len(old_chain_fragment) < split_data['drop_length']:
+        next_block = hash_map[old_chain_fragment[-1]['parent_hash']]
+        old_chain_fragment.append(next_block)
+
+    await main_db.apply_chain_split(
+        new_chain_fragment=new_chain_fragment,
+        old_chain_fragment=old_chain_fragment,
+    )
+
+
 class Manager:
     """
     Sync manager
@@ -66,8 +107,6 @@ class Manager:
         self.tasks = []
         self.tip = None
         self.node_id = settings.ETH_NODE_ID
-
-        self.processor = SyncProcessor()
 
     async def start(self):
         logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
@@ -139,11 +178,13 @@ class Manager:
             'block_hash': event['block_hash'],
         })
         if event['type'] == ChainEvent.INSERT:
-            await self.process_insert_block(event['block_hash'], event['block_number'])
+            block_hash = event['block_hash']
+            block_number = event['block_number']
+            await process_insert_block(self.raw_db, self.main_db, block_hash, block_number)
         elif event['type'] == ChainEvent.REINSERT:
             pass
         elif event['type'] == ChainEvent.SPLIT:
-            await self.main_db.apply_chain_split(split_data=event)
+            await process_chain_split(self.main_db, split_data=event)
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],
@@ -157,13 +198,6 @@ class Manager:
             'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
         await self.main_db.insert_chain_event(event)
-
-    async def process_insert_block(self, block_hash, block_num):
-        is_block_number_exists = await self.main_db.is_block_number_exists(block_hash, block_num)
-        parent_hash = await self.raw_db.get_parent_hash(block_hash)
-        is_canonical_parent = await self.raw_db.is_canonical_block(parent_hash)
-        is_forked = is_block_number_exists or (not is_canonical_parent)
-        await self.processor.sync_block(block_hash, block_num, is_forked)
 
     @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def get_and_process_chain_event(self):

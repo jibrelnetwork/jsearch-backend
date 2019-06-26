@@ -1,17 +1,18 @@
 from sqlalchemy import select, func, and_, false
 from sqlalchemy.orm import Query
+from typing import List
 
 from jsearch.common.tables import token_transfers_t
 
 
-def get_token_address_and_accounts_for_block_q(block_hash: str) -> Query:
+def get_token_address_and_accounts_for_blocks_q(block_hashes: List[str]) -> Query:
     return select(
         columns=[
             token_transfers_t.c.token_address,
             token_transfers_t.c.address
         ],
         distinct=True
-    ).where(token_transfers_t.c.block_hash == block_hash)
+    ).where(token_transfers_t.c.block_hash.in_(block_hashes))
 
 
 def get_transfers_to_query(token: str, account: str, from_block: int) -> Query:

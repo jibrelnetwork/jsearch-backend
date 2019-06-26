@@ -98,8 +98,10 @@ def do_truncate_db(db):
 @pytest.fixture(scope='function', autouse=True)
 def truncate_db(do_truncate_db):
     do_truncate_db()
+    yield
+    do_truncate_db()
 
 
 @pytest.fixture(scope='function', autouse=True)
-def mock_settings(mocker, db_dsn):
+def mock_db_dsn(mocker, db_dsn):
     mocker.patch('jsearch.settings.JSEARCH_MAIN_DB', db_dsn)

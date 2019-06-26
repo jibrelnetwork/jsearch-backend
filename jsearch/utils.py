@@ -1,10 +1,10 @@
 import asyncio
 import logging
+
 import signal
-from typing import List, Any, Tuple, Optional, Callable
+from typing import List, Any, Tuple, Optional, Callable, Iterable
 
 logger = logging.getLogger(__name__)
-
 
 DEFAULT_RANGE_START = 0
 DEFAULT_RANGE_END = None
@@ -19,7 +19,7 @@ class Singleton(object):
         return cls._instance
 
 
-def split(iterable: List[Any], size: int) -> List[List[Any]]:
+def split(iterable: Iterable[Any], size: int) -> List[List[Any]]:
     if isinstance(iterable, set):
         iterable = list(iterable)
     return [iterable[i:i + size] for i in range(0, len(iterable), size)]

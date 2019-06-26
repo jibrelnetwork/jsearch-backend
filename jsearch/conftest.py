@@ -43,7 +43,7 @@ def loop(event_loop):
 
 @pytest.fixture
 @pytest.mark.asyncio
-async def cli(event_loop, db_dsn, aiohttp_client):
+async def cli(event_loop, mock_db_dsn, db_dsn, aiohttp_client):
     app = await make_app()
     return await aiohttp_client(app)
 

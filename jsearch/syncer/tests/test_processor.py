@@ -15,6 +15,7 @@ from jsearch.common.tables import (
     internal_transactions_t,
     assets_summary_t, token_transfers_t)
 from jsearch.common.wallet_events import WalletEventType
+from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.processor import SyncProcessor, dict_keys_case_convert
 
 pytest_plugins = [
@@ -25,8 +26,9 @@ pytest_plugins = [
 
 
 async def call_system_under_test(raw_db_dsn: str, db_dsn: str, block_hash: str):
-    processor = SyncProcessor(raw_db_dsn, db_dsn)
-    await processor.sync_block(block_hash=block_hash)
+    async with MainDB(db_dsn) as main_db, RawDB(raw_db_dsn) as raw_db:
+        processor = SyncProcessor(raw_db, main_db)
+        await processor.sync_block(block_hash=block_hash)
 
 
 @pytest.fixture

@@ -1,10 +1,10 @@
 import json
 import logging
 import os
-from functools import partial
-from pathlib import Path
 
 import pytest
+from functools import partial
+from pathlib import Path
 from sqlalchemy import create_engine, MetaData
 
 logging.basicConfig(level=logging.DEBUG)
@@ -54,6 +54,11 @@ def raw_db_dsn():
     )
 
 
+@pytest.fixture(scope='function', autouse=True)
+def mock_settings(mocker, raw_db_dsn):
+    mocker.patch('jsearch.settings.JSEARCH_RAW_DB', raw_db_dsn)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def raw_db_create_tables(request, raw_db_dsn):
     setup_database(connection_string=raw_db_dsn)
@@ -80,20 +85,31 @@ def clean_test_raw_db(db):
     return partial(truncate, db)
 
 
-@pytest.fixture
-def raw_db_sample(raw_db_dsn):
-    engine = create_engine(raw_db_dsn)
+def load_sample(engine, path):
     meta = MetaData()
     meta.reflect(bind=engine)
     sample_data = {}
     for t in meta.sorted_tables:
-        p = DUMPS_FOLDER / 'raw_db_sample' / f'{t}.json'
+        p = path / f'{t}.json'
         if not p.exists():
             continue
         table_data = json.load(p.open())
         engine.execute(t.insert(), *table_data)
         sample_data[t.name] = table_data
-    yield sample_data
+    return sample_data
+
+
+@pytest.fixture
+def raw_db_sample(raw_db_dsn):
+    engine = create_engine(raw_db_dsn)
+    yield load_sample(engine, DUMPS_FOLDER / 'raw_db_sample')
+    truncate(engine)
+
+
+@pytest.fixture
+def raw_db_split_sample(raw_db_dsn):
+    engine = create_engine(raw_db_dsn)
+    yield load_sample(engine, DUMPS_FOLDER / 'raw_db_split_sample')
     truncate(engine)
 
 
