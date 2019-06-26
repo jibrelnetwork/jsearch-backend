@@ -38,7 +38,7 @@ from jsearch.common.tables import (
     wallet_events_t,
 )
 from jsearch.syncer.database_queries.accounts import get_accounts_state_for_blocks_query, get_last_ether_balances_query
-from jsearch.syncer.database_queries.assets_summary import delete_summary_summary_query, upsert_assets_summary_query
+from jsearch.syncer.database_queries.assets_summary import delete_assets_summary_query, upsert_assets_summary_query
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.token_transfers import (
     get_transfers_from_query,
@@ -751,7 +751,7 @@ class MainDB(DBWrapper):
                     await conn.execute(query)
 
                 for address in delete_states:
-                    query = delete_summary_summary_query(address=address, asset_address=ETHER_ASSET_ADDRESS)
+                    query = delete_assets_summary_query(address=address, asset_address=ETHER_ASSET_ADDRESS)
                     await conn.execute(query)
 
     async def update_fork_status(self, block_hashes, is_forked, conn):
