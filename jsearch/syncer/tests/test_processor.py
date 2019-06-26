@@ -2,6 +2,7 @@ import decimal
 
 import pytest
 
+from jsearch.common import contracts
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
 from jsearch.common.tables import (
     blocks_t,
@@ -12,7 +13,7 @@ from jsearch.common.tables import (
     accounts_base_t,
     wallet_events_t,
     internal_transactions_t,
-)
+    assets_summary_t, token_transfers_t)
 from jsearch.common.wallet_events import WalletEventType
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.processor import SyncProcessor, dict_keys_case_convert
@@ -335,3 +336,78 @@ async def test_sync_block_check_internal_txs(db, raw_db_sample, raw_db_dsn, db_d
             'transaction_index': origin['fields']['Index'],
             'is_forked': False,
         }
+
+
+async def test_sync_block_check_assets_summary(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_accounts):
+    """
+    We test on 6000001 block.
+    We can calculate ether balances for test blocks.
+
+    In blocks 6000001 we have:
+        - 209 ether balance changes
+
+    It is historical data and we can freeze it.
+    """
+    # given
+    total_states = 209
+
+    accounts_stats = sorted(block_accounts, key=lambda x: x['address'])
+
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    ether_summary = db.execute(
+        assets_summary_t.select().where(assets_summary_t.c.asset_address == '')
+    ).fetchall()
+    ether_summary = sorted([dict(item) for item in ether_summary], key=lambda x: x['address'])
+
+    assert len(ether_summary) == len(accounts_stats) == total_states
+
+    for summary, account_state in zip(ether_summary, accounts_stats):
+        assert summary['address'] == account_state['address']
+        assert int(summary['value']) == int(account_state['balance'])
+
+
+async def test_sync_block_check_token_holders(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
+    """
+    We test on 6000001 block.
+    We can calculate ether balances for test blocks.
+
+    In blocks 6000001 we have:
+        - 40 token transfer
+
+    But we don't process token balance update for 0x0000000000000000000000000000000000000000 address.
+    And totally we have only:
+        - 36 token holder balances
+
+    It is historical data and we can freeze it.
+    """
+    # given
+    total_holder_transfers = 40
+    total_holder_balances = 36
+
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    token_transfers = db.execute(
+        token_transfers_t.select()
+    ).fetchall()
+    token_owners = list(
+        {(item.token_address, item.address) for item in token_transfers if item.address != contracts.NULL_ADDRESS}
+    )
+    token_owners = sorted(token_owners, key=lambda x: (x[0], x[1]))
+
+    token_summary = db.execute(
+        assets_summary_t.select().where(assets_summary_t.c.asset_address != '')
+    ).fetchall()
+    token_summary = sorted([dict(item) for item in token_summary], key=lambda x: (x['asset_address'], x['address']))
+
+    assert len(token_transfers) == total_holder_transfers
+    assert len(token_summary) == len(token_owners) == total_holder_balances
+
+    for summary, token_owner in zip(token_summary, token_owners):
+        token, owner = token_owner
+        assert summary['asset_address'] == token
+        assert summary['address'] == owner
