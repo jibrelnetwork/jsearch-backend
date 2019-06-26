@@ -23,6 +23,14 @@ class AssetBalanceUpdate(NamedTuple):
 
     nonce: Optional[str]
 
+    def as_token_holder_update(self):
+        return {
+            'token_address': self.asset_address,
+            'account_address': self.account_address,
+            'balance': self.balance,
+            'decimals': self.decimals
+        }
+
     def to_upsert_assets_summary_query(self):
         return upsert_assets_summary_query(
             address=self.account_address,
@@ -33,12 +41,7 @@ class AssetBalanceUpdate(NamedTuple):
         )
 
     def to_upsert_token_holder_query(self):
-        return upsert_token_holder_balance_q(
-            token_address=self.asset_address,
-            account_address=self.account_address,
-            balance=self.balance,
-            decimals=self.decimals
-        )
+        return upsert_token_holder_balance_q(**self.as_token_holder_update())
 
 
 AssetBalanceUpdates = List[AssetBalanceUpdate]

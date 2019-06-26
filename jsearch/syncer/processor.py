@@ -26,7 +26,7 @@ class BlockData(NamedTuple):
     accounts: List[Dict[str, Any]]
     internal_txs: List[Dict[str, Any]]
     transfers: List[Dict[str, Any]]
-    token_holders_updates: AssetBalanceUpdates
+    token_holders_updates: List[Dict[str, Any]]
     wallet_events: List[Dict[str, Any]]
     assets_summary_updates: List[Dict[str, Any]]
 
@@ -163,6 +163,8 @@ class SyncProcessor:
 
         assets_summary_updates = wallet.assets_from_accounts(accounts_data)
         assets_summary_updates.extend(wallet.assets_from_token_balance_updates(token_holders_updates))
+
+        token_holders_updates = [i.as_token_holder_update() for i in token_holders_updates]
 
         return BlockData(
             block=block_data,
