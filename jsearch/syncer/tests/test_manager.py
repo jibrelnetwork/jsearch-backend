@@ -1,5 +1,6 @@
 from sqlalchemy import true
 
+from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.structs import SyncRange
 from jsearch.common.tables import accounts_state_t, blocks_t, assets_summary_t
 from jsearch.syncer.database import RawDB, MainDB
@@ -105,6 +106,8 @@ async def test_chain_split_token_check_ether_summary(db, raw_db_split_sample, ra
     addresses_to_reset = (previous_addresses & forked_addresses) - inserted_addresses
     addresses_to_delete = forked_addresses - (inserted_addresses | previous_addresses)
 
+    not_touched_addresses = previous_addresses - forked_addresses - inserted_addresses
+
     # load all ether balances
     assets_summary = db.execute(assets_summary_t.select().where(assets_summary_t.c.asset_address == '')).fetchall()
 
@@ -123,5 +126,10 @@ async def test_chain_split_token_check_ether_summary(db, raw_db_split_sample, ra
             expected_balance = previous_states.get(address)
             assert balance == expected_balance
 
+        elif address in not_touched_addresses:
+            pass
+
+        elif summary.asset_address == ETHER_ASSET_ADDRESS:
+            pass
         else:
             assert False, 'summary should not to be exists'
