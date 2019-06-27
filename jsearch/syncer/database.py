@@ -698,6 +698,7 @@ class MainDB(DBWrapper):
             self,
             old_chain_fragment: Blocks,
             new_chain_fragment: Blocks,
+            chain_event: Dict
     ) -> None:
 
         async with self.engine.acquire() as conn:
@@ -744,6 +745,10 @@ class MainDB(DBWrapper):
                 for address in delete_states:
                     query = delete_assets_summary_query(address=address, asset_address=ETHER_ASSET_ADDRESS)
                     await conn.execute(query)
+
+                # write chain event
+                q = chain_events_t.insert().values(**chain_event)
+                await conn.execute(q)
 
     async def update_fork_status(self, block_hashes, is_forked, conn):
         update_block_q = blocks_t.update() \
@@ -876,7 +881,7 @@ class MainDB(DBWrapper):
 
     async def write_block_data_proc(self, block_data, uncles_data, transactions_data, receipts_data,
                                     logs_data, accounts_data, internal_txs_data, transfers,
-                                    token_holders_updates, wallet_events, assets_summary_updates):
+                                    token_holders_updates, wallet_events, assets_summary_updates, chain_event):
         """
         Insert block and all related items in main database
         """
@@ -885,14 +890,20 @@ class MainDB(DBWrapper):
         token_holders_updates.sort(key=lambda u: (u['account_address'], u['token_address']))
         assets_summary_updates.sort(key=lambda u: (u['address'], u['asset_address']))
 
-        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        chain_event = dict(chain_event)
+        chain_event['created_at'] = chain_event['created_at'].isoformat()
+
+        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
         j = json.dumps
+
+        print('FUU', j(dict(chain_event)))
         async with self.engine.acquire() as conn:
             async with conn.begin():
                 await self.execute(q, [j([block_data]), j(uncles_data), j(transactions_data),
                                        j(receipts_data), j(logs_data), j(accounts_state_data),
                                        j(accounts_base_data), j(internal_txs_data), j(transfers),
-                                       j(token_holders_updates), j(wallet_events), j(assets_summary_updates)])
+                                       j(token_holders_updates), j(wallet_events), j(assets_summary_updates),
+                                       j(chain_event)])
 
     async def insert_block(self, block_data):
         if block_data:

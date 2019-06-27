@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 
 from jsearch.common import tables as t
@@ -128,8 +129,16 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
         transfers=[],
         wallet_events=[],
     )
+
+    chain_event = {
+        'id': 1,
+        'block_number': 1,
+        'block_hash': '0x01',
+        'created_at': datetime.datetime.now()
+    }
+
     async with MainDB(db_dsn) as async_db:
-        await block.write(async_db)
+        await block.write(async_db, chain_event)
 
     db_blocks = db.execute(t.blocks_t.select()).fetchall()
     db_transactions = db.execute(t.transactions_t.select()).fetchall()
@@ -211,6 +220,7 @@ async def test_apply_chain_split(db, db_dsn):
     await main_db.connect()
 
     split_data = {
+        'id': 1,
         'block_hash': '0x3',
         'block_number': 3,
         'add_block_hash': '0x66',
