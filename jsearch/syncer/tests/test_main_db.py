@@ -134,7 +134,16 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
         'id': 1,
         'block_number': 1,
         'block_hash': '0x01',
-        'created_at': datetime.datetime.now()
+        'created_at': datetime.datetime.now(),
+        'add_block_hash': None,
+        'add_length': None,
+        'common_block_hash': None,
+        'common_block_number': None,
+        'drop_block_hash': None,
+        'drop_length': None,
+        'node_id': '0xXX',
+        'parent_block_hash': None,
+        'type': 'create'
     }
 
     async with MainDB(db_dsn) as async_db:
@@ -146,6 +155,7 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
     db_logs = db.execute(t.logs_t.select()).fetchall()
     db_accounts_base = db.execute(t.accounts_base_t.select()).fetchall()
     db_accounts_state = db.execute(t.accounts_state_t.select()).fetchall()
+    db_chain_events = db.execute(t.chain_events_t.select()).fetchall()
 
     assert dict(db_blocks[0]) == block.block
     assert [dict(tx) for tx in db_transactions] == txs
@@ -190,6 +200,8 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
         },
     ]
 
+    assert dict(db_chain_events[0]) == chain_event
+
 
 async def test_apply_chain_split(db, db_dsn):
     """
@@ -226,7 +238,13 @@ async def test_apply_chain_split(db, db_dsn):
         'add_block_hash': '0x66',
         'drop_block_hash': '0x5',
         'add_length': 3,
-        'drop_length': 2
+        'drop_length': 2,
+        'common_block_hash': None,
+        'common_block_number': None,
+        'created_at': datetime.datetime.now(),
+        'node_id': '0xXX',
+        'parent_block_hash': None,
+        'type': 'create'
     }
     await process_chain_split(main_db, split_data)
 
@@ -242,3 +260,6 @@ async def test_apply_chain_split(db, db_dsn):
         '0x55': False,
         '0x66': False,
     }
+
+    db_chain_events = db.execute(t.chain_events_t.select()).fetchall()
+    assert dict(db_chain_events[0]) == split_data
