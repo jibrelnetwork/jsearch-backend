@@ -4,7 +4,7 @@ import logging
 
 import backoff
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from jsearch import settings
 from jsearch.syncer.database import MainDB, RawDB
@@ -45,17 +45,18 @@ class ChainEvent:
 async def process_insert_block(raw_db: RawDB,
                                main_db: MainDB,
                                block_hash: str,
-                               block_num: int) -> None:
+                               block_num: int,
+                               last_block: Optional[int]) -> None:
     parent_hash = await raw_db.get_parent_hash(block_hash)
     is_block_number_exists = await main_db.is_block_number_exists(block_num)
 
     is_canonical_parent = await raw_db.is_canonical_block(parent_hash)
     is_forked = is_block_number_exists or (not is_canonical_parent)
 
-    await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(block_hash, block_num, is_forked)
+    await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(block_hash, block_num, is_forked, last_block)
 
 
-async def process_chain_split(main_db: MainDB, split_data: Dict[str, Any]) -> None:
+async def process_chain_split(main_db: MainDB, split_data: Dict[str, Any], last_block: Optional[int] = None) -> None:
     from_block = split_data['block_number']
     to_block = split_data['block_number'] + split_data['add_length']
 
@@ -78,6 +79,7 @@ async def process_chain_split(main_db: MainDB, split_data: Dict[str, Any]) -> No
     await main_db.apply_chain_split(
         new_chain_fragment=new_chain_fragment,
         old_chain_fragment=old_chain_fragment,
+        last_block=last_block
     )
 
 
@@ -177,14 +179,17 @@ class Manager:
             'block_number': event['block_number'],
             'block_hash': event['block_hash'],
         })
+        last_block = await self.raw_db.get_latest_available_block_number()
+        if last_block:
+            last_block = last_block - settings.ETH_BALANCE_BLOCK_OFFSET
         if event['type'] == ChainEvent.INSERT:
             block_hash = event['block_hash']
             block_number = event['block_number']
-            await process_insert_block(self.raw_db, self.main_db, block_hash, block_number)
+            await process_insert_block(self.raw_db, self.main_db, block_hash, block_number, last_block)
         elif event['type'] == ChainEvent.REINSERT:
             pass
         elif event['type'] == ChainEvent.SPLIT:
-            await process_chain_split(self.main_db, split_data=event)
+            await process_chain_split(self.main_db, split_data=event, last_block=last_block)
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],

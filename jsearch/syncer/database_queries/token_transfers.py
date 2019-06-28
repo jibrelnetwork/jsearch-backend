@@ -1,5 +1,7 @@
-from sqlalchemy import select, func, and_, false
+from functools import partial
+from sqlalchemy import select, Column, and_
 from sqlalchemy.orm import Query
+from sqlalchemy.sql.functions import sum
 from typing import List
 
 from jsearch.common.tables import token_transfers_t
@@ -15,31 +17,28 @@ def get_token_address_and_accounts_for_blocks_q(block_hashes: List[str]) -> Quer
     ).where(token_transfers_t.c.block_hash.in_(block_hashes))
 
 
-def get_transfers_to_query(token: str, account: str, from_block: int) -> Query:
-    return select([
-        func.sum(token_transfers_t.c.token_value).label('value'),
-    ]).where(
+def get_transfers_after_block(addresses: List[str], address_column: Column, block: int) -> Query:
+    query = select(
+        columns=[
+            address_column,
+            token_transfers_t.c.token_address,
+            sum(token_transfers_t.c.token_value).label('change')
+        ]
+    ).group_by(
+        token_transfers_t.c.token_address,
+        address_column,
+    ).order_by(
+        token_transfers_t.c.token_address,
+        address_column
+    ).where(
         and_(
-            token_transfers_t.c.token_address == token,
-            token_transfers_t.c.address == account,
-            token_transfers_t.c.to_address == account,
-            token_transfers_t.c.block_number > from_block,
-            token_transfers_t.c.is_forked == false(),
-            token_transfers_t.c.status == 1,
+            token_transfers_t.c.address.in_(addresses),
+            token_transfers_t.c.block_number > block,
         )
     )
 
+    return query
 
-def get_transfers_from_query(token: str, account: str, from_block: int) -> Query:
-    return select([
-        func.sum(token_transfers_t.c.token_value).label('value'),
-    ]).where(
-        and_(
-            token_transfers_t.c.token_address == token,
-            token_transfers_t.c.address == account,
-            token_transfers_t.c.from_address == account,
-            token_transfers_t.c.block_number > from_block,
-            token_transfers_t.c.is_forked == false(),
-            token_transfers_t.c.status == 1,
-        )
-    )
+
+get_incomes_after_block_query = partial(get_transfers_after_block, address_column=token_transfers_t.c.to_address)
+get_outcomes_after_block_query = partial(get_transfers_after_block, address_column=token_transfers_t.c.from_address)

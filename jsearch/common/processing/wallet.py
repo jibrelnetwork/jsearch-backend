@@ -83,8 +83,16 @@ def events_from_internal_transactions(internal_transactions, transactions):
     return events
 
 
-async def get_balance_updates(holders: Set[Tuple[str, str]], decimals_map: Dict[str, int]) -> AssetBalanceUpdates:
-    balances = await get_balances(list(holders), batch_size=settings.ETH_NODE_BATCH_REQUEST_SIZE)
+async def get_balance_updates(
+        holders: Set[Tuple[str, str]],
+        decimals_map: Dict[str, int],
+        block: Optional[int] = None
+) -> AssetBalanceUpdates:
+    balances = await get_balances(
+        owners=list(holders),
+        block=block,
+        batch_size=settings.ETH_NODE_BATCH_REQUEST_SIZE
+    )
     updates = []
     for owner, token, balance in balances:
         update = AssetBalanceUpdate(

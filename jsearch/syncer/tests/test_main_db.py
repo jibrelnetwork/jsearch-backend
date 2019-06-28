@@ -218,7 +218,7 @@ async def test_apply_chain_split(db, db_dsn):
         'add_length': 3,
         'drop_length': 2
     }
-    await process_chain_split(main_db, split_data)
+    await process_chain_split(main_db, split_data, last_block=None)
 
     # then
     blocks_forks = {b['hash']: b['is_forked'] for b in db.execute(t.blocks_t.select()).fetchall()}
