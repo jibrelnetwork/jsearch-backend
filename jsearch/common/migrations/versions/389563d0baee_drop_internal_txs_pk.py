@@ -22,7 +22,7 @@ ALTER TABLE internal_transactions DROP CONSTRAINT internal_transactions_pkey;
 """
 
 DOWN_SQL = """
-ALTER TABLE internal_transactions ADD PRIMARY KEY USING INDEX internal_transactions_pkey;
+ALTER TABLE internal_transactions ADD PRIMARY KEY (block_hash, parent_tx_hash, transaction_index);
 """
 
 

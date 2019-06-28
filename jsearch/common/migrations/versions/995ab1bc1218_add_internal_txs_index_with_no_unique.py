@@ -1,4 +1,4 @@
-"""add_internal_txs_index_with_call_depth
+"""add_internal_txs_index_with_no_unique
 
 Revision ID: 995ab1bc1218
 Revises: 389563d0baee
@@ -18,13 +18,12 @@ depends_on = None
 
 
 UP_SQL = """
-CREATE UNIQUE INDEX CONCURRENTLY internal_transactions_pkey
-  ON internal_transactions(block_hash, parent_tx_hash, transaction_index, call_depth);
+CREATE INDEX CONCURRENTLY ix_internal_transactions_block_hash_parent_tx_hash_transaction_index
+  ON internal_transactions(block_hash, parent_tx_hash, transaction_index);
 """
 
 DOWN_SQL = """
-CREATE UNIQUE INDEX CONCURRENTLY internal_transactions_pkey
-  ON internal_transactions(block_hash, parent_tx_hash, transaction_index);
+DROP INDEX CONCURRENTLY ix_internal_transactions_block_hash_parent_tx_hash_transaction_index;
 """
 
 
