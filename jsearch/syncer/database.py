@@ -896,7 +896,6 @@ class MainDB(DBWrapper):
         q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
         j = json.dumps
 
-        print('FUU', j(dict(chain_event)))
         async with self.engine.acquire() as conn:
             async with conn.begin():
                 await self.execute(q, [j([block_data]), j(uncles_data), j(transactions_data),
