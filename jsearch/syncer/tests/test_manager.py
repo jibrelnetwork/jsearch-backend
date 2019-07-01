@@ -6,12 +6,6 @@ from jsearch.common.tables import accounts_state_t, blocks_t, assets_summary_t
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.manager import Manager
 
-pytest_plugins = [
-    'jsearch.tests.plugins.databases.main_db',
-    'jsearch.tests.plugins.databases.raw_db',
-    'jsearch.tests.plugins.databases.dumps',
-]
-
 
 async def call_system_under_test(db_dsn: MainDB, raw_db_dsn: str, start: int, end: int) -> None:
     async with MainDB(db_dsn) as main_db, RawDB(raw_db_dsn) as raw_db:

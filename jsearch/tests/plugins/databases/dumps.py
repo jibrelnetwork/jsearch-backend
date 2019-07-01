@@ -5,9 +5,6 @@ import pytest
 
 from jsearch.tests.utils import get_dump, sync_blocks
 
-pytest_plugins = [
-    "jsearch.tests.plugins.geth_scenarios.transfer_on_fuck_token_contract",
-]
 
 DUMPS_FOLDER = Path(__file__).parent / "dumps"
 
