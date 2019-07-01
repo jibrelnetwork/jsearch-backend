@@ -14,7 +14,7 @@ from jsearch.common.processing.logs import process_log_event
 from jsearch.syncer.balances import (
     get_token_balance_updates,
     get_token_holders_from_transfers,
-    update_token_balance_changes_from_transfers
+    token_balance_changes_from_transfers
 )
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.typing import Logs
@@ -174,7 +174,7 @@ class SyncProcessor:
             )
 
         if last_block is not None and block_number > (last_block - settings.ETH_BALANCE_BLOCK_OFFSET):
-            token_holders_updates = update_token_balance_changes_from_transfers(transfers, token_holders_updates)
+            token_holders_updates = token_balance_changes_from_transfers(transfers, token_holders_updates)
 
         wallet_events = [
             *wallet.events_from_transactions(transactions_data, contracts_set=contracts_set),

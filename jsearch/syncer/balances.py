@@ -115,7 +115,7 @@ def split_token_and_holders(token_holders: Set[Tuple[str, str]]) -> Tuple[List[s
     return list(tokens), list(holders)
 
 
-def update_token_balance_changes_from_transfers(
+def token_balance_changes_from_transfers(
         transfers: List[Dict[str, Any]],
         token_holder_changes: AssetBalanceUpdates
 ) -> AssetBalanceUpdates:
