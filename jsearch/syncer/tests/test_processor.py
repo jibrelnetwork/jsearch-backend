@@ -1,4 +1,5 @@
 import decimal
+import datetime
 
 import pytest
 
@@ -28,7 +29,13 @@ pytest_plugins = [
 async def call_system_under_test(raw_db_dsn: str, db_dsn: str, block_hash: str):
     async with MainDB(db_dsn) as main_db, RawDB(raw_db_dsn) as raw_db:
         processor = SyncProcessor(raw_db, main_db)
-        await processor.sync_block(block_hash=block_hash)
+        chain_event = {
+            'id': 1,
+            'block_number': 1,
+            'block_hash': block_hash,
+            'created_at': datetime.datetime.now()
+        }
+        await processor.sync_block(block_hash=block_hash, chain_event=chain_event)
 
 
 @pytest.fixture
