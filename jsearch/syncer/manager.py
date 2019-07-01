@@ -16,24 +16,8 @@ SLEEP_ON_NO_BLOCKS_DEFAULT = 1
 REORGS_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL / 2
 PENDING_TX_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL * 2
 
-loop = asyncio.get_event_loop()
-
-SYNC_MODE_FAST = 'fast'
-SYNC_MODE_STRICT = 'strict'
-
-"""
-Dev Note - RawDB filling order:
-
-internal_transactions
-rewards
-bodies
-headers
-accounts
-receipts
-reorgs
-chain_splits
-
-"""
+SYNCER_BALANCE_MODE_LATEST = 'latest'
+SYNCER_BALANCE_MODE_OFFSET = 'offset'
 
 
 class ChainEvent:
@@ -87,11 +71,20 @@ class Manager:
     """
     Sync manager
 
-
     TODO: move common async daemon logic (start, stop, wait and etc. ) to generic class
+    Notes:
+        RawDB filling order:
+            - internal_transactions
+            - rewards
+            - bodies
+            - headers
+            - accounts
+            - receipts
+            - reorgs
+            - chain_splits
     """
 
-    def __init__(self, service, main_db, raw_db, sync_range):
+    def __init__(self, service, main_db, raw_db, sync_range, balance_mode: str = SYNCER_BALANCE_MODE_LATEST):
         self.service = service
         self.main_db = main_db
         self.raw_db = raw_db
@@ -99,13 +92,13 @@ class Manager:
         self._running = False
         self.chunk_size = settings.JSEARCH_SYNC_PARALLEL
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
+        self.balance_mode = balance_mode
 
         self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
 
         self.latest_available_block_num = None
         self.latest_synced_block_num = None
         self.blockchain_tip = None
-        self.sync_mode = SYNC_MODE_STRICT
         self.tasks = []
         self.tip = None
         self.node_id = settings.ETH_NODE_ID
@@ -179,7 +172,12 @@ class Manager:
             'block_number': event['block_number'],
             'block_hash': event['block_hash'],
         })
-        last_block = await self.raw_db.get_latest_available_block_number()
+
+        if self.balance_mode == SYNCER_BALANCE_MODE_OFFSET:
+            last_block = await self.raw_db.get_latest_available_block_number()
+        else:
+            last_block = None
+
         if last_block:
             last_block = last_block - settings.ETH_BALANCE_BLOCK_OFFSET
         if event['type'] == ChainEvent.INSERT:

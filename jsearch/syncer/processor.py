@@ -130,7 +130,7 @@ class SyncProcessor:
         return True
 
     async def process_block(self, header, body, reward, receipts, accounts, internal_transactions,
-                            is_forked, last_block: Optional[int]) -> BlockData:
+                            is_forked, last_block: Optional[int] = None) -> BlockData:
         """
         Preprocess data fetched from Raw DB to Main DB
 

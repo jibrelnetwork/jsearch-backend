@@ -34,10 +34,17 @@ def _mock_loop_runners(mocker: MockFixture):
         ([], CODE_OK),
         (['invalid', 'set', 'of', 'args'], CODE_ERROR_FROM_CLICK),
         (['--log-level', 'ERROR', '--no-json-formatter', '--sync-range', '26000-27000'], CODE_OK),
+        (['--log-level', 'ERROR', '--no-json-formatter', '--balance-mode', 'latest'], CODE_OK),
+        (['--log-level', 'ERROR', '--no-json-formatter', '--balance-mode', 'offset'], CODE_OK),
+        (['--log-level', 'ERROR', '--no-json-formatter', '--sync-range',
+          '26000-27000', '--balance-mode', 'offset'], CODE_OK),
     ],
     ids=[
         "no args",
         "invalid args",
+        "sync range",
+        "balance mode latest",
+        "balance mode offset",
         "all args",
     ]
 )
