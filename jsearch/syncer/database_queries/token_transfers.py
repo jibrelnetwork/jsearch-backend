@@ -32,8 +32,9 @@ def get_transfers_after_block(addresses: List[str], address_column: Column, bloc
         address_column
     ).where(
         and_(
-            token_transfers_t.c.address.in_(addresses),
             token_transfers_t.c.block_number > block,
+            token_transfers_t.c.address.in_(addresses),
+            token_transfers_t.c.status == 1,  # we need only transfers from success transactions
         )
     )
 

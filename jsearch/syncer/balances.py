@@ -126,8 +126,9 @@ def token_balance_changes_from_transfers(
     for transfer in transfers:
         token_address = transfer['token_address']
         account_address = transfer['address']
-        if account_address != contracts.NULL_ADDRESS:
+        status = transfer['status']
 
+        if status and account_address != contracts.NULL_ADDRESS:
             key = token_address, account_address
             update = token_updates_map[key]
             if account_address == transfer['to_address']:
