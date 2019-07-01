@@ -6,7 +6,7 @@ from psycopg2._json import Json
 from sqlalchemy.engine import Engine
 
 from jsearch.common.tables import pending_transactions_t
-
+from jsearch.pending_syncer.services import PendingSyncerService
 
 pending_tx_fields = {
     'r': '0xf337e2c696ea289fd209ec0fc64d29ab74c56d1ca6c334de406f345c11498b66',
