@@ -30,14 +30,16 @@ async def process_insert_block(raw_db: RawDB,
                                main_db: MainDB,
                                block_hash: str,
                                block_num: int,
-                               last_block: Optional[int]) -> None:
+                               chain_event: Dict[str, Any],
+                               last_block: Optional[int] = None) -> None:
     parent_hash = await raw_db.get_parent_hash(block_hash)
     is_block_number_exists = await main_db.is_block_number_exists(block_num)
 
     is_canonical_parent = await raw_db.is_canonical_block(parent_hash)
     is_forked = is_block_number_exists or (not is_canonical_parent)
 
-    await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(block_hash, block_num, is_forked, last_block)
+    await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(block_hash, block_num, is_forked, chain_event,
+                                                                   last_block)
 
 
 async def process_chain_split(main_db: MainDB, split_data: Dict[str, Any], last_block: Optional[int] = None) -> None:
@@ -63,7 +65,8 @@ async def process_chain_split(main_db: MainDB, split_data: Dict[str, Any], last_
     await main_db.apply_chain_split(
         new_chain_fragment=new_chain_fragment,
         old_chain_fragment=old_chain_fragment,
-        last_block=last_block
+        last_block=last_block,
+        chain_event=split_data
     )
 
 
@@ -183,7 +186,7 @@ class Manager:
         if event['type'] == ChainEvent.INSERT:
             block_hash = event['block_hash']
             block_number = event['block_number']
-            await process_insert_block(self.raw_db, self.main_db, block_hash, block_number, last_block)
+            await process_insert_block(self.raw_db, self.main_db, block_hash, block_number, event, last_block)
         elif event['type'] == ChainEvent.REINSERT:
             pass
         elif event['type'] == ChainEvent.SPLIT:
@@ -200,7 +203,6 @@ class Manager:
             'block_hash': event['block_hash'],
             'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
-        await self.main_db.insert_chain_event(event)
 
     @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
     async def get_and_process_chain_event(self):
@@ -210,11 +212,7 @@ class Manager:
         else:
             next_event = await self.raw_db.get_next_chain_event(self.sync_range, last_event['id'], self.node_id)
 
-        if next_event is None:
-            await asyncio.sleep(self.sleep_on_no_blocks)
-            return
-
-        if self.sync_range[1] and next_event['block_number'] > self.sync_range[1]:
+        if self.sync_range[1] and next_event is None:
             logger.info(
                 'Sync range complete',
                 extra={
@@ -224,4 +222,9 @@ class Manager:
             )
             await asyncio.sleep(10)
             return
+
+        if next_event is None:
+            await asyncio.sleep(self.sleep_on_no_blocks)
+            return
+
         await self.process_chain_event(next_event)

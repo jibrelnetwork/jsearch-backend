@@ -35,7 +35,7 @@ class BlockData(NamedTuple):
     wallet_events: List[Dict[str, Any]]
     assets_summary_updates: List[Dict[str, Any]]
 
-    async def write(self, main_db: MainDB) -> None:
+    async def write(self, main_db: MainDB, chain_event: Dict) -> None:
         await main_db.write_block_data_proc(
             accounts_data=self.accounts,
             assets_summary_updates=self.assets_summary_updates,
@@ -48,6 +48,7 @@ class BlockData(NamedTuple):
             transfers=self.transfers,
             uncles_data=self.uncles,
             wallet_events=self.wallet_events,
+            chain_event=chain_event
         )
 
 
@@ -64,12 +65,14 @@ class SyncProcessor:
                          block_hash: str,
                          block_number: int = None,
                          is_forked: bool = False,
+                         chain_event: Optional[Dict[str, Any]] = None,
                          last_block: Optional[int] = None) -> bool:
         """
         Args:
             block_hash: number of block to sync
             block_number:
             is_forked:
+            chain_event: dict with event description
             last_block: last available block in raw_db
 
         Returns:
@@ -113,7 +116,7 @@ class SyncProcessor:
         )
         process_time = time.monotonic() - fetch_time - start_time
 
-        await block.write(self.main_db)
+        await block.write(self.main_db, chain_event)
         db_write_time = time.monotonic() - process_time - fetch_time - start_time
         bus_write_time = time.monotonic() - db_write_time - process_time - fetch_time - start_time
 
