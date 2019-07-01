@@ -27,8 +27,8 @@ DOWN_SQL = """
 
 
 def upgrade():
-    op.execute(UP_SQL)
+    pass
 
 
 def downgrade():
-    op.execute(DOWN_SQL)
+    pass
