@@ -1,6 +1,6 @@
-import mode
+import asyncio
 
-from jsearch import utils
+import mode
 
 
 class Worker(mode.Worker):
@@ -8,8 +8,9 @@ class Worker(mode.Worker):
     Default `mode.Worker` overrides logging configuration. This hack is there to
     deny this behavior.
     """
-    async def on_shutdown(self) -> None:
-        await utils.shutdown()
 
     def _setup_logging(self) -> None:
         pass
+
+    def schedule_shutdown(self):
+        asyncio.ensure_future(self.stop())
