@@ -48,6 +48,7 @@ from jsearch.syncer.database_queries.token_transfers import (
 from jsearch.typing import Blocks, Block
 
 MAIN_DB_POOL_SIZE = 2
+GENESIS_BLOCK_NUMBER = 0
 
 logger = logging.getLogger(__name__)
 
@@ -394,7 +395,10 @@ class RawDB(DBWrapper):
         row = await self.fetch_row(q, [block_hash])
         return row
 
-    async def get_reward(self, block_hash):
+    async def get_reward(self, block_number, block_hash):
+        if block_number == GENESIS_BLOCK_NUMBER:
+            return get_reward_for_genesis_block(block_hash)
+
         q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "rewards" WHERE "block_hash"=%s"""
         rows = await self.fetch_rows(q, [block_hash])
         if len(rows) > 1:
@@ -466,7 +470,10 @@ class RawDBSync(DBWrapper):
             row = cur.fetchone()
         return row
 
-    def get_reward(self, block_hash):
+    def get_reward(self, block_number, block_hash):
+        if block_number == GENESIS_BLOCK_NUMBER:
+            return get_reward_for_genesis_block(block_hash)
+
         q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "rewards" WHERE "block_hash"=%s"""
         with self.conn.cursor() as cur:
             cur.execute(q, [block_hash])
@@ -1009,3 +1016,24 @@ class MainDB(DBWrapper):
         negative_changes = self.fetch_one(negative_changes_query)['value']
 
         return await (positive_changes or 0) - (negative_changes or 0)
+
+
+def get_reward_for_genesis_block(block_hash):
+    # WTF: There's no reward for the genesis block, so this func makes a dummy
+    # row for the `Syncer` to process.
+    return {
+        "id": 0,
+        "block_number": 0,
+        "block_hash": block_hash,
+        "address": contracts.NULL_ADDRESS,
+        "fields": {
+            "Uncles": [],
+            "TimeStamp": 0,
+            "TxsReward": 0,
+            "BlockMiner": contracts.NULL_ADDRESS,
+            "BlockNumber": 0,
+            "BlockReward": 0,
+            "UnclesReward": 0,
+            "UncleInclusionReward": 0
+        },
+    }
