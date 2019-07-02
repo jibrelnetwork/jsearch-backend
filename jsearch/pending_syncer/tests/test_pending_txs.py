@@ -8,13 +8,6 @@ from sqlalchemy.engine import Engine
 from jsearch.common.tables import pending_transactions_t
 from jsearch.pending_syncer.services import PendingSyncerService
 
-pytest_plugins = (
-    'jsearch.tests.plugins.databases.raw_db',
-    'jsearch.tests.plugins.databases.main_db',
-    'jsearch.tests.plugins.databases.factories.pending_transactions',
-    'jsearch.tests.plugins.service_bus',
-)
-
 pending_tx_fields = {
     'r': '0xf337e2c696ea289fd209ec0fc64d29ab74c56d1ca6c334de406f345c11498b66',
     's': '0x6b30c6fde2aa5a3353e812aae44aea1dd53c1194c849fc0e46d8129e21ac5b80',

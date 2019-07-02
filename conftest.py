@@ -6,8 +6,7 @@ from jsearch.common import logs
 
 pytest_plugins = (
     "jsearch.tests.plugins.cli",
-    "jsearch.tests.plugins.databases.main_db",
-    "jsearch.tests.plugins.notable_accounts_worker",
+    "jsearch.tests.plugins.databases.dumps",
     "jsearch.tests.plugins.databases.factories.accounts",
     "jsearch.tests.plugins.databases.factories.assets_summary",
     "jsearch.tests.plugins.databases.factories.assets_transfers",
@@ -23,6 +22,15 @@ pytest_plugins = (
     "jsearch.tests.plugins.databases.factories.token_transfers",
     "jsearch.tests.plugins.databases.factories.transactions",
     "jsearch.tests.plugins.databases.factories.wallet_events",
+    "jsearch.tests.plugins.databases.main_db",
+    "jsearch.tests.plugins.databases.raw_db",
+    "jsearch.tests.plugins.geth.node",
+    "jsearch.tests.plugins.geth.web3",
+    "jsearch.tests.plugins.geth_scenarios.transfer_on_fuck_token_contract",
+    "jsearch.tests.plugins.notable_accounts_worker",
+    "jsearch.tests.plugins.service_bus",
+    "jsearch.tests.plugins.settings",
+    "jsearch.tests.plugins.tokens.fuck_token",
 )
 
 

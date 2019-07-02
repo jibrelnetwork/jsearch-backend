@@ -8,11 +8,6 @@ from web3 import Web3
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-pytest_plugins = (
-    "jsearch.tests.plugins.geth.node",
-    "jsearch.tests.plugins.databases.raw_db"
-)
-
 
 class Web3ClientWrapper:
     url: str = "http://localhost:8575"

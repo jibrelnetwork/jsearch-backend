@@ -1,10 +1,5 @@
 import pytest
 
-pytest_plugins = (
-    "jsearch.tests.plugins.geth.web3",
-    "jsearch.tests.plugins.tokens.fuck_token",
-)
-
 
 @pytest.fixture(scope="session")
 def transfer_on_fuck_token_contract(w3, fuck_token) -> int:
