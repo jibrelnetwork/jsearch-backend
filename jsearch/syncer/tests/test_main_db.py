@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 
 from jsearch.common import tables as t
@@ -189,7 +190,6 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
     main_db.connect()
 
     block_data = main_db_dump['blocks'][2]
-    block_num = block_data['number']
 
     assets_summary_updates = [{'address': '0x1',
                                'asset_address': '0xc1',
@@ -235,12 +235,12 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
     db_assets = db.execute(t.assets_summary_t.select()).fetchall()
     assert len(db_assets) == 1
     assert dict(db_assets[0]) == {'address': '0x1',
-                               'asset_address': '0xc1',
-                               'tx_number': 1,
-                                'nonce': 1,
-                               'value': 1000,
-                               'decimals': 1,
-                               'block_number': 1}
+                                  'asset_address': '0xc1',
+                                  'tx_number': 1,
+                                  'nonce': 1,
+                                  'value': 1000,
+                                  'decimals': 1,
+                                  'block_number': 1}
 
     assets_summary_updates = [{'address': '0x1',
                                'asset_address': '0xc1',
@@ -272,12 +272,12 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
 
     assert len(db_assets) == 1
     assert dict(db_assets[0]) == {'address': '0x1',
-                               'asset_address': '0xc1',
-                               'tx_number': 2,
-                                'nonce': 2,
-                               'value': 2000,
-                               'decimals': 1,
-                               'block_number': 2}
+                                  'asset_address': '0xc1',
+                                  'tx_number': 2,
+                                  'nonce': 2,
+                                  'value': 2000,
+                                  'decimals': 1,
+                                  'block_number': 2}
 
     assets_summary_updates = [{'address': '0x1',
                                'asset_address': '0xc1',
@@ -309,15 +309,12 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
 
     assert len(db_assets) == 1
     assert dict(db_assets[0]) == {'address': '0x1',
-                               'asset_address': '0xc1',
-                               'tx_number': 2,
-                                'nonce': 2,
-                               'value': 2000,
-                               'decimals': 1,
-                               'block_number': 2}
-
-
-
+                                  'asset_address': '0xc1',
+                                  'tx_number': 2,
+                                  'nonce': 2,
+                                  'value': 2000,
+                                  'decimals': 1,
+                                  'block_number': 2}
 
 
 async def test_apply_chain_split(db, db_dsn):
