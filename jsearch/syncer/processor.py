@@ -82,7 +82,7 @@ class SyncProcessor:
             logger.debug("Block is not ready, no receipts", extra={'hash': block_hash})
             return False
 
-        reward = await self.raw_db.get_reward(block_hash)
+        reward = await self.raw_db.get_reward(block_number, block_hash)
         if reward is None:
             logger.debug("Block is not ready, no reward", extra={'hash': block_hash})
             return False
