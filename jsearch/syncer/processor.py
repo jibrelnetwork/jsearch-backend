@@ -176,7 +176,7 @@ class SyncProcessor:
                 block=last_block
             )
 
-        if last_block is not None and block_number > (last_block - settings.ETH_BALANCE_BLOCK_OFFSET):
+        if last_block is not None and block_number > last_block:
             token_holders_updates = token_balance_changes_from_transfers(transfers, token_holders_updates)
 
         wallet_events = [
