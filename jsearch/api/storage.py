@@ -246,7 +246,7 @@ class Storage:
                     'uncles': uncles,
                     'transactions': transactions,
                     'static_reward': int(row['static_reward']),
-                    'uncle_inclusiotest_get_block_with_unclesn_reward': int(row['uncle_inclusion_reward']),
+                    'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
                     'tx_fees': int(row['tx_fees']),
                 })
 
