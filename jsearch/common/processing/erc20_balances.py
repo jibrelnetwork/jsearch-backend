@@ -169,7 +169,7 @@ async def get_balances(
     gt = time.monotonic()
     for i, h in enumerate(owners):
         owner, contract = h
-        call = get_balance_rpc_call(owner, contract, i, block=block)
+        call = get_balance_rpc_call(contract=contract, owner=owner, _id=i, block=block)
         calls.append(call)
 
     calls_chunks = chunks(calls, batch_size)
@@ -179,7 +179,14 @@ async def get_balances(
     for res in calls_results_list:
         calls_results.update(res)
 
-    logger.info('balanceOf total time', extra={'time': time.monotonic() - gt, 'batch_size': batch_size})
+    logger.info(
+        'balanceOf total time',
+        extra={
+            'time': time.monotonic() - gt,
+            'batch_size': batch_size,
+            'block': block
+        }
+    )
     balances = []
     for i, h in enumerate(owners):
         owner, contract = h
