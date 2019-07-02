@@ -93,7 +93,7 @@ class SyncProcessor:
             logger.debug("Block is not ready, no receipts", extra={'hash': block_hash})
             return False
 
-        reward = await self.raw_db.get_reward(block_hash)
+        reward = await self.raw_db.get_reward(block_number, block_hash)
         if reward is None:
             logger.debug("Block is not ready, no reward", extra={'hash': block_hash})
             return False
@@ -187,7 +187,7 @@ class SyncProcessor:
         wallet_events = [event for event in wallet_events if event is not None]
 
         assets_summary_updates = wallet.assets_from_accounts(accounts_data)
-        assets_summary_updates.extend(wallet.assets_from_token_balance_updates(token_holders_updates))
+        assets_summary_updates.extend(wallet.assets_from_token_balance_updates(token_holders_updates, block_number))
 
         token_holders_updates = [i.as_token_holder_update() for i in token_holders_updates]
 

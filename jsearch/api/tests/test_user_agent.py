@@ -6,11 +6,6 @@ from aiohttp import web
 from jsearch.api.app import make_app
 from jsearch.common.rpc import eth_call_request
 
-pytest_plugins = (
-    'jsearch.tests.plugins.settings',
-    'jsearch.tests.plugins.databases.main_db',
-)
-
 
 @pytest.fixture
 @pytest.mark.asyncio

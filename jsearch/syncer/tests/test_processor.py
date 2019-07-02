@@ -19,12 +19,6 @@ from jsearch.common.wallet_events import WalletEventType
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.processor import SyncProcessor, dict_keys_case_convert
 
-pytest_plugins = [
-    'jsearch.tests.plugins.databases.main_db',
-    'jsearch.tests.plugins.databases.dumps',
-    'jsearch.tests.plugins.databases.raw_db',
-]
-
 
 async def call_system_under_test(raw_db_dsn: str, db_dsn: str, block_hash: str):
     async with MainDB(db_dsn) as main_db, RawDB(raw_db_dsn) as raw_db:

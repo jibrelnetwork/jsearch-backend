@@ -7,12 +7,6 @@ from jsearch.common.tables import accounts_state_t, blocks_t, assets_summary_t
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.manager import Manager
 
-pytest_plugins = [
-    'jsearch.tests.plugins.databases.main_db',
-    'jsearch.tests.plugins.databases.raw_db',
-    'jsearch.tests.plugins.databases.dumps',
-]
-
 
 @pytest.fixture()
 def mock_getting_last_block_from_row_db(mocker):

@@ -22,19 +22,6 @@ from jsearch.tests.entities import (
     BlockFromDumpWrapper,
 )
 
-pytest_plugins = [
-    'jsearch.tests.plugins.databases.main_db',
-    'jsearch.tests.plugins.databases.dumps',
-    'jsearch.tests.plugins.databases.factories.blocks',
-    'jsearch.tests.plugins.databases.factories.transactions',
-    'jsearch.tests.plugins.databases.factories.internal_transactions',
-    'jsearch.tests.plugins.databases.factories.pending_transactions',
-    'jsearch.tests.plugins.databases.factories.wallet_events',
-    'jsearch.tests.plugins.databases.factories.chain_splits',
-    'jsearch.tests.plugins.databases.factories.blocks',
-    'jsearch.tests.plugins.databases.factories.accounts',
-    'jsearch.tests.plugins.databases.factories.reorgs',
-]
 
 logger = logging.getLogger(__name__)
 

@@ -21,6 +21,7 @@ class AssetBalanceUpdate(NamedTuple):
     decimals: int
     balance: int
 
+    block_number: Optional[int]
     nonce: Optional[str]
 
     def as_token_holder_update(self):
@@ -37,6 +38,7 @@ class AssetBalanceUpdate(NamedTuple):
             asset_address=self.asset_address,
             value=self.balance,
             decimals=self.decimals,
+            block_number=self.block_number,
             nonce=self.nonce,
         )
 
@@ -100,6 +102,7 @@ async def get_balance_updates(
             asset_address=token,
             balance=balance,
             nonce=None,
+            block_number=None,
             decimals=decimals_map[token],
         )
         updates.append(update)
@@ -123,12 +126,13 @@ def assets_from_accounts(accounts: Accounts) -> AssetUpdates:
             'value': acc['balance'],
             'decimals': 0,
             'nonce': acc['nonce'],
+            'block_number': acc['block_number'],
         }
         updates.append(update_data)
     return updates
 
 
-def assets_from_token_balance_updates(token_balance_updates: AssetBalanceUpdates) -> AssetUpdates:
+def assets_from_token_balance_updates(token_balance_updates: AssetBalanceUpdates, block_number) -> AssetUpdates:
     updates = []
     for balance in token_balance_updates:
         update_data = {
@@ -136,6 +140,7 @@ def assets_from_token_balance_updates(token_balance_updates: AssetBalanceUpdates
             'asset_address': balance.asset_address,
             'value': balance.balance,
             'decimals': balance.decimals,
+            'block_number': block_number
         }
         updates.append(update_data)
     return updates
