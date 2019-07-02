@@ -225,6 +225,8 @@ blocks_t = sa.Table(
     metadata,
     sa.Column('number', HexInteger, index=True),
     sa.Column('hash', sa.String, primary_key=True),
+    sa.Column('transactions', postgresql.JSONB),
+    sa.Column('uncles', postgresql.JSONB),
     sa.Column('parent_hash', sa.String),
     sa.Column('difficulty', HexBigInteger),
     sa.Column('extra_data', sa.String),
@@ -346,7 +348,6 @@ wallet_events_t = sa.Table(
     sa.Column('event_data', postgresql.JSONB),
 )
 
-
 chain_events_t = sa.Table(
     'chain_events',
     metadata,
@@ -364,7 +365,6 @@ chain_events_t = sa.Table(
     sa.Column('node_id', sa.String),
     sa.Column('created_at', sa.TIMESTAMP),
 )
-
 
 TABLES = (
     blocks_t,

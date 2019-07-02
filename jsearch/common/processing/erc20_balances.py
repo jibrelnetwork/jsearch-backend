@@ -112,7 +112,7 @@ async def eth_call_request(data):
         async with session.post(API_URL, json=data) as response:
             if response.status != 200:
                 raise EthRequestException(
-                    f"[REQUEST] {settings.ETH_NODE_URL}: {response.status_code}, {response.reason}"
+                    f"[REQUEST] {settings.ETH_NODE_URL}: {response.status}"
                 )
             data = await response.json()
             if any('error' in item for item in data):

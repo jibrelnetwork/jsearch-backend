@@ -217,6 +217,7 @@ class Manager:
                 }
             )
             await asyncio.sleep(10)
+            self._running = False
             return
 
         if next_event is None:
