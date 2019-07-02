@@ -11,6 +11,7 @@ def upsert_assets_summary_query(
         asset_address: str,
         value: int,
         decimals: int,
+        block_number: Optional[int] = None,
         nonce: Optional[int] = None,
         tx_number: Optional[int] = None
 ) -> Query:
@@ -20,6 +21,7 @@ def upsert_assets_summary_query(
         'value': value,
         'decimals': decimals,
         'tx_number': tx_number,
+        'block_number': block_number,
         'nonce': nonce,
     }
     summary_data = {key: value for key, value in summary_data.items() if value is not None}
