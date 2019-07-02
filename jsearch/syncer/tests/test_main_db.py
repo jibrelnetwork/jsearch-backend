@@ -182,6 +182,144 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
     ]
 
 
+async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db_dsn):
+    from jsearch.syncer.processor import BlockData
+
+    main_db = MainDBSync(db_dsn)
+    main_db.connect()
+
+    block_data = main_db_dump['blocks'][2]
+    block_num = block_data['number']
+
+    assets_summary_updates = [{'address': '0x1',
+                               'asset_address': '0xc1',
+                               'tx_number': 1,
+                               'nonce': 1,
+                               'value': 1000,
+                               'decimals': 1,
+                               'block_number': 1}]
+
+    block = BlockData(
+        block=block_data,
+        uncles=[],
+        txs=[],
+        receipts=[],
+        logs=[],
+        accounts=[],
+        internal_txs=[],
+        assets_summary_updates=assets_summary_updates,
+        token_holders_updates=[],
+        transfers=[],
+        wallet_events=[],
+    )
+
+    chain_event = {
+        'id': 1,
+        'block_number': 1,
+        'block_hash': '0x01',
+        'created_at': datetime.datetime.now(),
+        'add_block_hash': None,
+        'add_length': None,
+        'common_block_hash': None,
+        'common_block_number': None,
+        'drop_block_hash': None,
+        'drop_length': None,
+        'node_id': '0xXX',
+        'parent_block_hash': None,
+        'type': 'create'
+    }
+
+    async with MainDB(db_dsn) as async_db:
+        await block.write(async_db, chain_event)
+
+    db_assets = db.execute(t.assets_summary_t.select()).fetchall()
+    assert len(db_assets) == 1
+    assert dict(db_assets[0]) == {'address': '0x1',
+                               'asset_address': '0xc1',
+                               'tx_number': 1,
+                                'nonce': 1,
+                               'value': 1000,
+                               'decimals': 1,
+                               'block_number': 1}
+
+    assets_summary_updates = [{'address': '0x1',
+                               'asset_address': '0xc1',
+                               'tx_number': 2,
+                               'nonce': 2,
+                               'value': 2000,
+                               'decimals': 1,
+                               'block_number': 2}]
+    block_data = main_db_dump['blocks'][3]
+    block = BlockData(
+        block=block_data,
+        uncles=[],
+        txs=[],
+        receipts=[],
+        logs=[],
+        accounts=[],
+        internal_txs=[],
+        assets_summary_updates=assets_summary_updates,
+        token_holders_updates=[],
+        transfers=[],
+        wallet_events=[],
+    )
+    chain_event['id'] = 2
+
+    async with MainDB(db_dsn) as async_db:
+        await block.write(async_db, chain_event)
+
+    db_assets = db.execute(t.assets_summary_t.select()).fetchall()
+
+    assert len(db_assets) == 1
+    assert dict(db_assets[0]) == {'address': '0x1',
+                               'asset_address': '0xc1',
+                               'tx_number': 2,
+                                'nonce': 2,
+                               'value': 2000,
+                               'decimals': 1,
+                               'block_number': 2}
+
+    assets_summary_updates = [{'address': '0x1',
+                               'asset_address': '0xc1',
+                               'tx_number': 1,
+                               'nonce': 1,
+                               'value': 1111,
+                               'decimals': 1,
+                               'block_number': 1}]
+    block_data = main_db_dump['blocks'][4]
+    block = BlockData(
+        block=block_data,
+        uncles=[],
+        txs=[],
+        receipts=[],
+        logs=[],
+        accounts=[],
+        internal_txs=[],
+        assets_summary_updates=assets_summary_updates,
+        token_holders_updates=[],
+        transfers=[],
+        wallet_events=[],
+    )
+    chain_event['id'] = 3
+
+    async with MainDB(db_dsn) as async_db:
+        await block.write(async_db, chain_event)
+
+    db_assets = db.execute(t.assets_summary_t.select()).fetchall()
+
+    assert len(db_assets) == 1
+    assert dict(db_assets[0]) == {'address': '0x1',
+                               'asset_address': '0xc1',
+                               'tx_number': 2,
+                                'nonce': 2,
+                               'value': 2000,
+                               'decimals': 1,
+                               'block_number': 2}
+
+
+
+
+
 async def test_apply_chain_split(db, db_dsn):
     """
        1, 0x1, 1, created, NULL, NULL, node1, t1

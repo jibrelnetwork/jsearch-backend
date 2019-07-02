@@ -329,6 +329,7 @@ assets_summary_t = sa.Table(
     sa.Column('decimals', sa.Integer),
     sa.Column('tx_number', sa.BigInteger),
     sa.Column('nonce', sa.BigInteger),
+    sa.Column('block_number', sa.BigInteger),
 )
 
 wallet_events_t = sa.Table(
