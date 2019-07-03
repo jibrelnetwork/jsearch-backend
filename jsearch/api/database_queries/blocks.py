@@ -13,6 +13,8 @@ def get_default_fields():
         blocks_t.c.gas_limit,
         blocks_t.c.gas_used,
         blocks_t.c.hash,
+        blocks_t.c.transactions,
+        blocks_t.c.uncles,
         blocks_t.c.logs_bloom,
         blocks_t.c.miner,
         blocks_t.c.mix_hash,
