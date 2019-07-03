@@ -5,7 +5,6 @@ import re
 import time
 from typing import NamedTuple, Dict, Any, List, Tuple, Optional
 
-from jsearch import settings
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
 from jsearch.common.processing.decimals_cache import decimals_cache
@@ -169,7 +168,7 @@ class SyncProcessor:
         token_holders = get_token_holders_from_transfers(transfers)
 
         async with self.main_db.engine.acquire() as connection:
-            token_holders_updates = await get_token_balance_updates(
+            in_start, changes, token_holders_updates = await get_token_balance_updates(
                 connection=connection,
                 token_holders=token_holders,
                 decimals_map=decimals,
@@ -186,10 +185,10 @@ class SyncProcessor:
         ]
         wallet_events = [event for event in wallet_events if event is not None]
 
-        assets_summary_updates = wallet.assets_from_accounts(accounts_data)
-        assets_summary_updates.extend(wallet.assets_from_token_balance_updates(token_holders_updates, block_number))
-
-        token_holders_updates = [i.as_token_holder_update() for i in token_holders_updates]
+        assets_summary_updates = [
+            *wallet.assets_from_accounts(accounts_data),
+            *wallet.assets_from_token_balance_updates(token_holders_updates, block_number)
+        ]
 
         return BlockData(
             block=block_data,

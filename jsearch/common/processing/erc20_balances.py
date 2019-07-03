@@ -15,6 +15,7 @@ from web3.utils.normalizers import abi_bytes_to_bytes, abi_address_to_hex, abi_s
 
 from jsearch import settings
 from jsearch.common.rpc import EthRequestException, EthCallException
+from jsearch.syncer.structs import TokenHolder
 
 LATEST_BLOCK = 'latest'
 
@@ -153,10 +154,10 @@ def chunks(l, n):
 
 
 async def get_balances(
-        owners: List[Tuple[str, str]],
+        token_holders: List[TokenHolder],
         batch_size: int,
         block: Optional[int] = None
-) -> List[Tuple[str, str, int]]:
+) -> List[Tuple[TokenHolder, int]]:
     """
     Notes:
         balance returns always. If we can't find it - it is 0.
@@ -167,13 +168,13 @@ async def get_balances(
     """
     calls = []
     gt = time.monotonic()
-    for i, h in enumerate(owners):
-        owner, contract = h
-        call = get_balance_rpc_call(contract=contract, owner=owner, _id=i, block=block)
+    for i, holder in enumerate(token_holders):
+        call = get_balance_rpc_call(contract=holder.token, owner=holder.account, _id=i, block=block)
         calls.append(call)
 
     calls_chunks = chunks(calls, batch_size)
     coros = [eth_call_batch(calls=c) for c in calls_chunks]
+
     calls_results_list = await asyncio.gather(*coros)
     calls_results = {}
     for res in calls_results_list:
@@ -188,14 +189,13 @@ async def get_balances(
         }
     )
     balances = []
-    for i, h in enumerate(owners):
-        owner, contract = h
+    for i, holder in enumerate(token_holders):
         hex_val = calls_results[i].hex().replace('0x', '', 1)[:64]
         if hex_val == '':
             balance = 0
         else:
             balance = int(hex_val, 16)
-        balances.append((owner, contract, balance))
+        balances.append((holder, balance))
     return balances
 
 

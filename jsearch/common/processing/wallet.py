@@ -1,6 +1,7 @@
 from typing import Dict, Set, Tuple, NamedTuple, List, Optional
 
 from jsearch import settings
+from jsearch.api.models import TokenHolder
 from jsearch.common.processing.erc20_balances import get_balances
 from jsearch.common.wallet_events import (
     event_from_internal_tx,
@@ -10,14 +11,14 @@ from jsearch.common.wallet_events import (
 )
 from jsearch.syncer.database_queries.assets_summary import upsert_assets_summary_query
 from jsearch.syncer.database_queries.token_holders import upsert_token_holder_balance_q
-from jsearch.typing import Accounts, AssetUpdates
+from jsearch.typing import Accounts, AssetUpdates, AccountAddress, TokenAddress
 
 ETHER_ASSET_ADDRESS = ''
 
 
 class AssetBalanceUpdate(NamedTuple):
-    account_address: str
-    asset_address: str
+    account_address: AccountAddress
+    asset_address: TokenAddress
     decimals: int
     balance: int
 
@@ -86,24 +87,24 @@ def events_from_internal_transactions(internal_transactions, transactions):
 
 
 async def get_balance_updates(
-        holders: Set[Tuple[str, str]],
+        holders: Set[TokenHolder],
         decimals_map: Dict[str, int],
         block: Optional[int] = None
 ) -> AssetBalanceUpdates:
     balances = await get_balances(
-        owners=list(holders),
+        token_holders=list(holders),
         block=block,
         batch_size=settings.ETH_NODE_BATCH_REQUEST_SIZE
     )
     updates = []
-    for owner, token, balance in balances:
+    for holder, balance in balances:
         update = AssetBalanceUpdate(
-            account_address=owner,
-            asset_address=token,
+            account_address=holder.account,
+            asset_address=holder.token,
             balance=balance,
             nonce=None,
             block_number=None,
-            decimals=decimals_map[token],
+            decimals=decimals_map[holder.token],
         )
         updates.append(update)
     return updates

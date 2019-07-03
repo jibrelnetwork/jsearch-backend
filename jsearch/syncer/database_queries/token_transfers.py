@@ -1,5 +1,5 @@
 from functools import partial
-from sqlalchemy import select, Column, and_
+from sqlalchemy import select, Column, and_, false
 from sqlalchemy.orm import Query
 from sqlalchemy.sql.functions import sum
 from typing import List
@@ -20,7 +20,7 @@ def get_token_address_and_accounts_for_blocks_q(block_hashes: List[str]) -> Quer
 def get_transfers_after_block(addresses: List[str], address_column: Column, block: int) -> Query:
     query = select(
         columns=[
-            address_column,
+            address_column.label('address'),
             token_transfers_t.c.token_address,
             sum(token_transfers_t.c.token_value).label('change')
         ]
@@ -34,7 +34,10 @@ def get_transfers_after_block(addresses: List[str], address_column: Column, bloc
         and_(
             token_transfers_t.c.block_number > block,
             token_transfers_t.c.address.in_(addresses),
+            token_transfers_t.c.is_forked == false(),
             token_transfers_t.c.status == 1,  # we need only transfers from success transactions
+            token_transfers_t.c.address == address_column
+            # we need ^ (this distinct) because we create 2 token transfers on 1 log record
         )
     )
 

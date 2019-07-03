@@ -684,11 +684,13 @@ class MainDB(DBWrapper):
                 )
 
                 token_holders = await get_token_holders(conn, blocks_hashes=affected_blocks)
-                token_updates = await get_token_balance_updates(
+                _, _, token_updates = await get_token_balance_updates(
                     connection=conn,
                     token_holders=token_holders,
                     block=last_block
                 )
+
+                token_updates = [update for update in token_updates if update.balance > 0]
 
                 # get ether balance updates
                 accounts_addresses = await self.get_accounts_addresses_for_blocks(affected_blocks)
