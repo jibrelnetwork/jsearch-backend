@@ -1,7 +1,7 @@
 swagger: '2.0'
 info:
   description: jSearch - Ethereum blockexplorer API
-  version: 1.0.0
+  version: "0.1.4"
   title: jSearch API
   # put the contact info for your development or API team
   contact:
@@ -39,7 +39,7 @@ parameters:
     required: true
     description: Blockchain tip ( as block hash from /v1/wallet/blockchain_tip)
     type: string
-    format: address
+    format: hash
   addresses:
     name: addresses
     in: query
@@ -142,6 +142,7 @@ paths:
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/blockchain_tip'
       - in: query
         name: addresses
         type: string
@@ -169,6 +170,7 @@ paths:
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
         description: Account address
       - $ref: '#/parameters/tagOptional'
@@ -198,6 +200,7 @@ paths:
       produces:
       - application/json
       parameters:
+        - $ref: '#/parameters/blockchain_tip'
         - $ref: '#/parameters/address'
         - $ref: '#/parameters/limit'
         - $ref: '#/parameters/offset'
@@ -226,6 +229,7 @@ paths:
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -253,6 +257,7 @@ paths:
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/tagOptional'
       - $ref: '#/parameters/limit'
@@ -307,6 +312,7 @@ paths:
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -334,6 +340,7 @@ paths:
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -353,6 +360,35 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "address", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
+  /v1/accounts/{address}/token_balances:
+    get:
+      summary: Get token balances for multiple contract addresses in single call.
+      operationId: getTokenBalancesForMultiContracts
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/address'
+      - in: query
+        name: addresses
+        type: string
+        description: Comma separated list of contract addresses
+      responses:
+        200:
+          description: List of balances
+          schema:
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/TokenBalance'
+        400:
+          description: bad input parameter
+          schema:
+            example: {"success": false, "errors": [{"field": "addresses", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
   /v1/accounts/{address}/token_balance/{contract_address}:
     get:
       summary: Get token holder balance for specific token
@@ -360,6 +396,7 @@ paths:
       produces:
         - application/json
       parameters:
+        - $ref: '#/parameters/blockchain_tip'
         - $ref: '#/parameters/address'
         - $ref: '#/parameters/contract_address'
       responses:
@@ -387,6 +424,7 @@ paths:
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -407,6 +445,34 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "limit", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
+  /v1/accounts/{address}/eth_transfers:
+    get:
+      summary: Get Eth transfered to or from this address
+      operationId: getAccountEthTransfers
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/limit'
+      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
+      responses:
+        200:
+          description: Eth transfered to or from specific address
+          schema:
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/EthTransfer'
+        400:
+          description: bad input parameter
+          schema:
+            example: {"success": false, "errors": [{"field": "limit", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
   /v1/blocks:
     get:
       summary: Get blocks list
@@ -414,6 +480,7 @@ paths:
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
       responses:
@@ -609,6 +676,7 @@ paths:
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
@@ -770,6 +838,7 @@ paths:
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/contract_address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -798,6 +867,7 @@ paths:
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/contract_address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -819,7 +889,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "address", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/gas_price:
+  /v1/proxy/gas_price:
     get:
       summary: Returns the current price per gas in wei.
       responses:
@@ -835,7 +905,7 @@ paths:
                 format: dec
                 example: "10000000000000"
 
-  /v1/transaction_count:
+  /v1/proxy/transaction_count:
     post:
       summary: Returns the number of transactions sent from an address.
       parameters:
@@ -859,7 +929,7 @@ paths:
                 format: dec
                 example: "1"
 
-  /v1/estimate_gas:
+  /v1/proxy/estimate_gas:
     post:
       summary: Generates and returns an estimate of how much gas is necessary to allow the transaction to complete.
       parameters:
@@ -881,7 +951,7 @@ paths:
                 format: dec
                 example: "21000"
 
-  /v1/call_contract:
+  /v1/proxy/call_contract:
     post:
       summary: Executes a new message call immediately without creating a transaction on the block chain.
       parameters:
@@ -903,7 +973,7 @@ paths:
                 format: hex
                 example: "0x0"
 
-  /v1/send_raw_transaction:
+  /v1/proxy/send_raw_transaction:
     post:
       summary: Creates new message call transaction or a contract creation for signed transactions.
       parameters:
@@ -927,7 +997,7 @@ paths:
                 format: hex
                 example: "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331"
 
-  /v1/wallet/blockchain_tip:
+  /v1/blockchain_tip:
     get:
       summary: Get blockchain tip wich included last block hash and number.
       responses:
@@ -1061,6 +1131,9 @@ definitions:
       blockNumber:
         type: integer
         example: 119416
+      timestamp:
+        type: integer
+        example: 1453686776
       from:
         type: string
         format: address
@@ -1114,6 +1187,9 @@ definitions:
       blockNumber:
         type: integer
         example: 119416
+      timestamp:
+        type: integer
+        example: 1453686776
       blockHash:
         type: string
         format: hash
@@ -1455,6 +1531,21 @@ definitions:
         type: integer
         example: 2
 
+  TokenBalance:
+    properties:
+      tokenAddress:
+        type: string
+        format: address
+        example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
+      balance:
+        type: string
+        format: dec
+        example: "1000000"
+      decimals:
+        type: string
+        format: dec
+        example: "18"
+
   Balance:
     properties:
       balance:
@@ -1511,6 +1602,28 @@ definitions:
         type: string
         format: dec
 
+  EthTransfer:
+    properties:
+      timestamp:
+        type: integer
+        example: 1548229016
+      transactionHash:
+        type: string
+        format: hex
+        example: "0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c"
+      from:
+        type: string
+        format: address
+        example: "0xf73c3c65bde10bf26c2e1763104e609a41702efe"
+      to:
+        type: string
+        format: address
+        example: "0x355941cf7ac065310fd4023e1b913209f076a48a"
+      amount:
+        type: string
+        format: dec
+        example: "1664600000000000000000"
+
   TokenTransfer:
     properties:
       timestamp:
@@ -1528,9 +1641,10 @@ definitions:
         type: string
         format: address
         example: "0x355941cf7ac065310fd4023e1b913209f076a48a"
-      tokenName:
+      tokenDecimals:
         type: string
-        example: "Jibrel Network Token"
+        format: dec
+        example: "18"
       tokenAddress:
         type: string
         format: address
