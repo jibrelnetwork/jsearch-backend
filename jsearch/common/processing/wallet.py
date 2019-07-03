@@ -1,4 +1,4 @@
-from typing import Dict, Set, Tuple, NamedTuple, List, Optional
+from typing import Dict, Set, NamedTuple, List, Optional
 
 from jsearch import settings
 from jsearch.api.models import TokenHolder
@@ -30,7 +30,7 @@ class AssetBalanceUpdate(NamedTuple):
             'token_address': self.asset_address,
             'account_address': self.account_address,
             'balance': self.balance,
-            'decimals': self.decimals
+            'decimals': self.decimals,
         }
 
     def to_upsert_assets_summary_query(self):

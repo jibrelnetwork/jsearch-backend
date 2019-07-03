@@ -16,6 +16,7 @@ from jsearch.syncer.balances import (
     token_balance_changes_from_transfers
 )
 from jsearch.syncer.database import RawDB, MainDB
+from jsearch.syncer.utils import report_erc20_balance_of_error
 from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
@@ -168,7 +169,7 @@ class SyncProcessor:
         token_holders = get_token_holders_from_transfers(transfers)
 
         async with self.main_db.engine.acquire() as connection:
-            in_start, changes, token_holders_updates = await get_token_balance_updates(
+            token_holders_updates = await get_token_balance_updates(
                 connection=connection,
                 token_holders=token_holders,
                 decimals_map=decimals,
@@ -177,6 +178,14 @@ class SyncProcessor:
 
         if last_block is not None and block_number > last_block:
             token_holders_updates = token_balance_changes_from_transfers(transfers, token_holders_updates)
+
+        safe_token_holder_updates = []
+        for update in token_holders_updates:
+            if update.balance < 0:
+                async with self.main_db.engine.acquire() as connection:
+                    await report_erc20_balance_of_error(connection, update)
+            else:
+                safe_token_holder_updates.append(update)
 
         wallet_events = [
             *wallet.events_from_transactions(transactions_data, contracts_set=contracts_set),
@@ -187,8 +196,10 @@ class SyncProcessor:
 
         assets_summary_updates = [
             *wallet.assets_from_accounts(accounts_data),
-            *wallet.assets_from_token_balance_updates(token_holders_updates, block_number)
+            *wallet.assets_from_token_balance_updates(safe_token_holder_updates, block_number)
         ]
+
+        safe_token_holder_updates = [x.as_token_holder_update() for x in safe_token_holder_updates]
 
         return BlockData(
             block=block_data,
@@ -199,7 +210,7 @@ class SyncProcessor:
             txs=transactions_data,
             internal_txs=internal_txs_data,
             transfers=transfers,
-            token_holders_updates=token_holders_updates,
+            token_holders_updates=safe_token_holder_updates,
             wallet_events=wallet_events,
             assets_summary_updates=assets_summary_updates
         )

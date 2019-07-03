@@ -6,4 +6,3 @@ from jsearch.typing import TokenAddress, AccountAddress
 class TokenHolder(NamedTuple):
     token: TokenAddress
     account: AccountAddress
-

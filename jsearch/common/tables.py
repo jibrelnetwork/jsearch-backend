@@ -346,7 +346,6 @@ wallet_events_t = sa.Table(
     sa.Column('event_data', postgresql.JSONB),
 )
 
-
 chain_events_t = sa.Table(
     'chain_events',
     metadata,
@@ -365,6 +364,13 @@ chain_events_t = sa.Table(
     sa.Column('created_at', sa.TIMESTAMP),
 )
 
+erc20_contracts = sa.Table(
+    'erc20_contracts',
+    metadata,
+    sa.Column('contract_address', sa.String),
+    sa.Column('errors', sa.Integer, default=0),
+    sa.Column('type', sa.String),
+)
 
 TABLES = (
     blocks_t,
@@ -385,4 +391,5 @@ TABLES = (
     assets_summary_t,
     wallet_events_t,
     chain_events_t,
+    erc20_contracts
 )

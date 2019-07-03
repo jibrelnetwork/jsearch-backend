@@ -23,7 +23,7 @@ async def call_system_under_test(db_dsn: MainDB, raw_db_dsn: str, start: int, en
             await manager.get_and_process_chain_event()
 
 
-@pytest.mark.usefixtures('mock_node_balance_call', 'mock_getting_last_block_from_row_db')
+@pytest.mark.usefixtures('mock_node_calls', 'mock_getting_last_block_from_row_db')
 async def test_chain_split_token_check_ether_summary(db, raw_db_split_sample, raw_db_dsn, db_dsn):
     """
     We have a fixture with split chain events:
