@@ -63,10 +63,11 @@ class SyncProcessor:
 
     async def sync_block(self,
                          block_hash: str,
+                         last_block: int,
                          block_number: int = None,
                          is_forked: bool = False,
                          chain_event: Optional[Dict[str, Any]] = None,
-                         last_block: Optional[int] = None) -> bool:
+                         use_offset: bool = False) -> bool:
         """
         Args:
             block_hash: number of block to sync
@@ -112,7 +113,8 @@ class SyncProcessor:
             reward=reward,
             internal_transactions=internal_transactions,
             is_forked=is_forked,
-            last_block=last_block
+            last_block=last_block,
+            use_offset=use_offset
         )
         process_time = time.monotonic() - fetch_time - start_time
 
@@ -132,8 +134,9 @@ class SyncProcessor:
         })
         return True
 
-    async def process_block(self, header, body, reward, receipts, accounts, internal_transactions,
-                            is_forked, last_block: Optional[int] = None) -> BlockData:
+    async def process_block(self, header, body, reward, receipts, accounts, internal_transactions, is_forked,
+                            last_block: int,
+                            use_offset: bool = False) -> BlockData:
         """
         Preprocess data fetched from Raw DB to Main DB
 
@@ -173,7 +176,8 @@ class SyncProcessor:
                 connection=connection,
                 token_holders=token_holders,
                 decimals_map=decimals,
-                block=last_block
+                last_block=last_block,
+                use_offset=use_offset
             )
 
         if last_block is not None and block_number > last_block:
@@ -183,7 +187,7 @@ class SyncProcessor:
         for update in token_holders_updates:
             if update.balance < 0:
                 async with self.main_db.engine.acquire() as connection:
-                    await report_erc20_balance_of_error(connection, update)
+                    await report_erc20_balance_of_error(connection, update.asset_address)
             else:
                 safe_token_holder_updates.append(update)
 

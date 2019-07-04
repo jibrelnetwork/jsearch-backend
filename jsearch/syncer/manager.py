@@ -4,7 +4,7 @@ import logging
 
 import backoff
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from jsearch import settings
 from jsearch.syncer.database import MainDB, RawDB
@@ -31,18 +31,28 @@ async def process_insert_block(raw_db: RawDB,
                                block_hash: str,
                                block_num: int,
                                chain_event: Dict[str, Any],
-                               last_block: Optional[int] = None) -> None:
+                               last_block: int,
+                               use_offset: bool = False) -> None:
     parent_hash = await raw_db.get_parent_hash(block_hash)
     is_block_number_exists = await main_db.is_block_number_exists(block_num)
 
     is_canonical_parent = await raw_db.is_canonical_block(parent_hash)
     is_forked = is_block_number_exists or (not is_canonical_parent)
 
-    await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(block_hash, block_num, is_forked, chain_event,
-                                                                   last_block)
+    await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(
+        block_hash=block_hash,
+        block_number=block_num,
+        is_forked=is_forked,
+        chain_event=chain_event,
+        last_block=last_block,
+        use_offset=use_offset
+    )
 
 
-async def process_chain_split(main_db: MainDB, split_data: Dict[str, Any], last_block: Optional[int] = None) -> None:
+async def process_chain_split(main_db: MainDB,
+                              split_data: Dict[str, Any],
+                              last_block: int,
+                              use_offset: bool = False) -> None:
     from_block = split_data['block_number']
     to_block = split_data['block_number'] + split_data['add_length']
 
@@ -176,21 +186,25 @@ class Manager:
             'block_hash': event['block_hash'],
         })
 
-        if self.balance_mode == SYNCER_BALANCE_MODE_OFFSET:
-            last_block = await self.raw_db.get_latest_available_block_number()
-        else:
-            last_block = None
+        last_block = await self.raw_db.get_latest_available_block_number()
+        use_offset = self.balance_mode == SYNCER_BALANCE_MODE_OFFSET
 
-        if last_block:
-            last_block = last_block - settings.ETH_BALANCE_BLOCK_OFFSET
         if event['type'] == ChainEvent.INSERT:
             block_hash = event['block_hash']
             block_number = event['block_number']
-            await process_insert_block(self.raw_db, self.main_db, block_hash, block_number, event, last_block)
+            await process_insert_block(
+                raw_db=self.raw_db,
+                main_db=self.main_db,
+                block_hash=block_hash,
+                block_num=block_number,
+                chain_event=event,
+                last_block=last_block,
+                use_offset=use_offset
+            )
         elif event['type'] == ChainEvent.REINSERT:
             await self.main_db.insert_chain_event(event)
         elif event['type'] == ChainEvent.SPLIT:
-            await process_chain_split(self.main_db, split_data=event, last_block=last_block)
+            await process_chain_split(self.main_db, split_data=event, last_block=last_block, use_offset=use_offset)
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],
@@ -201,6 +215,8 @@ class Manager:
             'event_type': event['type'],
             'block_number': event['block_number'],
             'block_hash': event['block_hash'],
+            'last_block': last_block,
+            'offset': use_offset and settings.ETH_BALANCE_BLOCK_OFFSET,
             'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
 

@@ -6,16 +6,12 @@ Create Date: 2019-07-01 10:46:29.515070
 
 """
 from alembic import op
-import sqlalchemy as sa
-from jsearch.common import tables
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'cdec69ddbe53'
 down_revision = 'ac27550f213f'
 branch_labels = None
 depends_on = None
-
 
 UP_SQL = """
 ALTER TABLE assets_summary ADD COLUMN block_number integer;

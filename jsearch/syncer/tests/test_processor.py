@@ -29,7 +29,7 @@ async def call_system_under_test(raw_db_dsn: str, db_dsn: str, block_hash: str):
             'block_hash': block_hash,
             'created_at': datetime.datetime.now()
         }
-        await processor.sync_block(block_hash=block_hash, chain_event=chain_event)
+        await processor.sync_block(block_hash=block_hash, chain_event=chain_event, last_block=8000000)
 
 
 @pytest.fixture

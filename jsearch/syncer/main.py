@@ -15,7 +15,7 @@ from jsearch.utils import parse_range
 @click.option(
     '--balance-mode',
     type=click.Choice(choices=[SYNCER_BALANCE_MODE_LATEST, SYNCER_BALANCE_MODE_OFFSET]),
-    default=SYNCER_BALANCE_MODE_OFFSET
+    default=SYNCER_BALANCE_MODE_LATEST
 )
 def run(log_level, no_json_formatter, sync_range, balance_mode):
     logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))

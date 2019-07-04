@@ -673,7 +673,8 @@ class MainDB(DBWrapper):
             old_chain_fragment: Blocks,
             new_chain_fragment: Blocks,
             chain_event: Dict[str, Any],
-            last_block: int
+            last_block: int,
+            use_offset: bool = False
     ) -> None:
 
         async with self.engine.acquire() as conn:
@@ -688,7 +689,8 @@ class MainDB(DBWrapper):
                 token_updates = await get_token_balance_updates(
                     connection=conn,
                     token_holders=token_holders,
-                    block=last_block
+                    last_block=last_block,
+                    use_offset=use_offset
                 )
 
                 token_updates = [update for update in token_updates if update.balance > 0]
@@ -696,7 +698,7 @@ class MainDB(DBWrapper):
                 for update in token_updates:
                     if update.balance < 0:
                         async with self.engine.acquire() as connection:
-                            await report_erc20_balance_of_error(connection, update)
+                            await report_erc20_balance_of_error(connection, update.asset_address)
                     else:
                         safe_token_holder_updates.append(update)
 

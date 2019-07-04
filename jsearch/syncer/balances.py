@@ -14,6 +14,7 @@ from jsearch.syncer.database_queries.token_transfers import (
     get_token_address_and_accounts_for_blocks_q
 )
 from jsearch.syncer.structs import TokenHolder
+from jsearch.syncer.utils import get_last_block_with_offset
 from jsearch.typing import TokenAddresses, AccountAddresses, AccountAddress, TokenAddress
 
 
@@ -138,9 +139,10 @@ def token_balance_changes_from_transfers(
 
 async def get_token_balance_updates(
         connection: SAConnection,
+        last_block: int,
         token_holders: Set[TokenHolder],
         decimals_map: Optional[Dict[str, int]] = None,
-        block: Optional[int] = None
+        use_offset: bool = False,
 ) -> AssetBalanceUpdates:
     tokens, holders = split_token_and_holders(token_holders)
 
@@ -150,13 +152,20 @@ async def get_token_balance_updates(
     token_balance_updates = await get_balance_updates(
         holders=token_holders,
         decimals_map=decimals_map,
-        block=block
+        last_block=last_block,
+        use_offset=use_offset
     )
 
-    if block is not None:
+    if use_offset:
         # if we want to request balance with offset on some block
         # we need to get changes from database since this block
-        balance_changes = await get_balances_changes_after_block(connection, addresses=holders, block=block)
+
+        last_block_with_offset = get_last_block_with_offset(last_block)
+        balance_changes = await get_balances_changes_after_block(
+            connection,
+            addresses=holders,
+            block=last_block_with_offset
+        )
         token_updates_map = {TokenHolder(x.asset_address, x.account_address): x for x in token_balance_updates}
         for key, balance_change in balance_changes.items():
             update = token_updates_map.get(key)

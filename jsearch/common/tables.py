@@ -255,6 +255,7 @@ token_holders_t = sa.Table(
     sa.Column('token_address', sa.String, primary_key=True),
     sa.Column('balance', postgresql.NUMERIC(32, 0), index=True),
     sa.Column('decimals', sa.Integer, index=True),
+    sa.Column('block_number', sa.Integer),
 )
 
 reorgs_t = sa.Table(

@@ -11,6 +11,7 @@ from jsearch.common.wallet_events import (
 )
 from jsearch.syncer.database_queries.assets_summary import upsert_assets_summary_query
 from jsearch.syncer.database_queries.token_holders import upsert_token_holder_balance_q
+from jsearch.syncer.utils import get_last_block_with_offset
 from jsearch.typing import Accounts, AssetUpdates, AccountAddress, TokenAddress
 
 ETHER_ASSET_ADDRESS = ''
@@ -22,7 +23,7 @@ class AssetBalanceUpdate(NamedTuple):
     decimals: int
     balance: int
 
-    block_number: Optional[int]
+    block_number: int
     nonce: Optional[str]
 
     def as_token_holder_update(self):
@@ -31,6 +32,7 @@ class AssetBalanceUpdate(NamedTuple):
             'account_address': self.account_address,
             'balance': self.balance,
             'decimals': self.decimals,
+            'block_number': self.block_number
         }
 
     def to_upsert_assets_summary_query(self):
@@ -89,11 +91,16 @@ def events_from_internal_transactions(internal_transactions, transactions):
 async def get_balance_updates(
         holders: Set[TokenHolder],
         decimals_map: Dict[str, int],
-        block: Optional[int] = None
+        last_block: Optional[int],
+        use_offset: bool = False,
 ) -> AssetBalanceUpdates:
+    balances_on_block = None
+    if use_offset:
+        balances_on_block = get_last_block_with_offset(last_block)
+
     balances = await get_balances(
         token_holders=list(holders),
-        block=block,
+        block=balances_on_block,
         batch_size=settings.ETH_NODE_BATCH_REQUEST_SIZE
     )
     updates = []
@@ -103,7 +110,7 @@ async def get_balance_updates(
             asset_address=holder.token,
             balance=balance,
             nonce=None,
-            block_number=None,
+            block_number=last_block,
             decimals=decimals_map[holder.token],
         )
         updates.append(update)
