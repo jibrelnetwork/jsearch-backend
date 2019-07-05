@@ -70,35 +70,6 @@ docker-copmose run --rm tests_shell jsearch-notable-accounts-worker
 * `make new_db_migration` creates a new MainDB migration.
 * `make db_migrate` migrates MainDB.
 
-### Test data
-
-To fill project from `raw_db` dump, you'll need to do download dump of rawdb
-from https://drive.google.com/drive/folders/1W6Hn4Xwfg-S1kSdrp5MGibOVjjT9rT6T?usp=sharing
-to folder `./backups`. There are two files: 
-
-- 001-initial.sql
-- rawdata.tar
-
-Populate local `raw_db`:
-```bash
-cd ./backups && gunzip -c rawdata.tar | tar xopf - && cd ..;
-docker-compose up -d test_raw_db;
-docker-compose exec -T -u postgres test_raw_db psql jsearch_raw;
-cat ./backups/001-initial.sql | docker-compose exec -T -u postgres test_raw_db psql jsearch_raw;
-echo "COPY rewards FROM '/backups/rewards.tsv';" | docker-compose exec -T -u postgres test_raw_db psql jsearch_raw;
-echo "COPY bodies FROM '/backups/bodies.tsv';" | docker-compose exec -T -u postgres test_raw_db psql jsearch_raw;
-echo "COPY headers FROM '/backups/headers.tsv';" | docker-compose exec -T -u postgres test_raw_db psql jsearch_raw;
-echo "COPY accounts FROM '/backups/accounts.tsv';" | docker-compose exec -T -u postgres test_raw_db psql jsearch_raw;
-echo "COPY internal_transactions FROM '/backups/internal_transactions.tsv';" | docker-compose exec -T -u postgres test_raw_db psql jsearch_raw;
-echo "COPY receipts FROM '/backups/receipts.tsv';" | docker-compose exec -T -u postgres test_raw_db psql jsearch_raw;
-```
-
-
-Run syncer:
-```bash
-docker-compose run tests_shell jsearch-syncer --sync-range=5000000-
-```
-
 ## Devtools
 
 ### Shell
