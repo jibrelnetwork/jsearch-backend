@@ -3,10 +3,8 @@ import logging
 from collections import defaultdict, OrderedDict
 
 import asyncpgsa
-from asyncpg import Connection
 from itertools import groupby
 from sqlalchemy import select
-from sqlalchemy.orm import Query
 from typing import DefaultDict
 from typing import List, Optional, Dict, Any
 
@@ -28,13 +26,11 @@ from jsearch.api.database_queries.token_transfers import (
 )
 from jsearch.api.database_queries.transactions import (
     get_tx_by_address,
-    get_tx_hashes_by_block_hashes_query,
     get_tx_hashes_by_block_hash_query,
-    get_txs_for_events_query, get_tx_by_hash)
-from jsearch.api.database_queries.uncles import (
-    get_uncle_hashes_by_block_hashes_query,
-    get_uncle_hashes_by_block_hash_query,
+    get_txs_for_events_query,
+    get_tx_by_hash
 )
+from jsearch.api.database_queries.uncles import get_uncle_hashes_by_block_hash_query
 from jsearch.api.database_queries.wallet_events import get_wallet_events_query
 from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
@@ -42,7 +38,6 @@ from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, 
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import blocks_t, chain_splits_t, reorgs_t, wallet_events_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
-from jsearch.utils import split
 
 logger = logging.getLogger(__name__)
 
@@ -60,49 +55,6 @@ def _group_by_block(items: List[Dict[str, Any]]) -> DefaultDict[str, List[Dict[s
 
         items_by_block[block_hash].append(item_hash)
     return items_by_block
-
-
-async def _fetch_blocks(connection: Connection, query: Query) -> List[Dict[str, Any]]:
-    """
-    fetch blocks with included transactions and uncles hashes.
-
-    HACK: to get included transactions ans hashes we make
-        a query for each 10 block hashes. Because if we do
-        a query with `in` clause contains more then 10 entities -
-        query will be very slow.
-
-    """
-    rows = await fetch(connection=connection, query=query)
-
-    block_hashes = [row['hash'] for row in rows]
-
-    txs_by_block = {}
-    uncles_by_block = {}
-
-    for hashes in split(block_hashes, BLOCKS_IN_QUERY):
-        uncles_query = get_uncle_hashes_by_block_hashes_query(hashes)
-        uncles = await fetch(connection, uncles_query)
-
-        uncles_by_block.update(_group_by_block(uncles))
-
-        tx_query = get_tx_hashes_by_block_hashes_query(hashes)
-        txs = await fetch(connection, tx_query)
-        txs_by_block.update(_group_by_block(txs))
-
-    for row in rows:
-        block_hash = row['hash']
-
-        row_txs = txs_by_block.get(block_hash) or []
-        row_uncles = uncles_by_block.get(block_hash) or []
-
-        row.update({
-            'static_reward': int(row['static_reward']),
-            'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
-            'tx_fees': int(row['tx_fees']),
-            'transactions': row_txs,
-            'uncles': row_uncles
-        })
-    return rows
 
 
 def _rows_to_token_transfers(rows: List[Dict[str, Any]]) -> List[models.TokenTransfer]:
@@ -255,7 +207,24 @@ class Storage:
 
         query = get_blocks_query(limit=limit, offset=offset, order=[blocks_t.c.number], direction=order)
         async with self.pool.acquire() as connection:
-            rows = await _fetch_blocks(connection, query)
+            rows = await fetch(connection=connection, query=query)
+
+            for row in rows:
+                uncles = row.get('uncles')
+                if uncles:
+                    uncles = json.loads(uncles)
+
+                txs = row.get('transactions')
+                if txs:
+                    txs = json.loads(txs)
+
+                row.update({
+                    'uncles': uncles,
+                    'transactions': txs,
+                    'static_reward': int(row['static_reward']),
+                    'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
+                    'tx_fees': int(row['tx_fees']),
+                })
 
         return [models.Block(**row) for row in rows]
 
@@ -269,7 +238,17 @@ class Storage:
             direction=order
         )
         async with self.pool.acquire() as connection:
-            rows = await _fetch_blocks(connection, query)
+            rows = await fetch(connection=connection, query=query)
+            for row in rows:
+                uncles = json.loads(row.get('uncles') or [])
+                transactions = json.loads(row.get('transactions') or [])
+                row.update({
+                    'uncles': uncles,
+                    'transactions': transactions,
+                    'static_reward': int(row['static_reward']),
+                    'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
+                    'tx_fees': int(row['tx_fees']),
+                })
 
         return [models.Block(**row) for row in rows]
 

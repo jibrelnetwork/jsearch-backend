@@ -148,9 +148,9 @@ class SyncProcessor:
         block_hash: str = header['block_hash']
 
         block_reward, uncles_rewards = self.process_rewards(reward, block_number)
-        block_data = self.process_header(header, block_reward, is_forked)
         uncles_data = self.process_uncles(uncles, uncles_rewards, block_number, block_hash, is_forked)
         transactions_data = self.process_transactions(transactions, block_number, block_hash, is_forked)
+        block_data = self.process_header(header, block_reward, transactions_data, uncles, is_forked)
         receipts_data, logs_data = self.process_receipts(
             receipts=receipts,
             transactions=transactions_data,
@@ -235,17 +235,29 @@ class SyncProcessor:
             uncles_rewards = reward_data['Uncles']
         return block_reward, uncles_rewards
 
-    def process_header(self, header: Dict[str, Any], reward: Dict[str, Any], is_forked: bool) -> Dict[str, Any]:
+    def process_header(self,
+                       header: Dict[str, Any],
+                       reward: Dict[str, Any],
+                       txs: List[Dict[str, Any]],
+                       uncles: List[Dict[str, Any]],
+                       is_forked: bool) -> Dict[str, Any]:
         data = dict_keys_case_convert(header['fields'])
         data.update(reward)
         hex_vals_to_int(data, ['number', 'gas_used', 'gas_limit', 'timestamp', 'difficulty'])
-        data['is_forked'] = is_forked
+
         if 'size' not in data:
             data['size'] = None
+
         if 'total_difficulty' not in data:
             data['total_difficulty'] = None
-        data['is_sequence_sync'] = True
-        data['logs_bloom'] = ''
+
+        data.update(
+            is_forked=is_forked,
+            is_sequence_sync=True,
+            transactions=list({tx['hash'] for tx in txs}),
+            uncles=list({uncle['hash'] for uncle in uncles}),
+            logs_bloom=''
+        )
         return data
 
     def process_uncles(self,
@@ -272,7 +284,11 @@ class SyncProcessor:
             items.append(data)
         return items
 
-    def process_transactions(self, transactions, block_number, block_hash, is_forked):
+    def process_transactions(self,
+                             transactions: List[Dict[str, Any]],
+                             block_number: int,
+                             block_hash: str,
+                             is_forked: bool) -> List[Dict[str, Any]]:
         items = []
         for i, tx in enumerate(transactions):
             tx_data = dict_keys_case_convert(tx)

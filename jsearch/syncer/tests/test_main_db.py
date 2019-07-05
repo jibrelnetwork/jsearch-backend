@@ -89,6 +89,7 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
 
     uncles = for_block(d['uncles'])
     transactions = for_block(d['transactions'])
+    block['transactions'] = list({t['hash'] for t in transactions})
     receipts = for_block(d['receipts'])
     logs = for_block(d['logs'])
     internal_txs = for_block(d['internal_transactions'])

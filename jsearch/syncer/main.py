@@ -20,10 +20,13 @@ from jsearch.utils import parse_range
 def run(log_level, no_json_formatter, sync_range, balance_mode):
     logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
 
-    worker.Worker(
-        services.SyncerService(sync_range=parse_range(sync_range), balance_mode=balance_mode),
-        services.ApiService(),
-    ).execute_from_commandline()
+    syncer = services.SyncerService(
+        sync_range=parse_range(sync_range),
+        balance_mode=balance_mode
+    )
+    syncer.add_dependency(services.ApiService())
+
+    worker.Worker(syncer).execute_from_commandline()
 
 
 if __name__ == '__main__':

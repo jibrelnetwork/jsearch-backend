@@ -39,3 +39,7 @@ class SyncerService(mode.Service):
         exception = await self.manager.wait()
         if exception:
             await self.crash(exception)
+
+        await self.stop()
+        # we schedule shutdown on root Worker
+        self.beacon.root.data.schedule_shutdown()
