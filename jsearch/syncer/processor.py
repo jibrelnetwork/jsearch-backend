@@ -13,10 +13,9 @@ from jsearch.common.processing.logs import process_log_event
 from jsearch.syncer.balances import (
     get_token_balance_updates,
     get_token_holders_from_transfers,
-    token_balance_changes_from_transfers
-)
+    token_balance_changes_from_transfers,
+    filter_negative_balances)
 from jsearch.syncer.database import RawDB, MainDB
-from jsearch.syncer.utils import report_erc20_balance_of_error
 from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
@@ -183,14 +182,7 @@ class SyncProcessor:
         if last_block is not None and block_number > last_block:
             token_holders_updates = token_balance_changes_from_transfers(transfers, token_holders_updates)
 
-        safe_token_holder_updates = []
-        for update in token_holders_updates:
-            if update.balance < 0:
-                async with self.main_db.engine.acquire() as connection:
-                    await report_erc20_balance_of_error(connection, update.asset_address)
-            else:
-                safe_token_holder_updates.append(update)
-
+        token_holders_updates = await filter_negative_balances(self.main_db.engine, token_holders_updates)
         wallet_events = [
             *wallet.events_from_transactions(transactions_data, contracts_set=contracts_set),
             *wallet.events_from_transfers(transfers, transactions_data),
@@ -200,11 +192,10 @@ class SyncProcessor:
 
         assets_summary_updates = [
             *wallet.assets_from_accounts(accounts_data),
-            *wallet.assets_from_token_balance_updates(safe_token_holder_updates, block_number)
+            *wallet.assets_from_token_balance_updates(token_holders_updates, block_number)
         ]
 
-        safe_token_holder_updates = [x.as_token_holder_update() for x in safe_token_holder_updates]
-
+        safe_token_holder_updates = [x.as_token_holder_update() for x in token_holders_updates]
         return BlockData(
             block=block_data,
             uncles=uncles_data,

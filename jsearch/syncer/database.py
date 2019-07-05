@@ -35,12 +35,11 @@ from jsearch.common.utils import as_dicts
 from jsearch.syncer.balances import (
     get_token_balance_updates,
     get_last_ether_states_for_addresses_in_blocks,
-    get_token_holders
-)
+    get_token_holders,
+    filter_negative_balances)
 from jsearch.syncer.database_queries.accounts import get_accounts_state_for_blocks_query
 from jsearch.syncer.database_queries.assets_summary import delete_assets_summary_query, upsert_assets_summary_query
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
-from jsearch.syncer.utils import report_erc20_balance_of_error
 from jsearch.typing import Blocks, Block
 
 MAIN_DB_POOL_SIZE = 2
@@ -693,15 +692,7 @@ class MainDB(DBWrapper):
                     use_offset=use_offset
                 )
 
-                token_updates = [update for update in token_updates if update.balance > 0]
-                safe_token_holder_updates = []
-                for update in token_updates:
-                    if update.balance < 0:
-                        async with self.engine.acquire() as connection:
-                            await report_erc20_balance_of_error(connection, update.asset_address)
-                    else:
-                        safe_token_holder_updates.append(update)
-
+                token_updates = await filter_negative_balances(self.engine, token_updates)
                 # get ether balance updates
                 accounts_addresses = await self.get_accounts_addresses_for_blocks(affected_blocks)
                 accounts_states = await get_last_ether_states_for_addresses_in_blocks(conn, affected_blocks)
@@ -711,7 +702,7 @@ class MainDB(DBWrapper):
                 ether_updates = assets_from_accounts(accounts=accounts_states)
 
                 # affected_address
-                for balance_update in safe_token_holder_updates:
+                for balance_update in token_updates:
                     query = balance_update.to_upsert_assets_summary_query()
                     await conn.execute(query)
 

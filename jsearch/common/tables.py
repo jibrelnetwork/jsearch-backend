@@ -367,12 +367,13 @@ chain_events_t = sa.Table(
     sa.Column('created_at', sa.TIMESTAMP),
 )
 
-erc20_contracts = sa.Table(
-    'erc20_contracts',
+erc20_errors = sa.Table(
+    'erc20_errors',
     metadata,
     sa.Column('contract_address', sa.String),
+    sa.Column('account_address', sa.String),
     sa.Column('errors', sa.Integer, default=0),
-    sa.Column('type', sa.String),
+    sa.Column('block_number', sa.Integer)
 )
 
 TABLES = (
@@ -394,5 +395,5 @@ TABLES = (
     assets_summary_t,
     wallet_events_t,
     chain_events_t,
-    erc20_contracts
+    erc20_errors
 )
