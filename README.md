@@ -61,9 +61,9 @@ or from within the shell:
 
 ```bash
 docker-compose run --rm tests_shell app
-docker-copmose run --rm tests_shell jsearch-syncer
-docker-copmose run --rm tests_shell jsearch-syncer-pending
-docker-copmose run --rm tests_shell jsearch-notable-accounts-worker
+docker-compose run --rm tests_shell jsearch-syncer
+docker-compose run --rm tests_shell jsearch-syncer-pending
+docker-compose run --rm tests_shell jsearch-notable-accounts-worker
 ```
 
 ### Migrations
