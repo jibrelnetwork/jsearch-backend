@@ -1,155 +1,124 @@
-# jSearch backend services
+# Jsearch backend services
 
-This is a core of jSearch 
+This is the core of Jsearch. 
 
-# Description
+## Description
 
-jSearch backend services includes following components: 
+Jsearch Backend includes following components: 
 
-- Main DB
-- syncer
-- post-processing
-- jSearch api
+- **API** — provides access to blockchain data stored in main database and acts
+as Web3 API proxy.
+- **Blocks Syncer** — grabs blockchain data from RawDB and puts it into MainDB.
+- **Pending TXs Syncer** — grabs TX pool data from RawDB and puts it into
+MainDB.
+- **Notable Accounts Workers** — writes accounts from Kafka topic to the MainDB.
 
-Main DB - PostgreSQL database, stores processed and structured blockchain data
+## Dependencies
 
-Syncer component grabs blockchain data from RAW database and puts it into MAIN database
-
-Postprocessing component performs raw blockchain data processing - transaction and logs decoding,
-token transfers detection, token holders balances updates 
-
-API component is public web API server - provides access to blockchain data stored in main database and acts as Web3 API proxy
-
-
-# Dependencies
-
-jSearch Backend depends on following services:
-- jSearch Raw DB (geth fork) [https://github.com/jibrelnetwork/go-ethereum]
-- jSearch Contracts Service [https://github.com/jibrelnetwork/jsearch-contracts]
-- jSearch Compiler [https://github.com/jibrelnetwork/jsearch-compiler]
-
-
-# Install
+Jsearch Backend depends on following services:
+- Jsearch Raw DB populated by [Geth Fork](https://github.com/jibrelnetwork/go-ethereum)
+- [Jsearch Contracts Service](https://github.com/jibrelnetwork/jsearch-contracts)
+- [Jsearch Compiler](https://github.com/jibrelnetwork/jsearch-compiler)
 
 
 ## Prerequisites
 
-Ubuntu 16.04, git installed
+* [Docker](https://docs.docker.com/install/)
+* [Docker Compose](https://docs.docker.com/compose/install/)
 
-```
-sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt-get update
-sudo apt-get install python3.6 python3.6-dev postgresql-client-9.5 libssl-dev python3-pip
-```
-
-
-## Build
-
-```
-git clone git@github.com:jibrelnetwork/jsearch-contracts.git
-cd jsearch-contracts
-pip install -r requirements.txt
-pip install -e .
+## Installation
+```bash
+docker-compose build
 ```
 
 ## Configuration
 
-List of environ vars:
-```
-JSEARCH_MAIN_DB (default postgres://localhost/jsearch_main)
-JSEARCH_RAW_DB (default postgres://localhost/jsearch_raw)
-ETH_NODE_URL (default https://main-node.jwallet.network)
-JSEARCH_COMPILER_API (default http://localhost:8101)
-JSEARCH_CONTRACTS_API (default http://localhost:8101)
-JSEARCH_SYNC_PARALLEL (default 10) - number of blocks to sync in parallel
-```
+Following environmental variables are used by the project and can be configured:
+* `LOG_LEVEL=INFO`
+* `RAVEN_DSN=""`
+* `JSEARCH_SYNC_PARALLEL="10"`
+* `JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_main"`
+* `JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw"`
+* `JSEARCH_CONTRACTS_API="http://contracts:8080"`
+* `JSEARCH_COMPILER_API="http://compiler"`
+* `JSEARCH_API_ENABLE_RESET_LOGS_PROCESSING="1"`
+* `ENH_NODE_URL="https://main-node.jwallet.network"`
+* `KAFKA_BOOTSTRAP_SERVERS=""`
+* `DOCKERIZE_VERSION="v0.6.1"`
 
-# Run components
+## API
 
-## Before run
-Apply database migrations:
-```
-python manage.py upgrade head -db=postgresql://dbuser@localhost:5433/jsearch_main
-```
+Swagger docs for API is available by `{hostname}/docs/index.html` URL.
 
-## Run Syncer:
-```
-jsearch-syncer
-```
+## Development
 
-## Run Post processing:
-```
-jsearch-post-processing logs  # run logs processing/decoding
-jsearch-post-processing transfers  # run operations (Token Transfers) processing - will update token balances
-```
-
-## Run API server:
-```
-gunicorn  --bind 0.0.0.0:8081 jsearch.api.app:make_app --worker-class aiohttp.worker.GunicornWebWorker
-```
-
-
-# API
-
-Swagger docs for API is available by {hostname}/docs/index.html URL
-
-
-# Development
-
-Use docker-compose to create and run development environment:
-## Docker compose
+Use `docker-compose` and `make` to create and run development environment.
 
 ### Running components 
 
-```
-docker-compose up -d api
-docker-copmose up -d syncer
+Components can be run either from the [meta repository](https://github.com/jibrelnetwork/jsearch)
+or from within the shell:
+
+```bash
+docker-compose run --rm tests_shell app
+docker-compose run --rm tests_shell jsearch-syncer
+docker-compose run --rm tests_shell jsearch-syncer-pending
+docker-compose run --rm tests_shell jsearch-notable-accounts-worker
 ```
 
-### Running migrations
-```
-docker-compose run --entrypoint python syncer manage.py revision -db=postgres://postgres:postgres@main_db/jsearch_main -m "Initial"
-docker-compose run --entrypoint python syncer manage.py upgrade head -db=postgres://postgres:postgres@main_db/jsearch_main
+### Migrations
+* `make new_db_migration` creates a new MainDB migration.
+* `make db_migrate` migrates MainDB.
+
+## Devtools
+
+### Shell
+
+To spawn a dev shell, execute:
+```bash
+make shell
 ```
 
-### Available commands: 
-
-- jsearch-syncer
-- jsearch-post-processing-logs  
-- jsearch-post-processing-transfers
-- jsearch-wallet-worker
-
-### Running tests
-
-#### From docker-compose:
-```
-docker-compose rm --rm tests
+### Code validation
+To check the code, you can execute the following:
+```bash
+make validate
 ```
 
-#### From shell:
-```
-pytest # all test
-pytest -m "live_chain" #only end to end tests
-pytest -v -m "live_chain" #only unit tests with
+The `validate` rule builds containers, checks the code style and runs tests. If
+you want to execute commands separately, check the "Code validation subrules"
+section below.
+
+### Code validation subrules
+
+#### Linters
+To run [flake8](http://flake8.pycqa.org/en/latest/), execute the following
+command:
+```bash
+make lint
 ```
 
-#### Notes:
- - ensure to build docker image for geth-fork 
-```
-cd ./docker/geth-fork
-./build.sh
+`flake8` configuration can be customized in `.flake8` file.
+
+#### Running tests
+[pytest](https://pytest.org) is used as a testing framework. To run test suite,
+execute: 
+```bash
+make test
 ```
 
 ### Git hooks
 
-Add a pre push hook to validate the code before each push:
+Optionally, you can add a pre push hook to validate the code before each push:
 
 ```bash
-$ ln -s $(pwd)/pre-push.sh ../.git/modules/jsearch-backend/hooks/pre-push  # jsearch-backend as a git submodule.
-$ ln -s $(pwd)/pre-push.sh .git/hooks/pre-push  # jsearch-backend as a standalone repo.
+ln -s $(pwd)/pre-push.sh ../.git/modules/jsearch-backend/hooks/pre-push  # jsearch-backend as a git submodule.
+ln -s $(pwd)/pre-push.sh .git/hooks/pre-push  # jsearch-backend as a standalone repo.
 ```
+
+To push the code without a hook, `git push --no-verify` can be used (e.g.
+you've already run `make validate` before push).
 
 ## Author
 
 dev@jibrel.network
-
