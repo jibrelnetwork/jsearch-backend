@@ -709,8 +709,9 @@ class MainDB(DBWrapper):
                     query = balance_update.to_upsert_token_holder_query()
                     await conn.execute(query)
 
+                replaced_blocks = list({item['number'] for item in old_chain_fragment})
                 for account_state in ether_updates:
-                    query = upsert_assets_summary_query(**account_state)
+                    query = upsert_assets_summary_query(**account_state, blocks_to_replace=replaced_blocks)
                     await conn.execute(query)
 
                 for address in delete_states:

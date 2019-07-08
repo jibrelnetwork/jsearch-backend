@@ -179,9 +179,8 @@ async def get_token_balance_updates(
 
 
 async def filter_negative_balances(engine: Engine, updates: AssetBalanceUpdates) -> AssetBalanceUpdates:
-    token_updates = [update for update in updates if update.balance > 0]
     safe_token_holder_updates = []
-    for update in token_updates:
+    for update in updates:
         if update.balance < 0:
             async with engine.acquire() as connection:
                 await report_erc20_balance_error(
