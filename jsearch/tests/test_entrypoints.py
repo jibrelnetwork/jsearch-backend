@@ -7,7 +7,7 @@ import jsearch.common.worker
 import jsearch.multiprocessing
 import jsearch.pending_syncer.main
 import jsearch.syncer.main
-import jsearch.validation.__main__
+import jsearch.monitor_balance.__main__
 
 CODE_OK = 0
 CODE_ERROR = 1
@@ -24,7 +24,7 @@ def _mock_executor(mocker: MockFixture):
 @pytest.fixture()
 def _mock_loop_runners(mocker: MockFixture):
     mocker.patch.object(jsearch.common.worker.Worker, 'execute_from_commandline')
-    mocker.patch.object(jsearch.validation.__main__, 'run')
+    mocker.patch.object(jsearch.monitor_balance.__main__, 'run')
 
 
 @pytest.mark.usefixtures('_mock_loop_runners')
@@ -103,8 +103,8 @@ async def test_validation_entrypoint(
         call_args: List[str],
         exit_code: int,
 ) -> None:
-    mocker.patch.object(jsearch.validation.__main__, 'run')
+    mocker.patch.object(jsearch.monitor_balance.__main__, 'run')
 
-    result = cli_runner.invoke(jsearch.validation.__main__.main, call_args)
+    result = cli_runner.invoke(jsearch.monitor_balance.__main__.main, call_args)
 
     assert result.exit_code == exit_code
