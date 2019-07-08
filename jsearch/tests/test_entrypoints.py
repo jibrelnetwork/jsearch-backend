@@ -103,7 +103,7 @@ async def test_validation_entrypoint(
         call_args: List[str],
         exit_code: int,
 ) -> None:
-    mocker.patch.object(jsearch.monitor_balance.__main__, 'run')
+    mocker.patch.object(jsearch.monitor_balance.__main__, 'main')
 
     result = cli_runner.invoke(jsearch.monitor_balance.__main__.main, call_args)
 
