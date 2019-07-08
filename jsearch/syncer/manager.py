@@ -76,7 +76,8 @@ async def process_chain_split(main_db: MainDB,
         new_chain_fragment=new_chain_fragment,
         old_chain_fragment=old_chain_fragment,
         last_block=last_block,
-        chain_event=split_data
+        chain_event=split_data,
+        use_offset=use_offset
     )
 
 

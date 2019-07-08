@@ -20,16 +20,16 @@ def get_token_address_and_accounts_for_blocks_q(block_hashes: List[str]) -> Quer
 def get_transfers_after_block(addresses: List[str], address_column: Column, block: int) -> Query:
     query = select(
         columns=[
-            address_column.label('address'),
+            token_transfers_t.c.address,
             token_transfers_t.c.token_address,
             sum(token_transfers_t.c.token_value).label('change')
         ]
     ).group_by(
         token_transfers_t.c.token_address,
-        address_column,
+        token_transfers_t.c.address,
     ).order_by(
         token_transfers_t.c.token_address,
-        address_column
+        token_transfers_t.c.address,
     ).where(
         and_(
             token_transfers_t.c.block_number > block,

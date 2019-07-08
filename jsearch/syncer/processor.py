@@ -16,6 +16,7 @@ from jsearch.syncer.balances import (
     token_balance_changes_from_transfers,
     filter_negative_balances)
 from jsearch.syncer.database import RawDB, MainDB
+from jsearch.syncer.utils import get_last_block_with_offset
 from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,7 @@ class SyncProcessor:
             is_forked:
             chain_event: dict with event description
             last_block: last available block in raw_db
+            use_offset: use request to balance with offset
 
         Returns:
             True if sync is successful, False if syn fails or block already synced
@@ -179,7 +181,7 @@ class SyncProcessor:
                 use_offset=use_offset
             )
 
-        if last_block is not None and block_number > last_block:
+        if not is_forked and use_offset and block_number > get_last_block_with_offset(last_block):
             token_holders_updates = token_balance_changes_from_transfers(transfers, token_holders_updates)
 
         token_holders_updates = await filter_negative_balances(self.main_db.engine, token_holders_updates)
@@ -195,7 +197,13 @@ class SyncProcessor:
             *wallet.assets_from_token_balance_updates(token_holders_updates, block_number)
         ]
 
-        safe_token_holder_updates = [x.as_token_holder_update() for x in token_holders_updates]
+        token_holders_balances = [x.as_token_holder_update() for x in token_holders_updates]
+        if is_forked:
+            # WTF: if we process blocks which is forked
+            # we don't need to update actual state of balances
+            token_holders_balances = []
+            assets_summary_updates = []
+
         return BlockData(
             block=block_data,
             uncles=uncles_data,
@@ -205,7 +213,7 @@ class SyncProcessor:
             txs=transactions_data,
             internal_txs=internal_txs_data,
             transfers=transfers,
-            token_holders_updates=safe_token_holder_updates,
+            token_holders_updates=token_holders_balances,
             wallet_events=wallet_events,
             assets_summary_updates=assets_summary_updates
         )

@@ -31,8 +31,11 @@ def upsert_assets_summary_query(
         index_elements=['address', 'asset_address'],
         set_={
             'value': value,
-            'decimals': decimals
-        }
+            'tx_number': tx_number,
+            'block_number': block_number,
+            'nonce': nonce
+        },
+        where=assets_summary_t.c.block_number <= query.excluded.block_number
     )
 
 

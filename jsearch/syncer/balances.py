@@ -14,7 +14,7 @@ from jsearch.syncer.database_queries.token_transfers import (
     get_token_address_and_accounts_for_blocks_q
 )
 from jsearch.syncer.structs import TokenHolder
-from jsearch.syncer.utils import get_last_block_with_offset, report_erc20_balance_of_error
+from jsearch.syncer.utils import get_last_block_with_offset, report_erc20_balance_error
 from jsearch.typing import TokenAddresses, AccountAddresses, AccountAddress, TokenAddress
 
 
@@ -184,7 +184,7 @@ async def filter_negative_balances(engine: Engine, updates: AssetBalanceUpdates)
     for update in token_updates:
         if update.balance < 0:
             async with engine.acquire() as connection:
-                await report_erc20_balance_of_error(
+                await report_erc20_balance_error(
                     connection=connection,
                     contract_address=update.asset_address,
                     account_address=update.asset_address,

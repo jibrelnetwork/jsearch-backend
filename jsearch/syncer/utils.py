@@ -5,7 +5,7 @@ from jsearch.syncer.database_queries.contracts import increase_erc20_balance_inc
 from jsearch.typing import TokenAddress, AccountAddress
 
 
-async def report_erc20_balance_of_error(
+async def report_erc20_balance_error(
         connection: SAConnection,
         contract_address: TokenAddress,
         account_address: AccountAddress,
