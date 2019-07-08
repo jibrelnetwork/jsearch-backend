@@ -35,7 +35,7 @@ class AssetBalanceUpdate(NamedTuple):
             'block_number': self.block_number
         }
 
-    def to_upsert_assets_summary_query(self):
+    def to_upsert_assets_summary_query(self, blocks_to_replace: Optional[List[str]] = None):
         return upsert_assets_summary_query(
             address=self.account_address,
             asset_address=self.asset_address,
@@ -43,6 +43,7 @@ class AssetBalanceUpdate(NamedTuple):
             decimals=self.decimals,
             block_number=self.block_number,
             nonce=self.nonce,
+            blocks_to_replace=blocks_to_replace
         )
 
     def to_upsert_token_holder_query(self):
