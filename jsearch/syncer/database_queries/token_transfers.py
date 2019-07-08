@@ -37,7 +37,7 @@ def get_transfers_after_block(addresses: List[str], address_column: Column, bloc
             token_transfers_t.c.is_forked == false(),
             token_transfers_t.c.status == 1,  # we need only transfers from success transactions
             token_transfers_t.c.address == address_column
-            # we need ^ (this distinct) because we create 2 token transfers on 1 log record
+            # we need ^ because we create 2 token transfers on 1 log record
         )
     )
 
