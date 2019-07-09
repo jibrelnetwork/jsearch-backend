@@ -1,8 +1,6 @@
-from typing import Dict, Set, NamedTuple, List, Optional
+from aiopg.sa import Engine
+from typing import Dict, Set, NamedTuple, List, Optional, Tuple
 
-from jsearch import settings
-from jsearch.api.models import TokenHolder
-from jsearch.common.processing.erc20_balances import get_balances
 from jsearch.common.wallet_events import (
     event_from_internal_tx,
     event_from_token_transfer,
@@ -10,8 +8,9 @@ from jsearch.common.wallet_events import (
     WalletEventType,
 )
 from jsearch.syncer.database_queries.assets_summary import upsert_assets_summary_query
+from jsearch.syncer.database_queries.balance_requests import get_balance_request_query
 from jsearch.syncer.database_queries.token_holders import upsert_token_holder_balance_q
-from jsearch.syncer.utils import get_last_block_with_offset
+from jsearch.syncer.structs import TokenHolder, BalanceOnBlock
 from jsearch.typing import Accounts, AssetUpdates, AccountAddress, TokenAddress
 
 ETHER_ASSET_ADDRESS = ''
@@ -88,34 +87,6 @@ def events_from_internal_transactions(internal_transactions, transactions):
         events.append(event_from_internal_tx(it['to'], it, tx_map[it['parent_tx_hash']]))
     return events
 
-
-async def get_balance_updates(
-        holders: Set[TokenHolder],
-        decimals_map: Dict[str, int],
-        last_block: Optional[int],
-        use_offset: bool = False,
-) -> AssetBalanceUpdates:
-    balances_on_block = None
-    if use_offset:
-        balances_on_block = get_last_block_with_offset(last_block)
-
-    balances = await get_balances(
-        token_holders=list(holders),
-        block=balances_on_block,
-        batch_size=settings.ETH_NODE_BATCH_REQUEST_SIZE
-    )
-    updates = []
-    for holder, balance in balances:
-        update = AssetBalanceUpdate(
-            account_address=holder.account,
-            asset_address=holder.token,
-            balance=balance,
-            nonce=None,
-            block_number=last_block,
-            decimals=decimals_map[holder.token],
-        )
-        updates.append(update)
-    return updates
 
 
 def assets_from_accounts(accounts: Accounts) -> AssetUpdates:

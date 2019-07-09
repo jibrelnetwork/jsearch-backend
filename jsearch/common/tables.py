@@ -376,6 +376,14 @@ erc20_errors = sa.Table(
     sa.Column('block_number', sa.Integer)
 )
 
+balance_requests_t = sa.Table(
+    'erc20_balances_requests',
+    sa.Column('token_address', sa.String),
+    sa.Column('account_address', sa.String),
+    sa.Column('block_number', sa.Integer),
+    sa.Column('balance', sa.Integer)
+)
+
 TABLES = (
     blocks_t,
     uncles_t,
@@ -395,5 +403,6 @@ TABLES = (
     assets_summary_t,
     wallet_events_t,
     chain_events_t,
-    erc20_errors
+    erc20_errors,
+    balance_requests_t
 )

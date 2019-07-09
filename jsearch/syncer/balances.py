@@ -6,15 +6,14 @@ from typing import List, Dict, Any, Optional, Tuple, Set
 
 from jsearch.common import contracts
 from jsearch.common.processing.decimals_cache import decimals_cache
-from jsearch.common.processing.wallet import get_balance_updates, AssetBalanceUpdates, AssetBalanceUpdate
+from jsearch.common.processing.wallet import AssetBalanceUpdates, AssetBalanceUpdate
 from jsearch.syncer.database_queries.accounts import get_last_ether_balances_query
+from jsearch.syncer.database_queries.balance_requests import get_balance_request_query
 from jsearch.syncer.database_queries.token_transfers import (
-    get_incomes_after_block_query,
-    get_outcomes_after_block_query,
-    get_token_address_and_accounts_for_blocks_q
-)
-from jsearch.syncer.structs import TokenHolder
-from jsearch.syncer.utils import get_last_block_with_offset, report_erc20_balance_error
+    get_token_address_and_accounts_for_blocks_q,
+    get_outcomes_after_block_query, get_incomes_after_block_query)
+from jsearch.syncer.structs import TokenHolder, BalanceOnBlock
+from jsearch.syncer.utils import report_erc20_balance_error
 from jsearch.typing import TokenAddresses, AccountAddresses, AccountAddress, TokenAddress
 
 
@@ -37,31 +36,37 @@ async def get_last_ether_states_for_addresses_in_blocks(
     return results
 
 
-async def get_changes_map(connection: SAConnection, query: Query) -> Dict[TokenHolder, int]:
+async def get_changes_after_block_query(connection: SAConnection,
+                                        holder: TokenHolder,
+                                        query: Query,
+                                        positive: bool) -> Tuple[TokenHolder, int]:
+    changes = 0
     async with connection.execute(query) as cursor:
-        changes = await cursor.fetchall()
+        result = await cursor.fetchone()
+        if result:
+            changes = result.balance
+            changes = changes if positive else changes * -1
 
-    return {TokenHolder(item.token_address, item.address): item.change for item in changes if item.address}
+    return holder, changes
 
 
 async def get_balances_changes_after_block(
         connection: SAConnection,
-        addresses: List[str],
-        block: int
+        holders: Set[TokenHolder],
+        since_block: Dict[TokenHolder, int]
 ) -> Dict[TokenHolder, int]:
-    incomes_query = get_incomes_after_block_query(addresses, block=block)
-    outcomes_query = get_outcomes_after_block_query(addresses, block=block)
-
-    incomes = await get_changes_map(connection, query=incomes_query)
-    outcomes = await get_changes_map(connection, query=outcomes_query)
-
     changes = defaultdict(lambda: 0)
+    for holder in holders:
+        block = since_block.get(holder)
 
-    for holder, value in incomes.items():
-        changes[holder] += value
+        incomes_query = get_incomes_after_block_query(holder, block=block)
+        outcomes_query = get_outcomes_after_block_query(holder, block=block)
 
-    for holder, value in outcomes.items():
-        changes[holder] -= value
+        incomes = await get_changes_after_block_query(connection, holder, incomes_query, positive=True)
+        outcomes = await get_changes_after_block_query(connection, holder, outcomes_query, positive=False)
+
+        changes[holder] += incomes
+        changes[holder] -= outcomes
 
     return changes
 
@@ -138,45 +143,47 @@ def token_balance_changes_from_transfers(
     return list(token_updates_map.values())
 
 
+async def get_balances_on_last_request(connection, holders: Set[TokenHolder]) -> Dict[TokenHolder, BalanceOnBlock]:
+    balances = {}
+    query = get_balance_request_query(holders)
+    async with await connection.execute(query) as cursor:
+        for item in await cursor.fetchall():
+            holder = TokenHolder(token=item.token_address, account=item.account_address)
+            balances[holder] = BalanceOnBlock(block=item.block_number, balance=item.balance)
+    return balances
+
+
 async def get_token_balance_updates(
         connection: SAConnection,
         last_block: int,
         token_holders: Set[TokenHolder],
         decimals_map: Optional[Dict[str, int]] = None,
-        use_offset: bool = False,
 ) -> AssetBalanceUpdates:
-    tokens, holders = split_token_and_holders(token_holders)
-
     if decimals_map is None:
+        tokens, _ = split_token_and_holders(token_holders)
         decimals_map = await decimals_cache.get_many(addresses=tokens)
 
-    token_balance_updates = await get_balance_updates(
+    balances: Dict[TokenHolder: BalanceOnBlock] = dict(await get_balances_on_last_request(connection, token_holders))
+    balance_changes = await get_balances_changes_after_block(
+        connection,
         holders=token_holders,
-        decimals_map=decimals_map,
-        last_block=last_block,
-        use_offset=use_offset
+        since_block={holder: balance_on_block.block for holder, balance_on_block in balances.items()}
     )
 
-    if use_offset:
-        # if we want to request balance with offset on some block
-        # we need to get changes from database since this block
-
-        last_block_with_offset = get_last_block_with_offset(last_block)
-        balance_changes = await get_balances_changes_after_block(
-            connection,
-            addresses=holders,
-            block=last_block_with_offset
+    updates = []
+    for holder in token_holders:
+        balance = balances.get(holder, 0) + balance_changes.get(holder, 0)
+        update = AssetBalanceUpdate(
+            account_address=holder.account,
+            asset_address=holder.token,
+            balance=balance,
+            block_number=last_block,
+            decimals=decimals_map[holder.token],
+            nonce=None,
         )
-        token_updates_map = {TokenHolder(x.asset_address, x.account_address): x for x in token_balance_updates}
-        for key, balance_change in balance_changes.items():
-            update = token_updates_map.get(key)
-            if update:
-                update_data = {**update._asdict(), **{'balance': int(update.balance + balance_change)}}
-                token_updates_map[key] = AssetBalanceUpdate(**update_data)
+        updates.append(update)
 
-        token_balance_updates = list(token_updates_map.values())
-
-    return token_balance_updates
+    return updates
 
 
 async def filter_negative_balances(engine: Engine, updates: AssetBalanceUpdates) -> AssetBalanceUpdates:
@@ -196,5 +203,9 @@ async def filter_negative_balances(engine: Engine, updates: AssetBalanceUpdates)
                     block_number=update.block_number
                 )
         else:
+            update = AssetBalanceUpdate(
+                **update._asdict(),
+                **{'balance': 0}
+            )
             safe_token_holder_updates.append(update)
     return safe_token_holder_updates

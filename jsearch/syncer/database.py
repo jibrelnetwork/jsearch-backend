@@ -689,7 +689,6 @@ class MainDB(DBWrapper):
                     connection=conn,
                     token_holders=token_holders,
                     last_block=last_block,
-                    use_offset=use_offset
                 )
 
                 token_updates = await filter_negative_balances(self.engine, token_updates)
