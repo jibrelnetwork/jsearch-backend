@@ -5,13 +5,12 @@ import os
 
 import click
 from aiopg.sa import create_engine, SAConnection
-from sqlalchemy import select, desc
 from typing import Dict, Optional
 
 from jsearch import settings
 from jsearch.common import logs
 from jsearch.common.processing.erc20_balances import get_balances
-from jsearch.common.tables import token_holders_t, blocks_t
+from jsearch.common.tables import token_holders_t
 from jsearch.syncer.database_queries.assets_summary import upsert_assets_summary_query
 from jsearch.syncer.database_queries.token_holders import upsert_token_holder_balance_q
 from jsearch.syncer.structs import TokenHolder
@@ -28,33 +27,32 @@ def get_offset():
     return int(offset)
 
 
+async def get_last_block(connection: SAConnection) -> int:
+    query = "SELECT block_number FROM bodies ORDER BY block_number DESC LIMIT 1"
+
+    async with connection.execute(query) as cursor:
+        result = await cursor.fetchone()
+        if result:
+            return result.block_number
+
+
 async def update_balance(connection: SAConnection, token_holder: TokenHolder, balance: int, block: int) -> None:
-    query = upsert_token_holder_balance_q(
+    upsert_token_holder = upsert_token_holder_balance_q(
         token_address=token_holder.token,
         account_address=token_holder.account,
         balance=balance,
         block_number=block,
     )
-    await connection.execute(query)
 
-    query = upsert_assets_summary_query(
+    upsert_assets_summary = upsert_assets_summary_query(
         address=token_holder.account,
         asset_address=token_holder.token,
         value=balance,
         blocks_to_replace=[block]
     )
-    await connection.execute(query)
 
-
-async def get_last_block(connection: SAConnection) -> int:
-    query = select([
-        blocks_t.c.number
-    ]).order_by(desc(blocks_t.c.number)).limit(1)
-
-    async with connection.execute(query) as cursor:
-        result = await cursor.fetchone()
-        if result:
-            return result.number
+    await connection.execute(upsert_token_holder)
+    await connection.execute(upsert_assets_summary)
 
 
 async def get_token_holders_balances(connection: SAConnection, block: int) -> Dict[TokenHolder, int]:
@@ -91,22 +89,30 @@ async def check_balance_on_block(connection: SAConnection, block: int) -> None:
             await insert_balance_request(connection, token_holder.token, token_holder.account, expected_balance, block)
 
 
-async def check_balances(block: Optional[int], offset: int, dsn: str = settings.JSEARCH_MAIN_DB) -> None:
-    async with create_engine(dsn) as engine:
+async def get_start_block(connection: SAConnection, offset: Optional[int] = None):
+    last_block = await get_last_block(connection)
+    if last_block is None:
+        raise ValueError('Last available block is None')
+    block = last_block - offset
+    logging.info('Choose start block from offset', extra={'last_block': last_block, 'offset': offset})
 
+    return block
+
+
+async def check_balances(offset: int, block: Optional[int] = None) -> None:
+    async with create_engine(settings.JSEARCH_MAIN_DB) as engine, create_engine(settings.JSEARCH_RAW_DB) as raw_engine:
         if block is None:
-            async with engine.acquire() as connection:
-                last_block = await get_last_block(connection)
-                if last_block is None:
-                    raise ValueError('Last available block is None')
-                block = last_block - offset
-                logging.info('Choose start block from offset', extra={'last_block': last_block, 'offset': offset})
+            async with raw_engine.acquire() as connection:
+                block = await get_start_block(connection, offset=offset)
 
         while True:
             try:
-                async with engine.acquire() as connection:
+                async with raw_engine.acquire() as connection:
                     last_block = await get_last_block(connection)
-                    logging.info(f'Block {block} - {last_block}')
+
+                logging.info(f'Block {block} - {last_block}')
+
+                async with engine.acquire() as connection:
 
                     if block < last_block - offset:
                         await check_balance_on_block(connection, block)

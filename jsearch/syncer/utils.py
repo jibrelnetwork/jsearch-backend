@@ -14,7 +14,7 @@ async def insert_balance_request(
         block_number: int
 ) -> None:
     query = insert_balance_request_query(
-        contract_address=contract_address,
+        token_address=contract_address,
         account_address=account_address,
         balance=balance,
         block_number=block_number

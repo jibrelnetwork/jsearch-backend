@@ -376,12 +376,13 @@ erc20_errors = sa.Table(
     sa.Column('block_number', sa.Integer)
 )
 
-balance_requests_t = sa.Table(
-    'erc20_balances_requests',
+erc20_balance_requests_t = sa.Table(
+    'erc20_balance_requests',
+    metadata,
     sa.Column('token_address', sa.String),
     sa.Column('account_address', sa.String),
     sa.Column('block_number', sa.Integer),
-    sa.Column('balance', sa.Integer)
+    sa.Column('balance', postgresql.NUMERIC()),
 )
 
 TABLES = (
@@ -404,5 +405,5 @@ TABLES = (
     wallet_events_t,
     chain_events_t,
     erc20_errors,
-    balance_requests_t
+    erc20_balance_requests_t
 )

@@ -1,5 +1,4 @@
-from aiopg.sa import Engine
-from typing import Dict, Set, NamedTuple, List, Optional, Tuple
+from typing import NamedTuple, List, Optional
 
 from jsearch.common.wallet_events import (
     event_from_internal_tx,
@@ -8,9 +7,7 @@ from jsearch.common.wallet_events import (
     WalletEventType,
 )
 from jsearch.syncer.database_queries.assets_summary import upsert_assets_summary_query
-from jsearch.syncer.database_queries.balance_requests import get_balance_request_query
 from jsearch.syncer.database_queries.token_holders import upsert_token_holder_balance_q
-from jsearch.syncer.structs import TokenHolder, BalanceOnBlock
 from jsearch.typing import Accounts, AssetUpdates, AccountAddress, TokenAddress
 
 ETHER_ASSET_ADDRESS = ''
@@ -19,7 +16,7 @@ ETHER_ASSET_ADDRESS = ''
 class AssetBalanceUpdate(NamedTuple):
     account_address: AccountAddress
     asset_address: TokenAddress
-    decimals: int
+    decimals: Optional[int]
     balance: int
 
     block_number: int
@@ -86,7 +83,6 @@ def events_from_internal_transactions(internal_transactions, transactions):
         events.append(event_from_internal_tx(it['from'], it, tx_map[it['parent_tx_hash']]))
         events.append(event_from_internal_tx(it['to'], it, tx_map[it['parent_tx_hash']]))
     return events
-
 
 
 def assets_from_accounts(accounts: Accounts) -> AssetUpdates:

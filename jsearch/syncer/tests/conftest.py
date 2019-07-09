@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 from jsearch.syncer.structs import TokenHolder
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture()
 async def mock_node_calls(mocker):
     async def get_balances(
             token_holders: List[TokenHolder],
