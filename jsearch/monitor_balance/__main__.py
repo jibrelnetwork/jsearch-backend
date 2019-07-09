@@ -12,6 +12,7 @@ from jsearch import settings
 from jsearch.common import logs
 from jsearch.common.processing.erc20_balances import get_balances
 from jsearch.common.tables import token_holders_t, blocks_t
+from jsearch.syncer.database_queries.assets_summary import upsert_assets_summary_query
 from jsearch.syncer.database_queries.token_holders import upsert_token_holder_balance_q
 from jsearch.syncer.structs import TokenHolder
 from jsearch.syncer.utils import report_erc20_balance_error
@@ -33,6 +34,14 @@ async def update_balance(connection: SAConnection, token_holder: TokenHolder, ba
         account_address=token_holder.account,
         balance=balance,
         block_number=block,
+    )
+    await connection.execute(query)
+
+    query = upsert_assets_summary_query(
+        address=token_holder.account,
+        asset_address=token_holders_t.token,
+        value=balance,
+        blocks_to_replace=[block]
     )
     await connection.execute(query)
 
@@ -76,7 +85,9 @@ async def check_balance_on_block(connection: SAConnection, block: int) -> None:
                     "expected": expected_balance
                 }
             )
-            await report_erc20_balance_error(connection, token_holder.token, token_holder.account, block)
+            async with connection.begin():
+                await report_erc20_balance_error(connection, token_holder.token, token_holder.account, block)
+                await update_balance(connection, token_holder, expected_balance, block)
 
 
 async def check_balances(block: Optional[int], offset: int, dsn: str = settings.JSEARCH_MAIN_DB) -> None:
