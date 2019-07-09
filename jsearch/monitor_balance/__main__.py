@@ -39,7 +39,7 @@ async def update_balance(connection: SAConnection, token_holder: TokenHolder, ba
 
     query = upsert_assets_summary_query(
         address=token_holder.account,
-        asset_address=token_holders_t.token,
+        asset_address=token_holder.token,
         value=balance,
         blocks_to_replace=[block]
     )

@@ -10,11 +10,11 @@ def upsert_assets_summary_query(
         address: str,
         asset_address: str,
         value: int,
-        decimals: int,
+        decimals: Optional[int] = None,
         block_number: Optional[int] = None,
         nonce: Optional[int] = None,
         tx_number: Optional[int] = None,
-        blocks_to_replace: Optional[List[str]] = None,
+        blocks_to_replace: Optional[List[int]] = None,
 ) -> Query:
     summary_data = {
         'address': address,

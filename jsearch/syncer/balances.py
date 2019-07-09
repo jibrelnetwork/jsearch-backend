@@ -134,6 +134,7 @@ def token_balance_changes_from_transfers(
 
             update_data = {**update._asdict(), **{'balance': int(balance)}}
             token_updates_map[key] = AssetBalanceUpdate(**update_data)
+
     return list(token_updates_map.values())
 
 
@@ -182,6 +183,11 @@ async def filter_negative_balances(engine: Engine, updates: AssetBalanceUpdates)
     safe_token_holder_updates = []
     for update in updates:
         if update.balance < 0:
+            update = AssetBalanceUpdate(**{
+                **update._asdict(),
+                **{'balance': 0}
+            })
+            safe_token_holder_updates.append(update)
             async with engine.acquire() as connection:
                 await report_erc20_balance_error(
                     connection=connection,
