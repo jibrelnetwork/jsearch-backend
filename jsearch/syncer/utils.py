@@ -2,7 +2,6 @@ from aiopg.sa import SAConnection
 
 from jsearch import settings
 from jsearch.syncer.database_queries.balance_requests import insert_balance_request_query
-from jsearch.syncer.database_queries.contracts import increase_erc20_balance_increase_error_count_query
 from jsearch.typing import TokenAddress, AccountAddress
 
 
@@ -17,20 +16,6 @@ async def insert_balance_request(
         token_address=contract_address,
         account_address=account_address,
         balance=balance,
-        block_number=block_number
-    )
-    await connection.execute(query)
-
-
-async def report_erc20_balance_error(
-        connection: SAConnection,
-        contract_address: TokenAddress,
-        account_address: AccountAddress,
-        block_number: int,
-) -> None:
-    query = increase_erc20_balance_increase_error_count_query(
-        contract_address=contract_address,
-        account_address=account_address,
         block_number=block_number
     )
     await connection.execute(query)

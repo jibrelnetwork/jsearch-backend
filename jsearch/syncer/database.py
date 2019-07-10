@@ -691,7 +691,7 @@ class MainDB(DBWrapper):
                     last_block=last_block,
                 )
 
-                token_updates = await filter_negative_balances(self.engine, token_updates)
+                token_updates = await filter_negative_balances(token_updates)
                 # get ether balance updates
                 accounts_addresses = await self.get_accounts_addresses_for_blocks(affected_blocks)
                 accounts_states = await get_last_ether_states_for_addresses_in_blocks(conn, affected_blocks)

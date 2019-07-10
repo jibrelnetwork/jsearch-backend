@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from aiopg.sa import SAConnection, Engine
+from aiopg.sa import SAConnection
 from sqlalchemy.orm import Query
 from typing import List, Dict, Any, Tuple, Set
 
@@ -14,7 +14,6 @@ from jsearch.syncer.database_queries.token_transfers import (
     get_incomes_after_block_query
 )
 from jsearch.syncer.structs import TokenHolder, BalanceOnBlock
-from jsearch.syncer.utils import report_erc20_balance_error
 from jsearch.typing import TokenAddresses, AccountAddresses, AccountAddress, TokenAddress
 
 
@@ -181,7 +180,7 @@ async def get_token_balance_updates(
     return updates
 
 
-async def filter_negative_balances(engine: Engine, updates: AssetBalanceUpdates) -> AssetBalanceUpdates:
+async def filter_negative_balances(updates: AssetBalanceUpdates) -> AssetBalanceUpdates:
     safe_token_holder_updates = []
     for update in updates:
         if update.balance < 0:
@@ -189,14 +188,5 @@ async def filter_negative_balances(engine: Engine, updates: AssetBalanceUpdates)
                 **update._asdict(),
                 **{'balance': 0}
             })
-            safe_token_holder_updates.append(update)
-            async with engine.acquire() as connection:
-                await report_erc20_balance_error(
-                    connection=connection,
-                    contract_address=update.asset_address,
-                    account_address=update.asset_address,
-                    block_number=update.block_number
-                )
-        else:
-            safe_token_holder_updates.append(update)
+        safe_token_holder_updates.append(update)
     return safe_token_holder_updates

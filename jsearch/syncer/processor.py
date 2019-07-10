@@ -179,7 +179,7 @@ class SyncProcessor:
         if not is_forked and use_offset and block_number > get_last_block_with_offset(last_block):
             token_holders_updates = token_balance_changes_from_transfers(transfers, token_holders_updates)
 
-        token_holders_updates = await filter_negative_balances(self.main_db.engine, token_holders_updates)
+        token_holders_updates = await filter_negative_balances(token_holders_updates)
         wallet_events = [
             *wallet.events_from_transactions(transactions_data, contracts_set=contracts_set),
             *wallet.events_from_transfers(transfers, transactions_data),

@@ -14,7 +14,7 @@ from jsearch.common.tables import token_holders_t
 from jsearch.syncer.database_queries.assets_summary import upsert_assets_summary_query
 from jsearch.syncer.database_queries.token_holders import upsert_token_holder_balance_q
 from jsearch.syncer.structs import TokenHolder
-from jsearch.syncer.utils import report_erc20_balance_error, insert_balance_request
+from jsearch.syncer.utils import insert_balance_request
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,6 @@ async def check_balance_on_block(connection: SAConnection, block: int) -> None:
                         "expected": expected_balance
                     }
                 )
-                await report_erc20_balance_error(connection, token_holder.token, token_holder.account, block)
                 await update_balance(connection, token_holder, expected_balance, block)
             await insert_balance_request(connection, token_holder.token, token_holder.account, expected_balance, block)
 
