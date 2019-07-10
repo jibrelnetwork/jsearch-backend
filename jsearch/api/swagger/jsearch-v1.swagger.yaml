@@ -1,7 +1,7 @@
 swagger: '2.0'
 info:
   description: jSearch - Ethereum blockexplorer API
-  version: "0.1.4"
+  version: "1.0.0"
   title: jSearch API
   # put the contact info for your development or API team
   contact:
@@ -26,6 +26,8 @@ parameters:
     description: Account address
     type: string
     format: address
+    schema:
+      example: "0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5"
   blockchain_address:
     name: blockchain_address
     in: query
@@ -33,20 +35,35 @@ parameters:
     description: Blockchain account address
     type: string
     format: address
+    schema:
+      example: "0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5"
   blockchain_tip:
     name: blockchain_tip
     in: query
     required: true
-    description: Blockchain tip ( as block hash from /v1/wallet/blockchain_tip)
+    description: "<a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/952434891/Blockchain+Tip\">Blockchain tip</a> (as block hash from /v1/blockchain_tip)"
     type: string
-    format: hash
+    format: block_hash
+    schema:
+      example: "0x6b56924440c6674d60d7c8af0ef2c30fda3b68065de91e8b99bcbfc9fe1b1111"
   addresses:
     name: addresses
     in: query
     required: true
-    description: Comma separated account addresses
+    description: Comma-separated list of addresses. Separate addresses by comma, up to a maxium of 20 accounts in a single batch
     type: string
-    format: address
+    format: addresses
+    schema:
+      example: "0x5a0b54d5dc17e0aadc383d2db43b0a0dbe029c4c,0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5"
+  contract_addresses:
+    name: contract addresses
+    in: query
+    required: true
+    description: Comma-separated list of contract addresses. Separate addresses by comma, up to a maxium of 20 accounts in a single batch
+    type: string
+    format: addresses
+    schema:
+      example: "0x5a0b54d5dc17e0aadc383d2db43b0a0dbe029c4c,0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5"
   assets:
     name: assets
     in: query
@@ -61,12 +78,16 @@ parameters:
     description: Contract address
     type: string
     format: address
+    schema:
+      example: "0xB8c77482e45F1F44dE1745F52C74426C631bDD52"
   tagRequired:
     name: tag
     in: path
     required: true
     description: block hash, block number or "latest" keyword
     type: string
+    schema:
+      example: "latest"
   tagOptional:
     name: tag
     in: path
@@ -78,22 +99,24 @@ parameters:
     required: true
     description: transaction hash
     type: string
+    schema:
+      example: "0x6d97e82f6e2086969f9bebbc43bae95af22c1baf765e86f2676bd0ccdb92ef18"
   limit:
     name: limit
     in: query
-    description: Number of items returned in response
+    description: "The number of items returned in response. Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-limit\">link</a> for details."
     type: integer
     default: 20
   offset:
     name: offset
     in: query
-    description: Query offset
+    description: "The offset of results set from beginning of dataset. Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-offset\">link</a> for details."
     type: integer
     default: 0
   order:
     name: order
     in: query
-    description: Items ordering direction
+    description: Items ordering direction (asc, desc)
     schema:
       type: string
       enum: [asc, desc]
@@ -102,7 +125,7 @@ parameters:
     name: block_range_start
     in: query
     required: true
-    description: Filter by block number
+    description: "<a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint#Walleteventsendpoint-PARAMS\">Filter by block number</a>"
     schema:
       oneOf:
         - type: integer
@@ -116,7 +139,7 @@ parameters:
   block_range_end:
     name: block_range_end
     in: query
-    description: Filter by block number
+    description: "<a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint#Walleteventsendpoint-PARAMS\">Filter by block number</a>"
     schema:
       oneOf:
         - type: integer
@@ -137,19 +160,18 @@ paths:
 
   /v1/accounts/balances:
     get:
-      summary: Get balances for multiple addresses in single call.
+      summary: Get Ether Balance of multiple accounts in single call.
+      description: |
+        You can use this endoint to receive `Ether Balance` of single or multiple accounts on specified block hash in single call.
       operationId: getBalancesForMultiAddresses
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/blockchain_tip'
-      - in: query
-        name: addresses
-        type: string
-        description: Comma separated list of addresses
+      - $ref: '#/parameters/addresses'
       responses:
         200:
-          description: List of balances
+          description: List of Ether Balances
           schema:
             properties:
               status:
@@ -165,7 +187,9 @@ paths:
 
   /v1/accounts/{address}:
     get:
-      summary: Get account state by address.
+      summary: Get Account State by address
+      description: |
+        You can use this endpoint to receive `Account State` data  on specified block hash by address.
       operationId: getAccount
       produces:
       - application/json
@@ -173,7 +197,6 @@ paths:
       - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
         description: Account address
-      - $ref: '#/parameters/tagOptional'
       responses:
         200:
           description: Account object
@@ -195,7 +218,9 @@ paths:
 
   /v1/accounts/{address}/logs:
     get:
-      summary: Get contract logs.
+      summary: Get a list of `Contract Logs` by address
+      description: |
+        You can use this endpoint to receive a list of `Contract Logs`on specified block hash by address by address.
       operationId: getLogs
       produces:
       - application/json
@@ -224,7 +249,9 @@ paths:
 
   /v1/accounts/{address}/transactions:
     get:
-      summary: Get account transactions.
+      summary: Get a list of `Normal` Transactions by Account address
+      description: |
+        You can use this endpoint to receive a list of `Normal` Transactions on specified block hash by address.
       operationId: getAccountTransactions
       produces:
       - application/json
@@ -252,14 +279,15 @@ paths:
 
   /v1/accounts/{address}/internal_transactions:
     get:
-      summary: Get account internal transactions
+      summary: Get a list of `Internal` Transactions by Account address
+      description: |
+        You can use this endpoint to receive a list of `Internal` Transactions on specified block hash by address.
       operationId: getAccountInternalTransactions
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/tagOptional'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
       responses:
@@ -280,13 +308,14 @@ paths:
 
   /v1/accounts/{address}/pending_transactions:
     get:
-      summary: Get account pending transactions
+      summary: Get a list of `Pending` Transactions by Account address
+      description: |
+        You can use this endpoint to receive a list of `Pending` Transactions by address.
       operationId: getAccountPendingTransactions
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/tagOptional'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
       responses:
@@ -307,7 +336,9 @@ paths:
 
   /v1/accounts/{address}/mined_blocks:
     get:
-      summary: Get blocks mined by address
+      summary: Get list of `Blocks Mined` by Account address
+      description: |
+        You can use this endpoint to receive a list of `Blocks Mined` on specified block hash by Account address
       operationId: getAccountMinedBlocks
       produces:
       - application/json
@@ -335,7 +366,9 @@ paths:
 
   /v1/accounts/{address}/mined_uncles:
     get:
-      summary: Get uncles mined by address
+      summary: Get list of `Uncles Mined` by Account address
+      description: |
+        You can use this endpoint to receive a list of `Uncles Mined` on specified block hash by Account address
       operationId: getAccountMinedUncles
       produces:
       - application/json
@@ -362,20 +395,19 @@ paths:
 
   /v1/accounts/{address}/token_balances:
     get:
-      summary: Get token balances for multiple contract addresses in single call.
+      summary: Get Token Balance for multiple contract addresses for specific Account address in single call.
+      description: |
+        You can use this endpoint to receive a list of `Token Balances` for single or multiple contract addresses on specified block hash and account address in single call
       operationId: getTokenBalancesForMultiContracts
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
-      - in: query
-        name: addresses
-        type: string
-        description: Comma separated list of contract addresses
+      - $ref: '#/parameters/contract_addresses'
       responses:
         200:
-          description: List of balances
+          description: List of Token balances
           schema:
             properties:
               status:
@@ -391,7 +423,9 @@ paths:
 
   /v1/accounts/{address}/token_balance/{contract_address}:
     get:
-      summary: Get token holder balance for specific token
+      summary: Get Token Balance for specific token by Account address
+      description: |
+        You can use this endpoint to receive `Token Balance` for specific token by Account address
       operationId: getTokenHolderBalance
       produces:
         - application/json
@@ -419,7 +453,9 @@ paths:
 
   /v1/accounts/{address}/token_transfers:
     get:
-      summary: Get tokens transfered to or from this address
+      summary: Get a list of `ERC20 Token Transfers` by Account address
+      description: |
+        You can use this endpoint to receive a list of `ERC20 Token Transfers` on specified block hash by Account address
       operationId: getAccountTokenTransfers
       produces:
       - application/json
@@ -447,7 +483,9 @@ paths:
 
   /v1/accounts/{address}/eth_transfers:
     get:
-      summary: Get Eth transfered to or from this address
+      summary: Get a list of `ETH Transfers` by Account address
+      description: |
+        You can use this endpoint to receive a list of `ETH Transfers` on specified block hash by Account address
       operationId: getAccountEthTransfers
       produces:
       - application/json
@@ -475,7 +513,9 @@ paths:
 
   /v1/blocks:
     get:
-      summary: Get blocks list
+      summary: Get a list of `Blocks`
+      description: |
+        You can use this endpoint to receive a list of `Blocks` on specified block hash
       operationId: getBlockList
       produces:
       - application/json
@@ -501,7 +541,9 @@ paths:
 
   /v1/blocks/{tag}:
     get:
-      summary: Get block by hash or number
+      summary: Get block by hash or number or keyword
+      description: |
+        You can use this endpoint to receive `Block` data by block hash or number or keyword
       operationId: getBlock
       produces:
       - application/json
@@ -530,7 +572,9 @@ paths:
 
   /v1/blocks/{tag}/transactions:
     get:
-      summary: Get all transactions in block
+      summary: Get a list of `Normal Transactions` by specific Block
+      description: |
+        You can use this endpoint to receive a list of `Normal Transactions` by block hash or number or keyword
       operationId: getBlockTransactions
       produces:
       - application/json
@@ -558,9 +602,43 @@ paths:
           schema:
             example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
 
+  /v1/blocks/{tag}/internal_transactions:
+    get:
+      summary: Get a list of `Internal Transactions` by specific Block
+      description: |
+        You can use this endpoint to receive a list of `Internal Transactions` by block hash or number or keyword
+      operationId: getBlockInternalTransactions
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/tagRequired'
+      responses:
+        200:
+          description: transactions from specific block
+          schema:
+            type: object
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/InternalTransaction'
+        400:
+          description: bad input parameter
+          schema:
+            example: {"success": false, "errors": [{"field": "tag", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
+        404:
+          description: not found
+          schema:
+            example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
+
   /v1/blocks/{tag}/uncles:
     get:
-      summary: Get all uncle blocks for specific block
+      summary: Get a list of Uncles by specific Block
+      description: |
+        You can use this endpoint to receive a list of `Uncles` by block hash or number or keyword
       operationId: getBlockUncles
       produces:
       - application/json
@@ -586,6 +664,8 @@ paths:
   /v1/transactions/{txhash}:
     get:
       summary: Get Transaction by hash
+      description: |
+        You can use this endpoint to receive `Transaction` data by hash
       operationId: getTransaction
       produces:
       - application/json
@@ -613,7 +693,9 @@ paths:
 
   /v1/transactions/internal/{txhash}:
     get:
-      summary: Get Internal transactions by transaction hash
+      summary: Get a list of `Internal` Transactions by transaction hash
+      description: |
+        You can use this endpoint to receive a list of `Internal Transactions` by transaction hash
       operationId: getInternalTransaction
       produces:
       - application/json
@@ -644,6 +726,8 @@ paths:
   /v1/receipts/{txhash}:
     get:
       summary: Get Receipt by transaction hash
+      description: |
+        You can use this endpoint to receive `Receipt` data by transaction hash
       operationId: getReceipt
       produces:
       - application/json
@@ -671,7 +755,9 @@ paths:
 
   /v1/uncles:
     get:
-      summary: Get uncles list
+      summary: Get a list of Uncles
+      description: |
+        You can use this endpoint to receive a list of `Uncles` on specified block hash
       operationId: getUnclesList
       produces:
       - application/json
@@ -699,7 +785,9 @@ paths:
 
   /v1/uncles/{tag}:
     get:
-      summary: Get uncle by hash or number
+      summary: Get Uncle by hash or number or keyword
+      description: |
+        You can use this endpoint to receive `Uncle` data by block hash or number or keyword
       operationId: getUncle
       produces:
       - application/json
@@ -727,7 +815,9 @@ paths:
 
   /v1/verified_contracts:
     get:
-      summary: Get list of verified contracts
+      summary: Get a list of `Verified Contracts`
+      description: |
+        You can use this endpoint to receive a list of `Verified Contracts`
       operationId: getVerifiedContractsList
       produces:
       - application/json
@@ -754,7 +844,9 @@ paths:
 
   /v1/verified_contracts/{address}:
     get:
-      summary: Get verified contract info.
+      summary: Get Verified Contract info.
+      description: |
+        You can use this endpoint to receive `Verified Contract` info
       operationId: getVerifiedContract
       produces:
       - application/json
@@ -780,6 +872,8 @@ paths:
   /v1/tokens:
     get:
       summary: Get ERC20 tokens list
+      description: |
+        You can use this endpoint to receive a list of `ERC20 tokens`
       operationId: getTokensList
       produces:
       - application/json
@@ -807,6 +901,8 @@ paths:
   /v1/tokens/{address}:
     get:
       summary: Get token info
+      description: |
+        You can use this endpoint to receive `ERC20 Token` info
       operationId: getToken
       produces:
       - application/json
@@ -833,7 +929,9 @@ paths:
 
   /v1/tokens/{address}/transfers:
     get:
-      summary: Get token transfers for specific token
+      summary: Get a list of `Token Transfers` for specific token (contract) address
+      description: |
+        You can use this endpoint to receive a list of `Token Transfers` on specific block hash by token address
       operationId: getTokenTransfers
       produces:
       - application/json
@@ -862,7 +960,9 @@ paths:
 
   /v1/tokens/{address}/holders:
     get:
-      summary: Get token holders list for specific token
+      summary: Get a list of `Token Holders` for specific token
+      description: |
+        You can use this endpoint to receive a list of `Token Holders` on specific block hash by token address
       operationId: getTokenHolders
       produces:
       - application/json
@@ -892,6 +992,8 @@ paths:
   /v1/proxy/gas_price:
     get:
       summary: Returns the current price per gas in wei.
+      description: |
+        You can use this endpoint to get the current gas price.
       responses:
         200:
           description: get gas price
@@ -908,6 +1010,13 @@ paths:
   /v1/proxy/transaction_count:
     post:
       summary: Returns the number of transactions sent from an address.
+      description: |
+        You can use this endpoint to get the number of transactions sent from an address.
+
+        Parameters
+
+        1. DATA, 20 Bytes - address.
+        2. QUANTITY|TAG - integer block number, or the string "latest", "earliest" or "pending"
       parameters:
         - name: body
           in: body
@@ -932,6 +1041,21 @@ paths:
   /v1/proxy/estimate_gas:
     post:
       summary: Generates and returns an estimate of how much gas is necessary to allow the transaction to complete.
+
+      description: |
+        You can use this endpoint to get an estimate of how much gas is necessary to allow the transaction to complete.
+
+        Parameters
+
+        1. Object - The transaction call object
+        from - (optional, DATA, 20 Bytes) The address the transaction is sent from.
+        to - (DATA, 20 Bytes) The address the transaction is directed to.
+        gas - (optional, QUANTITY) Integer of the gas provided for the transaction execution. eth_call consumes zero gas, but this parameter may be needed by some executions.
+        gasPrice - (optional, QUANTITY) Integer of the gasPrice used for each paid gas
+        value - (optional, QUANTITY) Integer of the value sent with this transaction
+        data -DATA - (optional, DATA) Hash of the method signature and encoded parameters. For details see Ethereum Contract ABI
+
+        2. QUANTITY|TAG - integer block number, or the string "latest", "earliest" or "pending", see the default block parameter
       parameters:
         - name: body
           in: body
@@ -942,6 +1066,7 @@ paths:
               $ref: '#/definitions/Call'
       responses:
         200:
+          description: "QUANTITY - the amount of gas used."
           schema:
             properties:
               status:
@@ -954,6 +1079,20 @@ paths:
   /v1/proxy/call_contract:
     post:
       summary: Executes a new message call immediately without creating a transaction on the block chain.
+      description: |
+        You can use this endpoint to execute a new message call immediately without creating a transaction on the block chain.
+
+        Parameters
+
+        1. Object - The transaction call object
+        from - (optional, DATA, 20 Bytes) The address the transaction is sent from.
+        to - (DATA, 20 Bytes) The address the transaction is directed to.
+        gas - (optional, QUANTITY) Integer of the gas provided for the transaction execution. eth_call consumes zero gas, but this parameter may be needed by some executions.
+        gasPrice - (optional, QUANTITY) Integer of the gasPrice used for each paid gas
+        value - (optional, QUANTITY) Integer of the value sent with this transaction
+        data -DATA - (optional, DATA) Hash of the method signature and encoded parameters. For details see Ethereum Contract ABI
+
+        2. QUANTITY|TAG - integer block number, or the string "latest", "earliest" or "pending", see the default block parameter
       parameters:
         - name: body
           in: body
@@ -964,6 +1103,7 @@ paths:
               $ref: '#/definitions/Call'
       responses:
         200:
+          description: "DATA - the return value of executed contract"
           schema:
             properties:
               status:
@@ -976,6 +1116,12 @@ paths:
   /v1/proxy/send_raw_transaction:
     post:
       summary: Creates new message call transaction or a contract creation for signed transactions.
+      description: |
+        You can use this endpoint to reate a new message call transaction or a contract creation for signed transactions.
+
+        Parameters
+
+        1. DATA, The signed transaction data.
       parameters:
         - name: body
           in: body
@@ -988,6 +1134,7 @@ paths:
             example: ["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"]
       responses:
         200:
+          description: "DATA, 32 Bytes - the transaction hash, or the zero hash if the transaction is not yet available."
           schema:
             properties:
               status:
@@ -1000,6 +1147,7 @@ paths:
   /v1/blockchain_tip:
     get:
       summary: Get blockchain tip wich included last block hash and number.
+      description: "Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/952434891/Blockchain+Tip\">link</a> for details."
       responses:
         200:
           schema:
@@ -1029,6 +1177,7 @@ paths:
   /v1/wallet/get_events:
     get:
       summary: Get blockchain events (contract call, erc20 transfer, either transfer, transactions cancelation) for address.
+      description: "Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint\">link</a> for details"
       parameters:
         - $ref: '#/parameters/blockchain_address'
         - $ref: '#/parameters/blockchain_tip'
@@ -1760,11 +1909,11 @@ definitions:
 
   WalletEvent:
     properties:
-      type:
+      eventType:
         type: string
-      event_index:
+      eventIndex:
         type: integer
-      event_data:
+      eventData:
         type: array
         items:
           properties:
