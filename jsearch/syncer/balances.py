@@ -5,6 +5,7 @@ from sqlalchemy.orm import Query
 from typing import List, Dict, Any, Tuple, Set
 
 from jsearch.common import contracts
+from jsearch.common.processing.decimals_cache import decimals_cache
 from jsearch.common.processing.wallet import AssetBalanceUpdates, AssetBalanceUpdate
 from jsearch.syncer.database_queries.accounts import get_last_ether_balances_query
 from jsearch.syncer.database_queries.balance_requests import get_balance_request_query
@@ -154,6 +155,9 @@ async def get_token_balance_updates(
         last_block: int,
         token_holders: Set[TokenHolder],
 ) -> AssetBalanceUpdates:
+    tokens, holders = split_token_and_holders(token_holders)
+    decimals_map = await decimals_cache.get_many(addresses=tokens)
+
     balances: Dict[TokenHolder: BalanceOnBlock] = dict(await get_balances_on_last_request(connection, token_holders))
     balance_changes = await get_balances_changes_after_block(
         connection,
@@ -173,7 +177,7 @@ async def get_token_balance_updates(
             asset_address=holder.token,
             balance=balance,
             block_number=last_block,
-            decimals=None,
+            decimals=decimals_map[holder.token],
             nonce=None,
         )
         updates.append(update)
