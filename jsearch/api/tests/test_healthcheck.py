@@ -13,5 +13,4 @@ async def test_healthcheck_everything_is_ok(mocker: MockFixture, cli: TestClient
         "isMainDbHealthy": True,
         "isNodeHealthy": True,
         "isLoopHealthy": True,
-        "loopTasksCount": 9999
     }

@@ -12,7 +12,7 @@ from jsearch.api.handlers import monitoring, accounts, blocks, explorer, tokens,
 from jsearch.api.middlewares import cors_middleware
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.api.storage import Storage
-from jsearch.common import logs
+from jsearch.common import logs, stats
 
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
 swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
@@ -37,6 +37,8 @@ async def make_app():
 
     # Configure service routes
     app.router.add_route('GET', '/healthcheck', monitoring.healthcheck)
+    app.router.add_route('GET', '/metrics', monitoring.metrics)
+
     app.router.add_route('GET', '/v1/accounts/balances', accounts.get_accounts_balances)
     app.router.add_route('GET', '/v1/accounts/{address}', accounts.get_account)
     app.router.add_route('GET', '/v1/accounts/{address}/transactions', accounts.get_account_transactions)
@@ -87,6 +89,7 @@ async def make_app():
     app.router.add_static('/docs', swagger_ui_path)
     setup_swagger(app, swagger_from_file=swagger_file)
 
+    stats.setup_api_metrics()
     logs.configure(
         log_level=settings.LOG_LEVEL,
         formatter_class=logs.select_formatter_class(settings.NO_JSON_FORMATTER),

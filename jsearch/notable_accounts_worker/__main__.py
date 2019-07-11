@@ -3,7 +3,7 @@
 import click
 
 from jsearch import settings
-from jsearch.common import logs, worker
+from jsearch.common import logs, worker, stats
 from jsearch.notable_accounts_worker import services
 
 
@@ -12,6 +12,7 @@ from jsearch.notable_accounts_worker import services
 @click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
 @click.option('--update-if-exists', is_flag=True, default=settings.NOTABLE_ACCOUNT_UPDATE_IF_EXISTS, help='Update notable account, if already in DB')  # NOQA: 501
 def main(log_level: str, no_json_formatter: bool, update_if_exists: bool) -> None:
+    stats.setup_notable_accounts_worker_metrics()
     logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
 
     worker.Worker(
