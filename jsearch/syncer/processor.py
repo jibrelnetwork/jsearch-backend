@@ -135,7 +135,7 @@ class SyncProcessor:
         block_reward, uncles_rewards = self.process_rewards(reward, block_number)
         uncles_data = self.process_uncles(uncles, uncles_rewards, block_number, block_hash, is_forked)
         transactions_data = self.process_transactions(transactions, block_number, block_hash, is_forked)
-        block_data = self.process_header(header, block_reward, transactions_data, uncles, is_forked)
+        block_data = self.process_header(header, block_reward, transactions, uncles, is_forked)
         receipts_data, logs_data = self.process_receipts(
             receipts=receipts,
             transactions=transactions_data,
@@ -217,8 +217,8 @@ class SyncProcessor:
         data.update(
             is_forked=is_forked,
             is_sequence_sync=True,
-            transactions=list({tx['hash'] for tx in txs}),
-            uncles=list({uncle['hash'] for uncle in uncles}),
+            transactions=[tx['hash'] for tx in txs],
+            uncles=[uncle['hash'] for uncle in uncles],
             logs_bloom=''
         )
         return data
