@@ -16,24 +16,8 @@ SLEEP_ON_NO_BLOCKS_DEFAULT = 1
 REORGS_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL / 2
 PENDING_TX_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL * 2
 
-loop = asyncio.get_event_loop()
-
-SYNC_MODE_FAST = 'fast'
-SYNC_MODE_STRICT = 'strict'
-
-"""
-Dev Note - RawDB filling order:
-
-internal_transactions
-rewards
-bodies
-headers
-accounts
-receipts
-reorgs
-chain_splits
-
-"""
+SYNCER_BALANCE_MODE_LATEST = 'latest'
+SYNCER_BALANCE_MODE_OFFSET = 'offset'
 
 
 class ChainEvent:
@@ -46,7 +30,9 @@ async def process_insert_block(raw_db: RawDB,
                                main_db: MainDB,
                                block_hash: str,
                                block_num: int,
-                               chain_event: Dict) -> None:
+                               chain_event: Dict[str, Any],
+                               last_block: int,
+                               use_offset: bool = False) -> None:
     parent_hash = await raw_db.get_parent_hash(block_hash)
     is_block_number_exists = await main_db.is_block_number_exists(block_num)
 
@@ -64,10 +50,20 @@ async def process_insert_block(raw_db: RawDB,
         )
         await main_db.insert_chain_event(event=chain_event)
     else:
-        await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(block_hash, block_num, is_forked, chain_event)
+        await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(
+            block_hash=block_hash,
+            block_number=block_num,
+            is_forked=is_forked,
+            chain_event=chain_event,
+            last_block=last_block,
+            use_offset=use_offset
+        )
 
 
-async def process_chain_split(main_db: MainDB, split_data: Dict[str, Any]) -> None:
+async def process_chain_split(main_db: MainDB,
+                              split_data: Dict[str, Any],
+                              last_block: int,
+                              use_offset: bool = False) -> None:
     from_block = split_data['block_number']
     to_block = split_data['block_number'] + split_data['add_length']
 
@@ -90,7 +86,9 @@ async def process_chain_split(main_db: MainDB, split_data: Dict[str, Any]) -> No
     await main_db.apply_chain_split(
         new_chain_fragment=new_chain_fragment,
         old_chain_fragment=old_chain_fragment,
-        chain_event=split_data
+        last_block=last_block,
+        chain_event=split_data,
+        use_offset=use_offset
     )
 
 
@@ -98,11 +96,20 @@ class Manager:
     """
     Sync manager
 
-
     TODO: move common async daemon logic (start, stop, wait and etc. ) to generic class
+    Notes:
+        RawDB filling order:
+            - internal_transactions
+            - rewards
+            - bodies
+            - headers
+            - accounts
+            - receipts
+            - reorgs
+            - chain_splits
     """
 
-    def __init__(self, service, main_db, raw_db, sync_range):
+    def __init__(self, service, main_db, raw_db, sync_range, balance_mode: str = SYNCER_BALANCE_MODE_LATEST):
         self.service = service
         self.main_db = main_db
         self.raw_db = raw_db
@@ -110,13 +117,13 @@ class Manager:
         self._running = False
         self.chunk_size = settings.JSEARCH_SYNC_PARALLEL
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
+        self.balance_mode = balance_mode
 
         self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
 
         self.latest_available_block_num = None
         self.latest_synced_block_num = None
         self.blockchain_tip = None
-        self.sync_mode = SYNC_MODE_STRICT
         self.tasks = []
         self.tip = None
         self.node_id = settings.ETH_NODE_ID
@@ -190,14 +197,26 @@ class Manager:
             'block_number': event['block_number'],
             'block_hash': event['block_hash'],
         })
+
+        last_block = await self.raw_db.get_latest_available_block_number()
+        use_offset = self.balance_mode == SYNCER_BALANCE_MODE_OFFSET
+
         if event['type'] == ChainEvent.INSERT:
             block_hash = event['block_hash']
             block_number = event['block_number']
-            await process_insert_block(self.raw_db, self.main_db, block_hash, block_number, event)
+            await process_insert_block(
+                raw_db=self.raw_db,
+                main_db=self.main_db,
+                block_hash=block_hash,
+                block_num=block_number,
+                chain_event=event,
+                last_block=last_block,
+                use_offset=use_offset
+            )
         elif event['type'] == ChainEvent.REINSERT:
             await self.main_db.insert_chain_event(event)
         elif event['type'] == ChainEvent.SPLIT:
-            await process_chain_split(self.main_db, split_data=event)
+            await process_chain_split(self.main_db, split_data=event, last_block=last_block, use_offset=use_offset)
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],
@@ -208,6 +227,8 @@ class Manager:
             'event_type': event['type'],
             'block_number': event['block_number'],
             'block_hash': event['block_hash'],
+            'last_block': last_block,
+            'offset': use_offset and settings.ETH_BALANCE_BLOCK_OFFSET,
             'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
 

@@ -4,10 +4,10 @@ from pytest_mock import MockFixture
 from typing import List
 
 import jsearch.common.worker
+import jsearch.monitor_balance.__main__
 import jsearch.multiprocessing
 import jsearch.pending_syncer.main
 import jsearch.syncer.main
-import jsearch.validation.__main__
 
 CODE_OK = 0
 CODE_ERROR = 1
@@ -24,7 +24,7 @@ def _mock_executor(mocker: MockFixture):
 @pytest.fixture()
 def _mock_loop_runners(mocker: MockFixture):
     mocker.patch.object(jsearch.common.worker.Worker, 'execute_from_commandline')
-    mocker.patch.object(jsearch.validation.__main__, 'run')
+    mocker.patch.object(jsearch.monitor_balance.__main__, 'main')
 
 
 @pytest.mark.usefixtures('_mock_loop_runners')
@@ -34,10 +34,17 @@ def _mock_loop_runners(mocker: MockFixture):
         ([], CODE_OK),
         (['invalid', 'set', 'of', 'args'], CODE_ERROR_FROM_CLICK),
         (['--log-level', 'ERROR', '--no-json-formatter', '--sync-range', '26000-27000'], CODE_OK),
+        (['--log-level', 'ERROR', '--no-json-formatter', '--balance-mode', 'latest'], CODE_OK),
+        (['--log-level', 'ERROR', '--no-json-formatter', '--balance-mode', 'offset'], CODE_OK),
+        (['--log-level', 'ERROR', '--no-json-formatter', '--sync-range',
+          '26000-27000', '--balance-mode', 'offset'], CODE_OK),
     ],
     ids=[
         "no args",
         "invalid args",
+        "sync range",
+        "balance mode latest",
+        "balance mode offset",
         "all args",
     ]
 )
@@ -77,27 +84,22 @@ async def test_pending_syncer_entrypoint(
 @pytest.mark.parametrize(
     'call_args, exit_code',
     [
-        ([], CODE_ERROR_FROM_CLICK),
-        (['invalid', 'set', 'of', 'args'], CODE_ERROR_FROM_CLICK),
-        (['0x111'], CODE_OK),
-        (['0x111', '--check-balances', '--show-holders', '--rewrite', '--log-level', 'ERROR', '--no-json-formatter'],
-         CODE_OK),  # NOQA
+        ([], CODE_OK),
+        (['--offset', '20', '--block', '20000'], CODE_OK),
     ],
     ids=[
         "no args",
-        "invalid args",
-        "required args",
         "all args",
     ]
 )
-async def test_validation_entrypoint(
+async def test_monitor_balance_entrypoint(
         mocker: MockFixture,
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
 ) -> None:
-    mocker.patch.object(jsearch.validation.__main__, 'run')
+    mocker.patch.object(jsearch.monitor_balance.__main__, 'main')
 
-    result = cli_runner.invoke(jsearch.validation.__main__.main, call_args)
+    result = cli_runner.invoke(jsearch.monitor_balance.__main__.main, call_args)
 
     assert result.exit_code == exit_code

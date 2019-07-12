@@ -1,6 +1,7 @@
 import logging
 
 import mode
+from typing import Any, Optional, Tuple
 
 from jsearch import settings
 from jsearch.syncer.database import MainDB, RawDB
@@ -10,10 +11,15 @@ logger = logging.getLogger(__name__)
 
 
 class SyncerService(mode.Service):
-    def __init__(self, sync_range, *args, **kwargs):
+    def __init__(self,
+                 sync_range: Tuple[int, int],
+                 balance_mode: Optional[str] = None,
+                 *args: Any,
+                 **kwargs: Any) -> None:
         self.raw_db = RawDB(settings.JSEARCH_RAW_DB)
         self.main_db = MainDB(settings.JSEARCH_MAIN_DB)
-        self.manager = Manager(self, self.main_db, self.raw_db, sync_range=sync_range)
+
+        self.manager = Manager(self, self.main_db, self.raw_db, sync_range=sync_range, balance_mode=balance_mode)
 
         super(SyncerService, self).__init__(*args, **kwargs)
 

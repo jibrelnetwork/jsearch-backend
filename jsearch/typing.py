@@ -1,4 +1,4 @@
-from typing import Any, Dict, NewType, List, Callable, Awaitable, Coroutine
+from typing import Any, Dict, NewType, Callable, Awaitable, Coroutine, List, TypeVar
 
 Abi = List[Dict[str, Any]]
 Abi_ERC20 = NewType('Abi_ERC20', Abi)
@@ -35,3 +35,9 @@ AssetTransfer = Dict[str, Any]
 
 AnyCoroutine = Coroutine[Any, Any, Any]
 AnyCoroutineMaker = Callable[..., AnyCoroutine]
+
+TokenAddress = TypeVar('TokenAddress', bound=str)
+TokenAddresses = List[TokenAddress]
+
+AccountAddress = TypeVar('AccountAddress', bound=str)
+AccountAddresses = List[AccountAddress]

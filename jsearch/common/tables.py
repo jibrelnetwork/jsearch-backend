@@ -257,6 +257,7 @@ token_holders_t = sa.Table(
     sa.Column('token_address', sa.String, primary_key=True),
     sa.Column('balance', postgresql.NUMERIC(32, 0), index=True),
     sa.Column('decimals', sa.Integer, index=True),
+    sa.Column('block_number', sa.Integer),
 )
 
 reorgs_t = sa.Table(
@@ -366,6 +367,15 @@ chain_events_t = sa.Table(
     sa.Column('created_at', sa.TIMESTAMP),
 )
 
+erc20_balance_requests_t = sa.Table(
+    'erc20_balance_requests',
+    metadata,
+    sa.Column('token_address', sa.String),
+    sa.Column('account_address', sa.String),
+    sa.Column('block_number', sa.Integer),
+    sa.Column('balance', postgresql.NUMERIC()),
+)
+
 TABLES = (
     blocks_t,
     uncles_t,
@@ -385,4 +395,5 @@ TABLES = (
     assets_summary_t,
     wallet_events_t,
     chain_events_t,
+    erc20_balance_requests_t
 )

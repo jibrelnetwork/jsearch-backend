@@ -1,7 +1,5 @@
-from typing import Dict, Set, Tuple, NamedTuple, List, Optional
+from typing import NamedTuple, List, Optional
 
-from jsearch import settings
-from jsearch.common.processing.erc20_balances import get_balances
 from jsearch.common.wallet_events import (
     event_from_internal_tx,
     event_from_token_transfer,
@@ -10,18 +8,18 @@ from jsearch.common.wallet_events import (
 )
 from jsearch.syncer.database_queries.assets_summary import upsert_assets_summary_query
 from jsearch.syncer.database_queries.token_holders import upsert_token_holder_balance_q
-from jsearch.typing import Accounts, AssetUpdates
+from jsearch.typing import Accounts, AssetUpdates, AccountAddress, TokenAddress
 
 ETHER_ASSET_ADDRESS = ''
 
 
 class AssetBalanceUpdate(NamedTuple):
-    account_address: str
-    asset_address: str
-    decimals: int
+    account_address: AccountAddress
+    asset_address: TokenAddress
+    decimals: Optional[int]
     balance: int
 
-    block_number: Optional[int]
+    block_number: int
     nonce: Optional[str]
 
     def as_token_holder_update(self):
@@ -29,10 +27,11 @@ class AssetBalanceUpdate(NamedTuple):
             'token_address': self.asset_address,
             'account_address': self.account_address,
             'balance': self.balance,
-            'decimals': self.decimals
+            'decimals': self.decimals,
+            'block_number': self.block_number
         }
 
-    def to_upsert_assets_summary_query(self):
+    def to_upsert_assets_summary_query(self, blocks_to_replace: Optional[List[str]] = None):
         return upsert_assets_summary_query(
             address=self.account_address,
             asset_address=self.asset_address,
@@ -40,6 +39,7 @@ class AssetBalanceUpdate(NamedTuple):
             decimals=self.decimals,
             block_number=self.block_number,
             nonce=self.nonce,
+            blocks_to_replace=blocks_to_replace
         )
 
     def to_upsert_token_holder_query(self):
@@ -83,22 +83,6 @@ def events_from_internal_transactions(internal_transactions, transactions):
         events.append(event_from_internal_tx(it['from'], it, tx_map[it['parent_tx_hash']]))
         events.append(event_from_internal_tx(it['to'], it, tx_map[it['parent_tx_hash']]))
     return events
-
-
-async def get_balance_updates(holders: Set[Tuple[str, str]], decimals_map: Dict[str, int]) -> AssetBalanceUpdates:
-    balances = await get_balances(list(holders), batch_size=settings.ETH_NODE_BATCH_REQUEST_SIZE)
-    updates = []
-    for owner, token, balance in balances:
-        update = AssetBalanceUpdate(
-            account_address=owner,
-            asset_address=token,
-            balance=balance,
-            nonce=None,
-            block_number=None,
-            decimals=decimals_map[token],
-        )
-        updates.append(update)
-    return updates
 
 
 def assets_from_accounts(accounts: Accounts) -> AssetUpdates:

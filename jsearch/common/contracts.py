@@ -1,7 +1,7 @@
 import binascii
 import logging
-import re
 
+import re
 from ethereum.abi import (
     decode_abi,
     normalize_name as normalize_abi_method_name,
@@ -10,11 +10,11 @@ from ethereum.abi import (
 )
 from ethereum.utils import encode_int, zpad, decode_hex
 
-from jsearch.typing import Abi_ERC20
+from jsearch.typing import Abi_ERC20, AccountAddress
 
 logger = logging.getLogger(__name__)
 
-NULL_ADDRESS = '0x0000000000000000000000000000000000000000'
+NULL_ADDRESS: AccountAddress = '0x0000000000000000000000000000000000000000'
 
 ERC20_METHODS_IDS = {
     'approve': '0x095ea7b3',
