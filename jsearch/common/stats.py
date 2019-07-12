@@ -3,6 +3,7 @@ import logging
 
 import aiokafka
 import asyncpg
+import prometheus_client
 
 from jsearch import settings
 from jsearch.common import utils
@@ -60,5 +61,25 @@ async def get_loop_stats() -> LoopStats:
 
     return LoopStats(
         is_healthy=tasks_count < settings.HEALTH_LOOP_TASKS_COUNT_THRESHOLD,
-        tasks_count=tasks_count,
     )
+
+
+def setup_api_metrics() -> None:
+    _setup_loop_tasks_total_metric(settings.METRIC_API_LOOP_TASKS_TOTAL)
+
+
+def setup_notable_accounts_worker_metrics() -> None:
+    _setup_loop_tasks_total_metric(settings.METRIC_NOTABLE_ACCOUNTS_WORKER_LOOP_TASKS_TOTAL)
+
+
+def setup_syncer_metrics() -> None:
+    _setup_loop_tasks_total_metric(settings.METRIC_SYNCER_LOOP_TASKS_TOTAL)
+
+
+def setup_pending_syncer_metrics() -> None:
+    _setup_loop_tasks_total_metric(settings.METRIC_SYNCER_PENDING_LOOP_TASKS_TOTAL)
+
+
+def _setup_loop_tasks_total_metric(name: str) -> None:
+    loop_tasks_total = prometheus_client.Gauge(name, 'Total amount of tasks in the event loop.')
+    loop_tasks_total.set_function(lambda: utils.get_loop_tasks_count())

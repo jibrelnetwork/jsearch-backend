@@ -1,7 +1,7 @@
 import click
 
 from jsearch import settings
-from jsearch.common import logs
+from jsearch.common import logs, stats
 from jsearch.common import worker
 from jsearch.syncer import services
 from jsearch.syncer.manager import SYNCER_BALANCE_MODE_LATEST, SYNCER_BALANCE_MODE_OFFSET
@@ -18,6 +18,7 @@ from jsearch.utils import parse_range
     default=SYNCER_BALANCE_MODE_LATEST
 )
 def run(log_level, no_json_formatter, sync_range, balance_mode):
+    stats.setup_syncer_metrics()
     logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
 
     syncer = services.SyncerService(

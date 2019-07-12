@@ -27,6 +27,7 @@ pytest_plugins = (
     "jsearch.tests.plugins.geth.node",
     "jsearch.tests.plugins.geth.web3",
     "jsearch.tests.plugins.geth_scenarios.transfer_on_fuck_token_contract",
+    "jsearch.tests.plugins.metrics",
     "jsearch.tests.plugins.notable_accounts_worker",
     "jsearch.tests.plugins.service_bus",
     "jsearch.tests.plugins.settings",
