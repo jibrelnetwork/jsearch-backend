@@ -141,10 +141,10 @@ class Storage:
 
         if tag.is_hash():
             query = f"SELECT {fields} FROM transactions WHERE block_hash=$1 AND is_forked=false " \
-                    f"ORDER BY transaction_index;"
+                f"ORDER BY transaction_index;"
         elif tag.is_number():
             query = f"SELECT {fields} FROM transactions WHERE block_number=$1 AND is_forked=false " \
-                    f"ORDER BY transaction_index;"
+                f"ORDER BY transaction_index;"
         else:
             query = f"""
                 SELECT {fields} FROM transactions
@@ -240,11 +240,17 @@ class Storage:
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
             for row in rows:
-                uncles = json.loads(row.get('uncles') or [])
-                transactions = json.loads(row.get('transactions') or [])
+                uncles = row.get('uncles')
+                if uncles:
+                    uncles = json.loads(uncles)
+
+                txs = row.get('transactions')
+                if txs:
+                    txs = json.loads(txs)
+
                 row.update({
                     'uncles': uncles,
-                    'transactions': transactions,
+                    'transactions': txs,
                     'static_reward': int(row['static_reward']),
                     'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
                     'tx_fees': int(row['tx_fees']),
