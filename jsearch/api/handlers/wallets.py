@@ -3,10 +3,10 @@ import logging
 
 from aiohttp import web
 from functools import partial
-from typing import Tuple, Optional, Union, Dict
+from typing import Tuple, Optional
 
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.helpers import ApiError, ORDER_ASC
+from jsearch.api.helpers import ApiError, ORDER_ASC, get_positive_number
 from jsearch.api.helpers import (
     validate_params,
     api_success,
@@ -64,42 +64,6 @@ async def get_tip_block(storage, block_hash: str) -> BlockInfo:
             status=404
         )
     return block_info
-
-
-def get_positive_number(request: web.Request,
-                        attr: str,
-                        tags=Optional[Dict[str, int]],
-                        is_required=False) -> Optional[Union[int, str]]:
-    value = request.query.get(attr, "").lower()
-
-    if value.isdigit():
-        number = int(value)
-        if number >= 0:
-            return number
-
-    elif value and tags and value in tags:
-        return tags[value]
-
-    elif value and tags and value not in tags:
-        msg_allowed_tags = tags and f" or tag ({', '.join(tags.keys())})" or ""
-        raise ApiError(
-            {
-                'field': attr,
-                'error_code': ErrorCode.VALIDATION_ERROR,
-                'error_message': f'Parameter `{attr}` must be either positive integer{msg_allowed_tags}.'
-            },
-            status=400
-        )
-
-    if is_required:
-        raise ApiError(
-            {
-                'field': attr,
-                'error_code': ErrorCode.VALIDATION_ERROR,
-                'error_message': f'Query param `{attr}` is required'
-            },
-            status=400
-        )
 
 
 def get_block_range(request: web.Request,

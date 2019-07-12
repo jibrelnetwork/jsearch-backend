@@ -19,6 +19,7 @@ from jsearch.api.database_queries.blocks import (
     get_block_number_by_hash_query
 )
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
+from jsearch.api.database_queries.logs import get_logs_by_address_query
 from jsearch.api.database_queries.pending_transactions import get_pending_txs_by_account
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_token,
@@ -340,13 +341,27 @@ class Storage:
             row['logs'] = await self.get_logs(row['transaction_hash'])
             return models.Receipt(**row)
 
-    async def get_logs(self, tx_hash):
+    async def get_logs(self, tx_hash: str) -> List[models.Log]:
         fields = models.Log.select_fields()
         query = f"SELECT {fields} FROM logs WHERE transaction_hash=$1 ORDER BY log_index"
 
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, tx_hash)
             return [models.Log(**r) for r in rows]
+
+    async def get_account_logs(self,
+                               address: str,
+                               block_from: int,
+                               block_until: int,
+                               order: str,
+                               limit: int,
+                               offset: int) -> List[models.Log]:
+        query = get_logs_by_address_query(address, order, limit, offset, block_from, block_until)
+
+        async with self.pool.acquire() as conn:
+            rows = await fetch(conn, query)
+
+        return [models.Log(**r) for r in rows]
 
     async def get_accounts_balances(self, addresses):
         query = """SELECT a.address, a.balance FROM accounts_state a
