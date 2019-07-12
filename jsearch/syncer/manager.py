@@ -53,7 +53,18 @@ async def process_insert_block(raw_db: RawDB,
     is_canonical_parent = await raw_db.is_canonical_block(parent_hash)
     is_forked = is_block_number_exists or (not is_canonical_parent)
 
-    await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(block_hash, block_num, is_forked, chain_event)
+    is_block_exist = await main_db.is_block_exist(block_hash)
+    if is_block_exist:
+        logger.debug(
+            "Block already exists, skip and save event...",
+            extra={
+                'hash': block_hash,
+                'event_id': chain_event['id']
+            }
+        )
+        await main_db.insert_chain_event(event=chain_event)
+    else:
+        await SyncProcessor(raw_db=raw_db, main_db=main_db).sync_block(block_hash, block_num, is_forked, chain_event)
 
 
 async def process_chain_split(main_db: MainDB, split_data: Dict[str, Any]) -> None:
