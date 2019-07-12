@@ -63,7 +63,7 @@ class SyncProcessor:
     async def sync_block(self,
                          block_hash: str,
                          last_block: int,
-                         block_number: int = None,
+                         block_number: Optional[int] = None,
                          is_forked: bool = False,
                          chain_event: Optional[Dict[str, Any]] = None,
                          use_offset: bool = False) -> bool:
@@ -84,10 +84,6 @@ class SyncProcessor:
         await self.raw_db.connect()
 
         start_time = time.monotonic()
-        is_block_exist = await self.main_db.is_block_exist(block_hash)
-        if is_block_exist is True:
-            logger.debug("Block already exists", extra={'hash': block_hash})
-            return False
 
         receipts = await self.raw_db.get_block_receipts(block_hash)
         if receipts is None:
