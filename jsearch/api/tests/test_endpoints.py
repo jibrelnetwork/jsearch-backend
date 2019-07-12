@@ -19,8 +19,9 @@ from jsearch.tests.entities import (
     BlockFromDumpWrapper,
 )
 
-
 logger = logging.getLogger(__name__)
+
+pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
 
 
 async def assert_not_404_response(response: ClientResponse) -> None:

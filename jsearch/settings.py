@@ -56,3 +56,9 @@ SYNCER_API_PORT = int(os.getenv('SYNCER_API_PORT', 8080))
 WALLET_WORKER_API_PORT = int(os.getenv('WALLET_WORKER_API_PORT', 8080))
 WORKER_API_PORT = int(os.getenv('WORKER_API_PORT', 8080))
 NOTABLES_WORKER_API_PORT = int(os.getenv('NOTABLES_WORKER_API_PORT', 8080))
+
+
+METRIC_API_LOOP_TASKS_TOTAL = 'jsearch_api_loop_tasks_total'
+METRIC_NOTABLE_ACCOUNTS_WORKER_LOOP_TASKS_TOTAL = 'jsearch_notable_accounts_worker_loop_tasks_total'
+METRIC_SYNCER_LOOP_TASKS_TOTAL = 'jsearch_syncer_loop_tasks_total'
+METRIC_SYNCER_PENDING_LOOP_TASKS_TOTAL = 'jsearch_syncer_pending_loop_tasks_total'

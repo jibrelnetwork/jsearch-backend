@@ -3,6 +3,8 @@ from typing import Any
 
 import asyncpg
 from aiohttp import web
+
+from jsearch.api.handlers import monitoring
 from jsearch.api.middlewares import cors_middleware
 
 from jsearch import settings
@@ -21,6 +23,7 @@ class ApiService(services.ApiService):
 def make_app(loop: AbstractEventLoop) -> web.Application:
     application = web.Application(middlewares=[cors_middleware], loop=loop)
     application.router.add_route('GET', '/healthcheck', healthcheck)
+    application.router.add_route('GET', '/metrics', monitoring.metrics)
 
     application.on_startup.append(on_startup)
     application.on_shutdown.append(on_shutdown)
@@ -47,7 +50,6 @@ async def healthcheck(request: web.Request) -> web.Response:
         'isRawDbHealthy': raw_db_stats.is_healthy,
         'isMainDbHealthy': main_db_stats.is_healthy,
         'isLoopHealthy': loop_stats.is_healthy,
-        'loopTasksCount': loop_stats.tasks_count,
     }
 
     return web.json_response(data=data, status=status)
