@@ -11,7 +11,6 @@ class RawDbStats(NamedTuple):
 
 class LoopStats(NamedTuple):
     is_healthy: bool
-    tasks_count: int
 
 
 class KafkaStats(NamedTuple):

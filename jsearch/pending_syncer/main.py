@@ -1,7 +1,7 @@
 import click
 
 from jsearch import settings
-from jsearch.common import logs, worker
+from jsearch.common import logs, worker, stats
 from jsearch.common.structs import SyncRange
 from jsearch.pending_syncer import services
 from jsearch.utils import parse_range
@@ -12,6 +12,7 @@ from jsearch.utils import parse_range
 @click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
 @click.option('--sync-range', default=None, help="Log level")
 def run(log_level, no_json_formatter, sync_range):
+    stats.setup_pending_syncer_metrics()
     logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
 
     # TODO (Nick Gashkov): Move `SyncRange` to the `parse_range` function. I
