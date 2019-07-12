@@ -684,7 +684,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "limit", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/verified_contracts/{address}:
+  /v1/verified_contracts/{contract_address}:
     get:
       summary: Get verified contract info.
       operationId: getVerifiedContract
@@ -736,7 +736,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "limit", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/tokens/{address}:
+  /v1/tokens/{contract_address}:
     get:
       summary: Get token info
       operationId: getToken
@@ -763,7 +763,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
 
-  /v1/tokens/{address}/transfers:
+  /v1/tokens/{contract_address}/transfers:
     get:
       summary: Get token transfers for specific token
       operationId: getTokenTransfers
@@ -791,7 +791,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "offset", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/tokens/{address}/holders:
+  /v1/tokens/{contract_address}/holders:
     get:
       summary: Get token holders list for specific token
       operationId: getTokenHolders
