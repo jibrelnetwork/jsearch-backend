@@ -7,6 +7,8 @@ from aiohttp.test_utils import make_mocked_request
 from jsearch.api import helpers
 from jsearch.api.error_code import ErrorCode
 
+pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
+
 
 def test_validate_request_ok():
     req = make_mocked_request('GET', '/')

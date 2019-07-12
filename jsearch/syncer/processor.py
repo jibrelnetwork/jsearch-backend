@@ -3,7 +3,7 @@ from copy import copy
 
 import re
 import time
-from typing import NamedTuple, Dict, Any, List, Tuple
+from typing import NamedTuple, Dict, Any, List, Tuple, Optional
 
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
@@ -56,8 +56,11 @@ class SyncProcessor:
         self.raw_db = raw_db
         self.main_db = main_db
 
-    async def sync_block(self, block_hash: str, block_number: int = None,
-                         is_forked: bool = False, chain_event: Dict = None) -> bool:
+    async def sync_block(self,
+                         block_hash: str,
+                         block_number: Optional[int] = None,
+                         is_forked: bool = False,
+                         chain_event: Optional[Dict[str, Any]] = None) -> bool:
         """
         Args:
             block_hash: number of block to sync
@@ -72,10 +75,6 @@ class SyncProcessor:
         await self.raw_db.connect()
 
         start_time = time.monotonic()
-        is_block_exist = await self.main_db.is_block_exist(block_hash)
-        if is_block_exist is True:
-            logger.debug("Block already exists", extra={'hash': block_hash})
-            return False
 
         receipts = await self.raw_db.get_block_receipts(block_hash)
         if receipts is None:
