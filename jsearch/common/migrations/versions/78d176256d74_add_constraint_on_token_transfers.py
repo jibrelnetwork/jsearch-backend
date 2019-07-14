@@ -17,6 +17,7 @@ UP_SQL = """
 ALTER TABLE ONLY token_transfers ADD CONSTRAINT token_transfers_unique 
     UNIQUE (transaction_hash, log_index, address);
 """
+
 DOWN_SQL = "ALTER TABLE ONLY token_transfers DROP CONSTRAINT token_transfers_unique;"
 
 

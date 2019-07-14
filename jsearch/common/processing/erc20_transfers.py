@@ -42,7 +42,7 @@ def logs_to_transfers(logs: Logs, block: Block, decimals: Dict[str, int]) -> Tra
     for log in logs:
         if log and log.get('is_token_transfer'):
             contract = {
-                'decimals': decimals[log['address']],
+                'decimals': decimals.get(log['address']),
                 'token_name': None,
                 'token_symbol': None
             }

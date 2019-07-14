@@ -1,17 +1,19 @@
 import pytest
 from typing import List, Tuple, Optional
 
+from jsearch.syncer.structs import TokenHolder
 
-@pytest.fixture(autouse=True)
+
+@pytest.fixture()
 async def mock_node_calls(mocker):
     async def get_balances(
-            owners: List[Tuple[str, str]],
+            token_holders: List[TokenHolder],
             batch_size: int,
             block: Optional[int] = None
-    ) -> List[Tuple[str, str, int]]:
+    ) -> List[Tuple[TokenHolder, int]]:
         results = []
-        for owner, token in owners:
-            results.append((owner, token, 1))
+        for holder in token_holders:
+            results.append((holder, 1))
         return results
 
     async def get_decimals(addresses, batch_size):

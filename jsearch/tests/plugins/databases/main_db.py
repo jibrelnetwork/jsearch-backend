@@ -97,7 +97,6 @@ def do_truncate_db(db):
 
 @pytest.fixture(scope='function', autouse=True)
 def truncate_db(do_truncate_db):
-    do_truncate_db()
     yield
     do_truncate_db()
 
