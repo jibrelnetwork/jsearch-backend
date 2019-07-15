@@ -1,15 +1,18 @@
+from collections import defaultdict
+
 from aiopg.sa import SAConnection
 from sqlalchemy.orm import Query
 from typing import List, Dict, Any, Tuple, Set
 
 from jsearch.common import contracts
+from jsearch.common.processing.decimals_cache import decimals_cache
 from jsearch.common.processing.wallet import AssetBalanceUpdates, AssetBalanceUpdate
 from jsearch.syncer.database_queries.accounts import (
-    get_accounts_state_for_blocks_query,
     get_last_ether_balances_query
 )
 from jsearch.syncer.database_queries.balance_requests import get_balance_request_query
-from jsearch.syncer.database_queries.token_transfers import get_token_address_and_accounts_for_blocks_q
+from jsearch.syncer.database_queries.token_transfers import get_token_address_and_accounts_for_blocks_q, \
+    get_incomes_after_block_query, get_outcomes_after_block_query
 from jsearch.syncer.structs import TokenHolder, BalanceOnBlock
 from jsearch.typing import TokenAddresses, AccountAddresses, AccountAddress, TokenAddress
 
@@ -22,27 +25,43 @@ async def get_last_ether_states_for_addresses_in_blocks(
     Args:
         connection: connection to db
         blocks_hashes: list of blocks hashes
-
     Returns:
         last states for addresses affected by blocks
     """
-    query = get_accounts_state_for_blocks_query(blocks_hashes)
+    query = get_last_ether_balances_query(blocks_hashes)
     async with connection.execute(query) as cursor:
-        result = await cursor.fetchall()
+        results = await cursor.fetchall()
 
-    addresses = [item.address for item in result]
+    return results
 
-    states = []
-    for address in addresses:
-        query = get_last_ether_balances_query(address)
 
-        async with connection.execute(query) as cursor:
-            result = await cursor.fetchone()
+async def get_changes_map(connection: SAConnection, query: Query) -> Dict[TokenHolder, int]:
+    async with connection.execute(query) as cursor:
+        changes = await cursor.fetchall()
 
-        if result:
-            states.append(dict(result))
+    return {TokenHolder(item.token_address, item.address): item.change for item in changes if item.address}
 
-    return states
+
+async def get_balances_changes_after_block(
+        connection: SAConnection,
+        addresses: List[str],
+        block: int
+) -> Dict[TokenHolder, int]:
+    incomes_query = get_incomes_after_block_query(addresses, block=block)
+    outcomes_query = get_outcomes_after_block_query(addresses, block=block)
+
+    incomes = await get_changes_map(connection, query=incomes_query)
+    outcomes = await get_changes_map(connection, query=outcomes_query)
+
+    changes = defaultdict(lambda: 0)
+
+    for holder, value in incomes.items():
+        changes[holder] += value
+
+    for holder, value in outcomes.items():
+        changes[holder] -= value
+
+    return changes
 
 
 async def get_changes_after_block_query(connection: SAConnection, query: Query) -> int:
@@ -147,6 +166,29 @@ async def filter_negative_balances(updates: AssetBalanceUpdates) -> AssetBalance
             })
         safe_token_holder_updates.append(update)
     return safe_token_holder_updates
+
+
+async def get_token_balance_updates(
+        connection: SAConnection,
+        last_block: int,
+        token_holders: Set[TokenHolder],
+) -> AssetBalanceUpdates:
+    tokens, holders = split_token_and_holders(token_holders)
+    decimals_map = await decimals_cache.get_many(addresses=tokens)
+
+    balances = await get_balances_on_last_request(connection, token_holders)
+
+    last_balance_block = 0
+    if balances:
+        last_balance_block = max([balance.block for balance in balances.values()])
+
+    balance_changes = await get_balances_changes_after_block(
+        connection,
+        addresses=holders,
+        block=last_balance_block
+    )
+
+    return await get_assets_updates(token_holders, decimals_map, balances, balance_changes, last_block)
 
 
 async def get_assets_updates(

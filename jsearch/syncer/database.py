@@ -38,11 +38,12 @@ from jsearch.syncer.database_queries.pending_transactions import insert_or_updat
 from jsearch.syncer.utils.balances import (
     get_last_ether_states_for_addresses_in_blocks,
     get_token_holders,
-    filter_negative_balances
+    filter_negative_balances,
+    get_token_balance_updates
 )
-from jsearch.syncer.utils.chain_split import get_token_balance_updates
 from jsearch.typing import Blocks, Block
 
+TIMEOUT = 60 * 2
 MAIN_DB_POOL_SIZE = 2
 GENESIS_BLOCK_NUMBER = 0
 
@@ -502,7 +503,12 @@ class MainDB(DBWrapper):
             return False
 
     async def connect(self):
-        self.engine = await async_create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
+        self.engine = await async_create_engine(
+            self.connection_string,
+            minsize=1,
+            maxsize=MAIN_DB_POOL_SIZE,
+            timeout=TIMEOUT
+        )
 
     async def disconnect(self):
         self.engine.close()

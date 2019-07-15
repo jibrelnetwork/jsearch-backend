@@ -9,13 +9,13 @@ from jsearch.common import contracts
 from jsearch.common.processing import wallet
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
+from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.utils.balances import (
     get_token_holders_from_transfers,
     token_balance_changes_from_transfers,
-    filter_negative_balances
+    filter_negative_balances,
+    get_token_balance_updates
 )
-from jsearch.syncer.database import RawDB, MainDB
-from jsearch.syncer.utils.block import get_token_balance_updates
 from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
@@ -163,11 +163,13 @@ class SyncProcessor:
         token_holders = get_token_holders_from_transfers(transfers)
 
         start_time = time.monotonic()
-        token_holders_updates = await get_token_balance_updates(
-            engine=self.main_db.engine,
-            token_holders=token_holders,
-            last_block=last_block,
-        )
+        async with self.main_db.engine.acquire() as connection:
+            token_holders_updates = await get_token_balance_updates(
+                connection=connection,
+                token_holders=token_holders,
+                last_block=last_block,
+            )
+
         logger.debug("Get balances", extra={
             'hash': block_hash,
             'number': block_number,
