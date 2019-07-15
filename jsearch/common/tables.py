@@ -168,7 +168,6 @@ receipts_t = sa.Table(
 logs_t = sa.Table(
     'logs',
     metadata,
-    sa.Column('transaction_hash', sa.String, primary_key=True),
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, index=True, primary_key=True),
     sa.Column('log_index', HexInteger, primary_key=True),
@@ -176,7 +175,9 @@ logs_t = sa.Table(
     sa.Column('data', sa.String),
     sa.Column('removed', sa.Boolean),
     sa.Column('topics', postgresql.ARRAY(sa.String)),
+    sa.Column('transaction_hash', sa.String, primary_key=True),
     sa.Column('transaction_index', HexInteger),
+
     sa.Column('event_type', sa.String),
     sa.Column('event_args', postgresql.JSONB),
 

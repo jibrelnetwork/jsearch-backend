@@ -1347,6 +1347,19 @@ async def test_get_account_transactions_ordering(cli, db, direction, expected_or
     assert resp_order_indicators == expected_order
 
 
+async def test_get_account_logs(cli, db, main_db_data):
+    from jsearch.api import models
+
+    address = "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a"
+    logs = [models.Log(**item).to_dict() for item in main_db_data['logs'] if item['address'] == address]
+
+    resp = await cli.get(f'/v1/accounts/{address}/logs?order=asc')
+    resp_json = await resp.json()
+
+    assert resp_json['data'] == logs
+    assert resp_json == {'data': logs, 'status': {'errors': [], 'success': True}}
+
+
 async def test_get_account_internal_transactions(cli, transaction_factory, internal_transaction_factory):
     transaction_factory.create(
         hash='0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
@@ -1878,9 +1891,9 @@ async def test_get_wallet_events_tip(cli,
 
     def get_url(tip):
         return f'v1/wallet/get_events?' \
-               f'blockchain_address={event.address}&' \
-               f'blockchain_tip={tip}&' \
-               f'block_range_start={0}'
+            f'blockchain_address={event.address}&' \
+            f'blockchain_tip={tip}&' \
+            f'block_range_start={0}'
 
     response = await cli.get(get_url(tip='aa'))
     response_json = await response.json()
@@ -2045,9 +2058,9 @@ async def test_get_wallet_events_tip_does_not_exist(cli,
     unsaved_block = block_factory.build()
 
     url = f'v1/wallet/get_events?' \
-          f'blockchain_address={event.address}&' \
-          f'blockchain_tip={unsaved_block.hash}&' \
-          f'block_range_start={block.number}'
+        f'blockchain_address={event.address}&' \
+        f'blockchain_tip={unsaved_block.hash}&' \
+        f'block_range_start={block.number}'
 
     # when
     response = await cli.get(url)
@@ -2085,8 +2098,8 @@ async def test_get_wallet_events_query_param_started_from_is_required(cli,
     event = wallet_events_factory.create_token_transfer(tx, block=block)
 
     url = f'v1/wallet/get_events?' \
-          f'blockchain_address={event.address}&' \
-          f'blockchain_tip={reorg.block_hash}'
+        f'blockchain_address={event.address}&' \
+        f'blockchain_tip={reorg.block_hash}'
 
     # when
     response = await cli.get(url)
@@ -2159,8 +2172,8 @@ async def test_get_wallet_events_query_param_address_is_required(cli,
     reorg = reorg_factory.create(block_hash=block.hash, block_number=block.number, split_id=chain_splits.id)
 
     url = f'v1/wallet/get_events?' \
-          f'blockchain_tip={reorg.block_hash}' \
-          f'block_range_start={block.number}'
+        f'blockchain_tip={reorg.block_hash}' \
+        f'block_range_start={block.number}'
 
     # when
     response = await cli.get(url)
@@ -2192,8 +2205,8 @@ async def test_get_wallet_events_query_param_tip_is_required(cli,
     tx, _ = transaction_factory.create_for_block(block=block)
     event = wallet_events_factory.create_token_transfer(tx=tx, block=block)
     url = f'v1/wallet/get_events?' \
-          f'blockchain_address={event.address}&' \
-          f'block_range_start={block.number}'
+        f'blockchain_address={event.address}&' \
+        f'block_range_start={block.number}'
 
     # when
     response = await cli.get(url)
@@ -2224,10 +2237,10 @@ async def test_get_wallet_events_pending_txs(cli,
     pending_tx = pending_transaction_factory.create_eth_transfer()
 
     url = f'v1/wallet/get_events?' \
-          f'blockchain_address={pending_tx.to}&' \
-          f'blockchain_tip={block.hash}&' \
-          f'block_range_start={block.number}&' \
-          f'include_pending_events=1'
+        f'blockchain_address={pending_tx.to}&' \
+        f'blockchain_tip={block.hash}&' \
+        f'block_range_start={block.number}&' \
+        f'include_pending_events=1'
 
     # when
     response = await cli.get(url)
@@ -2306,10 +2319,10 @@ async def test_get_wallet_events_pending_txs_limit(cli,
         pending_transaction_factory.create_eth_transfer(to=event.address)
 
     url = f'v1/wallet/get_events?' \
-          f'blockchain_address={event.address}&' \
-          f'blockchain_tip={block.hash}&' \
-          f'block_range_start={block.number}&' \
-          f'include_pending_events=1'
+        f'blockchain_address={event.address}&' \
+        f'blockchain_tip={block.hash}&' \
+        f'block_range_start={block.number}&' \
+        f'include_pending_events=1'
 
     # when
     response = await cli.get(url)
