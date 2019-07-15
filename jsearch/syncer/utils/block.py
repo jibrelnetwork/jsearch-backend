@@ -85,7 +85,7 @@ async def get_token_balance_updates(
 
     logger.info("Db queries", extra={
         "on_last_request": on_last_balance_time,
-        'balance_changes_time': time.monotonic() - on_last_balance_time
+        'balance_changes_time': time.monotonic() - on_last_balance_time - start_time
     })
 
     return await get_assets_updates(token_holders, decimals_map, balances, balance_changes, last_block)
