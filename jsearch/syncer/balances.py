@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Tuple, Set
 from jsearch.common import contracts
 from jsearch.common.processing.decimals_cache import decimals_cache
 from jsearch.common.processing.wallet import AssetBalanceUpdates, AssetBalanceUpdate
-from jsearch.syncer.database_queries.accounts import get_last_ether_balances_query
+from jsearch.syncer.database_queries.accounts import get_accounts_state_for_blocks_query, get_last_ether_balances_query
 from jsearch.syncer.database_queries.balance_requests import get_balance_request_query
 from jsearch.syncer.database_queries.token_transfers import (
     get_token_address_and_accounts_for_blocks_q,
@@ -30,11 +30,23 @@ async def get_last_ether_states_for_addresses_in_blocks(
     Returns:
         last states for addresses affected by blocks
     """
-    query = get_last_ether_balances_query(blocks_hashes)
+    query = get_accounts_state_for_blocks_query(blocks_hashes)
     async with connection.execute(query) as cursor:
-        results = await cursor.fetchall()
+        result = await cursor.fetchall()
 
-    return results
+    addresses = [item.address for item in result]
+
+    states = []
+    for address in addresses:
+        query = get_last_ether_balances_query(address)
+
+        async with connection.execute(query) as cursor:
+            result = await cursor.fetchone()
+
+        if result:
+            states.append(dict(result))
+
+    return states
 
 
 async def get_changes_after_block_query(connection: SAConnection, query: Query) -> Tuple[TokenHolder, int]:
