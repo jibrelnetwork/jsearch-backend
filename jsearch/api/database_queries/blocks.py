@@ -58,7 +58,10 @@ def get_mined_blocks_query(miner: str,
     order = get_order(order, direction)
     return select(
         columns=columns,
-        whereclause=blocks_t.c.miner == miner,
+        whereclause=and_(
+            blocks_t.c.miner == miner,
+            blocks_t.c.is_forked == false()
+        ),
     ) \
         .order_by(*order) \
         .offset(offset) \
