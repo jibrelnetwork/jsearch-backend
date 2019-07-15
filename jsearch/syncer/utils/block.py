@@ -1,6 +1,8 @@
 import asyncio
+import logging
 from collections import defaultdict
 
+import time
 from aiopg.sa import Engine
 from functools import partial
 from sqlalchemy.orm import Query
@@ -19,6 +21,8 @@ from jsearch.syncer.utils.balances import (
     get_balances_on_last_request,
     get_assets_updates
 )
+
+logger = logging.getLogger()
 
 
 async def get_changes_for_token_holder(
@@ -67,13 +71,21 @@ async def get_token_balance_updates(
     tokens, holders = split_token_and_holders(token_holders)
     decimals_map = await decimals_cache.get_many(addresses=tokens)
 
+    start_time = time.monotonic()
     async with engine.acquire() as connection:
         balances = await get_balances_on_last_request(connection, token_holders)
+
+    on_last_balance_time = time.monotonic() - start_time
 
     balance_changes = await get_balances_changes_after_block(
         engine,
         holders=token_holders,
         since_block={holder: balance_on_block.block for holder, balance_on_block in balances.items()}
     )
+
+    logger.info("Db queries", {
+        "on_last_request": on_last_balance_time,
+        'balance_changes_time': time.monotonic() - on_last_balance_time
+    })
 
     return await get_assets_updates(token_holders, decimals_map, balances, balance_changes, last_block)
