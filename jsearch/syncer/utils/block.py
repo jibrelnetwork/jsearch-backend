@@ -83,7 +83,7 @@ async def get_token_balance_updates(
         since_block={holder: balance_on_block.block for holder, balance_on_block in balances.items()}
     )
 
-    logger.info("Db queries", {
+    logger.info("Db queries", extra={
         "on_last_request": on_last_balance_time,
         'balance_changes_time': time.monotonic() - on_last_balance_time
     })
