@@ -9,7 +9,7 @@ from jsearch.api.helpers import (
     api_error_400,
     api_error_404,
     get_from_joined_string,
-)
+    get_positive_number)
 
 logger = logging.getLogger(__name__)
 
@@ -106,8 +106,22 @@ async def get_account_logs(request):
     """
     Get contract logs
     """
-    # todo: implement it
-    return api_success([])
+    storage = request.app['storage']
+    address = request.match_info.get('address').lower()
+    params = validate_params(request)
+
+    block_from = get_positive_number(request=request, attr='block_range_start')
+    block_until = get_positive_number(request=request, attr='block_range_end')
+
+    logs = await storage.get_account_logs(
+        address=address,
+        limit=params['limit'],
+        offset=params['offset'],
+        order=params['order'],
+        block_from=block_from,
+        block_until=block_until,
+    )
+    return api_success([item.to_dict() for item in logs])
 
 
 async def get_account_mined_blocks(request):

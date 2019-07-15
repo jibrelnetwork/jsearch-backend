@@ -6,7 +6,7 @@ from asyncpg import Connection
 from functools import partial
 from sqlalchemy import asc, desc, Column
 from sqlalchemy.orm import Query
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from jsearch.api.error_code import ErrorCode
 
@@ -197,8 +197,45 @@ async def fetch_row(connection: Connection, query: Query) -> Optional[Dict[str, 
         return dict(result)
 
 
-class ApiError(Exception):
+def get_positive_number(
+        request: web.Request,
+        attr: str,
+        tags=Optional[Dict[str, int]],
+        is_required=False
+) -> Optional[Union[int, str]]:
+    value = request.query.get(attr, "").lower()
 
+    if value.isdigit():
+        number = int(value)
+        if number >= 0:
+            return number
+
+    elif value and tags and value in tags:
+        return tags[value]
+
+    elif value and tags and value not in tags:
+        msg_allowed_tags = tags and f" or tag ({', '.join(tags.keys())})" or ""
+        raise ApiError(
+            {
+                'field': attr,
+                'error_code': ErrorCode.VALIDATION_ERROR,
+                'error_message': f'Parameter `{attr}` must be either positive integer{msg_allowed_tags}.'
+            },
+            status=400
+        )
+
+    if is_required:
+        raise ApiError(
+            {
+                'field': attr,
+                'error_code': ErrorCode.VALIDATION_ERROR,
+                'error_message': f'Query param `{attr}` is required'
+            },
+            status=400
+        )
+
+
+class ApiError(Exception):
     """
     @ApiError.catch
     async def get_api(request):
