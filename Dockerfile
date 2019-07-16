@@ -1,4 +1,4 @@
-FROM python:3.6
+FROM python:3.7
 ARG ENVIRONMENT="production"
 
 ENV LOG_LEVEL=INFO \
