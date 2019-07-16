@@ -9,13 +9,13 @@ from jsearch.common import contracts
 from jsearch.common.processing import wallet
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
-from jsearch.syncer.balances import (
-    get_token_balance_updates,
+from jsearch.syncer.database import RawDB, MainDB
+from jsearch.syncer.utils.balances import (
     get_token_holders_from_transfers,
     token_balance_changes_from_transfers,
-    filter_negative_balances)
-from jsearch.syncer.database import RawDB, MainDB
-from jsearch.syncer.utils import get_last_block_with_offset
+    filter_negative_balances,
+    get_token_balance_updates
+)
 from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
@@ -65,8 +65,7 @@ class SyncProcessor:
                          last_block: int,
                          block_number: Optional[int] = None,
                          is_forked: bool = False,
-                         chain_event: Optional[Dict[str, Any]] = None,
-                         use_offset: bool = False) -> bool:
+                         chain_event: Optional[Dict[str, Any]] = None) -> bool:
         """
         Args:
             block_hash: number of block to sync
@@ -74,7 +73,6 @@ class SyncProcessor:
             is_forked:
             chain_event: dict with event description
             last_block: last available block in raw_db
-            use_offset: use request to balance with offset
 
         Returns:
             True if sync is successful, False if syn fails or block already synced
@@ -110,7 +108,6 @@ class SyncProcessor:
             internal_transactions=internal_transactions,
             is_forked=is_forked,
             last_block=last_block,
-            use_offset=use_offset
         )
         process_time = time.monotonic() - fetch_time - start_time
 
@@ -131,8 +128,7 @@ class SyncProcessor:
         return True
 
     async def process_block(self, header, body, reward, receipts, accounts, internal_transactions, is_forked,
-                            last_block: int,
-                            use_offset: bool = False) -> BlockData:
+                            last_block: int) -> BlockData:
         """
         Preprocess data fetched from Raw DB to Main DB
 
@@ -163,8 +159,10 @@ class SyncProcessor:
                 contracts_set.add(acc['address'])
 
         transfers = logs_to_transfers(logs_data, block_data, decimals={})
+
         token_holders = get_token_holders_from_transfers(transfers)
 
+        start_time = time.monotonic()
         async with self.main_db.engine.acquire() as connection:
             token_holders_updates = await get_token_balance_updates(
                 connection=connection,
@@ -172,7 +170,14 @@ class SyncProcessor:
                 last_block=last_block,
             )
 
-        if not is_forked and use_offset and block_number > get_last_block_with_offset(last_block):
+        logger.debug("Get balances", extra={
+            'hash': block_hash,
+            'number': block_number,
+            'get_balance_updates': '{:0.2f}s'.format(time.monotonic() - start_time),
+        })
+
+        last_synced_block = await self.main_db.get_latest_synced_block_number()
+        if not is_forked and block_number > last_synced_block:
             token_holders_updates = token_balance_changes_from_transfers(transfers, token_holders_updates)
 
         token_holders_updates = await filter_negative_balances(token_holders_updates)

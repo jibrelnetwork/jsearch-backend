@@ -32,16 +32,18 @@ from jsearch.common.tables import (
     wallet_events_t,
 )
 from jsearch.common.utils import as_dicts
-from jsearch.syncer.balances import (
-    get_token_balance_updates,
-    get_last_ether_states_for_addresses_in_blocks,
-    get_token_holders,
-    filter_negative_balances)
 from jsearch.syncer.database_queries.accounts import get_accounts_state_for_blocks_query
 from jsearch.syncer.database_queries.assets_summary import delete_assets_summary_query, upsert_assets_summary_query
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
+from jsearch.syncer.utils.balances import (
+    get_last_ether_states_for_addresses_in_blocks,
+    get_token_holders,
+    filter_negative_balances,
+    get_token_balance_updates
+)
 from jsearch.typing import Blocks, Block
 
+TIMEOUT = 60 * 2
 MAIN_DB_POOL_SIZE = 2
 GENESIS_BLOCK_NUMBER = 0
 
@@ -501,7 +503,12 @@ class MainDB(DBWrapper):
             return False
 
     async def connect(self):
-        self.engine = await async_create_engine(self.connection_string, minsize=1, maxsize=MAIN_DB_POOL_SIZE)
+        self.engine = await async_create_engine(
+            self.connection_string,
+            minsize=1,
+            maxsize=MAIN_DB_POOL_SIZE,
+            timeout=TIMEOUT
+        )
 
     async def disconnect(self):
         self.engine.close()
@@ -524,24 +531,19 @@ class MainDB(DBWrapper):
             cursor = await connection.execute(query, params)
             return await cursor.fetchone()
 
-    async def get_latest_synced_block_number(self, blocks_range):
+    async def get_latest_synced_block_number(self) -> int:
         """
         Get latest block writed in main DB
         """
-        if blocks_range[1] is None:
-            condition = 'number >= %s'
-            params = (blocks_range[0],)
-        else:
-            condition = 'number BETWEEN %s AND %s'
-            params = blocks_range
-
-        q = """SELECT max(number) as max_number
-                FROM blocks
-                WHERE is_forked=false AND {cond}""".format(cond=condition)
+        q = """
+            SELECT max(number) as max_number
+            FROM blocks
+            WHERE is_forked=false
+        """
         async with self.engine.acquire() as conn:
-            res = await conn.execute(q, params)
+            res = await conn.execute(q)
             row = await res.fetchone()
-            return row['max_number']
+        return row and row['max_number'] or 0
 
     async def get_blockchain_heads(self, blocks_range):
         """
@@ -673,16 +675,14 @@ class MainDB(DBWrapper):
             new_chain_fragment: Blocks,
             chain_event: Dict[str, Any],
             last_block: int,
-            use_offset: bool = False
     ) -> None:
+        affected_chain = [*old_chain_fragment, *new_chain_fragment]
+        affected_blocks = list({b['hash'] for b in affected_chain})
 
         async with self.engine.acquire() as conn:
             async with conn.begin():
                 await self.update_fork_status([b['hash'] for b in old_chain_fragment], is_forked=True, conn=conn)
                 await self.update_fork_status([b['hash'] for b in new_chain_fragment], is_forked=False, conn=conn)
-                affected_blocks = list(
-                    {b['hash'] for b in old_chain_fragment} | {b['hash'] for b in new_chain_fragment}
-                )
 
                 token_holders = await get_token_holders(conn, blocks_hashes=affected_blocks)
                 token_updates = await get_token_balance_updates(
