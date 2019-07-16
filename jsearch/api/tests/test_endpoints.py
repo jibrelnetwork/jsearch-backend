@@ -224,8 +224,8 @@ async def test_get_account(cli, main_db_data):
                              'balance': hex(account_state['balance']),
                              'blockHash': account_state['block_hash'],
                              'blockNumber': account_state['block_number'],
-                             'code': account_base['code'],
-                             'codeHash': account_base['code_hash'],
+                             'code': '0x' + account_base['code'],
+                             'codeHash': '0x' + account_base['code_hash'],
                              'nonce': account_state['nonce']}
 
 
@@ -242,8 +242,8 @@ async def test_get_account_block_number(cli, main_db_data):
                              'balance': hex(account_state['balance']),
                              'blockHash': account_state['block_hash'],
                              'blockNumber': account_state['block_number'],
-                             'code': account_base['code'],
-                             'codeHash': account_base['code_hash'],
+                             'code': '0x' + account_base['code'],
+                             'codeHash': '0x' + account_base['code_hash'],
                              'nonce': account_state['nonce']}
 
 
@@ -260,8 +260,8 @@ async def test_get_account_block_hash(cli, main_db_data):
                              'balance': hex(account_state['balance']),
                              'blockHash': account_state['block_hash'],
                              'blockNumber': account_state['block_number'],
-                             'code': account_base['code'],
-                             'codeHash': account_base['code_hash'],
+                             'code': '0x' + account_base['code'],
+                             'codeHash': '0x' + account_base['code_hash'],
                              'nonce': account_state['nonce']}
 
 
