@@ -121,6 +121,9 @@ class Storage:
             row.update(state_row)
             row.update(base_row)
 
+            row['code'] = '0x' + row['code']
+            row['code_hash'] = '0x' + row['code_hash']
+
             return models.Account(**row)
 
     async def get_account_transactions(self, address, limit, offset, order):
