@@ -391,6 +391,146 @@ async def test_pending_syncer_processes_related_txs_in_order(
 
 
 @pytest.mark.usefixtures("mock_service_bus")
+async def test_pending_syncer_overrides_stale_data_in_db(
+        db: Engine,
+        pending_syncer_service: PendingSyncerService
+) -> None:
+
+    # Already synced first row.
+    db.execute(
+        pending_transactions_t.insert().values(
+            **{
+                'last_synced_id': 1,
+                'hash': '0xFIRST',
+                'status': '',
+                'timestamp': datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
+                'removed': False,
+                'node_id': '1',
+                'r': None,
+                's': None,
+                'v': None,
+                'to': None,
+                'from': None,
+                'gas': None,
+                'gas_price': None,
+                'input': None,
+                'nonce': None,
+                'value': None,
+            }
+        )
+    )
+
+    await pending_syncer_service.sync_pending_txs(
+        [
+            {
+                "id": 2,
+                "tx_hash": '0xFIRST',
+                "status": '',
+                "fields": dict(),
+                "timestamp": str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                "removed": True,
+                "node_id": '1',
+            }
+        ]
+    )
+
+    pending_txs_query = pending_transactions_t.select()
+    pending_txs = db.execute(pending_txs_query).fetchall()
+    pending_txs = [dict(tx) for tx in pending_txs]
+
+    assert pending_txs == [
+        {
+            'last_synced_id': 2,
+            'hash': '0xFIRST',
+            'status': '',
+            'timestamp': datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
+            'removed': True,
+            'node_id': '1',
+            'r': None,
+            's': None,
+            'v': None,
+            'to': None,
+            'from': None,
+            'gas': None,
+            'gas_price': None,
+            'input': None,
+            'nonce': None,
+            'value': None,
+        }
+    ]
+
+
+@pytest.mark.usefixtures("mock_service_bus")
+async def test_pending_syncer_does_not_override_stale_data_in_db(
+        db: Engine,
+        pending_syncer_service: PendingSyncerService
+) -> None:
+
+    # Already synced first row.
+    db.execute(
+        pending_transactions_t.insert().values(
+            **{
+                'last_synced_id': 2,
+                'hash': '0xFIRST',
+                'status': '',
+                'timestamp': datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
+                'removed': True,
+                'node_id': '1',
+                'r': None,
+                's': None,
+                'v': None,
+                'to': None,
+                'from': None,
+                'gas': None,
+                'gas_price': None,
+                'input': None,
+                'nonce': None,
+                'value': None,
+            }
+        )
+    )
+
+    await pending_syncer_service.sync_pending_txs(
+        [
+            {
+                "id": 1,
+                "tx_hash": '0xFIRST',
+                "status": '',
+                "fields": dict(),
+                "timestamp": str(datetime.datetime(2019, 4, 5, 12, 23, 22, 321599)),
+                "removed": False,
+                "node_id": '1',
+            }
+        ]
+    )
+
+    pending_txs_query = pending_transactions_t.select()
+    pending_txs = db.execute(pending_txs_query).fetchall()
+    pending_txs = [dict(tx) for tx in pending_txs]
+
+    assert pending_txs == [
+        {
+            'last_synced_id': 2,
+            'hash': '0xFIRST',
+            'status': '',
+            'timestamp': datetime.datetime(2019, 4, 5, 12, 23, 22, 321599),
+            'removed': True,
+            'node_id': '1',
+            'r': None,
+            's': None,
+            'v': None,
+            'to': None,
+            'from': None,
+            'gas': None,
+            'gas_price': None,
+            'input': None,
+            'nonce': None,
+            'value': None,
+        }
+    ]
+
+
+@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_syncer_can_fetch_txs_if_none_synced_yet_and_first_one_is_far_away(
         db: Engine,
         raw_db: Engine,

@@ -19,7 +19,8 @@ def insert_or_update_pending_tx_q(pending_tx: Dict[str, Any]) -> Query:
             'timestamp': insert_query.excluded.timestamp,
             'removed': insert_query.excluded.removed,
             'node_id': insert_query.excluded.node_id,
-        }
+        },
+        where=pending_transactions_t.c.last_synced_id < insert_query.excluded.last_synced_id,
     )
 
     return insert_query
