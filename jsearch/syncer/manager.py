@@ -224,7 +224,7 @@ class Manager:
             'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
 
-    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
+    @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
     async def get_and_process_chain_event(self):
         last_event = await self.main_db.get_last_chain_event(self.sync_range, self.node_id)
         if last_event is None:

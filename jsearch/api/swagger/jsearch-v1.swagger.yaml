@@ -1041,11 +1041,12 @@ definitions:
         example: "976"
       code:
         type: string
-        example: ""
+        format: hash
+        example: "0x"
       codeHash:
         type: string
         format: hash
-        example: "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        example: "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
       balance:
         type: string
         format: dec
