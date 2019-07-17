@@ -8,13 +8,20 @@ from jsearch import settings
 sentry_sdk.init(settings.RAVEN_DSN)
 
 
-def configure(log_level):
+def select_formatter_class(no_json_formatter: bool) -> str:
+    if no_json_formatter:
+        return 'logging.Formatter'
+
+    return 'pythonjsonlogger.jsonlogger.JsonFormatter'
+
+
+def configure(log_level: str, formatter_class: str) -> None:
     config = {
         'version': 1,
         'disable_existing_loggers': False,
         'formatters': {
             'default': {
-                'class': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+                'class': formatter_class,
                 'format': '%(asctime)-15s %(levelname)-8s %(name)s: %(message)s',
             }
         },
@@ -27,7 +34,15 @@ def configure(log_level):
         },
         'loggers': {
             'kafka.conn': {
-                'level': 'WARNING',
+                'level': 'CRITICAL',
+                'handlers': ['console']
+            },
+            'aiokafka': {
+                'level': 'CRITICAL',
+                'handlers': ['console']
+            },
+            'aiokafka.consumer.fetcher': {
+                'level': 'CRITICAL',
                 'handlers': ['console']
             },
             'post_processing': {

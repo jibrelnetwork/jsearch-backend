@@ -1,12 +1,11 @@
-from typing import List
-
 from sqlalchemy import select, Column, and_, false
 from sqlalchemy.orm import Query
+from typing import List, Optional
 
 from jsearch.common.tables import transactions_t
 
 
-def get_default_fields():
+def get_default_fields() -> List[Column]:
     return [
         transactions_t.c.block_hash,
         transactions_t.c.block_number,
@@ -22,6 +21,7 @@ def get_default_fields():
         transactions_t.c.transaction_index,
         transactions_t.c.v,
         transactions_t.c.value,
+        transactions_t.c.status,
     ]
 
 
@@ -36,9 +36,19 @@ def get_tx_hashes_by_block_hash_query(block_hash: str) -> Query:
 
 def get_tx_hashes_by_block_hashes_query(block_hashes: List[str]) -> Query:
     return select(
-        columns=[transactions_t.c.block_hash, transactions_t.c.hash],
+        columns=[transactions_t.c.block_hash, transactions_t.c.hash, transactions_t.c.transaction_index],
         whereclause=transactions_t.c.block_hash.in_(block_hashes),
-    ).order_by(transactions_t.c.block_hash).distinct()
+    ).order_by(transactions_t.c.transaction_index).distinct()
+
+
+def get_tx_by_hash(tx_hash: str, columns: List[Column] = None) -> Query:
+    return select(
+        columns=columns or get_default_fields(),
+        whereclause=and_(
+            transactions_t.c.is_forked == false(),
+            transactions_t.c.hash == tx_hash,
+        )
+    ).limit(1)
 
 
 def get_tx_by_address(address: str, order: str, columns: List[Column] = None) -> Query:
@@ -63,3 +73,9 @@ def _order_tx_query(query: Query, direction: str) -> Query:
         transactions_t.c.block_number.desc(),
         transactions_t.c.transaction_index.desc(),
     )
+
+
+def get_txs_for_events_query(events_query: Query, order: str, columns: Optional[List[Column]] = None) -> Query:
+    columns = columns or get_default_fields()
+    query = select(columns).where(transactions_t.c.hash.in_(events_query))
+    return _order_tx_query(query, order)

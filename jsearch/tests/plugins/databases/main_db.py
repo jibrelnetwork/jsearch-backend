@@ -1,12 +1,12 @@
 import logging
 import os
 from asyncio import AbstractEventLoop
-from functools import partial
 
 import aiopg
 import dsnparse
 import pytest
 from aiopg.sa import Engine
+from functools import partial
 from sqlalchemy import create_engine
 
 logger = logging.getLogger(__name__)
@@ -36,26 +36,26 @@ def teardown_database(connection_string):
 
 
 @pytest.fixture(scope="session")
-def db_connection_string():
+def db_dsn():
     return os.environ.get('JSEARCH_MAIN_DB_TEST', "postgres://postgres:postgres@test_db/jsearch_main_test")
 
 
 @pytest.fixture(scope="function")
-def db_name(db_connection_string):
-    return db_connection_string.split('/')[-1]
+def db_name(db_dsn):
+    return db_dsn.split('/')[-1]
 
 
 @pytest.fixture(scope='session', autouse=True)
-def setup_database_migrations(request, db_connection_string, pytestconfig):
-    setup_database(db_connection_string)
+def setup_database_migrations(request, db_dsn, pytestconfig):
+    setup_database(db_dsn)
 
-    finalizer = partial(teardown_database, db_connection_string)
+    finalizer = partial(teardown_database, db_dsn)
     request.addfinalizer(finalizer)
 
 
 @pytest.fixture(scope='function')
-def db(db_connection_string):
-    engine = create_engine(db_connection_string)
+def db(db_dsn):
+    engine = create_engine(db_dsn)
     conn = engine.connect()
     yield conn
     conn.close()
@@ -63,8 +63,8 @@ def db(db_connection_string):
 
 @pytest.mark.asyncio
 @pytest.fixture
-async def sa_engine(db_connection_string, loop: AbstractEventLoop) -> Engine:
-    return await aiopg.sa.create_engine(db_connection_string)
+async def sa_engine(db_dsn, loop: AbstractEventLoop) -> Engine:
+    return await aiopg.sa.create_engine(db_dsn)
 
 
 @pytest.fixture(scope='function')
@@ -97,4 +97,10 @@ def do_truncate_db(db):
 
 @pytest.fixture(scope='function', autouse=True)
 def truncate_db(do_truncate_db):
+    yield
     do_truncate_db()
+
+
+@pytest.fixture(scope='function', autouse=True)
+def mock_db_dsn(mocker, db_dsn):
+    mocker.patch('jsearch.settings.JSEARCH_MAIN_DB', db_dsn)

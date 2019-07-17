@@ -1,61 +1,414 @@
+import decimal
+import datetime
+
 import pytest
 
-from jsearch.common.tables import blocks_t, transactions_t, receipts_t, logs_t, accounts_base_t, accounts_state_t
-from jsearch.syncer.processor import SyncProcessor
+from jsearch.common import contracts
+from jsearch.common.processing.accounts import accounts_to_state_and_base_data
+from jsearch.common.tables import (
+    blocks_t,
+    transactions_t,
+    receipts_t,
+    logs_t,
+    accounts_state_t,
+    accounts_base_t,
+    wallet_events_t,
+    internal_transactions_t,
+    assets_summary_t, token_transfers_t)
+from jsearch.common.wallet_events import WalletEventType
+from jsearch.syncer.database import RawDB, MainDB
+from jsearch.syncer.processor import SyncProcessor, dict_keys_case_convert
 
-pytest_plugins = [
-    'jsearch.tests.plugins.databases.main_db',
-    'jsearch.tests.plugins.databases.dumps',
-    'jsearch.tests.plugins.databases.raw_db',
-    'jsearch.tests.plugins.service_bus'
-]
+
+async def call_system_under_test(raw_db_dsn: str, db_dsn: str, block_hash: str):
+    async with MainDB(db_dsn) as main_db, RawDB(raw_db_dsn) as raw_db:
+        processor = SyncProcessor(raw_db, main_db)
+        chain_event = {
+            'id': 1,
+            'block_number': 1,
+            'block_hash': block_hash,
+            'created_at': datetime.datetime.now()
+        }
+        await processor.sync_block(block_hash=block_hash, chain_event=chain_event, last_block=8000000)
 
 
-@pytest.mark.usefixtures('mock_service_bus_sync_client')
-async def test_sync_block(raw_db_sample, db, raw_db_connection_string, db_connection_string):
-    s = raw_db_sample
-    processor = SyncProcessor(raw_db_connection_string, db_connection_string)
-    processor.sync_block(s['headers'][0]['block_hash'])
+@pytest.fixture
+def block_hash(raw_db_sample):
+    headers = raw_db_sample['headers']
+    return headers[0]['block_hash']
 
-    blocks = db.execute(blocks_t.select()).fetchall()
-    transactions = db.execute(transactions_t.select()).fetchall()
-    receipts = db.execute(receipts_t.select()).fetchall()
-    logs = db.execute(logs_t.select()).fetchall()
-    accounts_base = db.execute(accounts_base_t.select()).fetchall()
-    accounts_state = db.execute(accounts_state_t.select()).fetchall()
 
-    assert blocks[0].hash == s['headers'][0]['block_hash']
-    assert blocks[0].is_forked is False
+@pytest.fixture
+def fixture_bodies(raw_db_sample, block_hash):
+    return raw_db_sample['bodies']
 
-    assert transactions[0].hash == s['bodies'][0]['fields']['Transactions'][0]['hash']
-    assert transactions[0].block_hash == s['headers'][0]['block_hash']
-    assert transactions[0].block_number == s['headers'][0]['block_number']
-    assert transactions[0].is_forked is False
-    assert transactions[0].transaction_index == 0
 
-    assert receipts[0].transaction_hash == s['bodies'][0]['fields']['Transactions'][0]['hash']
-    assert receipts[0].block_hash == s['headers'][0]['block_hash']
-    assert receipts[0].block_number == s['headers'][0]['block_number']
-    assert receipts[0].is_forked is False
-    assert receipts[0].transaction_index == 0
-    assert receipts[1].transaction_hash == s['bodies'][0]['fields']['Transactions'][1]['hash']
-    assert receipts[1].transaction_index == 1
+@pytest.fixture
+def fixture_internal_transactions(raw_db_sample, block_hash):
+    return raw_db_sample['internal_transactions']
 
-    assert logs[0].transaction_hash == s['bodies'][0]['fields']['Transactions'][2]['hash']
-    assert logs[0].block_hash == s['headers'][0]['block_hash']
-    assert logs[0].block_number == s['headers'][0]['block_number']
-    assert logs[0].is_forked is False
-    assert logs[0].log_index == 0
 
-    assert logs[1].transaction_hash == s['bodies'][0]['fields']['Transactions'][2]['hash']
-    assert logs[1].block_hash == s['headers'][0]['block_hash']
-    assert logs[1].block_number == s['headers'][0]['block_number']
-    assert logs[1].is_forked is False
-    assert logs[1].log_index == 1
+@pytest.fixture
+def fixture_txs(fixture_bodies):
+    txs = []
+    for body in fixture_bodies:
+        for index, tx in enumerate(body['fields']['Transactions']):
+            txs.append({
+                **tx,
+                **{
+                    'transaction_index': index,
+                    'block_hash': body['block_hash'],
+                    'block_number': body['block_number']
+                }
+            })
+    return txs
 
-    assert accounts_base[0]['address'] == s['accounts'][0]['address'].lower()
-    assert accounts_state[0]['address'] == s['accounts'][0]['address'].lower()
-    assert accounts_state[0]['balance'] == int(s['accounts'][0]['fields']['balance'])
-    assert accounts_state[0].is_forked is False
 
-    # TODO: extend test cases
+@pytest.fixture
+def fixture_receipts(raw_db_sample, fixture_txs):
+    tx_indexes = {tx['hash']: tx['transaction_index'] for tx in fixture_txs}
+
+    receipts = []
+    for block in raw_db_sample['receipts']:
+        for receipt in block['fields']['Receipts']:
+            tx_hash = receipt['transactionHash']
+            transaction_index = tx_indexes[tx_hash]
+
+            receipts.append({
+                **receipt,
+                **{
+                    'block_number': block['block_number'],
+                    'block_hash': block['block_hash'],
+                    'transaction_index': transaction_index
+                }
+            })
+    return receipts
+
+
+@pytest.fixture
+def fixture_logs(fixture_txs, fixture_receipts):
+    logs = []
+    for receipt in fixture_receipts:
+        for log in receipt.get('logs') or []:
+            logs.append({
+                **log,
+                **{
+                    'transaction_index': int(log['transactionIndex'], 16),
+                    'log_index': int(log['logIndex'], 16),
+                    'block_number': int(log['blockNumber'], 16)
+                }
+            })
+    return logs
+
+
+@pytest.fixture
+def fixture_accounts(raw_db_sample):
+    accounts = []
+    for item in raw_db_sample['accounts']:
+        item['address'] = item['address'].lower()
+        fields = item.pop('fields')
+        accounts.append({
+            **item,
+            **dict_keys_case_convert(fields)
+        })
+    return accounts
+
+
+@pytest.fixture
+def block_body(fixture_bodies, block_hash):
+    for item in fixture_bodies:
+        if item['block_hash'] == block_hash:
+            return item
+
+
+@pytest.fixture
+def block_txs(fixture_txs, block_hash):
+    return [tx for tx in fixture_txs if tx['block_hash'] == block_hash]
+
+
+@pytest.fixture
+def fixture_block_receipts(fixture_receipts, block_hash):
+    return [tx for tx in fixture_receipts if tx['block_hash'] == block_hash]
+
+
+@pytest.fixture
+def block_tx_logs(fixture_logs, block_hash):
+    return [tx for tx in fixture_logs if tx['blockHash'] == block_hash]
+
+
+@pytest.fixture
+def block_accounts(fixture_accounts, block_hash):
+    return [tx for tx in fixture_accounts if tx['block_hash'] == block_hash]
+
+
+@pytest.fixture
+def block_internal_txs(fixture_internal_transactions, block_hash):
+    return [tx for tx in fixture_internal_transactions if tx['block_hash'] == block_hash]
+
+
+async def test_sync_block_check_blocks(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_body):
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    blocks = db.execute(blocks_t.select().order_by(blocks_t.c.number)).fetchall()
+
+    assert len(blocks) == 1
+    for block in blocks:
+        assert block.hash == block_body['block_hash']
+        assert block.number == block_body['block_number']
+        assert block.is_forked is False
+
+
+async def test_sync_block_check_txs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_txs):
+    """
+    We test on 6000001 block.
+    We can calculate transactions count for test blocks.
+    And we can check transactions count in this tests.
+
+    In blocks 6000001 we have:
+        119 transactions
+
+    It is historical data and we can freeze it.
+
+    Notes:
+        We have denormalization for transactions.
+        It leads to records doubling.
+
+        Each events produce two record, which changed by
+        address:
+          - one record has address from "from" column
+          - another record has address from "to" column
+    """
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    transactions = db.execute(
+        transactions_t.select().order_by(transactions_t.c.block_number, transactions_t.c.transaction_index)
+    ).fetchall()
+
+    assert len(transactions) == 119 * 2
+
+    for i, origin in zip(range(0, len(block_txs) * 2, 2), block_txs):
+        assert transactions[i].hash == origin['hash']
+        assert transactions[i].block_hash == origin['block_hash']
+        assert transactions[i].block_number == origin['block_number']
+        assert transactions[i].transaction_index == origin['transaction_index']
+        assert transactions[i].is_forked is False
+
+        # because each tx record create 2 record in main db
+        assert transactions[i + 1].hash == origin['hash']
+        assert transactions[i + 1].block_hash == origin['block_hash']
+        assert transactions[i + 1].block_number == origin['block_number']
+        assert transactions[i + 1].transaction_index == origin['transaction_index']
+        assert transactions[i + 1].is_forked is False
+
+
+async def test_sync_block_check_receipts(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_txs):
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    receipts = db.execute(
+        receipts_t.select().order_by(receipts_t.c.block_number, receipts_t.c.transaction_index)
+    ).fetchall()
+
+    for i, origin in enumerate(block_txs):
+        assert receipts[i].transaction_hash == origin['hash']
+        assert receipts[i].block_hash == origin['block_hash']
+        assert receipts[i].block_number == origin['block_number']
+        assert receipts[i].is_forked is False
+
+
+async def test_sync_block_check_logs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_tx_logs):
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    logs = db.execute(
+        logs_t.select().order_by(logs_t.c.block_number, logs_t.c.transaction_index, logs_t.c.log_index)
+    ).fetchall()
+
+    for i, origin in enumerate(block_tx_logs):
+        assert logs[i].transaction_hash == origin['transactionHash']
+        assert logs[i].block_hash == origin['blockHash']
+        assert logs[i].block_number == origin['block_number']
+        assert logs[i].log_index == origin['log_index']
+        assert logs[i].is_forked is False
+
+
+async def test_sync_block_check_accounts(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_accounts):
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    accounts_base = db.execute(
+        accounts_base_t.select().order_by(accounts_base_t.c.address)
+    ).fetchall()
+
+    accounts_state = db.execute(
+        accounts_state_t.select().order_by(accounts_state_t.c.block_number, accounts_state_t.c.address)
+    ).fetchall()
+
+    block_accounts_state, block_accounts_base = accounts_to_state_and_base_data(block_accounts)
+
+    block_accounts_state = sorted(block_accounts_state, key=lambda x: (x['block_number'], x['address']))
+    block_accounts_base = sorted(block_accounts_base, key=lambda x: x['address'])
+
+    for i, origin in enumerate(block_accounts_base):
+        assert accounts_base[i]['address'] == origin['address'].lower()
+
+    for i, origin in enumerate(block_accounts_state):
+        assert accounts_state[i]['address'] == origin['address'].lower()
+        assert accounts_state[i]['balance'] == int(origin['balance'])
+        assert accounts_state[i].is_forked is False
+
+
+async def test_sync_block_check_assets_balances(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
+    """
+    We test on 6000001 block.
+    We can calculate events count for test blocks.
+    And we can check events count in this tests.
+
+    In blocks 6000001 we have:
+        - 20 transfers
+        - 69 ether transfers
+        - 37 ether transfers from internal txs
+        - 35 calls
+        - - - - - - - - -
+        119 transactions
+
+    It is historical data and we can freeze it.
+
+    Notes:
+        We have denormalization for wallet events.
+        It leads to records doubling.
+
+        Each events produce two record, which changed by
+        address:
+          - one record has address from "from" column
+          - another record has address from "to" column
+    """
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    wallet_events = db.execute(
+        wallet_events_t.select().order_by(wallet_events_t.c.address, wallet_events_t.c.type)
+    ).fetchall()
+    wallet_events = list(map(dict, wallet_events))
+
+    ether_transfers = [item for item in wallet_events if item['type'] == WalletEventType.ETH_TRANSFER]
+    token_transfers = [item for item in wallet_events if item['type'] == WalletEventType.ERC20_TRANSFER]
+    calls = [item for item in wallet_events if item['type'] == WalletEventType.CONTRACT_CALL]
+
+    assert len(token_transfers) == 20 * 2
+    assert len(ether_transfers) == (69 + 37) * 2
+    assert len(calls) == 35 * 2
+
+
+async def test_sync_block_check_internal_txs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_internal_txs):
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    internal_txs = db.execute(internal_transactions_t.select()).fetchall()
+    internal_txs = [dict(tx) for tx in internal_txs]
+
+    internal_txs = sorted(internal_txs, key=lambda x: (x['parent_tx_hash'], x['transaction_index']))
+    block_internal_txs = sorted(block_internal_txs, key=lambda x: (x['parent_tx_hash'], x['index']))
+
+    for i, origin in enumerate(block_internal_txs):
+        assert internal_txs[i] == {
+            'block_number': origin['block_number'],
+            'block_hash': origin['block_hash'],
+            'parent_tx_hash': origin['parent_tx_hash'],
+            'tx_origin': origin['fields']['TxOrigin'],
+            'op': origin['fields']['Operation'],
+            'call_depth': origin['fields']['CallDepth'],
+            'timestamp': origin['fields']['TimeStamp'],
+            'from': origin['fields']['From'],
+            'to': origin['fields']['To'],
+            'value': decimal.Decimal(origin['fields']['Value']),
+            'gas_limit': origin['fields']['GasLimit'],
+            'payload': origin['fields']['Payload'],
+            'status': origin['fields']['Status'],
+            'transaction_index': origin['fields']['Index'],
+            'is_forked': False,
+        }
+
+
+async def test_sync_block_check_assets_summary(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_accounts):
+    """
+    We test on 6000001 block.
+    We can calculate ether balances for test blocks.
+
+    In blocks 6000001 we have:
+        - 209 ether balance changes
+
+    It is historical data and we can freeze it.
+    """
+    # given
+    total_states = 209
+
+    accounts_stats = sorted(block_accounts, key=lambda x: x['address'])
+
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    ether_summary = db.execute(
+        assets_summary_t.select().where(assets_summary_t.c.asset_address == '')
+    ).fetchall()
+    ether_summary = sorted([dict(item) for item in ether_summary], key=lambda x: x['address'])
+
+    assert len(ether_summary) == len(accounts_stats) == total_states
+
+    for summary, account_state in zip(ether_summary, accounts_stats):
+        assert summary['address'] == account_state['address']
+        assert int(summary['value']) == int(account_state['balance'])
+
+
+async def test_sync_block_check_token_holders(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
+    """
+    We test on 6000001 block.
+    We can calculate ether balances for test blocks.
+
+    In blocks 6000001 we have:
+        - 40 token transfer
+
+    But we don't process token balance update for 0x0000000000000000000000000000000000000000 address.
+    And totally we have only:
+        - 36 token holder balances
+
+    It is historical data and we can freeze it.
+    """
+    # given
+    total_holder_transfers = 40
+    total_holder_balances = 36
+
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    token_transfers = db.execute(
+        token_transfers_t.select()
+    ).fetchall()
+    token_owners = list(
+        {(item.token_address, item.address) for item in token_transfers if item.address != contracts.NULL_ADDRESS}
+    )
+    token_owners = sorted(token_owners, key=lambda x: (x[0], x[1]))
+
+    token_summary = db.execute(
+        assets_summary_t.select().where(assets_summary_t.c.asset_address != '')
+    ).fetchall()
+    token_summary = sorted([dict(item) for item in token_summary], key=lambda x: (x['asset_address'], x['address']))
+
+    assert len(token_transfers) == total_holder_transfers
+    assert len(token_summary) == len(token_owners) == total_holder_balances
+
+    for summary, token_owner in zip(token_summary, token_owners):
+        token, owner = token_owner
+        assert summary['asset_address'] == token
+        assert summary['address'] == owner

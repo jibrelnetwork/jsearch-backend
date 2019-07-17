@@ -89,6 +89,7 @@ internal_transactions_t = sa.Table(
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, primary_key=True),
     sa.Column('parent_tx_hash', sa.String, primary_key=True),
+    sa.Column('tx_origin', sa.String),
     sa.Column('op', sa.String),
     sa.Column('call_depth', HexInteger),
     sa.Column('timestamp', HexInteger),
@@ -143,6 +144,7 @@ transactions_t = sa.Table(
     sa.Column('contract_call_description', postgresql.JSONB),
     sa.Column('is_forked', sa.Boolean, default=False, index=True),
     sa.Column('address', sa.String, index=True),
+    sa.Column('status', sa.Integer)
 )
 
 receipts_t = sa.Table(
@@ -166,7 +168,6 @@ receipts_t = sa.Table(
 logs_t = sa.Table(
     'logs',
     metadata,
-    sa.Column('transaction_hash', sa.String, primary_key=True),
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, index=True, primary_key=True),
     sa.Column('log_index', HexInteger, primary_key=True),
@@ -174,7 +175,9 @@ logs_t = sa.Table(
     sa.Column('data', sa.String),
     sa.Column('removed', sa.Boolean),
     sa.Column('topics', postgresql.ARRAY(sa.String)),
+    sa.Column('transaction_hash', sa.String, primary_key=True),
     sa.Column('transaction_index', HexInteger),
+
     sa.Column('event_type', sa.String),
     sa.Column('event_args', postgresql.JSONB),
 
@@ -210,11 +213,21 @@ accounts_base_t = sa.Table(
     sa.Column('root', sa.String),
 )
 
+notable_accounts_t = sa.Table(
+    'notable_accounts',
+    metadata,
+    sa.Column('address', sa.String, primary_key=True),
+    sa.Column('name', sa.String),
+    sa.Column('labels', postgresql.ARRAY(sa.String)),
+)
+
 blocks_t = sa.Table(
     'blocks',
     metadata,
     sa.Column('number', HexInteger, index=True),
     sa.Column('hash', sa.String, primary_key=True),
+    sa.Column('transactions', postgresql.JSONB),
+    sa.Column('uncles', postgresql.JSONB),
     sa.Column('parent_hash', sa.String),
     sa.Column('difficulty', HexBigInteger),
     sa.Column('extra_data', sa.String),
@@ -245,6 +258,7 @@ token_holders_t = sa.Table(
     sa.Column('token_address', sa.String, primary_key=True),
     sa.Column('balance', postgresql.NUMERIC(32, 0), index=True),
     sa.Column('decimals', sa.Integer, index=True),
+    sa.Column('block_number', sa.Integer),
 )
 
 reorgs_t = sa.Table(
@@ -319,8 +333,8 @@ assets_summary_t = sa.Table(
     sa.Column('decimals', sa.Integer),
     sa.Column('tx_number', sa.BigInteger),
     sa.Column('nonce', sa.BigInteger),
+    sa.Column('block_number', sa.BigInteger),
 )
-
 
 wallet_events_t = sa.Table(
     'wallet_events',
@@ -336,6 +350,32 @@ wallet_events_t = sa.Table(
     sa.Column('event_data', postgresql.JSONB),
 )
 
+chain_events_t = sa.Table(
+    'chain_events',
+    metadata,
+    sa.Column('id', sa.BigInteger),
+    sa.Column('block_hash', sa.String),
+    sa.Column('block_number', sa.BigInteger),
+    sa.Column('type', sa.String),
+    sa.Column('parent_block_hash', sa.String),
+    sa.Column('common_block_number', sa.BigInteger),
+    sa.Column('common_block_hash', sa.String),
+    sa.Column('drop_length', sa.BigInteger),
+    sa.Column('drop_block_hash', sa.String),
+    sa.Column('add_length', sa.BigInteger),
+    sa.Column('add_block_hash', sa.String),
+    sa.Column('node_id', sa.String),
+    sa.Column('created_at', sa.TIMESTAMP),
+)
+
+erc20_balance_requests_t = sa.Table(
+    'erc20_balance_requests',
+    metadata,
+    sa.Column('token_address', sa.String),
+    sa.Column('account_address', sa.String),
+    sa.Column('block_number', sa.Integer),
+    sa.Column('balance', postgresql.NUMERIC()),
+)
 
 TABLES = (
     blocks_t,
@@ -345,6 +385,7 @@ TABLES = (
     logs_t,
     accounts_state_t,
     accounts_base_t,
+    notable_accounts_t,
     token_holders_t,
     internal_transactions_t,
     pending_transactions_t,
@@ -354,4 +395,6 @@ TABLES = (
     assets_transfers_t,
     assets_summary_t,
     wallet_events_t,
+    chain_events_t,
+    erc20_balance_requests_t
 )

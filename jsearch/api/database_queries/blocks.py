@@ -1,7 +1,6 @@
-from typing import List, Optional
-
-from sqlalchemy import and_, false, func, Column, select
+from sqlalchemy import and_, false, Column, select, desc
 from sqlalchemy.orm import Query
+from typing import List, Optional
 
 from jsearch.api.helpers import get_order
 from jsearch.common.tables import blocks_t
@@ -14,6 +13,8 @@ def get_default_fields():
         blocks_t.c.gas_limit,
         blocks_t.c.gas_used,
         blocks_t.c.hash,
+        blocks_t.c.transactions,
+        blocks_t.c.uncles,
         blocks_t.c.logs_bloom,
         blocks_t.c.miner,
         blocks_t.c.mix_hash,
@@ -57,7 +58,10 @@ def get_mined_blocks_query(miner: str,
     order = get_order(order, direction)
     return select(
         columns=columns,
-        whereclause=blocks_t.c.miner == miner,
+        whereclause=and_(
+            blocks_t.c.miner == miner,
+            blocks_t.c.is_forked == false()
+        ),
     ) \
         .order_by(*order) \
         .offset(offset) \
@@ -90,8 +94,9 @@ def get_last_block_query(columns: List[Column] = None) -> Query:
     columns = columns or get_default_fields()
     return select(
         columns=columns,
-        whereclause=and_(
-            blocks_t.c.number == select(columns=[func.max(blocks_t.c.number)]),
-            blocks_t.c.is_forked == false()
-        )
-    )
+        whereclause=blocks_t.c.is_forked == false()
+    ).order_by(desc(blocks_t.c.number)).limit(1)
+
+
+def get_block_number_by_hash_query(block_hash: str) -> Query:
+    return select([blocks_t.c.number]).where(blocks_t.c.hash == block_hash)

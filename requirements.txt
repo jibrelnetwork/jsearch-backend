@@ -8,9 +8,9 @@ asyncpg==0.15.0
 asyncpgsa==0.22.0
 backoff==1.7.1
 cachetools==3.0.0
-celery==4.1.1
 Click==7.0
 ConfigArgParse==0.13.0
+dsnparse==0.1.12
 eth-abi==1.1.1
 eth-utils==1.4.1
 ethereum==2.3.1
@@ -20,9 +20,9 @@ hexbytes==0.1.0
 python-json-logger==0.1.11
 psycopg2-binary==2.7.5
 raven==6.6.0
-redis==2.10.6
 requests==2.18.4
 rlp==0.6.0
 sentry-sdk==0.6.2
 SQLAlchemy==1.2.6
 web3==4.2.1
+prometheus-client==0.7.1

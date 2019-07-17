@@ -1,21 +1,19 @@
 import asyncio
 import logging
 
-from asyncpg.pool import Pool
-from uuid import uuid4
+import aiokafka
+import asyncpg
+import prometheus_client
 
 from jsearch import settings
 from jsearch.common import utils
 from jsearch.api.node_proxy import NodeProxy
-from jsearch.common.structs import MainDbStats, LoopStats, KafkaStats, NodeStats
-
-from jsearch_service_bus.base import get_async_consumer
-from jsearch.service_bus import ROUTE_HEALTHCHECK
+from jsearch.common.structs import DbStats, LoopStats, KafkaStats, NodeStats
 
 logger = logging.getLogger(__name__)
 
 
-async def get_main_db_stats(db_pool: Pool) -> MainDbStats:
+async def get_db_stats(db_pool: asyncpg.pool.Pool) -> DbStats:
     is_healthy = False
 
     try:
@@ -28,7 +26,7 @@ async def get_main_db_stats(db_pool: Pool) -> MainDbStats:
     except Exception as e:
         logger.warning('Cannot check the database', extra={'exception': e})
 
-    return MainDbStats(is_healthy=is_healthy)
+    return DbStats(is_healthy=is_healthy)
 
 
 async def get_node_stats(node_proxy: NodeProxy) -> NodeStats:
@@ -46,26 +44,16 @@ async def get_node_stats(node_proxy: NodeProxy) -> NodeStats:
     return NodeStats(is_healthy=is_healthy)
 
 
-async def get_kafka_stats() -> KafkaStats:
-    is_healthy = False
-
+async def get_kafka_stats(consumer: aiokafka.AIOKafkaConsumer) -> KafkaStats:
     try:
-        consumer = get_async_consumer(
-            group=f'healthchecker_{uuid4()}',
-            topic=ROUTE_HEALTHCHECK,
-            bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS
-        )
-
         await consumer._client.check_version()
-        await consumer.stop()
-
-        is_healthy = True
+        return KafkaStats(is_healthy=True)
     except asyncio.CancelledError:
         raise
     except Exception as e:
         logger.warning('Cannot check the kafka', extra={'exception': e})
 
-    return KafkaStats(is_healthy=is_healthy)
+    return KafkaStats(is_healthy=False)
 
 
 async def get_loop_stats() -> LoopStats:
@@ -73,5 +61,25 @@ async def get_loop_stats() -> LoopStats:
 
     return LoopStats(
         is_healthy=tasks_count < settings.HEALTH_LOOP_TASKS_COUNT_THRESHOLD,
-        tasks_count=tasks_count,
     )
+
+
+def setup_api_metrics() -> None:
+    _setup_loop_tasks_total_metric(settings.METRIC_API_LOOP_TASKS_TOTAL)
+
+
+def setup_notable_accounts_worker_metrics() -> None:
+    _setup_loop_tasks_total_metric(settings.METRIC_NOTABLE_ACCOUNTS_WORKER_LOOP_TASKS_TOTAL)
+
+
+def setup_syncer_metrics() -> None:
+    _setup_loop_tasks_total_metric(settings.METRIC_SYNCER_LOOP_TASKS_TOTAL)
+
+
+def setup_pending_syncer_metrics() -> None:
+    _setup_loop_tasks_total_metric(settings.METRIC_SYNCER_PENDING_LOOP_TASKS_TOTAL)
+
+
+def _setup_loop_tasks_total_metric(name: str) -> None:
+    loop_tasks_total = prometheus_client.Gauge(name, 'Total amount of tasks in the event loop.')
+    loop_tasks_total.set_function(lambda: utils.get_loop_tasks_count())

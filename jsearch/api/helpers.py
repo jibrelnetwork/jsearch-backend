@@ -1,19 +1,23 @@
 import json
-from functools import partial
-from typing import Any, Dict, List, Optional
 
 import asyncpgsa
 from aiohttp import web
 from asyncpg import Connection
+from functools import partial
 from sqlalchemy import asc, desc, Column
 from sqlalchemy.orm import Query
+from typing import Any, Dict, List, Optional, Union
 
 from jsearch.api.error_code import ErrorCode
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
 DEFAULT_OFFSET = 0
-DEFAULT_ORDER = 'desc'
+MAX_OFFSET = 10000
+
+ORDER_ASC = 'asc'
+ORDER_DESC = 'desc'
+DEFAULT_ORDER = ORDER_DESC
 
 
 class Tag:
@@ -55,7 +59,9 @@ def get_tag(request):
     return Tag(type_, value)
 
 
-def validate_params(request, default_order=None):
+def validate_params(request, max_limit=None, max_offset=None, default_order=None):
+    # todo: need to refactoring this function.
+    # May be split to a few smaller or rewrite to marshmallow
     default_order = default_order or DEFAULT_ORDER
 
     params = {}
@@ -63,7 +69,7 @@ def validate_params(request, default_order=None):
 
     limit = request.query.get('limit')
     if limit and limit.isdigit():
-        params['limit'] = min(int(limit), MAX_LIMIT)
+        params['limit'] = min(int(limit), max_limit or MAX_LIMIT)
 
     elif limit and not limit.isdigit():
         errors.append({'field': 'limit',
@@ -71,7 +77,7 @@ def validate_params(request, default_order=None):
                        'error_message': 'Limit value should be valid integer, got "{}"'.format(limit)
                        })
     else:
-        params['limit'] = DEFAULT_LIMIT
+        params['limit'] = max_limit or DEFAULT_LIMIT
 
     offset = request.query.get('offset')
     if offset and offset.isdigit():
@@ -84,8 +90,15 @@ def validate_params(request, default_order=None):
     else:
         params['offset'] = DEFAULT_OFFSET
 
+    if params.get('offset') and params['offset'] > (max_offset or MAX_OFFSET):
+        errors.append({
+            'field': 'offset',
+            'error_code': ErrorCode.TOO_BIG_OFFSET_VALUE,
+            'error_message': 'Offset value should be less then "{}"'.format(MAX_OFFSET)
+        })
+
     order = request.query.get('order', '').lower()
-    if order and order in ['asc', 'desc']:
+    if order and order in [ORDER_ASC, ORDER_DESC]:
         params['order'] = order
     elif order:
         errors.append({'field': 'order',
@@ -102,6 +115,18 @@ def validate_params(request, default_order=None):
         }
         raise web.HTTPBadRequest(text=json.dumps(body), content_type='application/json')
     return params
+
+
+def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -> List[str]:
+    """Lowers, splits and strips the joined string."""
+    if joined_string is None:
+        return list()
+
+    strings_list = joined_string.lower().split(separator)
+    strings_list = [string.strip() for string in strings_list]
+    strings_list = [string for string in strings_list if string]
+
+    return strings_list
 
 
 def api_success(data):
@@ -168,4 +193,67 @@ async def fetch(connection: Connection, query: Query) -> List[Dict[str, Any]]:
 async def fetch_row(connection: Connection, query: Query) -> Optional[Dict[str, Any]]:
     query, params = asyncpgsa.compile_query(query)
     result = await connection.fetchrow(query, *params)
-    return result is not None and dict(result)
+    if result is not None:
+        return dict(result)
+
+
+def get_positive_number(
+        request: web.Request,
+        attr: str,
+        tags=Optional[Dict[str, int]],
+        is_required=False
+) -> Optional[Union[int, str]]:
+    value = request.query.get(attr, "").lower()
+
+    if value.isdigit():
+        number = int(value)
+        if number >= 0:
+            return number
+
+    elif value and tags and value in tags:
+        return tags[value]
+
+    elif value and tags and value not in tags:
+        msg_allowed_tags = tags and f" or tag ({', '.join(tags.keys())})" or ""
+        raise ApiError(
+            {
+                'field': attr,
+                'error_code': ErrorCode.VALIDATION_ERROR,
+                'error_message': f'Parameter `{attr}` must be either positive integer{msg_allowed_tags}.'
+            },
+            status=400
+        )
+
+    if is_required:
+        raise ApiError(
+            {
+                'field': attr,
+                'error_code': ErrorCode.VALIDATION_ERROR,
+                'error_message': f'Query param `{attr}` is required'
+            },
+            status=400
+        )
+
+
+class ApiError(Exception):
+    """
+    @ApiError.catch
+    async def get_api(request):
+        raise ApiError(status=404, error={'field': 'Not found'})
+    """
+
+    def __init__(self, error: Dict[str, str], status: int = 400) -> None:
+        self.error = error
+        self.status = status
+
+    @classmethod
+    def catch(cls, func):
+
+        async def _wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except ApiError as exc:
+
+                return api_error(status=exc.status, errors=[exc.error], data={})
+
+        return _wrapper

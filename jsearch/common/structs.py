@@ -1,7 +1,7 @@
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 
-class MainDbStats(NamedTuple):
+class DbStats(NamedTuple):
     is_healthy: bool
 
 
@@ -11,7 +11,6 @@ class RawDbStats(NamedTuple):
 
 class LoopStats(NamedTuple):
     is_healthy: bool
-    tasks_count: int
 
 
 class KafkaStats(NamedTuple):
@@ -20,3 +19,8 @@ class KafkaStats(NamedTuple):
 
 class NodeStats(NamedTuple):
     is_healthy: bool
+
+
+class SyncRange(NamedTuple):
+    start: int
+    end: Optional[int]

@@ -12,6 +12,7 @@ class TransactionModel(Base):
         'primary_key': [
             transactions_t.c.hash,
             transactions_t.c.block_hash,
+            transactions_t.c.address,
         ]
     }
 
@@ -40,6 +41,7 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     value = factory.Sequence(lambda n: hex(n))
     contract_call_description = {}
 
+    status = 1
     is_forked = False
 
     class Meta:
@@ -47,6 +49,18 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = session
         sqlalchemy_session_persistence = 'flush'
         rename = {'from_': 'from'}
+
+    @classmethod
+    def create_for_block(cls, block, **kwargs):
+        data = cls.stub(block_number=block.number, block_hash=block.hash, **kwargs).__dict__
+        data.pop('address', None)
+        data['from_'] = data.pop('from', None)
+
+        results = list()
+        results.append(cls.create(address=data['from_'], **data))
+        results.append(cls.create(address=data['to'], **data))
+
+        return results
 
 
 @pytest.fixture()

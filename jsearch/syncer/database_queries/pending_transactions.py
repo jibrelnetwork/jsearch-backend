@@ -8,7 +8,7 @@ from jsearch.common.tables import pending_transactions_t
 
 def insert_or_update_pending_tx_q(pending_tx: Dict[str, Any]) -> Query:
     insert_query = insert(pending_transactions_t)
-    insert_query = insert_query.values(**_prepare_pending_tx(pending_tx))
+    insert_query = insert_query.values(pending_tx)
     insert_query = insert_query.on_conflict_do_update(
         index_elements=[
             pending_transactions_t.c.hash,
@@ -19,13 +19,14 @@ def insert_or_update_pending_tx_q(pending_tx: Dict[str, Any]) -> Query:
             'timestamp': insert_query.excluded.timestamp,
             'removed': insert_query.excluded.removed,
             'node_id': insert_query.excluded.node_id,
-        }
+        },
+        where=pending_transactions_t.c.last_synced_id < insert_query.excluded.last_synced_id,
     )
 
     return insert_query
 
 
-def _prepare_pending_tx(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+def prepare_pending_tx(raw_data: Dict[str, Any]) -> Dict[str, Any]:
     return {
         'last_synced_id': raw_data['id'],
         'hash': raw_data['tx_hash'],

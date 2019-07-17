@@ -14,6 +14,11 @@ def transaction(main_db_data):
 
 
 @pytest.fixture()
+def receipt(main_db_data):
+    return main_db_data['receipts'][2]
+
+
+@pytest.fixture()
 def logs(main_db_data):
     tx_hash = main_db_data['transactions'][2]['hash']
 

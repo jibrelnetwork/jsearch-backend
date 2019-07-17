@@ -1,312 +1,139 @@
 import pytest
-from sqlalchemy import and_
+from sqlalchemy import true
 
-from jsearch.common.tables import blocks_t, chain_splits_t, assets_transfers_t, wallet_events_t
+from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
+from jsearch.common.structs import SyncRange
+from jsearch.common.tables import accounts_state_t, blocks_t, assets_summary_t
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.manager import Manager
-from jsearch.syncer.processor import SyncProcessor
-
-pytest_plugins = (
-    'jsearch.tests.plugins.databases.main_db',
-    'jsearch.tests.plugins.databases.dumps',
-    'jsearch.tests.plugins.databases.raw_db',
-    'jsearch.tests.plugins.service_bus',
-    'jsearch.tests.plugins.databases.main_db',
-    'jsearch.tests.plugins.databases.factories.assets_transfers',
-    'jsearch.tests.plugins.databases.factories.token_holder',
-    'jsearch.tests.plugins.databases.factories.accounts',
-    'jsearch.tests.plugins.databases.factories.blocks',
-    'jsearch.tests.plugins.databases.factories.token_transfers',
-    'jsearch.tests.plugins.databases.factories.contracts',
-    'jsearch.tests.plugins.databases.factories.reorgs',
-    'jsearch.tests.plugins.databases.factories.wallet_events',
-)
 
 
-@pytest.mark.usefixtures('mock_service_bus_sync_client')
-async def test_process_chain_split(raw_db_sample, db, raw_db_connection_string, db_connection_string):
-    s = raw_db_sample
-    processor = SyncProcessor(raw_db_connection_string, db_connection_string)
-    for h in s['headers']:
-        processor.sync_block(h['block_hash'])
-    raw_db = RawDB(raw_db_connection_string)
-    main_db = MainDB(db_connection_string)
-    await main_db.connect()
-    await raw_db.connect()
-    manager = Manager(None, main_db, raw_db, '6000000-')
+@pytest.fixture()
+def mock_getting_last_block_from_row_db(mocker):
+    async def get_last_block(*args):
+        return None
 
-    splits = raw_db_sample['chain_splits']
-    await manager.process_chain_split(splits[0])
-
-    b3f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][2]['block_hash'])).fetchone()
-    b3 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][3]['block_hash'])).fetchone()
-    b4f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][4]['block_hash'])).fetchone()
-    b4 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][5]['block_hash'])).fetchone()
-    b5 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][6]['block_hash'])).fetchone()
-    b5f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][7]['block_hash'])).fetchone()
-
-    assert b3f.is_forked is True
-    assert b3.is_forked is False
-    assert b4f.is_forked is True
-    assert b4.is_forked is False
-    assert b5.is_forked is False
-    assert b5f.is_forked is False
-
-    await manager.process_chain_split(splits[1])
-
-    b3f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][2]['block_hash'])).fetchone()
-    b3 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][3]['block_hash'])).fetchone()
-    b4f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][4]['block_hash'])).fetchone()
-    b4 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][5]['block_hash'])).fetchone()
-    b5 = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][6]['block_hash'])).fetchone()
-    b5f = db.execute(blocks_t.select().where(blocks_t.c.hash == s['headers'][7]['block_hash'])).fetchone()
-
-    assert b3f.is_forked is True
-    assert b3.is_forked is False
-    assert b4f.is_forked is True
-    assert b4.is_forked is False
-    assert b5.is_forked is False
-    assert b5f.is_forked is True
-
-    maindb_splits = db.execute(chain_splits_t.select()).fetchall()
-    assert dict(maindb_splits[0]) == splits[0]
-    assert dict(maindb_splits[1]) == splits[1]
-
-    # assert blocks[1].number == 6000003
-    # assert blocks[1].hash.endswith('000')
-    # assert blocks[1].is_forked is True
-    #
-    # assert blocks[2].hash == s['headers'][5]['block_hash']
-    # assert blocks[2].is_forked is False
-    #
-    # assert blocks[3].hash == s['headers'][6]['block_hash']
-    # assert blocks[3].is_forked is True
-
-    # assert transactions[0].hash == s['bodies'][0]['fields']['Transactions'][0]['hash']
-    # assert transactions[0].block_hash == s['headers'][0]['block_hash']
-    # assert transactions[0].block_number == s['headers'][0]['block_number']
-    # assert transactions[0].is_forked is False
-    # assert transactions[0].transaction_index == 0
-    #
-    # assert receipts[0].transaction_hash == s['bodies'][0]['fields']['Transactions'][0]['hash']
-    # assert receipts[0].block_hash == s['headers'][0]['block_hash']
-    # assert receipts[0].block_number == s['headers'][0]['block_number']
-    # assert receipts[0].is_forked is False
-    # assert receipts[0].transaction_index == 0
-    # assert receipts[1].transaction_hash == s['bodies'][0]['fields']['Transactions'][1]['hash']
-    # assert receipts[1].transaction_index == 1
-    #
-    # assert logs[0].transaction_hash == s['bodies'][0]['fields']['Transactions'][2]['hash']
-    # assert logs[0].block_hash == s['headers'][0]['block_hash']
-    # assert logs[0].block_number == s['headers'][0]['block_number']
-    # assert logs[0].is_forked is False
-    # assert logs[0].log_index == 0
-    #
-    # assert logs[1].transaction_hash == s['bodies'][0]['fields']['Transactions'][2]['hash']
-    # assert logs[1].block_hash == s['headers'][0]['block_hash']
-    # assert logs[1].block_number == s['headers'][0]['block_number']
-    # assert logs[1].is_forked is False
-    # assert logs[1].log_index == 1
-    #
-    # assert accounts_base[0]['address'] == s['accounts_state'][0]['address'].lower()
-    # assert accounts_state[0]['address'] == s['accounts_state'][0]['address'].lower()
-    # assert accounts_state[0]['balance'] == int(s['accounts_state'][0]['fields']['balance'])
-    # assert accounts_state[0].is_forked is False
-
-    # TODO: extend test cases
+    mocker.patch('jsearch.syncer.database.RawDB.get_latest_available_block_number', get_last_block)
 
 
-@pytest.mark.usefixtures('mock_service_bus_sync_client', 'mock_service_bus')
-@pytest.mark.parametrize("is_forked", [True, False])
-async def test_reorganization_for_token_transfers_is_forked_state(
-        db,
-        account_factory,
-        token_factory,
-        block_factory,
-        transfer_factory,
-        reorg_factory,
-        raw_db_connection_string,
-        db_connection_string,
-        is_forked,
-):
-    from jsearch.common.tables import token_transfers_t
+async def call_system_under_test(db_dsn: MainDB, raw_db_dsn: str, start: int, end: int) -> None:
+    async with MainDB(db_dsn) as main_db, RawDB(raw_db_dsn) as raw_db:
+        manager = Manager(None, main_db, raw_db, sync_range=SyncRange(start=start, end=end))
+        for i in range(0, 10):
+            await manager.get_and_process_chain_event()
+
+
+@pytest.mark.usefixtures('mock_getting_last_block_from_row_db')
+async def test_chain_split_token_check_ether_summary(db, raw_db_split_sample, raw_db_dsn, db_dsn):
+    """
+    We have a fixture with split chain events:
+      - from 8020425
+      - until 8020428
+
+    We have a chain:
+        - 8020425: 0xc612bbb64b83b23729ff542d7ced2617d028834681893a8ea28bb2dcfc01ddc9
+        - 8020426: 0x017ec98d0946bb0c008507871e3d865ec9a2dab6966b027d3c16aafa54407d4a
+
+    We have a split after block 8020425:
+        - we drop:
+            - 8020426: 0x017ec98d0946bb0c008507871e3d865ec9a2dab6966b027d3c16aafa54407d4a
+        - we insert:
+            - 8020426: 0xa388792fc1fa244083f7d5ad4a2843ac3ea0b23cc543078e1b18085f309fb44f
+            - 8020427: 0xd6a8f9d468a7e2a916482211c0bf2fa0314178e2ef4979961a9e44d499046c86
+
+    From fixture we know - 0x017ec98d0946bb0c008507871e3d865ec9a2dab6966b027d3c16aafa54407d4a - is forked block
+
+    We know about differences in ether balances for blocks.
+    This is history data.
+
+                    account address                |         balances in fork       |  expected_balance in chain
+        0xe75fe8be89d97101d1d84878bb876a1e6b12b83e |            3560031043197580749 | 3558388802072277453
+        0xd87533f6450a125905e7d487910f2a12e75b2ef8 |             467861372000000000 | 467075624000000000
+        0x85176612cc64c822a5e7a4746a9a764841378b8b |             319857145927679600 | 319026064927679600
+        0x3462e5a279eb720d0ead2afc81a05e95b72ea9f2 |            1229374229878286171 | 1228876116878286171
+        0xf056f435ba0cc4fcd2f1b17e3766549ffc404b94 |        28475095993859200000000 | 28492400979014200000000
+        0xd8a83b72377476d0a66683cde20a8aad0b628713 |       103724185598784000000000 | 103726437107684000000000
+        0x4c48aa89c93bbefe147dd4bfc499060659559875 |               7649952000000000 | 7572647000000000
+        0x3c6e761fbbcdb9fa09179fe9eb07fc42138917b0 |              12706166442444081 | 12335502442444081
+        0xb8fdba39c8d77ccaba086bf5315eaeebf4a62cfd |              27829325001162768 | 27793785001162768
+        0x034f854b44d28e26386c1bc37ff9b20c6380b00d |        90280671904874700000000 | 90285403522674700000000
+        0x9e839f7b0651060c37c45fcda022091c518bf00a |               8885800000000000 | 0
+        0xb9a4873d8d2c22e56b8574e8605644d08e047549 |        14884337326811300000000 | 14896904943301300000000
+        0x5ff87907d6157f18732ce912153149a3f9362a0b |            7326610699177916390 | 7328010699177916390
+        0x61dbdc7a60a153084999ba57d9f836975463c7d2 |           20855834320000000000 | 20829534320000000000
+        0x06b8c5883ec71bc3f4b332081519f23834c8706e |            8878835918307764627 | 8599859004137345165
+        0xe0c1582a5cd193172624658ed0abeecea24835ad |           27670539114716587280 | 27669000514716587280
+        0x6d78475812904b41c1c33259b76da553ca6ad4c4 |             302503749820064763 | 302181291820064763
+    """
     # given
-    # create reorganization event
-    token = token_factory.create()
-    block = block_factory.create()
-
-    from_account = account_factory.create()
-    to_account = account_factory.create()
-
-    transfer_factory.create(
-        address=to_account.address,
-        from_address=from_account.address,
-        to_address=to_account.address,
-        block_hash=block.hash,
-        block_number=block.number,
-        token_address=token.address,
-        token_decimals=token.token_decimals,
-        token_symbol=token.token_symbol,
-        token_name=token.token_name,
-        is_forked=not is_forked
-    )
-    transfer_factory.create(
-        address=from_account.address,
-        from_address=from_account.address,
-        to_address=to_account.address,
-        block_hash=block.hash,
-        block_number=block.number,
-        token_address=token.address,
-        token_decimals=token.token_decimals,
-        token_symbol=token.token_symbol,
-        token_name=token.token_name,
-        is_forked=not is_forked
-    )
-
-    reorg = reorg_factory.stub(block_hash=block.hash, block_number=block.number, reinserted=not is_forked)
+    common_block_hash = '0xc612bbb64b83b23729ff542d7ced2617d028834681893a8ea28bb2dcfc01ddc9'
+    forked_block_hash = '0x017ec98d0946bb0c008507871e3d865ec9a2dab6966b027d3c16aafa54407d4a'
+    inserted_blocks_hashes = [
+        '0xa388792fc1fa244083f7d5ad4a2843ac3ea0b23cc543078e1b18085f309fb44f',
+        '0xd6a8f9d468a7e2a916482211c0bf2fa0314178e2ef4979961a9e44d499046c86',
+    ]
 
     # when
-    # apply reorganization record
-    async with RawDB(raw_db_connection_string) as raw_db, MainDB(db_connection_string) as main_db:
-        manager = Manager(None, main_db, raw_db, '6000000-')
-        await manager.process_reorgs([{
-            'block_hash': reorg.block_hash,
-            'block_number': reorg.block_number,
-            'reinserted': reorg.reinserted,
-            'id': reorg.id,
-            'node_id': reorg.node_id,
-            'header': 'header'  # why do we need pop header?
-        }])
+    await call_system_under_test(db_dsn, raw_db_dsn, start=8020425, end=8020427)
 
     # then
-    # check transfer fork status
-    result = db.execute(token_transfers_t.select(whereclause=and_(
-        token_transfers_t.c.address == to_account.address,
-        token_transfers_t.c.to_address == to_account.address,
-        token_transfers_t.c.from_address == from_account.address
-    ))).fetchone()
+    forked_blocks = db.execute(blocks_t.select().where(blocks_t.c.is_forked == true())).fetchall()
+    assert {x.hash for x in forked_blocks} == {forked_block_hash}
 
-    assert result['is_forked'] == is_forked
+    inserted_blocks = db.execute(blocks_t.select().where(blocks_t.c.hash.in_(inserted_blocks_hashes))).fetchall()
+    assert {x.hash for x in inserted_blocks} == set(inserted_blocks_hashes)
 
-    result = db.execute(token_transfers_t.select(whereclause=and_(
-        token_transfers_t.c.address == from_account.address,
-        token_transfers_t.c.to_address == to_account.address,
-        token_transfers_t.c.from_address == from_account.address
-    ))).fetchone()
+    forked_balances = db.execute(
+        accounts_state_t.select().where(accounts_state_t.c.block_hash == forked_block_hash)
+    ).fetchall()
 
-    assert result['is_forked'] == is_forked
+    assert all(x.is_forked for x in forked_balances)
 
+    inserted_balances = db.execute(
+        accounts_state_t.select().where(accounts_state_t.c.block_hash.in_(inserted_blocks_hashes))
+    ).fetchall()
 
-@pytest.mark.usefixtures('mock_service_bus_sync_client', 'mock_service_bus')
-@pytest.mark.parametrize("is_forked", [True, False])
-async def test_reorganization_for_assets_transfers_is_forked_state(
-        db,
-        account_factory,
-        assets_transfers_factory,
-        token_factory,
-        block_factory,
-        reorg_factory,
-        raw_db_connection_string,
-        db_connection_string,
-        is_forked,
-):
-    # given
-    # create reorganization event
-    token = token_factory.create()
-    block = block_factory.create()
+    assert all(not x.is_forked for x in inserted_balances)
 
-    from_account = account_factory.create()
-    to_account = account_factory.create()
+    previous_balances = db.execute(
+        accounts_state_t.select().where(accounts_state_t.c.block_hash == common_block_hash)
+    ).fetchall()
 
-    assets_transfers_factory.create(
-        address=from_account.address,
-        from_=from_account.address,
-        to=to_account.address,
-        block_hash=block.hash,
-        block_number=block.number,
-        asset_address=token.address,
-    )
-    assets_transfers_factory.create(
-        address=to_account.address,
-        from_=from_account.address,
-        to=to_account.address,
-        block_hash=block.hash,
-        block_number=block.number,
-        asset_address=token.address,
-    )
+    forked_states = {x.address: x.balance for x in forked_balances}
+    inserted_states = {x.address: x.balance for x in inserted_balances}
+    previous_states = {x.address: x.balance for x in previous_balances}
 
-    reorg = reorg_factory.stub(block_hash=block.hash, block_number=block.number, reinserted=not is_forked)
+    forked_addresses = set(forked_states.keys())
+    inserted_addresses = set(inserted_states.keys())
+    previous_addresses = set(previous_states.keys())
 
-    # when
-    # apply reorganization record
-    async with RawDB(raw_db_connection_string) as raw_db, MainDB(db_connection_string) as main_db:
-        manager = Manager(None, main_db, raw_db, '6000000-')
-        await manager.process_reorgs([{
-            'block_hash': reorg.block_hash,
-            'block_number': reorg.block_number,
-            'reinserted': reorg.reinserted,
-            'id': reorg.id,
-            'node_id': reorg.node_id,
-            'header': 'header'  # why do we need pop header?
-        }])
+    addresses_to_reset = (previous_addresses & forked_addresses) - inserted_addresses
+    addresses_to_delete = forked_addresses - (inserted_addresses | previous_addresses)
 
-    # then
-    # check transfer fork status
-    result = db.execute(assets_transfers_t.select(whereclause=and_(
-        assets_transfers_t.c.address == to_account.address,
-        assets_transfers_t.c.to == to_account.address,
-        getattr(assets_transfers_t.c, 'from') == from_account.address
-    ))).fetchone()
+    not_touched_addresses = previous_addresses - forked_addresses - inserted_addresses
 
-    assert result['is_forked'] == is_forked
+    # load all ether balances
+    assets_summary = db.execute(assets_summary_t.select().where(assets_summary_t.c.asset_address == '')).fetchall()
 
-    result = db.execute(assets_transfers_t.select(whereclause=and_(
-        assets_transfers_t.c.address == from_account.address,
-        assets_transfers_t.c.to == to_account.address,
-        getattr(assets_transfers_t.c, 'from') == from_account.address
-    ))).fetchone()
+    summary_addresses = {summary.address for summary in assets_summary}
+    assert not (summary_addresses & addresses_to_delete)
 
-    assert result['is_forked'] == is_forked
+    for summary in assets_summary:
+        address = summary.address
+        balance = summary.value
 
+        if address in inserted_addresses:
+            expected_balance = inserted_states.get(address)
+            assert balance == expected_balance
 
-@pytest.mark.usefixtures('mock_service_bus_sync_client', 'mock_service_bus')
-@pytest.mark.parametrize("is_forked", [True, False], ids=("is_true", "is_false"))
-async def test_reorganization_for_wallet_events_is_forked_state(
-        db,
-        block_factory,
-        reorg_factory,
-        transaction_factory,
-        wallet_events_factory,
-        raw_db_connection_string,
-        db_connection_string,
-        is_forked,
-):
-    # given
-    # create reorganization event
-    block = block_factory.create()
+        elif address in addresses_to_reset:
+            expected_balance = previous_states.get(address)
+            assert balance == expected_balance
 
-    tx = transaction_factory.create(block_number=block.number, block_hash=block.hash)
-    wallet_events_factory.create(tx_hash=tx.hash, block_hash=block.hash, block_number=block.number)
+        elif address in not_touched_addresses:
+            pass
 
-    reorg = reorg_factory.stub(block_hash=block.hash, block_number=block.number, reinserted=not is_forked)
-
-    # when
-    # apply reorganization record
-    async with RawDB(raw_db_connection_string) as raw_db, MainDB(db_connection_string) as main_db:
-        manager = Manager(None, main_db, raw_db, '6000000-')
-        await manager.process_reorgs([{
-            'block_hash': reorg.block_hash,
-            'block_number': reorg.block_number,
-            'reinserted': reorg.reinserted,
-            'id': reorg.id,
-            'node_id': reorg.node_id,
-            'header': 'header'
-        }])
-
-    # then
-    # check wallet event status
-    result = db.execute(wallet_events_t.select(whereclause=and_(
-        wallet_events_t.c.tx_hash == tx.hash,
-    ))).fetchone()
-
-    assert result['is_forked'] == is_forked
+        elif summary.asset_address == ETHER_ASSET_ADDRESS:
+            pass
+        else:
+            assert False, 'summary should not to be exists'

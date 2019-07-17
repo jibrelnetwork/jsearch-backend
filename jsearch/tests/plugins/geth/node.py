@@ -241,8 +241,8 @@ class GethNode(Node):
 
 
 @pytest.fixture(scope="session")
-def geth_fork_node(raw_db_connection_string: str):
-    node = GethForkNode.as_new_process(extdb_dsn=raw_db_connection_string)
+def geth_fork_node(raw_db_dsn):
+    node = GethForkNode.as_new_process(extdb_dsn=raw_db_dsn)
     yield node
     node.terminate()
 

@@ -1,4 +1,6 @@
-from typing import List
+import json
+
+from typing import List, Dict, Any
 
 from jsearch.api.models.base_model_ import Model
 
@@ -69,6 +71,7 @@ class Transaction(Model):
         'transaction_index': int,
         'v': str,
         'value': str,
+        'status': bool
     }
 
     attribute_map = {
@@ -86,7 +89,13 @@ class Transaction(Model):
         'transaction_index': 'transactionIndex',
         'v': 'v',
         'value': 'value',
+        'status': 'status'
     }
+
+    def to_dict(self):
+        data = super(Transaction, self).to_dict()
+        data['status'] = bool(data['status'])
+        return data
 
 
 class InternalTransaction(Model):
@@ -376,7 +385,6 @@ class AssetTransfer(Model):
         'tx_data': Transaction
     }
     attribute_map = {
-
         'type': 'type',
         'from': 'from',
         'to': 'to',
@@ -384,3 +392,27 @@ class AssetTransfer(Model):
         'amount': 'amount',
         'tx_data': 'txData',
     }
+
+
+class WalletEvent(Model):
+    swagger_types = {
+        "type": str,
+        "event_index": int,
+        "event_data": Dict[str, Any],
+    }
+    attribute_map = {
+        'type': 'eventType',
+        'event_index': 'eventIndex',
+        'event_data': 'eventData'
+    }
+
+    def to_dict(self):
+        data = super(WalletEvent, self).to_dict()
+
+        event_data = getattr(self, 'event_data', {})
+        if isinstance(event_data, str):
+            event_data = json.loads(event_data)
+
+        data['eventData'] = [{'fieldName': name, 'fieldValue': value} for name, value in event_data.items()]
+
+        return data

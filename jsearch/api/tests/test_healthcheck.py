@@ -1,5 +1,8 @@
+import pytest
 from aiohttp.test_utils import TestClient
 from pytest_mock import MockFixture
+
+pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
 
 
 async def test_healthcheck_everything_is_ok(mocker: MockFixture, cli: TestClient):
@@ -13,5 +16,4 @@ async def test_healthcheck_everything_is_ok(mocker: MockFixture, cli: TestClient
         "isMainDbHealthy": True,
         "isNodeHealthy": True,
         "isLoopHealthy": True,
-        "loopTasksCount": 9999
     }
