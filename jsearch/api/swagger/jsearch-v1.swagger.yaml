@@ -1,7 +1,7 @@
 swagger: '2.0'
 info:
   description: jSearch - Ethereum blockexplorer API
-  version: "1.0.0"
+  version: "1.0.1"
   title: jSearch API
   # put the contact info for your development or API team
   contact:
@@ -37,7 +37,7 @@ parameters:
     format: address
     schema:
       example: "0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5"
-  blockchain_tip:
+  blockchain_tip_required:
     name: blockchain_tip
     in: query
     required: true
@@ -46,6 +46,23 @@ parameters:
     format: block_hash
     schema:
       example: "0x6b56924440c6674d60d7c8af0ef2c30fda3b68065de91e8b99bcbfc9fe1b1111"
+  blockchain_tip_optional:
+    name: blockchain_tip
+    in: query
+    required: false
+    description: "<a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/952434891/Blockchain+Tip\">Blockchain tip</a> (as block hash from /v1/blockchain_tip)"
+    type: string
+    format: block_hash
+    schema:
+      example: ""
+  include_pending_txs:
+    name: include_pending_txs
+    in: query
+    required: false
+    description: "Determines whether pending transactions are included in the response"
+    type: boolean
+    format: block_hash
+    default: true
   addresses:
     name: addresses
     in: query
@@ -80,7 +97,7 @@ parameters:
     format: address
     schema:
       example: "0xB8c77482e45F1F44dE1745F52C74426C631bDD52"
-  tagRequired:
+  tag:
     name: tag
     in: path
     required: true
@@ -88,11 +105,6 @@ parameters:
     type: string
     schema:
       example: "latest"
-  tagOptional:
-    name: tag
-    in: path
-    description: block hash, block number or "latest" keyword
-    type: string
   txhash:
     name: txhash
     in: path
@@ -125,7 +137,7 @@ parameters:
     name: block_range_start
     in: query
     required: true
-    description: "<a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint#Walleteventsendpoint-PARAMS\">Filter by block number</a>"
+    description: "Filtering by block range (block number or \"latest\" or \"tip\" keyword). Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint#Walleteventsendpoint-PARAMS\">link</a>."
     schema:
       oneOf:
         - type: integer
@@ -139,7 +151,7 @@ parameters:
   block_range_end:
     name: block_range_end
     in: query
-    description: "<a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint#Walleteventsendpoint-PARAMS\">Filter by block number</a>"
+    description: "Filtering by block range (block number or \"latest\" or \"tip\" keyword). Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint#Walleteventsendpoint-PARAMS\">link</a>."
     schema:
       oneOf:
         - type: integer
@@ -153,21 +165,21 @@ parameters:
   block_range_count:
     name: block_range_count
     in: query
-    description: Filter by blocks count
+    description: "Filtering by block range (blocks number). Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint#Walleteventsendpoint-PARAMS\">link</a>."
     type: integer
 
 paths:
-
   /v1/accounts/balances:
     get:
-      summary: Get Ether Balance of multiple accounts in single call.
+      summary: Get Ether Balance of multiple accounts in a single call.
       description: |
-        You can use this endoint to receive `Ether Balance` of single or multiple accounts on specified block hash in single call.
+        You can use this endoint to receive `Ether Balance` of single or multiple accounts on the specified block hash or on the latest known block in a single call.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getBalancesForMultiAddresses
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/addresses'
       responses:
         200:
@@ -180,6 +192,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Balance'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -189,12 +203,13 @@ paths:
     get:
       summary: Get Account State by address
       description: |
-        You can use this endpoint to receive `Account State` data  on specified block hash by address.
+        You can use this endpoint to receive `Account State` data on the specified block hash or on the latest known block by address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getAccount
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/address'
         description: Account address
       responses:
@@ -206,6 +221,8 @@ paths:
                 $ref: '#/definitions/Status'
               data:
                 $ref: '#/definitions/Account'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -220,12 +237,13 @@ paths:
     get:
       summary: Get a list of `Contract Logs` by address
       description: |
-        You can use this endpoint to receive a list of `Contract Logs`on specified block hash by address by address.
+        You can use this endpoint to receive a list of `Contract Logs` on the specified block hash or on the latest known block by address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getLogs
       produces:
       - application/json
       parameters:
-        - $ref: '#/parameters/blockchain_tip'
+        - $ref: '#/parameters/blockchain_tip_optional'
         - $ref: '#/parameters/address'
         - $ref: '#/parameters/limit'
         - $ref: '#/parameters/offset'
@@ -242,6 +260,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Log'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -251,12 +271,13 @@ paths:
     get:
       summary: Get a list of `Normal` Transactions by Account address
       description: |
-        You can use this endpoint to receive a list of `Normal` Transactions on specified block hash by address.
+        You can use this endpoint to receive a list of `Normal` Transactions on the specified block hash or on the latest known block by address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getAccountTransactions
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -272,6 +293,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Transaction'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -281,12 +304,13 @@ paths:
     get:
       summary: Get a list of `Internal` Transactions by Account address
       description: |
-        You can use this endpoint to receive a list of `Internal` Transactions on specified block hash by address.
+        You can use this endpoint to receive a list of `Internal` Transactions on the specified block hash or on the latest known block by address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getAccountInternalTransactions
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -301,6 +325,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/InternalTransaction'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -338,12 +364,13 @@ paths:
     get:
       summary: Get list of `Blocks Mined` by Account address
       description: |
-        You can use this endpoint to receive a list of `Blocks Mined` on specified block hash by Account address
+        You can use this endpoint to receive a list of `Blocks Mined` on the specified block hash or on the latest known block by Account address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getAccountMinedBlocks
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -359,6 +386,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Block'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -368,12 +397,13 @@ paths:
     get:
       summary: Get list of `Uncles Mined` by Account address
       description: |
-        You can use this endpoint to receive a list of `Uncles Mined` on specified block hash by Account address
+        You can use this endpoint to receive a list of `Uncles Mined` on the specified block hash or on the latest known block by Account address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getAccountMinedUncles
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -388,6 +418,8 @@ paths:
               type: array
               items:
                 $ref: '#/definitions/Uncle'
+            meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -395,14 +427,15 @@ paths:
 
   /v1/accounts/{address}/token_balances:
     get:
-      summary: Get Token Balance for multiple contract addresses for specific Account address in single call.
+      summary: Get Token Balance for multiple contract addresses for specific Account address in a single call.
       description: |
-        You can use this endpoint to receive a list of `Token Balances` for single or multiple contract addresses on specified block hash and account address in single call
+        You can use this endpoint to receive a list of `Token Balances` for single or multiple contract addresses on the specified block hash or on the latest known block and account address in a single call.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getTokenBalancesForMultiContracts
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/contract_addresses'
       responses:
@@ -416,6 +449,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/TokenBalance'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -425,12 +460,13 @@ paths:
     get:
       summary: Get Token Balance for specific token by Account address
       description: |
-        You can use this endpoint to receive `Token Balance` for specific token by Account address
+        You can use this endpoint to receive `Token Balance` for specific token by Account address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getTokenHolderBalance
       produces:
         - application/json
       parameters:
-        - $ref: '#/parameters/blockchain_tip'
+        - $ref: '#/parameters/blockchain_tip_optional'
         - $ref: '#/parameters/address'
         - $ref: '#/parameters/contract_address'
       responses:
@@ -442,6 +478,8 @@ paths:
                 $ref: '#/definitions/Status'
               data:
                 $ref: '#/definitions/TokenHolder'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -455,12 +493,13 @@ paths:
     get:
       summary: Get a list of `ERC20 Token Transfers` by Account address
       description: |
-        You can use this endpoint to receive a list of `ERC20 Token Transfers` on specified block hash by Account address
+        You can use this endpoint to receive a list of `ERC20 Token Transfers` on the specified block hash or on the latest known block by Account address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getAccountTokenTransfers
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -476,21 +515,50 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/TokenTransfer'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
             example: {"success": false, "errors": [{"field": "limit", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
+  /v1/accounts/{address}/transaction_count:
+    get:
+      summary: Returns the number of transactions sent from an address.
+      description: |
+        You can use this endpoint to get the number of transactions sent from an address.
+      operationId: getAccountTransactionCount
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/include_pending_txs'
+      responses:
+        200:
+          description: nonce
+          schema:
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              data:
+                type: string
+                format: dec
+                example: "1"
+        400:
+          description: bad input parameter
+          schema:
+            example: {"success": false, "errors": [{"field": "include_pending_txs", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
   /v1/accounts/{address}/eth_transfers:
     get:
       summary: Get a list of `ETH Transfers` by Account address
       description: |
-        You can use this endpoint to receive a list of `ETH Transfers` on specified block hash by Account address
+        You can use this endpoint to receive a list of `ETH Transfers` on the specified block hash or on the latest known block by Account address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getAccountEthTransfers
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -506,6 +574,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/EthTransfer'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -515,12 +585,13 @@ paths:
     get:
       summary: Get a list of `Blocks`
       description: |
-        You can use this endpoint to receive a list of `Blocks` on specified block hash
+        You can use this endpoint to receive a list of `Blocks` on the specified block hash or on the latest known block.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getBlockList
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
       responses:
@@ -534,6 +605,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Block'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -548,7 +621,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/tagRequired'
+      - $ref: '#/parameters/tag'
       required: true
       responses:
         200:
@@ -579,7 +652,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/tagRequired'
+      - $ref: '#/parameters/tag'
       responses:
         200:
           description: transactions from specific block
@@ -611,7 +684,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/tagRequired'
+      - $ref: '#/parameters/tag'
       responses:
         200:
           description: transactions from specific block
@@ -643,7 +716,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/tagRequired'
+      - $ref: '#/parameters/tag'
       responses:
         200:
           description: uncles for specific block
@@ -757,12 +830,13 @@ paths:
     get:
       summary: Get a list of Uncles
       description: |
-        You can use this endpoint to receive a list of `Uncles` on specified block hash
+        You can use this endpoint to receive a list of `Uncles` on the specified block hash or on the latest known block.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getUnclesList
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
@@ -778,6 +852,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Uncle'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -792,7 +868,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/tagRequired'
+      - $ref: '#/parameters/tag'
       responses:
         200:
           description: uncle
@@ -931,12 +1007,13 @@ paths:
     get:
       summary: Get a list of `Token Transfers` for specific token (contract) address
       description: |
-        You can use this endpoint to receive a list of `Token Transfers` on specific block hash by token address
+        You can use this endpoint to receive a list of `Token Transfers` on the specified block hash or on the latest known block by token address.
+         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getTokenTransfers
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/contract_address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -953,6 +1030,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/TokenTransfer'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -962,12 +1041,13 @@ paths:
     get:
       summary: Get a list of `Token Holders` for specific token
       description: |
-        You can use this endpoint to receive a list of `Token Holders` on specific block hash by token address
+        You can use this endpoint to receive a list of `Token Holders` on the specified block hash or on the latest known block by token address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getTokenHolders
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/blockchain_tip_optional'
       - $ref: '#/parameters/contract_address'
       - $ref: '#/parameters/limit'
       - $ref: '#/parameters/offset'
@@ -984,6 +1064,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/TokenHolder'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -1162,6 +1244,7 @@ paths:
       summary: Get token holder and either balances for blockchain address.
       parameters:
         - $ref: '#/parameters/addresses'
+        - $ref: '#/parameters/blockchain_tip_required'
         - $ref: '#/parameters/assets'
         - $ref: '#/parameters/limit'
         - $ref: '#/parameters/offset'
@@ -1173,14 +1256,17 @@ paths:
                 $ref: '#/definitions/Status'
               data:
                 $ref: '#/definitions/AddressSummary'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
 
   /v1/wallet/get_events:
     get:
       summary: Get blockchain events (contract call, erc20 transfer, either transfer, transactions cancelation) for address.
       description: "Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint\">link</a> for details"
       parameters:
+        - $ref: '#/parameters/include_pending_txs'
         - $ref: '#/parameters/blockchain_address'
-        - $ref: '#/parameters/blockchain_tip'
+        - $ref: '#/parameters/blockchain_tip_required'
         - $ref: '#/parameters/block_range_start'
         - $ref: '#/parameters/block_range_end'
         - $ref: '#/parameters/block_range_count'
@@ -1194,8 +1280,6 @@ paths:
                 $ref: '#/definitions/Status'
               data:
                 properties:
-                  blockchainTip:
-                    $ref: '#/definitions/BlockchainTipInfo'
                   events:
                     type: array
                     items:
@@ -1204,6 +1288,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/definitions/PendingTransactionInfo'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
 
         400:
           description: Validation errors
@@ -1588,8 +1674,8 @@ definitions:
        example: 19190
       reward:
         type: string
-        format: hex
-        example: 0x2563918244f40000
+        format: dec
+        example: "411095732236680000"
 
   Receipt:
     properties:
@@ -1682,7 +1768,7 @@ definitions:
 
   TokenBalance:
     properties:
-      tokenAddress:
+      contractAddress:
         type: string
         format: address
         example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
@@ -1730,7 +1816,7 @@ definitions:
         type: array
         items:
           type: string
-      verified_at:
+      verifiedAt:
         type: string
       token:
         type: string
@@ -1790,11 +1876,7 @@ definitions:
         type: string
         format: address
         example: "0x355941cf7ac065310fd4023e1b913209f076a48a"
-      tokenDecimals:
-        type: string
-        format: dec
-        example: "18"
-      tokenAddress:
+      contractAddress:
         type: string
         format: address
         example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
@@ -1802,6 +1884,10 @@ definitions:
         type: string
         format: dec
         example: "1664600000000000000000"
+      decimals:
+        type: string
+        format: dec
+        example: "18"
 
   TokenHolder:
     properties:
@@ -1809,7 +1895,7 @@ definitions:
         type: string
         format: address
         example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
-      tokenAddress:
+      contractAddress:
         type: string
         format: address
         example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
