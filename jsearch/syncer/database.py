@@ -1,6 +1,7 @@
 import json
 import logging
 from copy import copy
+from collections import Counter
 
 import aiopg
 import backoff
@@ -30,10 +31,15 @@ from jsearch.common.tables import (
     assets_transfers_t,
     chain_events_t,
     wallet_events_t,
+    assets_summary_t,
 )
 from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.accounts import get_accounts_state_for_blocks_query
-from jsearch.syncer.database_queries.assets_summary import delete_assets_summary_query, upsert_assets_summary_query
+from jsearch.syncer.database_queries.assets_summary import (
+    delete_assets_summary_query,
+    upsert_assets_summary_query,
+    asset_tx_number_update_query,
+)
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.utils.balances import (
     get_last_ether_states_for_addresses_in_blocks,
@@ -717,9 +723,47 @@ class MainDB(DBWrapper):
                     query = delete_assets_summary_query(address=address, asset_address=ETHER_ASSET_ADDRESS)
                     await conn.execute(query)
 
+                asset_tx_number_updates = await self.get_asset_tx_number_updates(
+                    conn, old_chain_fragment, new_chain_fragment)
+                for update in asset_tx_number_updates:
+                    query = asset_tx_number_update_query(update)
+                    await conn.execute(query)
+
                 # write chain event
                 q = chain_events_t.insert().values(**chain_event)
                 await conn.execute(q)
+
+    async def get_asset_tx_number_updates(self, conn, old_chain_fragment, new_chain_fragment):
+        old_blocks = [b['hash'] for b in old_chain_fragment]
+        new_blocks = [b['hash'] for b in new_chain_fragment]
+
+        q = transactions_t.select().where(transactions_t.c.block_hash.in_(old_blocks))
+        async with conn.execute(q) as cursor:
+            old_txs = await cursor.fetchall()
+        q = transactions_t.select().where(transactions_t.c.block_hash.in_(new_blocks))
+        async with conn.execute(q) as cursor:
+            new_txs = await cursor.fetchall()
+        q = token_transfers_t.select().where(token_transfers_t.c.block_hash.in_(old_blocks))
+        async with conn.execute(q) as cursor:
+            old_transfers = await cursor.fetchall()
+        q = token_transfers_t.select().where(token_transfers_t.c.block_hash.in_(new_blocks))
+        async with conn.execute(q) as cursor:
+            new_transfers = await cursor.fetchall()
+
+        old_items = dict(Counter(
+            [(t.address, '') for t in old_txs] + [(t.address, t.token_address) for t in old_transfers]
+        ))
+
+        new_items = dict(Counter(
+            [(t.address, '') for t in new_txs] + [(t.address, t.token_address) for t in new_transfers]
+        ))
+
+        for key, value in new_items.items():
+            if key in old_items:
+                new_items[key] -= old_items.pop(key)
+        updates = [{'address': k[0], 'asset_address': k[1], 'tx_number': v} for k, v in new_items.items()]
+        updates += [{'address': k[0], 'asset_address': k[1], 'tx_number': -v} for k, v in old_items.items()]
+        return updates
 
     async def update_fork_status(self, block_hashes, is_forked, conn):
         update_block_q = blocks_t.update() \
@@ -852,7 +896,8 @@ class MainDB(DBWrapper):
 
     async def write_block_data_proc(self, block_data, uncles_data, transactions_data, receipts_data,
                                     logs_data, accounts_data, internal_txs_data, transfers,
-                                    token_holders_updates, wallet_events, assets_summary_updates, chain_event):
+                                    token_holders_updates, wallet_events, assets_summary_updates,
+                                    assets_summary_tx_number_updates, chain_event):
         """
         Insert block and all related items in main database
         """
@@ -864,7 +909,7 @@ class MainDB(DBWrapper):
         chain_event = dict(chain_event)
         chain_event['created_at'] = chain_event['created_at'].isoformat()
 
-        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
         j = json.dumps
 
         async with self.engine.acquire() as conn:
@@ -873,7 +918,7 @@ class MainDB(DBWrapper):
                                        j(receipts_data), j(logs_data), j(accounts_state_data),
                                        j(accounts_base_data), j(internal_txs_data), j(transfers),
                                        j(token_holders_updates), j(wallet_events), j(assets_summary_updates),
-                                       j(chain_event)])
+                                       j(assets_summary_tx_number_updates), j(chain_event)])
 
     async def insert_block(self, block_data):
         if block_data:

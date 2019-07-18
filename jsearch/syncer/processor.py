@@ -33,11 +33,13 @@ class BlockData(NamedTuple):
     token_holders_updates: List[Dict[str, Any]]
     wallet_events: List[Dict[str, Any]]
     assets_summary_updates: List[Dict[str, Any]]
+    assets_summary_tx_number_updates: List[Dict[str, Any]]
 
     async def write(self, main_db: MainDB, chain_event: Dict) -> None:
         await main_db.write_block_data_proc(
             accounts_data=self.accounts,
             assets_summary_updates=self.assets_summary_updates,
+            assets_summary_tx_number_updates=self.assets_summary_tx_number_updates,
             block_data=self.block,
             internal_txs_data=self.internal_txs,
             logs_data=self.logs,
@@ -199,6 +201,12 @@ class SyncProcessor:
             # we don't need to update actual state of balances
             token_holders_balances = []
             assets_summary_updates = []
+            assets_summary_tx_number_updates = []
+        else:
+            assets_summary_tx_number_updates = [
+                *wallet.assets_summary_tx_number_updates_from_transactions(transactions_data),
+                *wallet.assets_summary_tx_number_updates_from_transfers(transfers)
+            ]
 
         return BlockData(
             block=block_data,
@@ -211,7 +219,8 @@ class SyncProcessor:
             transfers=transfers,
             token_holders_updates=token_holders_balances,
             wallet_events=wallet_events,
-            assets_summary_updates=assets_summary_updates
+            assets_summary_updates=assets_summary_updates,
+            assets_summary_tx_number_updates=assets_summary_tx_number_updates,
         )
 
     def process_rewards(self,

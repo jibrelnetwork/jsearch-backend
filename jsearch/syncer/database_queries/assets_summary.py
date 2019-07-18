@@ -55,3 +55,13 @@ def delete_assets_summary_query(address: str, asset_address: str) -> Query:
             assets_summary_t.c.asset_address == asset_address
         )
     )
+
+def asset_tx_number_update_query(asset_update):
+    return assets_summary_t.update().where(
+        and_(
+            assets_summary_t.c.address==asset_update['address'],
+            assets_summary_t.c.asset_address==asset_update['asset_address']
+        )
+    ).values(tx_number=assets_summary_t.c.tx_number + asset_update['tx_number'])
+
+

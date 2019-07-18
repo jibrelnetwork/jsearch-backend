@@ -98,6 +98,7 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
         token_holders_updates=[],
         transfers=[],
         wallet_events=[],
+        assets_summary_tx_number_updates=[]
     )
 
     chain_event = {
@@ -201,6 +202,7 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
         token_holders_updates=[],
         transfers=[],
         wallet_events=[],
+        assets_summary_tx_number_updates=[]
     )
 
     chain_event = {
@@ -252,6 +254,7 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
         token_holders_updates=[],
         transfers=[],
         wallet_events=[],
+        assets_summary_tx_number_updates=[]
     )
     chain_event['id'] = 2
 
@@ -289,6 +292,7 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
         token_holders_updates=[],
         transfers=[],
         wallet_events=[],
+        assets_summary_tx_number_updates=[]
     )
     chain_event['id'] = 3
 
@@ -367,3 +371,75 @@ async def test_apply_chain_split(db, db_dsn):
 
     db_chain_events = db.execute(t.chain_events_t.select()).fetchall()
     assert dict(db_chain_events[0]) == split_data
+
+
+async def test_get_asset_tx_number_updates(db, db_dsn):
+    old_blocks = [
+        {'hash': '0x2a'},
+        {'hash': '0x3a'},
+    ]
+    new_blocks = [
+        {'hash': '0x2b'},
+        {'hash': '0x3b'},
+        {'hash': '0x4'},
+    ]
+
+    db.execute('INSERT INTO transactions (address, block_number, block_hash, hash, transaction_index, is_forked) '
+               'values (%s, %s, %s, %s, %s, %s)',
+               [
+                   ('0xA1', 1, '0x1', '0xt1', 1, False),
+
+                   ('0xA2', 2, '0x2a', '0xt2', 1, False),
+                   ('0xA1', 2, '0x2a', '0xt3', 2, False),
+                   ('0xA2', 2, '0x2a', '0xt4', 3, False),
+
+                   ('0xA3', 3, '0x3a', '0xt5', 1, False),
+                   ('0xA1', 3, '0x3a', '0xt6', 2, False),
+                   ('0xA2', 3, '0x3a', '0xt7', 3, False),
+
+                   ('0xA2', 2, '0x2b', '0xt2', 1, False),
+                   ('0xA1', 2, '0x2b', '0xt3', 2, False),
+                   ('0xA2', 2, '0x2b', '0xt4a', 3, False),
+
+                   ('0xA2', 3, '0x3b', '0xt5a', 1, False),
+                   ('0xA1', 3, '0x3b', '0xt6a', 2, False),
+                   ('0xA2', 3, '0x3b', '0xt7', 3, False),
+
+                   ('0xA1', 4, '0x3b', '0xt8', 1, False),
+                   ('0xA2', 4, '0x3b', '0xt9', 2, False),
+               ])
+
+    db.execute('INSERT INTO token_transfers (address, block_number, block_hash, token_address, is_forked) '
+               'values (%s, %s, %s, %s, %s)',
+               [
+                   ('0xA1', 1, '0x1', '0xT1', False),
+
+                   ('0xA2', 2, '0x2a', '0xT2', False),
+                   ('0xA1', 2, '0x2a', '0xT2', False),
+                   ('0xA1', 2, '0x2a', '0xT3', False),
+                   ('0xA2', 2, '0x2a', '0xT3', False),
+
+                   ('0xA1', 3, '0x3b', '0xT3', False),
+                   ('0xA2', 3, '0x3b', '0xT3', False),
+
+                   ('0xA1', 4, '0x3b', '0xT2', False),
+                   ('0xA3', 4, '0x3b', '0xT3', False),
+               ])
+
+    main_db = MainDB(db_dsn)
+    await main_db.connect()
+
+    async with main_db.engine.acquire() as conn:
+        async with conn.begin():
+            res = await main_db.get_asset_tx_number_updates(conn, old_blocks, new_blocks)
+    assert res == [
+        {'address': '0xA2', 'asset_address': '', 'tx_number': 2},
+        {'address': '0xA1', 'asset_address': '', 'tx_number': 1},
+        {'address': '0xA1', 'asset_address': '0xT3', 'tx_number': 0},
+        {'address': '0xA2', 'asset_address': '0xT3', 'tx_number': 0},
+        {'address': '0xA1', 'asset_address': '0xT2', 'tx_number': 0},
+        {'address': '0xA3', 'asset_address': '0xT3', 'tx_number': 1},
+
+        {'address': '0xA3', 'asset_address': '', 'tx_number': -1},
+        {'address': '0xA2', 'asset_address': '0xT2', 'tx_number': -1}
+    ]

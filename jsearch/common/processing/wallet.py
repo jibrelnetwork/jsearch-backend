@@ -120,3 +120,17 @@ def assets_from_token_balance_updates(token_balance_updates: AssetBalanceUpdates
         }
         updates.append(update_data)
     return updates
+
+
+def assets_summary_tx_number_updates_from_transactions(transactions):
+    updates = []
+    for tx in transactions:
+        updates.append({'address': tx['address'], 'asset_address': ''})
+    return updates
+
+
+def assets_summary_tx_number_updates_from_transfers(transfers):
+    updates = []
+    for t in transfers:
+        updates.append({'address': t['address'], 'asset_address': t['token_address']})
+    return updates
