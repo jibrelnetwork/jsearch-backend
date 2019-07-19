@@ -781,24 +781,26 @@ async def test_verify_contract_ok(db, cli, main_db_data, here, fuck_token):
     )
 
 
-_token_1_transfers = [{'from': 'a1',
-                       'timestamp': 1529159847,
-                       'to': 'a3',
-                       'tokenAddress': 'c1',
-                       'tokenDecimals': 2,
-                       'tokenName': 'A Token',
-                       'tokenSymbol': 'TKN',
-                       'amount': '300',
-                       'transactionHash': 't1'},
-                      {'from': 'a2',
-                       'timestamp': 1529159847,
-                       'to': 'a1',
-                       'tokenAddress': 'c1',
-                       'tokenDecimals': 2,
-                       'tokenName': 'A Token',
-                       'tokenSymbol': 'TKN',
-                       'amount': '100',
-                       'transactionHash': 't1'}]
+_token_1_transfers = [
+    {
+        'from': 'a1',
+        'timestamp': 1529159847,
+        'to': 'a3',
+        'tokenAddress': 'c1',
+        'tokenDecimals': 2,
+        'amount': '300',
+        'transactionHash': 't1'
+    },
+    {
+        'from': 'a2',
+        'timestamp': 1529159847,
+        'to': 'a1',
+        'tokenAddress': 'c1',
+        'tokenDecimals': 2,
+        'amount': '100',
+        'transactionHash': 't1'
+    }
+]
 
 
 async def test_get_token_transfers(cli, main_db_data):
@@ -825,42 +827,44 @@ async def test_get_token_transfers_offset(cli, main_db_data):
     assert (await resp.json())['data'] == _token_1_transfers[1:]
 
 
-_account_1_transfers = [{'from': 'a3',
-                         'timestamp': 1529159847,
-                         'to': 'a1',
-                         'tokenAddress': 'c2',
-                         'tokenDecimals': 2,
-                         'tokenName': 'A Token 2',
-                         'tokenSymbol': 'TKN2',
-                         'amount': '500',
-                         'transactionHash': 't2'},
-                        {'from': 'a1',
-                         'timestamp': 1529159847,
-                         'to': 'a3',
-                         'tokenAddress': 'c1',
-                         'tokenDecimals': 2,
-                         'tokenName': 'A Token',
-                         'tokenSymbol': 'TKN',
-                         'amount': '300',
-                         'transactionHash': 't1'},
-                        {'from': 'a2',
-                         'timestamp': 1529159847,
-                         'to': 'a1',
-                         'tokenAddress': 'c2',
-                         'tokenDecimals': 2,
-                         'tokenName': 'A Token 2',
-                         'tokenSymbol': 'TKN2',
-                         'amount': '200',
-                         'transactionHash': 't1'},
-                        {'from': 'a2',
-                         'timestamp': 1529159847,
-                         'to': 'a1',
-                         'tokenAddress': 'c1',
-                         'tokenDecimals': 2,
-                         'tokenName': 'A Token',
-                         'tokenSymbol': 'TKN',
-                         'amount': '100',
-                         'transactionHash': 't1'}]
+_account_1_transfers = [
+    {
+        'from': 'a3',
+        'timestamp': 1529159847,
+        'to': 'a1',
+        'tokenAddress': 'c2',
+        'tokenDecimals': 2,
+        'amount': '500',
+        'transactionHash': 't2'
+    },
+    {
+        'from': 'a1',
+        'timestamp': 1529159847,
+        'to': 'a3',
+        'tokenAddress': 'c1',
+        'tokenDecimals': 2,
+        'amount': '300',
+        'transactionHash': 't1'
+    },
+    {
+        'from': 'a2',
+        'timestamp': 1529159847,
+        'to': 'a1',
+        'tokenAddress': 'c2',
+        'tokenDecimals': 2,
+        'amount': '200',
+        'transactionHash': 't1'
+    },
+    {
+        'from': 'a2',
+        'timestamp': 1529159847,
+        'to': 'a1',
+        'tokenAddress': 'c1',
+        'tokenDecimals': 2,
+        'amount': '100',
+        'transactionHash': 't1'
+    }
+]
 
 
 async def test_get_account_token_transfers(cli, main_db_data):
@@ -895,8 +899,6 @@ async def test_get_account_token_transfers_a2(cli, main_db_data):
                                             'to': 'a1',
                                             'tokenAddress': 'c2',
                                             'tokenDecimals': 2,
-                                            'tokenName': 'A Token 2',
-                                            'tokenSymbol': 'TKN2',
                                             'amount': '200',
                                             'transactionHash': 't1'},
                                            {'from': 'a2',
@@ -904,8 +906,6 @@ async def test_get_account_token_transfers_a2(cli, main_db_data):
                                             'to': 'a1',
                                             'tokenAddress': 'c1',
                                             'tokenDecimals': 2,
-                                            'tokenName': 'A Token',
-                                            'tokenSymbol': 'TKN',
                                             'amount': '100',
                                             'transactionHash': 't1'}]
 
@@ -994,54 +994,62 @@ async def test_get_wallet_transfers_no_addresses(cli, db):
 
 async def test_get_wallet_transfers(cli, db):
     transfers = [
-        {'address': 'a1',
-         'type': 'erc20-transfer',
-         'from': 'a1',
-         'to': 'a2',
-         'asset_address': 'ca1',
-         'value': 1000,
-         'decimals': 1,
-         'tx_data': {'hash': 'f1'},
-         'is_forked': False,
-         'block_number': 100,
-         'block_hash': 'b1',
-         'ordering': 2},
-        {'address': 'a1',
-         'type': 'eth-transfer',
-         'from': 'a3',
-         'to': 'a1',
-         'asset_address': '',
-         'value': 200,
-         'decimals': 0,
-         'tx_data': {'hash': 'f2'},
-         'is_forked': False,
-         'block_number': 101,
-         'block_hash': 'b1',
-         'ordering': 1},
-        {'address': 'a2',
-         'type': 'erc20-transfer',
-         'from': 'a1',
-         'to': 'a2',
-         'asset_address': 'ca1',
-         'value': 1000,
-         'decimals': 1,
-         'tx_data': {'hash': 'f1'},
-         'is_forked': False,
-         'block_number': 100,
-         'block_hash': 'b1',
-         'ordering': 1},
-        {'address': 'a2',
-         'type': 'eth-transfer',
-         'from': 'a3',
-         'to': 'a1',
-         'asset_address': '',
-         'value': 100,
-         'decimals': 0,
-         'tx_data': {'hash': 'f2'},
-         'is_forked': True,
-         'block_number': 100,
-         'block_hash': 'b1',
-         'ordering': 1},
+        {
+            'address': 'a1',
+            'type': 'erc20-transfer',
+            'from': 'a1',
+            'to': 'a2',
+            'asset_address': 'ca1',
+            'value': 1000,
+            'decimals': 1,
+            'tx_data': {'hash': 'f1'},
+            'is_forked': False,
+            'block_number': 100,
+            'block_hash': 'b1',
+            'ordering': 2
+        },
+        {
+            'address': 'a1',
+            'type': 'eth-transfer',
+            'from': 'a3',
+            'to': 'a1',
+            'asset_address': '',
+            'value': 200,
+            'decimals': 0,
+            'tx_data': {'hash': 'f2'},
+            'is_forked': False,
+            'block_number': 101,
+            'block_hash': 'b1',
+            'ordering': 1
+        },
+        {
+            'address': 'a2',
+            'type': 'erc20-transfer',
+            'from': 'a1',
+            'to': 'a2',
+            'asset_address': 'ca1',
+            'value': 1000,
+            'decimals': 1,
+            'tx_data': {'hash': 'f1'},
+            'is_forked': False,
+            'block_number': 100,
+            'block_hash': 'b1',
+            'ordering': 1
+        },
+        {
+            'address': 'a2',
+            'type': 'eth-transfer',
+            'from': 'a3',
+            'to': 'a1',
+            'asset_address': '',
+            'value': 100,
+            'decimals': 0,
+            'tx_data': {'hash': 'f2'},
+            'is_forked': True,
+            'block_number': 100,
+            'block_hash': 'b1',
+            'ordering': 1
+        },
 
     ]
     for t in transfers:

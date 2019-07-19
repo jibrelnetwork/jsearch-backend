@@ -1528,13 +1528,6 @@ definitions:
         type: string
         format: address
         example: "0x355941cf7ac065310fd4023e1b913209f076a48a"
-      tokenDecimals:
-        type: string
-        format: dec
-        example: "18"
-      tokenSymbol:
-        type: string
-        example: "JNT"
       tokenName:
         type: string
         example: "Jibrel Network Token"

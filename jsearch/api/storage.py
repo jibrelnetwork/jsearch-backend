@@ -62,11 +62,6 @@ def _rows_to_token_transfers(rows: List[Dict[str, Any]]) -> List[models.TokenTra
     token_transfers = list()
 
     for row in rows:
-        del row['transaction_index']
-        del row['log_index']
-        del row['block_number']
-        del row['block_hash']
-
         token_transfers.append(models.TokenTransfer(**row))
 
     return token_transfers
