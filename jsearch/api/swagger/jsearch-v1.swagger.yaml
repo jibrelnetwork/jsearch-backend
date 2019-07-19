@@ -1,10 +1,56 @@
 swagger: '2.0'
 info:
-  description: jSearch - Ethereum blockexplorer API
-  version: "1.0.1"
-  title: jSearch API
-  # put the contact info for your development or API team
+  version: "1.0.2"
+  title: Jsearch API
+  description: |
+    Jsearch - Ethereum Blockchain Explorer API
+
+    **API errors**
+
+    - All 400 series errors will be returned with a JSON object including an array of errors in the body and a application/json content type.
+    ```
+    {
+        'status': {
+            'success': false,
+            'errors': [
+                {
+                  'field': 'SOME_FIELD_NAME',
+                  'code': 'SOME_ERR_TEXT_CODE',
+                  'message': 'some err text'
+                }
+            ],
+        },
+        'data': null
+    }
+    ```
+    - 500 series error codes do not return JSON bodies.
+
+
+    **Traversing Paged Results**
+
+    When making an API request, you usually don't receive all of the results of that request in a single response. This is because some responses could contain thousands of objects so most responses are paginated by default.
+
+    This API implements Cursor-based pagination is the most efficient method of paging.
+
+    When reading a response, you see the following JSON response:
+    ```
+    {
+      "status": {...},
+      "data": [...],
+      "meta": {...},
+      "links": {
+        "current": "https://jsearch.jdev.network/v1/...",
+        "next": "https://jsearch.jdev.network/v1/..."
+      }
+    }
+    ```
+
+    **next** : The API endpoint that will return the next page of data. If not included or is null, this is the last page of data.
+    **current** : The API endpoint that will return the current page of data.
+
+
   contact:
+    # put the contact info for your development or API team
     email: dev@jibrel.network
 
   license:
@@ -37,16 +83,7 @@ parameters:
     format: address
     schema:
       example: "0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5"
-  blockchain_tip_required:
-    name: blockchain_tip
-    in: query
-    required: true
-    description: "<a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/952434891/Blockchain+Tip\">Blockchain tip</a> (as block hash from /v1/blockchain_tip)"
-    type: string
-    format: block_hash
-    schema:
-      example: "0x6b56924440c6674d60d7c8af0ef2c30fda3b68065de91e8b99bcbfc9fe1b1111"
-  blockchain_tip_optional:
+  blockchain_tip:
     name: blockchain_tip
     in: query
     required: false
@@ -113,18 +150,6 @@ parameters:
     type: string
     schema:
       example: "0x6d97e82f6e2086969f9bebbc43bae95af22c1baf765e86f2676bd0ccdb92ef18"
-  limit:
-    name: limit
-    in: query
-    description: "The number of items returned in response. Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-limit\">link</a> for details."
-    type: integer
-    default: 20
-  offset:
-    name: offset
-    in: query
-    description: "The offset of results set from beginning of dataset. Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-offset\">link</a> for details."
-    type: integer
-    default: 0
   order:
     name: order
     in: query
@@ -133,40 +158,56 @@ parameters:
       type: string
       enum: [asc, desc]
     default: asc
-  block_range_start:
-    name: block_range_start
+  #pagination parameters
+  block_number:
+    name: block_number
     in: query
-    required: true
-    description: "Filtering by block range (block number or \"latest\" or \"tip\" keyword). Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint#Walleteventsendpoint-PARAMS\">link</a>."
-    schema:
-      oneOf:
-        - type: integer
-          example: 1000
-        - type: string
-          enum: [latest, tip]
-          example:
-            - "latest"
-            - "tip"
-    default: "tip"
-  block_range_end:
-    name: block_range_end
-    in: query
-    description: "Filtering by block range (block number or \"latest\" or \"tip\" keyword). Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint#Walleteventsendpoint-PARAMS\">link</a>."
-    schema:
-      oneOf:
-        - type: integer
-          example: 1000
-        - type: string
-          enum: [latest, tip]
-          example:
-            - "latest"
-            - "tip"
+    required: false
+    description: "A block number value that points to the start of the range of block-number-based data. Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
     type: integer
-  block_range_count:
-    name: block_range_count
+    default: 0
+  timestamp:
+    name: timestamp
     in: query
-    description: "Filtering by block range (blocks number). Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint#Walleteventsendpoint-PARAMS\">link</a>."
+    required: false
+    description: "Instead of block-number you may use a Unix timestamp value that points to the start of the range of time-based data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
     type: integer
+    default: 0
+  transaction_index:
+    name: transaction_index
+    in: query
+    required: false
+    description: "A transaction index that points to the start of the range data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 0
+  parent_transaction_index:
+    name: parent_transaction_index
+    in: query
+    required: false
+    description: "A parent transaction index that points to the start of the requested data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 0
+  last_synced:
+    name: last_synced
+    in: query
+    required: false
+    description: "A last synced row id that points to the start of the requested data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 0
+  log_index:
+    name: log_index
+    in: query
+    required: false
+    description: "A log index that points to the start of the requested data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 0
+  event_index:
+    name: event_index
+    in: query
+    required: false
+    description: "A event index that points to the start of the requested data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 0
 
 paths:
   /v1/accounts/balances:
@@ -179,7 +220,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/addresses'
       responses:
         200:
@@ -209,7 +250,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
         description: Account address
       responses:
@@ -243,11 +284,12 @@ paths:
       produces:
       - application/json
       parameters:
-        - $ref: '#/parameters/blockchain_tip_optional'
+        - $ref: '#/parameters/blockchain_tip'
         - $ref: '#/parameters/address'
-        - $ref: '#/parameters/limit'
-        - $ref: '#/parameters/offset'
         - $ref: '#/parameters/order'
+        - $ref: '#/parameters/block_number'
+        - $ref: '#/parameters/timestamp'
+        - $ref: '#/parameters/log_index'
       responses:
         200:
           description: logs
@@ -262,6 +304,8 @@ paths:
                   $ref: '#/definitions/Log'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -277,11 +321,12 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/transaction_index'
       responses:
         200:
           description: transactions for specific address
@@ -295,6 +340,8 @@ paths:
                   $ref: '#/definitions/Transaction'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -310,10 +357,13 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/transaction_index'
+      - $ref: '#/parameters/parent_transaction_index'
       responses:
         200:
           description: internal transactions for specific address
@@ -327,6 +377,8 @@ paths:
                   $ref: '#/definitions/InternalTransaction'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -342,8 +394,9 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/order'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/last_synced'
       responses:
         200:
           description: pending transactions for specific address
@@ -355,6 +408,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/PendingTransaction'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -370,11 +425,11 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
       responses:
         200:
           description: blocks mined by specific address
@@ -388,6 +443,8 @@ paths:
                   $ref: '#/definitions/Block'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -403,11 +460,11 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
       responses:
         200:
           description: uncles mined by specific address
@@ -420,6 +477,8 @@ paths:
                 $ref: '#/definitions/Uncle'
             meta:
                 $ref: '#/definitions/BlockchainTipInfo'
+            links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -435,7 +494,7 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/contract_addresses'
       responses:
@@ -466,7 +525,7 @@ paths:
       produces:
         - application/json
       parameters:
-        - $ref: '#/parameters/blockchain_tip_optional'
+        - $ref: '#/parameters/blockchain_tip'
         - $ref: '#/parameters/address'
         - $ref: '#/parameters/contract_address'
       responses:
@@ -499,11 +558,13 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/transaction_index'
+      - $ref: '#/parameters/log_index'
       responses:
         200:
           description: tokens transfered to or from specific address
@@ -517,6 +578,8 @@ paths:
                   $ref: '#/definitions/TokenTransfer'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -558,11 +621,12 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/event_index'
       responses:
         200:
           description: Eth transfered to or from specific address
@@ -576,6 +640,8 @@ paths:
                   $ref: '#/definitions/EthTransfer'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -591,9 +657,10 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
       responses:
         200:
           description: blocks list
@@ -607,6 +674,8 @@ paths:
                   $ref: '#/definitions/Block'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -653,6 +722,8 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/tag'
+      - $ref: '#/parameters/order'
+      - $ref: '#/parameters/transaction_index'
       responses:
         200:
           description: transactions from specific block
@@ -665,6 +736,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Transaction'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -685,6 +758,9 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/tag'
+      - $ref: '#/parameters/order'
+      - $ref: '#/parameters/transaction_index'
+      - $ref: '#/parameters/parent_transaction_index'
       responses:
         200:
           description: transactions from specific block
@@ -697,6 +773,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/InternalTransaction'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -764,7 +842,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
 
-  /v1/transactions/internal/{txhash}:
+  /v1/transactions/{txhash}/internal_transactions:
     get:
       summary: Get a list of `Internal` Transactions by transaction hash
       description: |
@@ -774,6 +852,8 @@ paths:
       - application/json
       parameters:
         - $ref: '#/parameters/txhash'
+        - $ref: '#/parameters/order'
+        - $ref: '#/parameters/transaction_index'
       responses:
         200:
           description: transaction
@@ -786,6 +866,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/InternalTransaction'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -836,10 +918,10 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
       responses:
         200:
           description: uncles list
@@ -854,6 +936,8 @@ paths:
                   $ref: '#/definitions/Uncle'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -898,9 +982,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/last_synced'
       responses:
         200:
           description: Contract
@@ -913,6 +996,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Contract'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -954,9 +1039,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/last_synced'
       responses:
         200:
           description: Token
@@ -969,6 +1053,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Token'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -1013,11 +1099,13 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/contract_address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/transaction_index'
+      - $ref: '#/parameters/log_index'
       responses:
         200:
           description: token transfers
@@ -1032,6 +1120,8 @@ paths:
                   $ref: '#/definitions/TokenTransfer'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -1047,11 +1137,10 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip_optional'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/contract_address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/last_synced'
       responses:
         200:
           description: token holders list
@@ -1066,6 +1155,8 @@ paths:
                   $ref: '#/definitions/TokenHolder'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
+              links:
+                $ref: '#/definitions/links'
         400:
           description: bad input parameter
           schema:
@@ -1244,10 +1335,8 @@ paths:
       summary: Get token holder and either balances for blockchain address.
       parameters:
         - $ref: '#/parameters/addresses'
-        - $ref: '#/parameters/blockchain_tip_required'
+        - $ref: '#/parameters/blockchain_tip'
         - $ref: '#/parameters/assets'
-        - $ref: '#/parameters/limit'
-        - $ref: '#/parameters/offset'
       responses:
         200:
           schema:
@@ -1266,12 +1355,11 @@ paths:
       parameters:
         - $ref: '#/parameters/include_pending_txs'
         - $ref: '#/parameters/blockchain_address'
-        - $ref: '#/parameters/blockchain_tip_required'
-        - $ref: '#/parameters/block_range_start'
-        - $ref: '#/parameters/block_range_end'
-        - $ref: '#/parameters/block_range_count'
-        - $ref: '#/parameters/limit'
-        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/blockchain_tip'
+        - $ref: '#/parameters/order'
+        - $ref: '#/parameters/block_number'
+        - $ref: '#/parameters/timestamp'
+        - $ref: '#/parameters/event_index'
       responses:
         200:
           schema:
@@ -1290,7 +1378,8 @@ paths:
                       $ref: '#/definitions/PendingTransactionInfo'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-
+              links:
+                $ref: '#/definitions/links'
         400:
           description: Validation errors
           schema:
@@ -2091,9 +2180,23 @@ definitions:
               type: string
               description: Hash of the method signature and encoded parameters.
               example: "0x6740d36c0000000000000000000000000000000000000000000000000000000000000005"
+  links:
+    description: The links object that’s a sibling of the paginated data
+    properties:
+      current:
+        type: string
+        description: The current page of data.
+        format: url
+        example: "https://jsearch.jdev.network/v1/..."
+      next:
+        type: string
+        description: The next page of data. The server MUST determine whether a next page exists, and return null as the next link if not.
+        format: url
+        example: "https://jsearch.jdev.network/v1/..."
 
 schemes:
  - http
+ - https
 
 
 basePath: /
