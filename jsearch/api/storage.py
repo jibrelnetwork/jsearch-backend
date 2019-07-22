@@ -27,11 +27,9 @@ from jsearch.api.database_queries.token_transfers import (
 )
 from jsearch.api.database_queries.transactions import (
     get_tx_by_address,
-    get_tx_hashes_by_block_hash_query,
     get_txs_for_events_query,
     get_tx_by_hash
 )
-from jsearch.api.database_queries.uncles import get_uncle_hashes_by_block_hash_query
 from jsearch.api.database_queries.wallet_events import get_wallet_events_query
 from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
@@ -179,25 +177,23 @@ class Storage:
             if row is None:
                 return None
 
+            uncles = row['uncles'] or []
+            if uncles:
+                uncles = json.loads(uncles)
+
+            txs = row['transactions'] or []
+            if txs:
+                txs = json.loads(txs)
+
+            # TODO: int transformation should do serializer
             data = dict(row)
             data.update(
+                transactions=txs,
+                uncles=uncles,
                 tx_fees=int(data['tx_fees']),
                 static_reward=int(data['static_reward']),
                 uncle_inclusion_reward=int(data['uncle_inclusion_reward']),
             )
-
-            tx_query = get_tx_hashes_by_block_hash_query(block_hash=data['hash'])
-            tx_query, params = asyncpgsa.compile_query(tx_query)
-            txs = await conn.fetch(tx_query, *params)
-            txs = in_app_distinct(txs)
-
-            data['transactions'] = [tx['hash'] for tx in txs]
-
-            uncles_query = get_uncle_hashes_by_block_hash_query(block_hash=data['hash'])
-            uncles_query, params = asyncpgsa.compile_query(uncles_query)
-            uncles = await conn.fetch(uncles_query, *params)
-
-            data['uncles'] = [uncle['hash'] for uncle in uncles]
 
             return models.Block(**data)
 
