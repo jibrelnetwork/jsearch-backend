@@ -17,9 +17,9 @@ from jsearch.api.database_queries.blocks import (
     get_mined_blocks_query,
     get_block_number_by_hash_query,
     ORDER_SCHEME_BY_TIMESTAMP,
-    get_blocks_by_timestamp,
+    get_blocks_by_timestamp_query,
     ORDER_SCHEME_BY_NUMBER,
-    get_blocks_by_number
+    get_blocks_by_number_query
 )
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
 from jsearch.api.database_queries.logs import get_logs_by_address_query
@@ -208,10 +208,10 @@ class Storage:
             timestamp: Optional[int] = None,
     ) -> List[models.Block]:
         if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-            query = get_blocks_by_timestamp(limit=limit, timestamp=timestamp, order=order)
+            query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
 
         elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_blocks_by_number(limit, number=number, order=order)
+            query = get_blocks_by_number_query(limit, number=number, order=order)
 
         else:
             raise ValueError('Invalid scheme: {scheme}')

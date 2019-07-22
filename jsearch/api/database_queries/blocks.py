@@ -80,7 +80,7 @@ def get_blocks_query(
         .limit(limit)
 
 
-def get_blocks_by_number(
+def get_blocks_by_number_query(
         limit: int,
         number: int,
         order: Ordering,
@@ -96,7 +96,7 @@ def get_blocks_by_number(
     return query
 
 
-def get_blocks_by_timestamp(
+def get_blocks_by_timestamp_query(
         limit: int,
         timestamp: int,
         order: Ordering,
