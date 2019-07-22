@@ -44,7 +44,7 @@ ORDER_SCHEME_BY_TIMESTAMP: OrderScheme = 'order_by_timestamp'
 
 
 def get_order_schema(timestamp: Optional[int]) -> OrderScheme:
-    if timestamp is not None:
+    if timestamp is None:
         return ORDER_SCHEME_BY_NUMBER
 
     return ORDER_SCHEME_BY_TIMESTAMP
