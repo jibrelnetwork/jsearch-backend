@@ -53,5 +53,5 @@ class BlocksSchema(Schema):
         if data.get("number") and data.get("timestamp"):
             raise ValidationError("Filtration should be either by number or by timestamp")
 
-    def handle_error(self, exc: ValidationError, data):
+    def handle_error(self, exc: ValidationError, data: Dict[str, Any]) -> None:
         exc.messages = get_flatten_error_messages(exc.messages)
