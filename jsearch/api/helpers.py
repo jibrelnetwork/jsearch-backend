@@ -4,19 +4,23 @@ import asyncpgsa
 from aiohttp import web
 from asyncpg import Connection
 from functools import partial
+from marshmallow.marshalling import SCHEMA
 from sqlalchemy import asc, desc, Column
 from sqlalchemy.orm import Query
 from typing import Any, Dict, List, Optional, Union
 
 from jsearch.api.error_code import ErrorCode
+from jsearch.api.pagination import Page
+from jsearch.typing import OrderDirection
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
 DEFAULT_OFFSET = 0
 MAX_OFFSET = 10000
 
-ORDER_ASC = 'asc'
-ORDER_DESC = 'desc'
+ORDER_ASC: OrderDirection = 'asc'
+ORDER_DESC: OrderDirection = 'desc'
+
 DEFAULT_ORDER = ORDER_DESC
 
 
@@ -129,24 +133,38 @@ def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -
     return strings_list
 
 
-def api_success(data):
+def api_success(data, page: Optional[Page] = None):
     body = {
-        'status': {'success': True, 'errors': []},
+        'status': {
+            'success': True,
+            'errors': []
+        },
         'data': data
     }
+
+    if page:
+        body.update(page.to_dict())
+
     return web.json_response(body)
 
 
-def api_error(status, errors, data=None):
-    body = {
-        'status': {'success': False, 'errors': errors},
+def api_error(errors, data=None):
+    return {
+        'status': {
+            'success': False,
+            'errors': errors
+        },
         'data': data
     }
+
+
+def api_error_response(status, errors, data=None):
+    body = api_error(errors, data)
     return web.json_response(body, status=status)
 
 
-api_error_400 = partial(api_error, status=400)
-api_error_404 = partial(api_error, status=404, errors=[
+api_error_response_400 = partial(api_error_response, status=400)
+api_error_response_404 = partial(api_error_response, status=404, errors=[
     {
         'code': ErrorCode.RESOURCE_NOT_FOUND,
         'message': 'Resource not found'
@@ -254,6 +272,29 @@ class ApiError(Exception):
                 return await func(*args, **kwargs)
             except ApiError as exc:
 
-                return api_error(status=exc.status, errors=[exc.error], data={})
+                return api_error_response(status=exc.status, errors=[exc.error], data={})
 
         return _wrapper
+
+
+def get_field(field: str) -> str:
+    if field == SCHEMA:
+        return '__all__'
+    return field
+
+
+def get_error_code(field: str) -> str:
+    return {
+        'limit': ErrorCode.INVALID_LIMIT_VALUE,
+        'order': ErrorCode.INVALID_ORDER_VALUE,
+        SCHEMA: ErrorCode.VALIDATION_ERROR,
+    }.get(field, ErrorCode.INVALID_VALUE)
+
+
+def get_flatten_error_messages(messages: Dict[str, List[str]]) -> List[Dict[str, str]]:
+    flatten_messages = []
+    for field, msgs in messages.items():
+        for msg in msgs:
+            message = {'field': get_field(field), 'message': msg, 'code': get_error_code(field)}
+            flatten_messages.append(message)
+    return flatten_messages

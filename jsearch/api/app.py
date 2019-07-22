@@ -56,7 +56,7 @@ async def make_app():
     )
     app.router.add_route('GET', '/v1/accounts/{address}/logs', accounts.get_account_logs)
 
-    app.router.add_route('GET', '/v1/blocks', blocks.get_blocks)
+    app.router.add_route('GET', '/v1/blocks', blocks.get_blocks, name='blocks')
     app.router.add_route('GET', '/v1/blocks/{tag}', blocks.get_block)
     app.router.add_route('GET', '/v1/blocks/{tag}/transactions', blocks.get_block_transactions)
     app.router.add_route('GET', '/v1/blocks/{tag}/uncles', blocks.get_block_uncles)

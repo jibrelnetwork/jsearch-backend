@@ -575,39 +575,6 @@ async def test_get_blocks_check_uncles_hashes_list(cli, main_db_data, block_hash
     assert sorted(blocks[block_hash]['uncles']) == sorted(uncles_hashes)
 
 
-async def test_get_blocks_def(cli, main_db_data):
-    b = main_db_data['blocks']
-    resp = await cli.get('/v1/blocks')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res[0]['hash'] == b[-1]['hash']
-    assert res[1]['hash'] == b[-2]['hash']
-
-
-async def test_get_blocks_ask(cli, main_db_data):
-    resp = await cli.get('/v1/blocks?order=asc')
-    b = main_db_data['blocks']
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res[0]['hash'] == b[0]['hash']
-    assert res[1]['hash'] == b[1]['hash']
-
-
-@pytest.mark.usefixtures('main_db_data')
-async def test_get_blocks_limit_offset(cli):
-    resp = await cli.get('/v1/blocks?limit=1')
-    assert resp.status == 200
-    result = (await resp.json())['data']
-    assert len(result) == 1
-    assert result[0]['number'] == 5
-
-    resp = await cli.get('/v1/blocks?limit=1&offset=1')
-    assert resp.status == 200
-    result = (await resp.json())['data']
-    assert len(result) == 1
-    assert result[0]['number'] == 4
-
-
 @pytest.mark.usefixtures('uncles')
 async def test_get_uncles(cli, main_db_data):
     resp = await cli.get('/v1/uncles')

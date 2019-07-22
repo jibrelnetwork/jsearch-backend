@@ -10,7 +10,7 @@ from jsearch.api.helpers import ApiError, ORDER_ASC, get_positive_number
 from jsearch.api.helpers import (
     validate_params,
     api_success,
-    api_error,
+    api_error_response,
     get_from_joined_string,
 )
 from jsearch.api.structs import BlockInfo
@@ -153,7 +153,7 @@ async def get_blockchain_tip(request):
             'error_code': ErrorCode.BLOCK_NOT_FOUND,
             'error_message': f'Blockchain tip not found'
         }
-        return api_error(status=404, errors=[err])
+        return api_error_response(status=404, errors=[err])
 
     return api_success({
         'blockHash': block.hash,

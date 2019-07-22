@@ -6,8 +6,8 @@ from jsearch.api.helpers import (
     get_tag,
     validate_params,
     api_success,
-    api_error_400,
-    api_error_404,
+    api_error_response_400,
+    api_error_response_404,
     get_from_joined_string,
     get_positive_number)
 
@@ -22,7 +22,7 @@ async def get_accounts_balances(request):
     addresses = get_from_joined_string(request.query.get('addresses'))
 
     if len(addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
-        return api_error_400(errors=[
+        return api_error_response_400(errors=[
             {
                 'field': 'addresses',
                 'error_code': ErrorCode.TOO_MANY_ITEMS,
@@ -44,7 +44,7 @@ async def get_account(request):
 
     account = await storage.get_account(address, tag)
     if account is None:
-        return api_error_404()
+        return api_error_response_404()
     return api_success(account.to_dict())
 
 
@@ -172,5 +172,5 @@ async def get_account_token_balance(request):
         token_address=token_address,
     )
     if holder is None:
-        return api_error_404()
+        return api_error_response_404()
     return api_success(holder.to_dict())
