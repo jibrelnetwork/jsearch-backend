@@ -47,7 +47,7 @@ def get_order_schema(timestamp: Optional[int]) -> OrderScheme:
     if timestamp is not None:
         return ORDER_SCHEME_BY_NUMBER
 
-    return ORDER_SCHEME_BY_NUMBER
+    return ORDER_SCHEME_BY_TIMESTAMP
 
 
 def get_ordering(scheme: OrderScheme, direction=OrderDirection) -> Ordering:
