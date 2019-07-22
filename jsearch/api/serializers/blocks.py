@@ -11,7 +11,8 @@ from jsearch.api.helpers import (
     DEFAULT_LIMIT,
     MAX_LIMIT,
     Tag,
-    get_flatten_error_messages)
+    get_flatten_error_messages
+)
 from jsearch.api.serializers.fields import PositiveIntOrTagField
 
 logger = logging.getLogger(__name__)
