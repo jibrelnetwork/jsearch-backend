@@ -5,7 +5,9 @@ from urllib.parse import urlencode
 import pytest
 from aiohttp import ClientResponse
 from asynctest import CoroutineMock
-from typing import Optional, Set, Union
+from sqlalchemy import select
+from sqlalchemy.engine import Connection
+from typing import Optional, Set, Union, List
 
 from jsearch import settings
 from jsearch.api.error_code import ErrorCode
@@ -14,14 +16,35 @@ from jsearch.common.tables import (
     transactions_t,
     assets_summary_t,
     accounts_state_t,
+    blocks_t
 )
-from jsearch.tests.entities import (
-    BlockFromDumpWrapper,
-)
+from jsearch.tests.entities import BlockFromDumpWrapper
 
 logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
+
+
+@pytest.fixture()
+def link_txs_with_block(db: Connection):
+    def link(tx_hashes: List[str], block_hash: str) -> List[str]:
+        get_txs_query = select([blocks_t.c.transactions]).where(blocks_t.c.hash == block_hash)
+
+        result = db.execute(get_txs_query)
+
+        txs = result.fetchone()['transactions'] or []
+        txs = [*txs, *tx_hashes]
+        txs = [tx for tx in txs if tx]
+
+        update_txs_query = blocks_t.update(
+            whereclause=blocks_t.c.hash == block_hash,
+            values={'transactions': txs}
+        )
+        db.execute(update_txs_query)
+
+        return txs
+
+    return link
 
 
 async def assert_not_404_response(response: ClientResponse) -> None:
@@ -45,10 +68,12 @@ async def test_get_block_404(cli):
     await assert_not_404_response(resp)
 
 
-async def test_get_block_by_number(cli, block_factory, transaction_factory):
+async def test_get_block_by_number(cli, db, link_txs_with_block, block_factory, transaction_factory):
     # given
     block = block_factory.create()
     from_tx, to_tx = transaction_factory.create_for_block(block)
+
+    link_txs_with_block([from_tx.hash, to_tx.hash], block.hash)
 
     # when
     resp = await cli.get(f'/v1/blocks/{block.number}')
@@ -73,7 +98,7 @@ async def test_get_block_by_number(cli, block_factory, transaction_factory):
         'sha3Uncles': block.sha3_uncles,
         'stateRoot': block.state_root,
         'timestamp': block.timestamp,
-        'transactions': [from_tx.hash],
+        'transactions': [from_tx.hash, to_tx.hash],
         'transactionsRoot': block.transactions_root,
         'staticReward': str(hex(int(block.static_reward))),
         'txFees': str(hex(int(block.tx_fees))),
