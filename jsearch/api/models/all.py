@@ -340,8 +340,6 @@ class TokenTransfer(Model):
         "token_address": str,
         "token_value": int,
         "token_decimals": int,
-        "token_name": str,
-        "token_symbol": str,
     }
 
     attribute_map = {
@@ -352,8 +350,6 @@ class TokenTransfer(Model):
         "token_address": "tokenAddress",
         "token_value": "amount",
         "token_decimals": "tokenDecimals",
-        "token_name": "tokenName",
-        "token_symbol": "tokenSymbol",
     }
 
     int_to_str = {"amount"}
