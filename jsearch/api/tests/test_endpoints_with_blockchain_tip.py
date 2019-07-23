@@ -691,4 +691,3 @@ async def test_get_uncles_with_tip(
         },
         "data": data,
     }
-
