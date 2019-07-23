@@ -1,24 +1,46 @@
-import logging
+from aiohttp.web_request import Request
+from aiohttp.web_response import Response
+from typing import Optional, Union
 
 from jsearch.api.helpers import (
     get_tag,
-    validate_params,
     api_success,
-    api_error_404,
+    api_error_response_404,
+    Tag
 )
+from jsearch.api.pagination import get_page
+from jsearch.api.serializers.blocks import BlocksSchema
+from jsearch.api.structs import Ordering
+from jsearch.api.utils import use_kwargs
 
-logger = logging.getLogger(__name__)
 
-
-async def get_blocks(request):
+@use_kwargs(BlocksSchema())
+async def get_blocks(
+        request: Request,
+        limit: int,
+        order: Ordering,
+        number: Optional[Union[int, str]] = None,
+        timestamp: Optional[Union[int, str]] = None
+) -> Response:
     """
     Get blocks list
     """
-    params = validate_params(request)
-
     storage = request.app['storage']
-    blocks = await storage.get_blocks(params['limit'], params['offset'], params['order'])
-    return api_success([block.to_dict() for block in blocks])
+
+    if {number, timestamp} & {Tag.LATEST}:
+        last_block = await storage.get_latest_block_info()
+        number = number and last_block.number
+        timestamp = timestamp and last_block.timestamp
+
+    # Notes: we need to query limit + 1 items to get link on next page
+    blocks = await storage.get_blocks(limit=limit + 1, number=number, timestamp=timestamp, order=order)
+
+    data = [block.to_dict() for block in blocks]
+
+    url = request.app.router['blocks'].url_for()
+    page = get_page(url=url, items=data, limit=limit, ordering=order, mapping=BlocksSchema.mapping)
+
+    return api_success(data=page.items, page=page)
 
 
 async def get_block(request):
@@ -29,7 +51,7 @@ async def get_block(request):
     tag = get_tag(request)
     block = await storage.get_block(tag)
     if block is None:
-        return api_error_404()
+        return api_error_response_404()
     return api_success(block.to_dict())
 
 

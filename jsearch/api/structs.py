@@ -1,9 +1,21 @@
+from attr import dataclass
 from typing import NamedTuple, Optional, List
 
+from jsearch.typing import Columns, OrderDirection, OrderScheme
 
-class BlockInfo(NamedTuple):
+
+class Ordering(NamedTuple):
+    columns: Columns
+    fields: List[str]
+    scheme: OrderScheme
+    direction: OrderDirection
+
+
+@dataclass
+class BlockInfo:
     hash: str
     number: int
+    timestamp: Optional[int] = None
 
 
 class BlockchainTip(NamedTuple):

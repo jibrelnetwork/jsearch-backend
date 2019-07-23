@@ -4,7 +4,7 @@ from jsearch.api.helpers import (
     get_tag,
     validate_params,
     api_success,
-    api_error_404,
+    api_error_response_404,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ async def get_receipt(request):
 
     receipt = await storage.get_receipt(txhash)
     if receipt is None:
-        return api_error_404()
+        return api_error_response_404()
     return api_success(receipt.to_dict())
 
 
@@ -67,7 +67,7 @@ async def get_uncle(request):
     tag = get_tag(request)
     uncle = await storage.get_uncle(tag)
     if uncle is None:
-        return api_error_404()
+        return api_error_response_404()
     return api_success(uncle.to_dict())
 
 
@@ -77,5 +77,5 @@ async def get_transaction(request):
 
     transaction = await storage.get_transaction(txhash)
     if transaction is None:
-        return api_error_404()
+        return api_error_response_404()
     return api_success(transaction.to_dict())

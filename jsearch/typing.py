@@ -1,3 +1,4 @@
+from sqlalchemy import Column
 from typing import Any, Dict, NewType, Callable, Awaitable, Coroutine, List, TypeVar
 
 Abi = List[Dict[str, Any]]
@@ -41,3 +42,8 @@ TokenAddresses = List[TokenAddress]
 
 AccountAddress = TypeVar('AccountAddress', bound=str)
 AccountAddresses = List[AccountAddress]
+
+Columns = List[Column]
+
+OrderDirection = TypeVar('OrderDirection', bound=str)
+OrderScheme = TypeVar('OrderScheme', bound=str)
