@@ -136,12 +136,14 @@ class SyncProcessor:
         """
         uncles: List[Dict[str, Any]] = body['fields']['Uncles'] or []
         transactions: List[Dict[str, Any]] = body['fields']['Transactions'] or []
+
         block_number: int = header['block_number']
         block_hash: str = header['block_hash']
+        timestamp: int = header['timestamp']
 
         block_reward, uncles_rewards = self.process_rewards(reward, block_number)
         uncles_data = self.process_uncles(uncles, uncles_rewards, block_number, block_hash, is_forked)
-        transactions_data = self.process_transactions(transactions, block_number, block_hash, is_forked)
+        transactions_data = self.process_transactions(transactions, block_number, block_hash, timestamp, is_forked)
         block_data = self.process_header(header, block_reward, transactions, uncles, is_forked)
         receipts_data, logs_data = self.process_receipts(
             receipts=receipts,
@@ -283,6 +285,7 @@ class SyncProcessor:
                              transactions: List[Dict[str, Any]],
                              block_number: int,
                              block_hash: str,
+                             timestamp: int,
                              is_forked: bool) -> List[Dict[str, Any]]:
         items = []
         for i, tx in enumerate(transactions):
@@ -291,6 +294,7 @@ class SyncProcessor:
             tx_data['block_hash'] = block_hash
             tx_data['block_number'] = block_number
             tx_data['is_forked'] = is_forked
+            tx_data['timestamp'] = timestamp
 
             if tx['to'] is None:
                 tx_data['to'] = contracts.NULL_ADDRESS
