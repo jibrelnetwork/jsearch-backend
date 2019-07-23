@@ -1,8 +1,6 @@
 import logging
 
-from jsearch.api.blockchain_tip import get_tip_or_raise_api_error, is_tip_stale
 from jsearch.api.helpers import (
-    ApiError,
     get_tag,
     validate_params,
     api_success,
@@ -51,27 +49,14 @@ async def get_receipt(request):
     return api_success(receipt.to_dict())
 
 
-@ApiError.catch
 async def get_uncles(request):
     """
     Get uncles list
     """
     params = validate_params(request)
     storage = request.app['storage']
-
     uncles = await storage.get_uncles(params['limit'], params['offset'], params['order'])
-    uncles_max_block_number = max(uncles, lambda x: x.block_number)
-
-    tip_hash = request.query.get('blockchain_tip')
-    tip = tip_hash and get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, uncles_max_block_number)
-
-    uncles = [] if tip_is_stale else uncles
-
-    return api_success(
-        data=[uncle.to_dict() for uncle in uncles],
-        meta=tip and tip.to_dict(),
-    )
+    return api_success([uncle.to_dict() for uncle in uncles])
 
 
 async def get_uncle(request):
