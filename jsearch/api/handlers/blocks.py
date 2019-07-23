@@ -27,11 +27,10 @@ async def get_blocks(
     """
     storage = request.app['storage']
 
-    if number == Tag.LATEST:
-        number = (await storage.get_latest_block_info()).number
-
-    if timestamp == Tag.LATEST:
-        timestamp = (await storage.get_latest_block_info()).timestamp
+    if {number, timestamp} & {Tag.LATEST}:
+        last_block = await storage.get_latest_block_info()
+        number = number and last_block.number
+        timestamp = timestamp and last_block.timestamp
 
     # Notes: we need to query limit + 1 items to get link on next page
     blocks = await storage.get_blocks(limit=limit + 1, number=number, timestamp=timestamp, order=order)
