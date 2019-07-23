@@ -43,7 +43,7 @@ async def test_get_tip_or_raise_api_error_finds_tip_not_forked(
         common_block_hash=common_block.hash,
         common_block_number=common_block.number,
     )
-    reorg = reorg_factory.create(
+    reorg_factory.create(
         block_hash=forked_block.hash,
         block_number=forked_block.number,
         split_id=chain_splits.id,
@@ -92,7 +92,7 @@ async def test_get_tip_or_raise_api_error_finds_tip_last_block_provided(
         common_block_hash=common_block.hash,
         common_block_number=common_block.number,
     )
-    reorg = reorg_factory.create(
+    reorg_factory.create(
         block_hash=forked_block.hash,
         block_number=forked_block.number,
         split_id=chain_splits.id,
