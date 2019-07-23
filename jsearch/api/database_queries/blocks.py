@@ -51,9 +51,9 @@ def get_order_schema(timestamp: Optional[int]) -> OrderScheme:
 
 
 def get_ordering(scheme: OrderScheme, direction=OrderDirection) -> Ordering:
-    columns = {
+    columns: Columns = {
         ORDER_SCHEME_BY_NUMBER: [blocks_t.c.number],
-        ORDER_SCHEME_BY_TIMESTAMP: {blocks_t.c.timestamp}
+        ORDER_SCHEME_BY_TIMESTAMP: [blocks_t.c.timestamp]
     }[scheme]
 
     direction_func = DIRECTIONS[direction]
