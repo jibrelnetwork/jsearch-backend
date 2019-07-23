@@ -24,8 +24,8 @@ class BlocksSchema(Schema):
         validate=Range(min=1, max=MAX_LIMIT)
     )
 
-    number = PositiveIntOrTagField(tags=Tag.LATEST)
-    timestamp = PositiveIntOrTagField(tags=Tag.LATEST)
+    number = PositiveIntOrTagField(tags={Tag.LATEST})
+    timestamp = PositiveIntOrTagField(tags={Tag.LATEST})
 
     order = fields.Str(
         missing=ORDER_DESC,
