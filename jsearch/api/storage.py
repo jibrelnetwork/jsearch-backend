@@ -14,9 +14,12 @@ from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
     get_last_block_query,
-    get_blocks_query,
     get_mined_blocks_query,
-    get_block_number_by_hash_query
+    get_block_number_by_hash_query,
+    ORDER_SCHEME_BY_TIMESTAMP,
+    get_blocks_by_timestamp_query,
+    ORDER_SCHEME_BY_NUMBER,
+    get_blocks_by_number_query
 )
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
 from jsearch.api.database_queries.logs import get_logs_by_address_query
@@ -33,7 +36,7 @@ from jsearch.api.database_queries.transactions import (
 from jsearch.api.database_queries.wallet_events import get_wallet_events_query
 from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
-from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
+from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo, Ordering
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import blocks_t, chain_splits_t, reorgs_t, wallet_events_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
@@ -197,10 +200,22 @@ class Storage:
 
             return models.Block(**data)
 
-    async def get_blocks(self, limit, offset, order):
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
+    async def get_blocks(
+            self,
+            limit: int,
+            order: Ordering,
+            number: Optional[int] = None,
+            timestamp: Optional[int] = None,
+    ) -> List[models.Block]:
+        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+            query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
 
-        query = get_blocks_query(limit=limit, offset=offset, order=[blocks_t.c.number], direction=order)
+        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_blocks_by_number_query(limit, number=number, order=order)
+
+        else:
+            raise ValueError('Invalid scheme: {scheme}')
+
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
 
@@ -447,7 +462,8 @@ class Storage:
         if last_block is not None:
             return BlockInfo(
                 hash=last_block['hash'],
-                number=last_block['number']
+                number=last_block['number'],
+                timestamp=last_block['timestamp']
             )
 
     async def get_block_number(self, block_hash: str) -> Optional[BlockInfo]:
