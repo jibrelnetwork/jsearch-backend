@@ -9,6 +9,7 @@ from typing import DefaultDict
 from typing import List, Optional, Dict, Any
 
 from jsearch.api import models
+from jsearch.api.database_queries.account_states import get_last_balances_query
 from jsearch.api.database_queries.assets_summary import get_assets_summary_query
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
@@ -373,15 +374,20 @@ class Storage:
         return [models.Log(**r) for r in rows]
 
     async def get_accounts_balances(self, addresses):
-        query = """SELECT a.address, a.balance FROM accounts_state a
-                    INNER JOIN (SELECT address, max(block_number) bn FROM accounts_state
-                                 WHERE address = any($1::text[]) GROUP BY address) gn
-                    ON a.address=gn.address AND a.block_number=gn.bn;"""
+        query = get_last_balances_query(addresses)
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, addresses)
+            rows = await fetch(conn, query)
             addr_map = {r['address']: r for r in rows}
-            return [models.Balance(balance=int(addr_map[a]['balance']), address=addr_map[a]['address'])
-                    for a in addresses if a in addr_map]
+
+            balances = []
+            for address in addresses:
+                if address in addr_map:
+                    balance = models.Balance(
+                        balance=int(addr_map[address]['balance']),
+                        address=addr_map[address]['address']
+                    )
+                    balances.append(balance)
+            return balances
 
     async def get_tokens_transfers(self,
                                    address: str,
