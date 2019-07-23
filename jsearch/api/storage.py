@@ -467,7 +467,7 @@ class Storage:
         """
         Return status of client's last known block
         """
-        last_block = last_block or self.get_latest_block_info()
+        last_block = last_block or await self.get_latest_block_info()
 
         is_in_fork = False
         last_unchanged = None

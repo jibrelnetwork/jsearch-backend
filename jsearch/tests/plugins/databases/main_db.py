@@ -3,11 +3,14 @@ import os
 from asyncio import AbstractEventLoop
 
 import aiopg
+import asyncpg
 import dsnparse
 import pytest
 from aiopg.sa import Engine
 from functools import partial
 from sqlalchemy import create_engine
+
+from jsearch.api.storage import Storage
 
 logger = logging.getLogger(__name__)
 
@@ -104,3 +107,14 @@ def truncate_db(do_truncate_db):
 @pytest.fixture(scope='function', autouse=True)
 def mock_db_dsn(mocker, db_dsn):
     mocker.patch('jsearch.settings.JSEARCH_MAIN_DB', db_dsn)
+
+
+@pytest.mark.asyncio
+@pytest.fixture()
+async def storage(db_dsn: str, loop: AbstractEventLoop) -> Storage:
+    db_pool = await asyncpg.create_pool(dsn=db_dsn)
+    storage = Storage(db_pool)
+
+    yield storage
+
+    await db_pool.close()
