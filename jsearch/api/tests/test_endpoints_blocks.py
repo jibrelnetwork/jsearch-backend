@@ -22,36 +22,36 @@ def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
                 "/v1/blocks?limit=3",
                 10,
                 [9, 8, 7],
-                "/v1/blocks?limit=3&number=6&order=desc",
-                "/v1/blocks?limit=3&number=9&order=desc",
+                "/v1/blocks?limit=3&block_number=6&order=desc",
+                "/v1/blocks?limit=3&block_number=9&order=desc",
         ),
         (
                 "/v1/blocks?limit=3&order=asc",
                 10,
                 [9],
                 None,
-                "/v1/blocks?limit=3&number=9&order=asc",
+                "/v1/blocks?limit=3&block_number=9&order=asc",
         ),
         (
-                "/v1/blocks?limit=3&number=5",
+                "/v1/blocks?limit=3&block_number=5",
                 10,
                 [5, 4, 3],
-                "/v1/blocks?limit=3&number=2&order=desc",
-                "/v1/blocks?limit=3&number=5&order=desc",
+                "/v1/blocks?limit=3&block_number=2&order=desc",
+                "/v1/blocks?limit=3&block_number=5&order=desc",
         ),
         (
-                "/v1/blocks?limit=3&number=latest",
+                "/v1/blocks?limit=3&block_number=latest",
                 10,
                 [9, 8, 7],
-                "/v1/blocks?limit=3&number=6&order=desc",
-                "/v1/blocks?limit=3&number=9&order=desc",
+                "/v1/blocks?limit=3&block_number=6&order=desc",
+                "/v1/blocks?limit=3&block_number=9&order=desc",
         ),
     ],
     ids=[
         "/v1/blocks?limit=3",
         "/v1/blocks?limit=3&order=asc",
-        "/v1/blocks?limit=3&number=5",
-        "/v1/blocks?limit=3&number=latest",
+        "/v1/blocks?limit=3&block_number=5",
+        "/v1/blocks?limit=3&block_number=latest",
     ]
 )
 async def test_get_blocks(cli,
@@ -79,9 +79,9 @@ async def test_get_blocks(cli,
 @pytest.mark.parametrize(
     "url, errors",
     [
-        ('/v1/blocks?number=aaaa', [
+        ('/v1/blocks?block_number=aaaa', [
             {
-                "field": "number",
+                "field": "block_number",
                 "message": "Not a valid number or tag.",
                 "code": "INVALID_VALUE"
             }
@@ -93,7 +93,7 @@ async def test_get_blocks(cli,
                 "code": "INVALID_VALUE"
             }
         ]),
-        ('/v1/blocks?number=10&timestamp=10', [
+        ('/v1/blocks?block_number=10&timestamp=10', [
             {
                 "field": "__all__",
                 "message": "Filtration should be either by number or by timestamp",

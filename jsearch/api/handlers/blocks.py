@@ -38,7 +38,7 @@ async def get_blocks(
     data = [block.to_dict() for block in blocks]
 
     url = request.app.router['blocks'].url_for()
-    page = get_page(url=url, items=data, limit=limit, ordering=order)
+    page = get_page(url=url, items=data, limit=limit, ordering=order, mapping=BlocksSchema.mapping)
 
     return api_success(data=page.items, page=page)
 

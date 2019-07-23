@@ -19,12 +19,19 @@ logger = logging.getLogger(__name__)
 
 
 class BlocksSchema(Schema):
+    mapping = {
+        'number': 'block_number'
+    }
+
     limit = fields.Int(
         missing=DEFAULT_LIMIT,
         validate=Range(min=1, max=MAX_LIMIT)
     )
 
-    number = PositiveIntOrTagField(tags={Tag.LATEST})
+    number = PositiveIntOrTagField(
+        load_from='block_number',
+        tags={Tag.LATEST}
+    )
     timestamp = PositiveIntOrTagField(tags={Tag.LATEST})
 
     order = fields.Str(
@@ -54,4 +61,5 @@ class BlocksSchema(Schema):
             raise ValidationError("Filtration should be either by number or by timestamp")
 
     def handle_error(self, exc: ValidationError, data: Dict[str, Any]) -> None:
-        exc.messages = get_flatten_error_messages(exc.messages)
+        messages = {self.mapping.get(key) or key: value for key, value in exc.messages.items()}
+        exc.messages = get_flatten_error_messages(messages)
