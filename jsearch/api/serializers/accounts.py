@@ -1,33 +1,34 @@
 import logging
 
 from marshmallow import Schema, fields, post_load, validates_schema, ValidationError
-from marshmallow.validate import Range, OneOf
+from marshmallow.validate import Range, OneOf, Length
 from typing import Dict, Any
 
-from jsearch.api.database_queries.blocks import get_blocks_ordering
+from jsearch.api.database_queries.transactions import get_tx_ordering
 from jsearch.api.helpers import (
+    ORDER_ASC,
+    ORDER_DESC,
     DEFAULT_LIMIT,
     MAX_LIMIT,
     Tag,
     get_flatten_error_messages
 )
-from jsearch.api.ordering import get_order_schema, ORDER_DESC, ORDER_ASC
+from jsearch.api.ordering import get_order_schema
 from jsearch.api.serializers.fields import PositiveIntOrTagField
 
 logger = logging.getLogger(__name__)
 
 
-class BlocksSchema(Schema):
-    mapping = {
-        'number': 'block_number'
-    }
+class AccountsTxsSchema(Schema):
+    address = fields.Str(validate=Length(min=1, max=100), location='match_info')
+    transaction_index = fields.Int(missing=0, validate=Range(min=0))
 
     limit = fields.Int(
         missing=DEFAULT_LIMIT,
         validate=Range(min=1, max=MAX_LIMIT)
     )
 
-    number = PositiveIntOrTagField(
+    block_number = PositiveIntOrTagField(
         load_from='block_number',
         tags={Tag.LATEST}
     )
@@ -44,7 +45,7 @@ class BlocksSchema(Schema):
     @post_load
     def update_ordering(self, item: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
         order_schema = get_order_schema(item.get('timestamp'))
-        ordering = get_blocks_ordering(scheme=order_schema, direction=item['order'])
+        ordering = get_tx_ordering(scheme=order_schema, direction=item['order'])
 
         # set default value for missing number or timestamp
         for field in ordering.fields:
@@ -56,7 +57,7 @@ class BlocksSchema(Schema):
 
     @validates_schema
     def validate_numbers(self, data, **kwargs):
-        if data.get("number") and data.get("timestamp"):
+        if data.get("block_number") and data.get("timestamp"):
             raise ValidationError("Filtration should be either by number or by timestamp")
 
     def handle_error(self, exc: ValidationError, data: Dict[str, Any]) -> None:

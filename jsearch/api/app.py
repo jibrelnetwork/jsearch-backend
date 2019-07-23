@@ -41,7 +41,9 @@ async def make_app():
 
     app.router.add_route('GET', '/v1/accounts/balances', accounts.get_accounts_balances)
     app.router.add_route('GET', '/v1/accounts/{address}', accounts.get_account)
-    app.router.add_route('GET', '/v1/accounts/{address}/transactions', accounts.get_account_transactions)
+    app.router.add_route(
+        'GET', '/v1/accounts/{address}/transactions', accounts.get_account_transactions, name='accounts_txs'
+    )
     app.router.add_route(
         'GET', '/v1/accounts/{address}/internal_transactions', accounts.get_account_internal_transactions
     )

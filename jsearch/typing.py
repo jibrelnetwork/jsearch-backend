@@ -1,8 +1,10 @@
 from sqlalchemy import Column
-from typing import Any, Dict, NewType, Callable, Awaitable, Coroutine, List, TypeVar
+from typing import Any, Dict, NewType, Callable, Awaitable, Coroutine, List, TypeVar, Union
 
 Abi = List[Dict[str, Any]]
 Abi_ERC20 = NewType('Abi_ERC20', Abi)
+
+IntOrStr = Union[int, str]
 
 Account = Dict[str, Any]
 Accounts = List[Account]

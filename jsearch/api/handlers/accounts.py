@@ -1,7 +1,11 @@
 import logging
 
+from aiohttp.web_request import Request
+from typing import Optional, Union
+
 from jsearch import settings
 from jsearch.api.error_code import ErrorCode
+from jsearch.api.handlers.common import get_block_number_and_timestamp
 from jsearch.api.helpers import (
     get_tag,
     validate_params,
@@ -9,7 +13,12 @@ from jsearch.api.helpers import (
     api_error_response_400,
     api_error_response_404,
     get_from_joined_string,
-    get_positive_number)
+    get_positive_number
+)
+from jsearch.api.ordering import Ordering
+from jsearch.api.pagination import get_page
+from jsearch.api.serializers.accounts import AccountsTxsSchema
+from jsearch.api.utils import use_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -48,16 +57,33 @@ async def get_account(request):
     return api_success(account.to_dict())
 
 
-async def get_account_transactions(request):
+@use_kwargs(AccountsTxsSchema())
+async def get_account_transactions(
+        request: Request,
+        address: str,
+        limit: int,
+        order: Ordering,
+        block_number: Optional[Union[int, str]] = None,
+        timestamp: Optional[int] = None,
+        transaction_index: Optional[int] = None,
+):
     """
     Get account transactions
     """
     storage = request.app['storage']
-    address = request.match_info.get('address').lower()
-    params = validate_params(request, default_order='asc')
+    block_number, timestamp = await get_block_number_and_timestamp(block_number, timestamp, request)
 
-    txs = await storage.get_account_transactions(address, params['limit'], params['offset'], params['order'])
-    return api_success([t.to_dict() for t in txs])
+    txs = await storage.get_account_transactions(
+        address=address,
+        limit=limit,
+        ordering=order,
+        block_number=block_number,
+        timestamp=timestamp,
+        tx_index=transaction_index
+    )
+    url = request.app.router['accounts_txs'].url_for(address=address)
+    page = get_page(url=url, items=txs, limit=limit, ordering=order)
+    return api_success(data=[x.to_dict() for x in page.items], page=page)
 
 
 async def get_account_internal_transactions(request):
