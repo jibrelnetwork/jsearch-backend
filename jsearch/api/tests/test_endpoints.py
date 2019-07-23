@@ -1852,7 +1852,7 @@ async def test_get_wallet_events_tip_in_fork(cli,
     block = block_factory.create()
     forked_block = block_factory.create(number=1)
 
-    chain_splits = chain_split_factory.create()
+    chain_splits = chain_split_factory.create(common_block_number=0)
     reorg = reorg_factory.create(
         block_hash=forked_block.hash,
         block_number=forked_block.number,
