@@ -53,7 +53,7 @@ def get_tip_hash(request) -> Optional[str]:
 
 
 async def get_tip_block(storage, block_hash: str) -> BlockInfo:
-    block_info = await storage.get_block_number(block_hash)
+    block_info = await storage.get_block_info(block_hash)
     if block_info is None:
         raise ApiError(
             {
