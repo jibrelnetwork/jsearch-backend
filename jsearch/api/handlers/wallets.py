@@ -120,7 +120,7 @@ async def get_wallet_events(request):
 
     events = await storage.get_wallet_events(address, start_from, until_to, **params)
 
-    tip = await storage.get_blockchain_tip(tip=tip_block, last_block=latest_block)
+    tip = await storage.get_blockchain_tip(tip_block, latest_block)
     is_event_affected = (
             tip.is_in_fork and
             tip.last_unchanged_block is not None and
