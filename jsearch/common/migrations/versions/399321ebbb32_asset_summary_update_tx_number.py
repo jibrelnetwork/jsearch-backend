@@ -83,13 +83,13 @@ BEGIN
 
 	IF json_array_length(assets_summary_updates_data::json) > 0 THEN
 		INSERT INTO assets_summary SELECT * FROM json_populate_recordset(null::assets_summary, assets_summary_updates_data::json)
-		    ON CONFLICT (address, asset_address) DO UPDATE SET value = EXCLUDED.value, block_number = EXCLUDED.block_number, nonce = EXCLUDED.nonce, tx_number = EXCLUDED.tx_number
+		    ON CONFLICT (address, asset_address) DO UPDATE SET value = EXCLUDED.value, block_number = EXCLUDED.block_number, nonce = EXCLUDED.nonce
 		    WHERE assets_summary.block_number < EXCLUDED.block_number;
 	END IF;
 	
 	IF json_array_length(assets_summary_tx_numbers_updates_data::json) > 0 THEN
-		INSERT INTO assets_summary SELECT * FROM json_populate_recordset(null::assets_summary, assets_summary_updates_data::json)
-		    ON CONFLICT (address, asset_address) DO UPDATE SET tx_number = assets_summary.tx_number + 1;
+		INSERT INTO assets_summary SELECT * FROM json_populate_recordset(null::assets_summary, assets_summary_tx_numbers_updates_data::json)
+		    ON CONFLICT (address, asset_address) DO UPDATE SET tx_number = assets_summary.tx_number + EXCLUDED.tx_number;
 	END IF;
 
 	INSERT INTO chain_events SELECT * FROM json_populate_record(null::chain_events, chain_event_data::json);

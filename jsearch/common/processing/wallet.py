@@ -1,4 +1,5 @@
 from typing import NamedTuple, List, Optional
+from collections import Counter
 
 from jsearch.common.wallet_events import (
     event_from_internal_tx,
@@ -9,6 +10,8 @@ from jsearch.common.wallet_events import (
 from jsearch.syncer.database_queries.assets_summary import upsert_assets_summary_query
 from jsearch.syncer.database_queries.token_holders import upsert_token_holder_balance_q
 from jsearch.typing import Accounts, AssetUpdates, AccountAddress, TokenAddress
+from jsearch.common import contracts
+
 
 ETHER_ASSET_ADDRESS = ''
 
@@ -103,6 +106,7 @@ def assets_from_accounts(accounts: Accounts) -> AssetUpdates:
             'decimals': 0,
             'nonce': acc['nonce'],
             'block_number': acc['block_number'],
+            'tx_number': 0,
         }
         updates.append(update_data)
     return updates
@@ -116,21 +120,27 @@ def assets_from_token_balance_updates(token_balance_updates: AssetBalanceUpdates
             'asset_address': balance.asset_address,
             'value': balance.balance,
             'decimals': balance.decimals,
-            'block_number': block_number
+            'block_number': block_number,
+            'tx_number': 0,
         }
         updates.append(update_data)
     return updates
 
 
 def assets_summary_tx_number_updates_from_transactions(transactions):
-    updates = []
+    assets = []
     for tx in transactions:
-        updates.append({'address': tx['address'], 'asset_address': ''})
-    return updates
+        if tx['value'].replace('0x', '') != '0':
+            assets.append((tx['address'],  ''))
+    c = Counter(assets)
+    print('DATA C', c[('0x0d0707963952f2fba59dd06f2b425ace40b492fe', '')])
+    return [{'address': k[0], 'asset_address': k[1], 'tx_number': v} for k, v in c.items()]
 
 
 def assets_summary_tx_number_updates_from_transfers(transfers):
-    updates = []
+    assets = []
     for t in transfers:
-        updates.append({'address': t['address'], 'asset_address': t['token_address']})
-    return updates
+        if t['address'] != contracts.NULL_ADDRESS:
+            assets.append((t['address'], t['token_address']))
+    c = Counter(assets)
+    return [{'address': k[0], 'asset_address': k[1], 'tx_number': v} for k, v in c.items()]

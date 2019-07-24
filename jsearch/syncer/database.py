@@ -725,9 +725,10 @@ class MainDB(DBWrapper):
 
                 asset_tx_number_updates = await self.get_asset_tx_number_updates(
                     conn, old_chain_fragment, new_chain_fragment)
-                for update in asset_tx_number_updates:
-                    query = asset_tx_number_update_query(update)
-                    await conn.execute(query)
+
+                # for update in asset_tx_number_updates:
+                #     query = asset_tx_number_update_query(update)
+                #     await conn.execute(query)
 
                 # write chain event
                 q = chain_events_t.insert().values(**chain_event)
@@ -737,10 +738,12 @@ class MainDB(DBWrapper):
         old_blocks = [b['hash'] for b in old_chain_fragment]
         new_blocks = [b['hash'] for b in new_chain_fragment]
 
-        q = transactions_t.select().where(transactions_t.c.block_hash.in_(old_blocks))
+        q = transactions_t.select().where(and_(transactions_t.c.block_hash.in_(old_blocks),
+                                               transactions_t.c.value != '0x0'))
         async with conn.execute(q) as cursor:
             old_txs = await cursor.fetchall()
-        q = transactions_t.select().where(transactions_t.c.block_hash.in_(new_blocks))
+        q = transactions_t.select().where(and_(transactions_t.c.block_hash.in_(new_blocks),
+                                               transactions_t.c.value != '0x0'))
         async with conn.execute(q) as cursor:
             new_txs = await cursor.fetchall()
         q = token_transfers_t.select().where(token_transfers_t.c.block_hash.in_(old_blocks))

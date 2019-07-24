@@ -11,3 +11,4 @@ class TokenHolder(NamedTuple):
 class BalanceOnBlock(NamedTuple):
     block: int
     balance: int
+

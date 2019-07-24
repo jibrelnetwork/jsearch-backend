@@ -266,7 +266,7 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
     assert len(db_assets) == 1
     assert dict(db_assets[0]) == {'address': '0x1',
                                   'asset_address': '0xc1',
-                                  'tx_number': 2,
+                                  'tx_number': 1,
                                   'nonce': 2,
                                   'value': 2000,
                                   'decimals': 1,
@@ -304,7 +304,7 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
     assert len(db_assets) == 1
     assert dict(db_assets[0]) == {'address': '0x1',
                                   'asset_address': '0xc1',
-                                  'tx_number': 2,
+                                  'tx_number': 1,
                                   'nonce': 2,
                                   'value': 2000,
                                   'decimals': 1,
@@ -384,29 +384,30 @@ async def test_get_asset_tx_number_updates(db, db_dsn):
         {'hash': '0x4'},
     ]
 
-    db.execute('INSERT INTO transactions (address, block_number, block_hash, hash, transaction_index, is_forked) '
-               'values (%s, %s, %s, %s, %s, %s)',
+    db.execute('INSERT INTO transactions (address, block_number, block_hash, hash, transaction_index, is_forked, value)'
+               'values (%s, %s, %s, %s, %s, %s, %s)',
                [
-                   ('0xA1', 1, '0x1', '0xt1', 1, False),
+                   ('0xA1', 1, '0x1', '0xt1', 1, False, '0x100'),
 
-                   ('0xA2', 2, '0x2a', '0xt2', 1, False),
-                   ('0xA1', 2, '0x2a', '0xt3', 2, False),
-                   ('0xA2', 2, '0x2a', '0xt4', 3, False),
+                   ('0xA2', 2, '0x2a', '0xt2', 1, False, '0x100'),
+                   ('0xA1', 2, '0x2a', '0xt3', 2, False, '0x100'),
+                   ('0xA2', 2, '0x2a', '0xt4', 3, False, '0x100'),
 
-                   ('0xA3', 3, '0x3a', '0xt5', 1, False),
-                   ('0xA1', 3, '0x3a', '0xt6', 2, False),
-                   ('0xA2', 3, '0x3a', '0xt7', 3, False),
+                   ('0xA3', 3, '0x3a', '0xt5', 1, False, '0x100'),
+                   ('0xA1', 3, '0x3a', '0xt6', 2, False, '0x100'),
+                   ('0xA2', 3, '0x3a', '0xt7', 3, False, '0x100'),
 
-                   ('0xA2', 2, '0x2b', '0xt2', 1, False),
-                   ('0xA1', 2, '0x2b', '0xt3', 2, False),
-                   ('0xA2', 2, '0x2b', '0xt4a', 3, False),
 
-                   ('0xA2', 3, '0x3b', '0xt5a', 1, False),
-                   ('0xA1', 3, '0x3b', '0xt6a', 2, False),
-                   ('0xA2', 3, '0x3b', '0xt7', 3, False),
+                   ('0xA2', 2, '0x2b', '0xt2', 1, False, '0x100'),
+                   ('0xA1', 2, '0x2b', '0xt3', 2, False, '0x100'),
+                   ('0xA2', 2, '0x2b', '0xt4a', 3, False, '0x100'),
 
-                   ('0xA1', 4, '0x3b', '0xt8', 1, False),
-                   ('0xA2', 4, '0x3b', '0xt9', 2, False),
+                   ('0xA2', 3, '0x3b', '0xt5a', 1, False, '0x100'),
+                   ('0xA1', 3, '0x3b', '0xt6a', 2, False, '0x100'),
+                   ('0xA2', 3, '0x3b', '0xt7', 3, False, '0x100'),
+
+                   ('0xA1', 4, '0x3b', '0xt8', 1, False, '0x100'),
+                   ('0xA2', 4, '0x3b', '0xt9', 2, False, '0x100'),
                ])
 
     db.execute('INSERT INTO token_transfers (address, block_number, block_hash, token_address, is_forked) '
@@ -418,6 +419,7 @@ async def test_get_asset_tx_number_updates(db, db_dsn):
                    ('0xA1', 2, '0x2a', '0xT2', False),
                    ('0xA1', 2, '0x2a', '0xT3', False),
                    ('0xA2', 2, '0x2a', '0xT3', False),
+
 
                    ('0xA1', 3, '0x3b', '0xT3', False),
                    ('0xA2', 3, '0x3b', '0xT3', False),
@@ -435,6 +437,7 @@ async def test_get_asset_tx_number_updates(db, db_dsn):
     assert res == [
         {'address': '0xA2', 'asset_address': '', 'tx_number': 2},
         {'address': '0xA1', 'asset_address': '', 'tx_number': 1},
+
         {'address': '0xA1', 'asset_address': '0xT3', 'tx_number': 0},
         {'address': '0xA2', 'asset_address': '0xT3', 'tx_number': 0},
         {'address': '0xA1', 'asset_address': '0xT2', 'tx_number': 0},
@@ -443,3 +446,123 @@ async def test_get_asset_tx_number_updates(db, db_dsn):
         {'address': '0xA3', 'asset_address': '', 'tx_number': -1},
         {'address': '0xA2', 'asset_address': '0xT2', 'tx_number': -1}
     ]
+
+
+async def test_maindb_write_block_data_asset_summary_tx_number(db, main_db_dump, db_dsn):
+    from jsearch.syncer.processor import BlockData
+
+
+    db.execute('INSERT INTO assets_summary (address, asset_address, tx_number, block_number, decimals) '
+               'values (%s, %s, %s, %s, %s)',
+               [
+                   ('0xa1', '', 10, 1, 1),
+                   ('0xa2', '0xt1', 100, 1, 1),
+
+               ])
+
+    main_db = MainDBSync(db_dsn)
+    main_db.connect()
+
+    block_data = main_db_dump['blocks'][2]
+
+    assets_summary_updates = [
+        {'address': '0xa1',
+         'asset_address': '',
+         'tx_number': 0,
+         'nonce': 1,
+         'value': 1000,
+         'decimals': 1,
+         'block_number': block_data['number']},
+        {'address': '0xa2',
+         'asset_address': '',
+         'tx_number': 0,
+         'nonce': 1,
+         'value': 2000,
+         'decimals': 1,
+         'block_number': block_data['number']},
+        {'address': '0xa2',
+         'asset_address': '0xt1',
+         'tx_number': 0,
+         'nonce': 1,
+         'value': 3000,
+         'decimals': 1,
+         'block_number': block_data['number']},
+        {'address': '0xa3',
+         'asset_address': '0xt1',
+         'tx_number': 0,
+         'nonce': 1,
+         'value': 4000,
+         'decimals': 1,
+         'block_number': block_data['number']},
+    ]
+    assets_summary_tx_number_updates = [
+        {'address': '0xa1', 'asset_address': '', 'tx_number': 1},
+        {'address': '0xa2', 'asset_address': '', 'tx_number': 3},
+        {'address': '0xa2', 'asset_address': '0xt1', 'tx_number': 1},
+        {'address': '0xa3', 'asset_address': '0xt1', 'tx_number': 2},
+    ]
+
+    block = BlockData(
+        block=block_data,
+        uncles=[],
+        txs=[],
+        receipts=[],
+        logs=[],
+        accounts=[],
+        internal_txs=[],
+        assets_summary_updates=assets_summary_updates,
+        token_holders_updates=[],
+        transfers=[],
+        wallet_events=[],
+        assets_summary_tx_number_updates=assets_summary_tx_number_updates,
+    )
+
+    chain_event = {
+        'id': 1,
+        'block_number': block_data['number'],
+        'block_hash': '0x01',
+        'created_at': datetime.datetime.now(),
+        'add_block_hash': None,
+        'add_length': None,
+        'common_block_hash': None,
+        'common_block_number': None,
+        'drop_block_hash': None,
+        'drop_length': None,
+        'node_id': '0xXX',
+        'parent_block_hash': None,
+        'type': 'create'
+    }
+
+    async with MainDB(db_dsn) as async_db:
+        await block.write(async_db, chain_event)
+
+    # then
+    assets = [dict(r) for r in db.execute(t.assets_summary_t.select()).fetchall()]
+    assert assets == [{'address': '0xa1',
+                       'asset_address': '',
+                       'block_number': block_data['number'],
+                       'decimals': 1,
+                       'nonce': 1,
+                       'tx_number': 11,
+                       'value': 1000},
+                      {'address': '0xa2',
+                       'asset_address': '',
+                       'block_number': block_data['number'],
+                       'decimals': 1,
+                       'nonce': 1,
+                       'tx_number': 3,
+                       'value': 2000},
+                      {'address': '0xa2',
+                       'asset_address': '0xt1',
+                       'block_number': block_data['number'],
+                       'decimals': 1,
+                       'nonce': 1,
+                       'tx_number': 101,
+                       'value': 3000},
+                      {'address': '0xa3',
+                       'asset_address': '0xt1',
+                       'block_number': block_data['number'],
+                       'decimals': 1,
+                       'nonce': 1,
+                       'tx_number': 2,
+                       'value': 4000}]

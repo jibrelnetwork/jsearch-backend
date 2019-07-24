@@ -26,7 +26,7 @@ def upsert_assets_summary_query(
         'nonce': nonce,
     }
     summary_data = {key: value for key, value in summary_data.items() if value is not None}
-    query = insert(assets_summary_t).values(tx_number=1, **summary_data)
+    query = insert(assets_summary_t).values(**summary_data)
 
     q = assets_summary_t.c.block_number <= query.excluded.block_number
     if blocks_to_replace:
@@ -39,7 +39,7 @@ def upsert_assets_summary_query(
         index_elements=['address', 'asset_address'],
         set_={
             'value': value,
-            'tx_number': tx_number,
+            #'tx_number': tx_number,
             'block_number': block_number,
             'nonce': nonce
         },
