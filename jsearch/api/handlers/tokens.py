@@ -1,5 +1,6 @@
 import logging
 
+from jsearch.api.blockchain_tip import get_tip_or_raise_api_error, is_tip_stale
 from jsearch.api.helpers import validate_params, api_success
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,15 @@ async def get_token_transfers(request):
         offset=params['offset'],
         order=params['order']
     )
-    return api_success([transfer.to_dict() for transfer in transfers])
+    transfers = [t.to_dict() for t in transfers]
+
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    transfers = [] if tip_is_stale else transfers
+
+    return api_success(transfers)
 
 
 async def get_token_holders(request):
@@ -30,4 +39,12 @@ async def get_token_holders(request):
         offset=params['offset'],
         order=params['order']
     )
-    return api_success([holder.to_dict() for holder in holders])
+    holders = [h.to_dict() for h in holders]
+
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    holders = [] if tip_is_stale else holders
+
+    return api_success(holders)
