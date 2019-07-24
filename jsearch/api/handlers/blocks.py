@@ -44,7 +44,7 @@ async def get_blocks(
 
     data = [block.to_dict() for block in blocks]
 
-    tip_hash = request.query.get('blockchain_tip')
+    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 

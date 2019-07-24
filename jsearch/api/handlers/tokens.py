@@ -19,7 +19,7 @@ async def get_token_transfers(request):
     )
     transfers = [t.to_dict() for t in transfers]
 
-    tip_hash = request.query.get('blockchain_tip')
+    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
@@ -41,7 +41,7 @@ async def get_token_holders(request):
     )
     holders = [h.to_dict() for h in holders]
 
-    tip_hash = request.query.get('blockchain_tip')
+    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
