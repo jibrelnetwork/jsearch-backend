@@ -33,7 +33,12 @@ async def get_blocks(
         timestamp = timestamp and last_block.timestamp
 
     # Notes: we need to query limit + 1 items to get link on next page
-    blocks = await storage.get_blocks(limit=limit + 1, number=number, timestamp=timestamp, order=order)
+    blocks, last_affected_block = await storage.get_blocks(
+        limit=limit + 1,
+        number=number,
+        timestamp=timestamp,
+        order=order,
+    )
 
     data = [block.to_dict() for block in blocks]
 

@@ -30,7 +30,7 @@ async def get_accounts_balances(request):
             }
         ])
 
-    balances = await storage.get_accounts_balances(addresses)
+    balances, last_affected_block = await storage.get_accounts_balances(addresses)
     return api_success([b.to_dict() for b in balances])
 
 
@@ -42,7 +42,7 @@ async def get_account(request):
     address = request.match_info.get('address').lower()
     tag = get_tag(request)
 
-    account = await storage.get_account(address, tag)
+    account, last_affected_block = await storage.get_account(address, tag)
     if account is None:
         return api_error_response_404()
     return api_success(account.to_dict())
@@ -56,7 +56,12 @@ async def get_account_transactions(request):
     address = request.match_info.get('address').lower()
     params = validate_params(request, default_order='asc')
 
-    txs = await storage.get_account_transactions(address, params['limit'], params['offset'], params['order'])
+    txs, last_affected_block = await storage.get_account_transactions(
+        address,
+        params['limit'],
+        params['offset'],
+        params['order']
+    )
     return api_success([t.to_dict() for t in txs])
 
 
@@ -68,7 +73,7 @@ async def get_account_internal_transactions(request):
     address = request.match_info.get('address').lower()
     params = validate_params(request)
 
-    internal_txs = await storage.get_account_internal_transactions(
+    internal_txs, last_affected_block = await storage.get_account_internal_transactions(
         address,
         limit=params['limit'],
         offset=params['offset'],
@@ -113,7 +118,7 @@ async def get_account_logs(request):
     block_from = get_positive_number(request=request, attr='block_range_start')
     block_until = get_positive_number(request=request, attr='block_range_end')
 
-    logs = await storage.get_account_logs(
+    logs, last_affected_block = await storage.get_account_logs(
         address=address,
         limit=params['limit'],
         offset=params['offset'],
@@ -132,7 +137,12 @@ async def get_account_mined_blocks(request):
     address = request.match_info.get('address').lower()
     params = validate_params(request)
 
-    blocks = await storage.get_account_mined_blocks(address, params['limit'], params['offset'], params['order'])
+    blocks, last_affected_block = await storage.get_account_mined_blocks(
+        address,
+        params['limit'],
+        params['offset'],
+        params['order'],
+    )
     return api_success([b.to_dict() for b in blocks])
 
 
@@ -144,7 +154,12 @@ async def get_account_mined_uncles(request):
     address = request.match_info.get('address').lower()
     params = validate_params(request)
 
-    uncles = await storage.get_account_mined_uncles(address, params['limit'], params['offset'], params['order'])
+    uncles, last_affected_block = await storage.get_account_mined_uncles(
+        address,
+        params['limit'],
+        params['offset'],
+        params['order']
+    )
     return api_success([u.to_dict() for u in uncles])
 
 
@@ -153,7 +168,7 @@ async def get_account_token_transfers(request):
     params = validate_params(request)
     account_address = request.match_info['address'].lower()
 
-    transfers = await storage.get_account_tokens_transfers(
+    transfers, last_affected_block = await storage.get_account_tokens_transfers(
         address=account_address,
         limit=params['limit'],
         offset=params['offset'],
@@ -167,7 +182,7 @@ async def get_account_token_balance(request):
     token_address = request.match_info['token_address'].lower()
     account_address = request.match_info['address'].lower()
 
-    holder = await storage.get_account_token_balance(
+    holder, last_affected_block = await storage.get_account_token_balance(
         account_address=account_address,
         token_address=token_address,
     )
