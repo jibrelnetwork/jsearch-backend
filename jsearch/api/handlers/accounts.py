@@ -13,8 +13,8 @@ from jsearch.api.helpers import (
     api_error_response_400,
     api_error_response_404,
     get_from_joined_string,
-    get_positive_number
-)
+    get_positive_number,
+    ApiError)
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.accounts import AccountsTxsSchema
@@ -57,6 +57,7 @@ async def get_account(request):
     return api_success(account.to_dict())
 
 
+@ApiError.catch
 @use_kwargs(AccountsTxsSchema())
 async def get_account_transactions(
         request: Request,
