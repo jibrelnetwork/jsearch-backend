@@ -478,7 +478,7 @@ class Storage:
                 timestamp=last_block['timestamp']
             )
 
-    async def get_block_number(self, block_hash: str) -> Optional[BlockInfo]:
+    async def get_block_info(self, block_hash: str) -> Optional[BlockInfo]:
         query = get_block_number_by_hash_query(block_hash)
         async with self.pool.acquire() as conn:
             block = await fetch_row(conn, query=query)
@@ -490,16 +490,18 @@ class Storage:
             )
 
     async def get_blockchain_tip(self,
-                                 last_block: BlockInfo,
-                                 tip: Optional[BlockInfo]) -> Optional[BlockchainTip]:
+                                 tip_block: Optional[BlockInfo],
+                                 last_block: Optional[BlockInfo] = None) -> Optional[BlockchainTip]:
         """
         Return status of client's last known block
         """
+        last_block = last_block or await self.get_latest_block_info()
+
         is_in_fork = False
         last_unchanged = None
-        if tip:
+        if tip_block:
             split_query = select([chain_splits_t.c.common_block_number]).where(
-                chain_splits_t.c.id == select([reorgs_t.c.split_id]).where(reorgs_t.c.block_hash == tip.hash)
+                chain_splits_t.c.id == select([reorgs_t.c.split_id]).where(reorgs_t.c.block_hash == tip_block.hash)
             )
 
             async with self.pool.acquire() as conn:
@@ -511,8 +513,8 @@ class Storage:
                 last_unchanged = common_block_number
 
         return BlockchainTip(
-            tip_hash=tip and tip.hash,
-            tip_number=tip and tip.number,
+            tip_hash=tip_block and tip_block.hash,
+            tip_number=tip_block and tip_block.number,
             last_hash=last_block.hash,
             last_number=last_block.number,
             is_in_fork=is_in_fork,
