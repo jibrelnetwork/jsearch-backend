@@ -602,6 +602,9 @@ async def test_get_blocks_with_tip(
         transactions_root='0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
         uncle_inclusion_reward='0',
     )
+
+    # WTF: Misc blocks are created in `_get_tip`, so select only target block to
+    # validate.
     response = await cli.get(f'/v1/blocks?block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}')
     response_json = await response.json()
 
@@ -674,8 +677,6 @@ async def test_get_uncles_with_tip(
         transactions_root='0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
     )
 
-    # Blocks 0 and 1 are occupied by tip generation (see `_get_tip`), so check
-    # only blocks from 2nd.
     response = await cli.get(f'/v1/uncles?blockchain_tip={tip.tip_hash}')
     response_json = await response.json()
 
@@ -699,6 +700,92 @@ async def test_get_uncles_with_tip(
             "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "blockNumber": target_block_number,
             "reward": hex(411095732236680000),
+        }
+    ]
+
+    assert response_json == {
+        "status": {
+            "success": True,
+            "errors": []
+        },
+        "data": data,
+    }
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_token_transfers_with_tip(
+        cli: TestClient,
+        transfer_factory: TokenTransferFactory,
+        case: BlockchainTipCase,
+        _get_tip: TipGetter,
+) -> None:
+
+    tip = await _get_tip(case.is_tip_forked)
+
+    target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
+    token_transfer = transfer_factory.create(
+        block_number=target_block_number,
+        from_address='0xf73c3c65bde10bf26c2e1763104e609a41702efe',
+        to_address='0x355941cf7ac065310fd4023e1b913209f076a48a',
+        token_address='0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
+        transaction_hash='0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c',
+        token_value='1664600000000000000000',
+        token_decimals='18',
+        timestamp='1548229016',
+    )
+
+    response = await cli.get(f'/v1/tokens/{token_transfer.token_address}/transfers?blockchain_tip={tip.tip_hash}')
+    response_json = await response.json()
+
+    data = [] if case.has_empty_data_response else [
+        {
+            "timestamp": 1548229016,
+            "transactionHash": "0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c",
+            "from": "0xf73c3c65bde10bf26c2e1763104e609a41702efe",
+            "to": "0x355941cf7ac065310fd4023e1b913209f076a48a",
+            "tokenAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
+            "amount": "1664600000000000000000",
+            "tokenDecimals": 18,
+        }
+    ]
+
+    assert response_json == {
+        "status": {
+            "success": True,
+            "errors": []
+        },
+        "data": data,
+    }
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_token_holders_with_tip(
+        cli: TestClient,
+        token_holder_factory: TokenHolderFactory,
+        case: BlockchainTipCase,
+        _get_tip: TipGetter,
+) -> None:
+
+    tip = await _get_tip(case.is_tip_forked)
+
+    target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
+    token_holder = token_holder_factory.create(
+        block_number=target_block_number,
+        account_address="0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0",
+        token_address="0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
+        balance="1000000",
+        decimals="18",
+    )
+
+    response = await cli.get(f'/v1/tokens/{token_holder.token_address}/holders?blockchain_tip={tip.tip_hash}')
+    response_json = await response.json()
+
+    data = [] if case.has_empty_data_response else [
+        {
+            "accountAddress": "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0",
+            "tokenAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
+            "balance": 1000000,
+            "decimals": 18,
         }
     ]
 

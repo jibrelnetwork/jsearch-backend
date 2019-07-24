@@ -430,7 +430,7 @@ class Storage:
                                    address: str,
                                    limit: int,
                                    offset: int,
-                                   order: str) -> List[models.TokenTransfer]:
+                                   order: str) -> Tuple[List[models.TokenTransfer], Optional[LastAffectedBlock]]:
         # HACK: There're 2 times more entries due to denormalization, see
         # `log_to_transfers`. Because of this, `offset` and `limit` should be
         # multiplied first and rows should be deduped second.
@@ -446,7 +446,10 @@ class Storage:
         # `in_app_distinct` instead.
         rows_distinct = in_app_distinct(rows)
 
-        return _rows_to_token_transfers(rows_distinct)
+        transfers = _rows_to_token_transfers(rows_distinct)
+        last_affected_block = max((r['block_number'] for r in rows), default=None)
+
+        return transfers, last_affected_block
 
     async def get_account_tokens_transfers(
             self,
@@ -478,17 +481,21 @@ class Storage:
         return row['input']
 
     async def get_tokens_holders(self, address: str, limit: int, offset: int, order: str) \
-            -> List[models.TokenHolder]:
+            -> Tuple[List[models.TokenHolder], Optional[LastAffectedBlock]]:
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
         query = f"""
-        SELECT account_address, token_address, balance, decimals
+        SELECT account_address, token_address, balance, decimals, block_number
         FROM token_holders
         WHERE token_address=$1
         ORDER BY balance {order} LIMIT $2 OFFSET $3;
         """
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, address, limit, offset)
-            return [models.TokenHolder(**r) for r in rows]
+
+        holders = [models.TokenHolder(**r) for r in rows]
+        last_affected_block = max((r['block_number'] for r in rows), default=None)
+
+        return holders, last_affected_block
 
     async def get_account_token_balance(self, account_address: str, token_address: str) \
             -> Tuple[Optional[models.TokenHolder], Optional[LastAffectedBlock]]:
