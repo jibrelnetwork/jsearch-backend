@@ -10,7 +10,7 @@ async def get_token_transfers(request):
     params = validate_params(request)
     contract_address = request.match_info['address'].lower()
 
-    transfers = await storage.get_tokens_transfers(
+    transfers, last_affected_block = await storage.get_tokens_transfers(
         address=contract_address,
         limit=params['limit'],
         offset=params['offset'],
@@ -24,7 +24,7 @@ async def get_token_holders(request):
     params = validate_params(request)
     token_address = request.match_info['address'].lower()
 
-    holders = await storage.get_tokens_holders(
+    holders, last_affected_block = await storage.get_tokens_holders(
         address=token_address,
         limit=params['limit'],
         offset=params['offset'],
