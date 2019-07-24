@@ -75,7 +75,7 @@ async def get_account_transactions(
 
     txs = await storage.get_account_transactions(
         address=address,
-        limit=limit,
+        limit=limit + 1,
         ordering=order,
         block_number=block_number,
         timestamp=timestamp,

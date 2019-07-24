@@ -1,3 +1,5 @@
+from operator import or_
+
 from sqlalchemy import select, Column, and_, false
 from sqlalchemy.orm import Query
 from typing import List, Optional, Dict
@@ -75,33 +77,44 @@ def get_tx_by_address_query(address: str, ordering: Ordering, columns: List[Colu
 def get_tx_by_address_and_block_query(
         address: str,
         block_number: int,
-        tx_index: int,
         ordering: Ordering,
+        tx_index: Optional[int] = None,
         columns: Optional[Columns] = None
 ) -> Query:
     query = get_tx_by_address_query(address, ordering, columns)
-    return query.where(
-        and_(
+
+    if tx_index is None:
+        q = ordering.operator_or_equal(transactions_t.c.block_number, block_number)
+    else:
+        q = or_(
             ordering.operator(transactions_t.c.block_number, block_number),
-            ordering.operator(transactions_t.c.transaction_index, tx_index),
+            and_(
+                transactions_t.c.block_number == block_number,
+                ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
+            )
         )
-    )
+    return query.where(q)
 
 
 def get_tx_by_address_and_timestamp_query(
         address: str,
         timestamp: int,
-        tx_index: int,
         ordering: Ordering,
+        tx_index: Optional[int] = None,
         columns: Optional[Columns] = None
 ) -> Query:
     query = get_tx_by_address_query(address, ordering, columns)
-    return query.where(
-        and_(
+    if tx_index is None:
+        q = ordering.operator_or_equal(transactions_t.c.timestamp, timestamp)
+    else:
+        q = or_(
             ordering.operator(transactions_t.c.timestamp, timestamp),
-            ordering.operator(transactions_t.c.transaction_index, tx_index),
+            and_(
+                transactions_t.c.timestamp == timestamp,
+                ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
+            )
         )
-    )
+    return query.where(q)
 
 
 def _order_tx_query(query: Query, direction: str) -> Query:

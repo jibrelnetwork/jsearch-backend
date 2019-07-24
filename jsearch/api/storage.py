@@ -131,21 +131,21 @@ class Storage:
             ordering: Ordering,
             block_number: int,
             timestamp: int,
-            tx_index: int
+            tx_index: Optional[int] = None
     ) -> List[models.Transaction]:
 
         if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_tx_by_address_and_block_query(address, block_number, tx_index, ordering)
+            query = get_tx_by_address_and_block_query(address, block_number, ordering, tx_index)
         else:
-            query = get_tx_by_address_and_timestamp_query(address, timestamp, tx_index, ordering)
+            query = get_tx_by_address_and_timestamp_query(address, timestamp, ordering, tx_index)
 
-        # Notes: syncer writes txs to main db with denormalization ( x2)
+        # Notes: syncer writes txs to main db with denormalization (x2 records per transaction)
         query = query.limit(limit * 2)
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection, query)
 
-        rows = in_app_distinct(rows)
+        rows = in_app_distinct(rows)[:limit]
         return [models.Transaction(**r) for r in rows]
 
     async def get_block_transactions(self, tag):

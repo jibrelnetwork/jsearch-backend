@@ -1,4 +1,4 @@
-from operator import le, ge
+from operator import le, ge, gt, lt
 
 from sqlalchemy import asc, desc
 from typing import Optional, Dict, NamedTuple, List, Callable, Any
@@ -18,6 +18,11 @@ DIRECTIONS = {
 }
 
 DIRECTIONS_OPERATOR_MAPS = {
+    ORDER_ASC: gt,
+    ORDER_DESC: lt
+}
+
+DIRECTIONS_OPERATOR_OR_EQUAL_MAPS = {
     ORDER_ASC: ge,
     ORDER_DESC: le
 }
@@ -27,6 +32,7 @@ class Ordering(NamedTuple):
     columns: Columns
     fields: List[str]
     scheme: OrderScheme
+    operator_or_equal: Callable[[Any, Any], Any]
     operator: Callable[[Any, Any], Any]
     direction: OrderDirection
 
@@ -42,11 +48,13 @@ def get_ordering(mapping: Dict[str, Columns], scheme: OrderScheme, direction: Or
     columns: Columns = mapping[scheme]
     direction_func = DIRECTIONS[direction]
     operator = DIRECTIONS_OPERATOR_MAPS[direction]
+    operator_or_equal = DIRECTIONS_OPERATOR_OR_EQUAL_MAPS[direction]
 
     return Ordering(
         columns=[direction_func(column) for column in columns],
         fields=[column.name for column in columns],
         scheme=scheme,
         direction=direction,
-        operator=operator
+        operator=operator,
+        operator_or_equal=operator_or_equal
     )

@@ -5,46 +5,19 @@ from urllib.parse import urlencode
 import pytest
 from aiohttp import ClientResponse
 from asynctest import CoroutineMock
-from sqlalchemy import select
-from sqlalchemy.engine import Connection
-from typing import Optional, Set, Union, List
+from typing import Optional, Set, Union
 
 from jsearch import settings
 from jsearch.api.error_code import ErrorCode
 from jsearch.common.tables import (
     assets_transfers_t,
-    transactions_t,
-    assets_summary_t,
-    accounts_state_t,
-    blocks_t
+    assets_summary_t
 )
 from jsearch.tests.entities import BlockFromDumpWrapper
 
 logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
-
-@pytest.fixture()
-def link_txs_with_block(db: Connection):
-    def link(tx_hashes: List[str], block_hash: str) -> List[str]:
-        get_txs_query = select([blocks_t.c.transactions]).where(blocks_t.c.hash == block_hash)
-
-        result = db.execute(get_txs_query)
-
-        txs = result.fetchone()['transactions'] or []
-        txs = [*txs, *tx_hashes]
-        txs = [tx for tx in txs if tx]
-
-        update_txs_query = blocks_t.update(
-            whereclause=blocks_t.c.hash == block_hash,
-            values={'transactions': txs}
-        )
-        db.execute(update_txs_query)
-
-        return txs
-
-    return link
 
 
 async def assert_not_404_response(response: ClientResponse) -> None:
@@ -290,37 +263,6 @@ async def test_get_account_block_hash(cli, main_db_data):
                              'nonce': account_state['nonce']}
 
 
-async def test_get_account_transactions(cli, main_db_data):
-    address = main_db_data['accounts_state'][0]['address']
-
-    resp = await cli.get(f'/v1/accounts/{address}/transactions')
-    assert resp.status == 200
-    txs = main_db_data['transactions']
-    res = (await resp.json())['data']
-    assert len(res) == 4
-    assert res[0]['hash'] == txs[0]['hash']
-    assert res[1]['hash'] == txs[1]['hash']
-    assert res[2]['hash'] == txs[2]['hash']
-    assert res[3]['hash'] == txs[4]['hash']
-    assert res[0] == {
-        'blockHash': txs[0]['block_hash'],
-        'blockNumber': txs[0]['block_number'],
-        'from': txs[0]['from'],
-        'gas': txs[0]['gas'],
-        'gasPrice': txs[0]['gas_price'],
-        'hash': txs[0]['hash'],
-        'input': txs[0]['input'],
-        'nonce': txs[0]['nonce'],
-        'r': txs[0]['r'],
-        's': txs[0]['s'],
-        'to': txs[0]['to'],
-        'status': False,
-        'transactionIndex': txs[0]['transaction_index'],
-        'v': txs[0]['v'],
-        'value': txs[0]['value'],
-    }
-
-
 async def test_get_account_balances(cli, main_db_data):
     a1 = main_db_data['accounts_base'][0]
     a2 = main_db_data['accounts_base'][1]
@@ -375,6 +317,7 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
         {
             'blockHash': tx.block_hash,
             'blockNumber': tx.block_number,
+            'timestamp': tx.timestamp,
             'from': getattr(tx, 'from'),
             'gas': tx.gas,
             'gasPrice': tx.gas_price,
@@ -437,6 +380,7 @@ async def test_get_block_transactions_by_number(cli, block_factory, transaction_
     assert txs[0] == {
         'blockHash': from_tx.block_hash,
         'blockNumber': from_tx.block_number,
+        'timestamp': block.timestamp,
         'from': getattr(from_tx, 'from'),
         'gas': from_tx.gas,
         'gasPrice': from_tx.gas_price,
@@ -488,6 +432,7 @@ async def test_get_transaction(cli, main_db_data):
     assert (await resp.json())['data'] == {
         'blockHash': tx['block_hash'],
         'blockNumber': tx['block_number'],
+        'timestamp': None,
         'from': tx['from'],
         'gas': tx['gas'],
         'gasPrice': tx['gas_price'],
@@ -1081,125 +1026,6 @@ async def test_get_wallet_transfers(cli, db):
                    ]
 
 
-async def test_get_wallet_transactions(cli, db):
-    txs = [
-        {
-            'address': 'a1',
-            'hash': '0xt1',
-            'block_number': 1,
-            'block_hash': '0xb1',
-            'transaction_index': 0,
-            'from': '0xa1',
-            'to': '0xa2',
-            'gas': '0xf4240',
-            'gas_price': '0x430e23400',
-            'input': '0x6060',
-            'nonce': '0x0',
-            'value': '0x0',
-            'is_forked': False,
-            'contract_call_description': None
-        },
-        {
-            'address': 'a2',
-            'hash': '0xt1',
-            'block_number': 1,
-            'block_hash': '0xb1',
-            'transaction_index': 0,
-            'from': '0xa1',
-            'to': '0xa2',
-            'gas': '0xf4240',
-            'gas_price': '0x430e23400',
-            'input': '0x6060',
-            'nonce': '0x0',
-            'value': '0x0',
-            'is_forked': False,
-            'contract_call_description': None
-        },
-        {
-            'address': 'a1',
-            'hash': '0xt2',
-            'block_number': 1,
-            'block_hash': '0xb1',
-            'transaction_index': 0,
-            'from': 'a1',
-            'to': 'a2',
-            'gas': '0xf4240',
-            'gas_price': '0x430e23400',
-            'input': '0x6060',
-            'nonce': '0x0',
-            'value': '0x0',
-            'is_forked': False,
-            'contract_call_description': None
-        },
-        {
-            'address': 'a3',
-            'hash': '0xt2',
-            'block_number': 1,
-            'block_hash': '0xb1',
-            'transaction_index': 0,
-            'from': 'a1',
-            'to': 'a3',
-            'gas': '0xf4240',
-            'gas_price': '0x430e23400',
-            'input': '0x6060',
-            'nonce': '0x0',
-            'value': '0x0',
-            'is_forked': False,
-            'contract_call_description': None
-        },
-    ]
-    for t in txs:
-        db.execute(transactions_t.insert().values(**t))
-
-    db.execute(accounts_state_t.insert().values(address='a1', nonce=1, block_number=1, block_hash='0xb1'))
-
-    resp = await cli.get(f'/v1/wallet/transactions?address=a1')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == {
-        'transactions': [
-            {
-                'blockHash': '0xb1',
-                'blockNumber': 1,
-                'from': '0xa1',
-                'gas': '0xf4240',
-                'gasPrice': '0x430e23400',
-                'hash': '0xt1',
-                'input': '0x6060',
-                'nonce': '0x0',
-                'r': None,
-                's': None,
-                'to': '0xa2',
-                'transactionIndex': 0,
-                'v': None,
-                'status': False,
-                'value': '0x0'
-            },
-            {
-                'blockHash': '0xb1',
-                'blockNumber': 1,
-                'from': 'a1',
-                'gas': '0xf4240',
-                'gasPrice': '0x430e23400',
-                'hash': '0xt2',
-                'input': '0x6060',
-                'nonce': '0x0',
-                'r': None,
-                's': None,
-                'to': 'a2',
-                'transactionIndex': 0,
-                'v': None,
-                'status': False,
-                'value': '0x0'
-            }
-        ],
-        'pendingTransactions': [
-
-        ],
-        'outgoingTransactionsNumber': 1
-    }
-
-
 async def test_get_wallet_assets_summary(cli, db):
     assets = [
         {
@@ -1282,69 +1108,6 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
             'error_message': 'Too many addresses requested'
         }
     ]
-
-
-@pytest.mark.parametrize(
-    "direction, expected_order",
-    (
-            (
-                    'asc',
-                    [
-                        (7400000, 0),
-                        (7400000, 1),
-                        (7400000, 2),
-                        (7400000, 3),
-                        (7400000, 4),
-                        (7500000, 0),
-                        (7500000, 1),
-                        (7500000, 2),
-                        (7500000, 3),
-                        (7500000, 4),
-                    ]
-            ),
-            (
-                    'desc',
-                    [
-                        (7500000, 4),
-                        (7500000, 3),
-                        (7500000, 2),
-                        (7500000, 1),
-                        (7500000, 0),
-                        (7400000, 4),
-                        (7400000, 3),
-                        (7400000, 2),
-                        (7400000, 1),
-                        (7400000, 0),
-                    ]
-            ),
-    ),
-    ids=[
-        "direction=asc",
-        "direction=desc"
-    ]
-)
-async def test_get_account_transactions_ordering(cli, db, direction, expected_order, transaction_factory):
-    address = '0x3e20a5fe4eb128156c51e310f0391799beccf0c1'
-
-    # given - unordered transactions
-    for block_number in ('7400000', '7500000'):
-        for transaction_index in range(5):
-            transaction_factory.create(
-                **{
-                    'transaction_index': str(transaction_index),
-                    'block_number': block_number,
-                    'address': address
-                },
-            )
-
-    # when - get transactions with default order
-    resp = await cli.get(f'/v1/accounts/{address}/transactions?order={direction}')
-    resp_json = await resp.json()
-    resp_order_indicators = [(entry['blockNumber'], entry['transactionIndex']) for entry in resp_json['data']]
-
-    # then - check order
-    assert resp.status == 200
-    assert resp_order_indicators == expected_order
 
 
 async def test_get_account_logs(cli, db, main_db_data):
@@ -1631,6 +1394,7 @@ async def test_get_wallet_events(cli, block_factory, wallet_events_factory, tran
                     'rootTxData': {
                         'blockHash': tx.block_hash,
                         'blockNumber': tx.block_number,
+                        'timestamp': tx.timestamp,
                         'from': getattr(tx, 'from'),
                         'gas': tx.gas,
                         'gasPrice': tx.gas_price,
@@ -2025,6 +1789,7 @@ async def test_get_wallet_events_tip_in_fork_but_events_not_affected(cli,
                     'rootTxData': {
                         'blockHash': tx.block_hash,
                         'blockNumber': tx.block_number,
+                        'timestamp': tx.timestamp,
                         'from': getattr(tx, 'from'),
                         'gas': tx.gas,
                         'gasPrice': tx.gas_price,

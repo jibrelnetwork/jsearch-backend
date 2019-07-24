@@ -139,7 +139,7 @@ class SyncProcessor:
 
         block_number: int = header['block_number']
         block_hash: str = header['block_hash']
-        timestamp: int = header['timestamp']
+        timestamp: int = int(header['fields']['timestamp'], 16)
 
         block_reward, uncles_rewards = self.process_rewards(reward, block_number)
         uncles_data = self.process_uncles(uncles, uncles_rewards, block_number, block_hash, is_forked)
