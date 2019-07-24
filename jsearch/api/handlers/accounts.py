@@ -1,6 +1,7 @@
 import logging
 
 from jsearch import settings
+from jsearch.api.blockchain_tip import get_tip_or_raise_api_error, is_tip_stale
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.helpers import (
     get_tag,
@@ -9,11 +10,12 @@ from jsearch.api.helpers import (
     api_error_response_400,
     api_error_response_404,
     get_from_joined_string,
-    get_positive_number)
+    get_positive_number, ApiError)
 
 logger = logging.getLogger(__name__)
 
 
+@ApiError.catch
 async def get_accounts_balances(request):
     """
     Get ballances for list of accounts
@@ -31,9 +33,18 @@ async def get_accounts_balances(request):
         ])
 
     balances, last_affected_block = await storage.get_accounts_balances(addresses)
-    return api_success([b.to_dict() for b in balances])
+    balances = [b.to_dict() for b in balances]
+
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    balances = [] if tip_is_stale else balances
+
+    return api_success(balances)
 
 
+@ApiError.catch
 async def get_account(request):
     """
     Get account by address
@@ -43,11 +54,21 @@ async def get_account(request):
     tag = get_tag(request)
 
     account, last_affected_block = await storage.get_account(address, tag)
+    account = account and account.to_dict()
+
     if account is None:
         return api_error_response_404()
-    return api_success(account.to_dict())
+
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    account = dict() if tip_is_stale else account
+
+    return api_success(account)
 
 
+@ApiError.catch
 async def get_account_transactions(request):
     """
     Get account transactions
@@ -62,9 +83,18 @@ async def get_account_transactions(request):
         params['offset'],
         params['order']
     )
-    return api_success([t.to_dict() for t in txs])
+    txs = [t.to_dict() for t in txs]
+
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    txs = [] if tip_is_stale else txs
+
+    return api_success(txs)
 
 
+@ApiError.catch
 async def get_account_internal_transactions(request):
     """
     Get account internal transactions
@@ -80,10 +110,15 @@ async def get_account_internal_transactions(request):
         order=params['order'],
     )
 
-    response_data = [it.to_dict() for it in internal_txs]
-    response = api_success(response_data)
+    internal_txs = [it.to_dict() for it in internal_txs]
 
-    return response
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    internal_txs = [] if tip_is_stale else internal_txs
+
+    return api_success(internal_txs)
 
 
 async def get_account_pending_transactions(request):
@@ -107,6 +142,7 @@ async def get_account_pending_transactions(request):
     return response
 
 
+@ApiError.catch
 async def get_account_logs(request):
     """
     Get contract logs
@@ -126,9 +162,18 @@ async def get_account_logs(request):
         block_from=block_from,
         block_until=block_until,
     )
-    return api_success([item.to_dict() for item in logs])
+    logs = [l.to_dict() for l in logs]
+
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    logs = [] if tip_is_stale else logs
+
+    return api_success(logs)
 
 
+@ApiError.catch
 async def get_account_mined_blocks(request):
     """
     Get account mined blocks
@@ -143,9 +188,18 @@ async def get_account_mined_blocks(request):
         params['offset'],
         params['order'],
     )
-    return api_success([b.to_dict() for b in blocks])
+    blocks = [b.to_dict() for b in blocks]
+
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    blocks = [] if tip_is_stale else blocks
+
+    return api_success(blocks)
 
 
+@ApiError.catch
 async def get_account_mined_uncles(request):
     """
     Get account mined uncles
@@ -160,9 +214,18 @@ async def get_account_mined_uncles(request):
         params['offset'],
         params['order']
     )
-    return api_success([u.to_dict() for u in uncles])
+    uncles = [u.to_dict() for u in uncles]
+
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    uncles = [] if tip_is_stale else uncles
+
+    return api_success(uncles)
 
 
+@ApiError.catch
 async def get_account_token_transfers(request):
     storage = request.app['storage']
     params = validate_params(request)
@@ -174,9 +237,18 @@ async def get_account_token_transfers(request):
         offset=params['offset'],
         order=params['order']
     )
-    return api_success([transfer.to_dict() for transfer in transfers])
+    transfers = [t.to_dict() for t in transfers]
+
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    transfers = [] if tip_is_stale else transfers
+
+    return api_success(transfers)
 
 
+@ApiError.catch
 async def get_account_token_balance(request):
     storage = request.app['storage']
     token_address = request.match_info['token_address'].lower()
@@ -186,6 +258,16 @@ async def get_account_token_balance(request):
         account_address=account_address,
         token_address=token_address,
     )
+
+    holder = holder and holder.to_dict()
+
     if holder is None:
         return api_error_response_404()
-    return api_success(holder.to_dict())
+
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    holder = dict() if tip_is_stale else holder
+
+    return api_success(holder)

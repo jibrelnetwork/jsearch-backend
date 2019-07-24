@@ -2,18 +2,20 @@ from aiohttp.web_request import Request
 from aiohttp.web_response import Response
 from typing import Optional, Union
 
+from jsearch.api.blockchain_tip import get_tip_or_raise_api_error, is_tip_stale
 from jsearch.api.helpers import (
     get_tag,
     api_success,
     api_error_response_404,
-    Tag
-)
+    Tag,
+    ApiError)
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.blocks import BlocksSchema
 from jsearch.api.structs import Ordering
 from jsearch.api.utils import use_kwargs
 
 
+@ApiError.catch
 @use_kwargs(BlocksSchema())
 async def get_blocks(
         request: Request,
@@ -41,6 +43,12 @@ async def get_blocks(
     )
 
     data = [block.to_dict() for block in blocks]
+
+    tip_hash = request.query.get('blockchain_tip')
+    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip_is_stale = is_tip_stale(tip, last_affected_block)
+
+    data = [] if tip_is_stale else data
 
     url = request.app.router['blocks'].url_for()
     page = get_page(url=url, items=data, limit=limit, ordering=order, mapping=BlocksSchema.mapping)
