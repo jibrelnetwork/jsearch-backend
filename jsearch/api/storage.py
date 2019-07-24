@@ -74,7 +74,7 @@ class Storage:
     def __init__(self, pool):
         self.pool = pool
 
-    async def get_account(self, address, tag) -> Tuple[models.Account, LastAffectedBlock]:
+    async def get_account(self, address, tag) -> Tuple[Optional[models.Account], Optional[LastAffectedBlock]]:
         """
         Get account info by address
         """
@@ -103,7 +103,7 @@ class Storage:
                 state_row = await conn.fetchrow(query, address, tag.value)
 
             if state_row is None:
-                return None
+                return None, None
 
             state_row = dict(state_row)
             state_row['balance'] = int(state_row['balance'])
@@ -132,7 +132,7 @@ class Storage:
             limit,
             offset,
             order
-    ) -> Tuple[List[models.Transaction], LastAffectedBlock]:
+    ) -> Tuple[List[models.Transaction], Optional[LastAffectedBlock]]:
 
         limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
 
@@ -144,7 +144,7 @@ class Storage:
         rows = in_app_distinct(rows)
 
         txs = [models.Transaction(**r) for r in rows]
-        last_affected_block = max(r['block_number'] for r in rows)
+        last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return txs, last_affected_block
 
@@ -218,7 +218,7 @@ class Storage:
             order: Ordering,
             number: Optional[int] = None,
             timestamp: Optional[int] = None,
-    ) -> Tuple[List[models.Block], LastAffectedBlock]:
+    ) -> Tuple[List[models.Block], Optional[LastAffectedBlock]]:
         if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
             query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
 
@@ -249,7 +249,7 @@ class Storage:
                 })
 
         blocks = [models.Block(**row) for row in rows]
-        last_affected_block = max(r['number'] for r in rows)
+        last_affected_block = max((r['number'] for r in rows), default=None)
 
         return blocks, last_affected_block
 
@@ -259,7 +259,7 @@ class Storage:
             limit,
             offset,
             order
-    ) -> Tuple[List[models.Block], LastAffectedBlock]:
+    ) -> Tuple[List[models.Block], Optional[LastAffectedBlock]]:
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
         query = get_mined_blocks_query(
             miner=address,
@@ -288,7 +288,7 @@ class Storage:
                 })
 
         blocks = [models.Block(**row) for row in rows]
-        last_affected_block = max(r['number'] for r in rows)
+        last_affected_block = max((r['number'] for r in rows), default=None)
 
         return blocks, last_affected_block
 
@@ -313,7 +313,7 @@ class Storage:
             data['reward'] = int(data['reward'])
             return models.Uncle(**data)
 
-    async def get_uncles(self, limit, offset, order) -> Tuple[List[models.Uncle], LastAffectedBlock]:
+    async def get_uncles(self, limit, offset, order) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
         query = f"""SELECT * FROM uncles ORDER BY number {order} LIMIT $1 OFFSET $2"""
         async with self.pool.acquire() as conn:
@@ -325,13 +325,13 @@ class Storage:
                 r['reward'] = int(r['reward'])
 
         uncles = [models.Uncle(**row) for row in rows]
-        last_affected_block = max(r['block_number'] for r in rows)
+        last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return uncles, last_affected_block
 
     async def get_account_mined_uncles(
             self, address, limit, offset, order
-    ) -> Tuple[List[models.Uncle], LastAffectedBlock]:
+    ) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
         assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
         query = f"""SELECT * FROM uncles WHERE miner=$1 ORDER BY number {order} LIMIT $2 OFFSET $3"""
         async with self.pool.acquire() as conn:
@@ -342,7 +342,7 @@ class Storage:
                 r['reward'] = int(r['reward'])
 
         uncles = [models.Uncle(**row) for row in rows]
-        last_affected_block = max(r['block_number'] for r in rows)
+        last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return uncles, last_affected_block
 
@@ -398,18 +398,18 @@ class Storage:
                                block_until: int,
                                order: str,
                                limit: int,
-                               offset: int) -> Tuple[List[models.Log], LastAffectedBlock]:
+                               offset: int) -> Tuple[List[models.Log], Optional[LastAffectedBlock]]:
         query = get_logs_by_address_query(address, order, limit, offset, block_from, block_until)
 
         async with self.pool.acquire() as conn:
             rows = await fetch(conn, query)
 
         logs = [models.Log(**r) for r in rows]
-        last_affected_block = max(r['block_number'] for r in rows)
+        last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return logs, last_affected_block
 
-    async def get_accounts_balances(self, addresses) -> Tuple[List[models.Balance], LastAffectedBlock]:
+    async def get_accounts_balances(self, addresses) -> Tuple[List[models.Balance], Optional[LastAffectedBlock]]:
         query = """SELECT a.address, a.balance, a.block_number FROM accounts_state a
                     INNER JOIN (SELECT address, max(block_number) bn FROM accounts_state
                                  WHERE address = any($1::text[]) GROUP BY address) gn
@@ -422,7 +422,7 @@ class Storage:
             models.Balance(balance=int(addr_map[a]['balance']), address=addr_map[a]['address'])
             for a in addresses if a in addr_map
         ]
-        last_affected_block = max(r['block_number'] for r in rows)
+        last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return balances, last_affected_block
 
@@ -448,18 +448,21 @@ class Storage:
 
         return _rows_to_token_transfers(rows_distinct)
 
-    async def get_account_tokens_transfers(self,
-                                           address: str,
-                                           limit: int,
-                                           offset: int,
-                                           order: str) -> Tuple[List[models.TokenTransfer], LastAffectedBlock]:
+    async def get_account_tokens_transfers(
+            self,
+            address: str,
+            limit: int,
+            offset: int,
+            order: str
+    ) -> Tuple[List[models.TokenTransfer], Optional[LastAffectedBlock]]:
+
         query = get_token_transfers_by_account(address.lower(), order)
         query = query.limit(limit)
         query = query.offset(offset)
 
         rows = await fetch(self.pool, query)
         transfers = _rows_to_token_transfers(rows)
-        last_affected_block = max(r['block_number'] for r in rows)
+        last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return transfers, last_affected_block
 
@@ -488,7 +491,7 @@ class Storage:
             return [models.TokenHolder(**r) for r in rows]
 
     async def get_account_token_balance(self, account_address: str, token_address: str) \
-            -> Optional[Tuple[models.TokenHolder, LastAffectedBlock]]:
+            -> Tuple[Optional[models.TokenHolder], Optional[LastAffectedBlock]]:
         query = """
         SELECT account_address, token_address, balance, decimals, block_number
         FROM token_holders
@@ -498,7 +501,7 @@ class Storage:
             row = await conn.fetchrow(query, account_address, token_address)
 
         if not row:
-            return None
+            return None, None
 
         holder = models.TokenHolder(**row)
         last_affected_block = row['block_number']
@@ -761,7 +764,7 @@ class Storage:
             limit: int,
             offset: int,
             order: str
-    ) -> Tuple[List[models.InternalTransaction], LastAffectedBlock]:
+    ) -> Tuple[List[models.InternalTransaction], Optional[LastAffectedBlock]]:
 
         query = get_internal_txs_by_account(account, order)
         query = query.limit(limit)
@@ -769,7 +772,7 @@ class Storage:
 
         rows = await fetch(self.pool, query)
         internal_txs = [models.InternalTransaction(**r) for r in rows]
-        last_affected_block = max(r['block_number'] for r in rows)
+        last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return internal_txs, last_affected_block
 
