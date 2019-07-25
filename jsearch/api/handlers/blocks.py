@@ -2,7 +2,7 @@ from aiohttp.web_request import Request
 from aiohttp.web_response import Response
 from typing import Optional, Union
 
-from jsearch.api.blockchain_tip import get_tip_or_raise_api_error, is_tip_stale
+from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.handlers.common import get_block_number_and_timestamp
 from jsearch.api.helpers import (
     get_tag,
@@ -40,10 +40,7 @@ async def get_blocks(
         order=order,
     )
 
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, last_affected_block)
-
-    blocks = [] if tip_is_stale else blocks
+    blocks, tip_or_none = await maybe_apply_tip(storage, tip_hash, blocks, last_affected_block, empty=[])
 
     url = request.app.router['blocks'].url_for()
     page = get_page(url=url, items=blocks, limit=limit, ordering=order, mapping=BlockListSchema.mapping)

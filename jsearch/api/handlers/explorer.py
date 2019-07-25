@@ -1,6 +1,6 @@
 import logging
 
-from jsearch.api.blockchain_tip import get_tip_or_raise_api_error, is_tip_stale
+from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.helpers import (
     get_tag,
     validate_params,
@@ -61,10 +61,7 @@ async def get_uncles(request):
 
     uncles, last_affected_block = await storage.get_uncles(params['limit'], params['offset'], params['order'])
 
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, last_affected_block)
-
-    uncles = [] if tip_is_stale else uncles
+    uncles, tip_or_none = await maybe_apply_tip(storage, tip_hash, uncles, last_affected_block, empty=[])
     uncles = [u.to_dict() for u in uncles]
 
     return api_success(uncles)

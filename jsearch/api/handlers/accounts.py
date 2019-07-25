@@ -4,7 +4,7 @@ from aiohttp.web_request import Request
 from typing import Optional, Union
 
 from jsearch import settings
-from jsearch.api.blockchain_tip import get_tip_or_raise_api_error, is_tip_stale
+from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.handlers.common import get_block_number_and_timestamp
 from jsearch.api.helpers import (
@@ -44,12 +44,8 @@ async def get_accounts_balances(request):
         ])
 
     balances, last_affected_block = await storage.get_accounts_balances(addresses)
-
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, last_affected_block)
-
-    balances = [] if tip_is_stale else balances
-    balances = [b.to_dict() for b in balances]
+    balances, tip_or_none = await maybe_apply_tip(storage, tip_hash, balances, last_affected_block, empty=[])
+    balances = balances and [b.to_dict() for b in balances] or []
 
     return api_success(balances)
 
@@ -69,11 +65,8 @@ async def get_account(request):
     if account is None:
         return api_error_response_404()
 
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, last_affected_block)
-
-    account = dict() if tip_is_stale else account
-    account = account and account.to_dict()
+    account, tip_or_none = await maybe_apply_tip(storage, tip_hash, account, last_affected_block, empty=None)
+    account = {} if account is None else account.to_dict()
 
     return api_success(account)
 
@@ -105,13 +98,11 @@ async def get_account_transactions(
         tx_index=transaction_index
     )
 
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, last_affected_block)
-
-    txs = [] if tip_is_stale else txs
+    txs, tip_or_none = await maybe_apply_tip(storage, tip_hash, txs, last_affected_block, empty=[])
 
     url = request.app.router['accounts_txs'].url_for(address=address)
     page = get_page(url=url, items=txs, limit=limit, ordering=order)
+
     return api_success(data=[x.to_dict() for x in page.items], page=page)
 
 
@@ -132,10 +123,7 @@ async def get_account_internal_transactions(request):
         order=params['order'],
     )
 
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, last_affected_block)
-
-    internal_txs = [] if tip_is_stale else internal_txs
+    internal_txs, tip_or_none = await maybe_apply_tip(storage, tip_hash, internal_txs, last_affected_block, empty=[])
     internal_txs = [it.to_dict() for it in internal_txs]
 
     return api_success(internal_txs)
@@ -184,10 +172,7 @@ async def get_account_logs(request):
         block_until=block_until,
     )
 
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, last_affected_block)
-
-    logs = [] if tip_is_stale else logs
+    logs, tip_or_none = await maybe_apply_tip(storage, tip_hash, logs, last_affected_block, empty=[])
     logs = [l.to_dict() for l in logs]
 
     return api_success(logs)
@@ -210,10 +195,7 @@ async def get_account_mined_blocks(request):
         params['order'],
     )
 
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, last_affected_block)
-
-    blocks = [] if tip_is_stale else blocks
+    blocks, tip_or_none = await maybe_apply_tip(storage, tip_hash, blocks, last_affected_block, empty=[])
     blocks = [b.to_dict() for b in blocks]
 
     return api_success(blocks)
@@ -236,10 +218,7 @@ async def get_account_mined_uncles(request):
         params['order']
     )
 
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, last_affected_block)
-
-    uncles = [] if tip_is_stale else uncles
+    uncles, tip_or_none = await maybe_apply_tip(storage, tip_hash, uncles, last_affected_block, empty=[])
     uncles = [u.to_dict() for u in uncles]
 
     return api_success(uncles)
@@ -259,10 +238,7 @@ async def get_account_token_transfers(request):
         order=params['order']
     )
 
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, last_affected_block)
-
-    transfers = [] if tip_is_stale else transfers
+    transfers, tip_or_none = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
     transfers = [t.to_dict() for t in transfers]
 
     return api_success(transfers)
@@ -283,10 +259,7 @@ async def get_account_token_balance(request):
     if holder is None:
         return api_error_response_404()
 
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
-    tip_is_stale = is_tip_stale(tip, last_affected_block)
-
-    holder = dict() if tip_is_stale else holder
-    holder = holder and holder.to_dict()
+    holder, tip_or_none = await maybe_apply_tip(storage, tip_hash, holder, last_affected_block, empty=None)
+    holder = {} if holder is None else holder.to_dict()
 
     return api_success(holder)
