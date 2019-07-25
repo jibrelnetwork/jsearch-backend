@@ -17,7 +17,7 @@ from jsearch.api.helpers import (
     ApiError)
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_page
-from jsearch.api.serializers.accounts import AccountsTxsSchema
+from jsearch.api.serializers.accounts import AccountsTxsSchema, AccountsInternalTxsSchema
 from jsearch.api.utils import use_kwargs
 
 logger = logging.getLogger(__name__)
@@ -87,25 +87,36 @@ async def get_account_transactions(
     return api_success(data=[x.to_dict() for x in page.items], page=page)
 
 
-async def get_account_internal_transactions(request):
+@ApiError.catch
+@use_kwargs(AccountsInternalTxsSchema())
+async def get_account_internal_transactions(
+        request: Request,
+        address: str,
+        limit: int,
+        order: Ordering,
+        block_number: Optional[Union[int, str]] = None,
+        timestamp: Optional[int] = None,
+        parent_transaction_index: Optional[int] = None,
+        transaction_index: Optional[int] = None,
+):
     """
     Get account internal transactions
     """
     storage = request.app['storage']
-    address = request.match_info.get('address').lower()
-    params = validate_params(request)
+    block_number, timestamp = await get_block_number_and_timestamp(block_number, timestamp, request)
 
-    internal_txs, last_affected_block = await storage.get_account_internal_transactions(
-        address,
-        limit=params['limit'],
-        offset=params['offset'],
-        order=params['order'],
+    txs, last_affected_blocks = await storage.get_account_internal_transactions(
+        address=address,
+        limit=limit + 1,
+        ordering=order,
+        block_number=block_number,
+        timestamp=timestamp,
+        parent_tx_index=parent_transaction_index,
+        tx_index=transaction_index
     )
-
-    response_data = [it.to_dict() for it in internal_txs]
-    response = api_success(response_data)
-
-    return response
+    url = request.app.router['accounts_internal_txs'].url_for(address=address)
+    page = get_page(url=url, items=txs, limit=limit, ordering=order, mapping=AccountsInternalTxsSchema.mapping)
+    return api_success(data=[x.to_dict() for x in page.items], page=page)
 
 
 async def get_account_pending_transactions(request):
