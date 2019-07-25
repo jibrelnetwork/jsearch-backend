@@ -1,6 +1,6 @@
 import logging
 
-from marshmallow import fields
+from marshmallow import fields, validates_schema, ValidationError
 from marshmallow.validate import Range, Length
 
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_ordering
@@ -31,3 +31,15 @@ class AccountsInternalTxsSchema(BlockRelatedListSchema):
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         return get_internal_txs_ordering(scheme, direction)
+
+    @validates_schema
+    def validate_filters(self, data, **kwargs):
+        block_number = data.get("block_number")
+        transaction_index = data.get("transaction_index")
+        parent_transaction_index = data.get("parent_transaction_index")
+
+        if block_number is None and parent_transaction_index is not None:
+            raise ValidationError("Filter `parent_transaction_index` requires `block_number` value.")
+
+        if block_number is not None and transaction_index is not None and parent_transaction_index is None:
+            raise ValidationError("Filter `transaction_index` requires `parent_transaction_index` value.")

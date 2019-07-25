@@ -82,72 +82,124 @@ def get_index(tx: Dict[str, Any]):
                     'order': 'desc'
                 })),
         ),
-        # (
-        #         URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
-        #         [(4, 0), (4, 1)],
-        #         None,
-        #         URL.format(params=urlencode({
-        #             'block_number': 4,
-        #             'transaction_index': 0,
-        #             'limit': 3,
-        #             'order': 'asc'
-        #         })),
-        # ),
-        # (
-        #         URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
-        #         [(3, 1), (3, 0), (2, 1)],
-        #         URL.format(params=urlencode({
-        #             'block_number': 2,
-        #             'transaction_index': 0,
-        #             'limit': 3,
-        #             'order': 'desc'
-        #         })),
-        #         URL.format(params=urlencode({
-        #             'block_number': 3,
-        #             'transaction_index': 1,
-        #             'limit': 3,
-        #             'order': 'desc'
-        #         })),
-        # ),
-        # (
-        #         URL.format(params=urlencode({'block_number': 3, 'transaction_index': 0, 'limit': 3})),
-        #         [(3, 0), (2, 1), (2, 0)],
-        #         URL.format(params=urlencode({
-        #             'block_number': 1,
-        #             'transaction_index': 1,
-        #             'limit': 3,
-        #             'order': 'desc'
-        #         })),
-        #         URL.format(params=urlencode({
-        #             'block_number': 3,
-        #             'transaction_index': 0,
-        #             'limit': 3,
-        #             'order': 'desc'
-        #         })),
-        # ),
-        # (
-        #         URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
-        #         [(4, 1), (4, 0), (3, 1)],
-        #         URL.format(params=urlencode({
-        #             'block_number': 3,
-        #             'transaction_index': 0,
-        #             'limit': 3,
-        #             'order': 'desc'
-        #         })),
-        #         URL.format(params=urlencode({
-        #             'block_number': 4,
-        #             'transaction_index': 1,
-        #             'limit': 3,
-        #             'order': 'desc'
-        #         }))
-        # ),
+        (
+                URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
+                [(4, 0, 1), (4, 0, 2), (4, 1, 1)],
+                URL.format(params=urlencode({
+                    'block_number': 4,
+                    'parent_transaction_index': 1,
+                    'transaction_index': 2,
+                    'limit': 3,
+                    'order': 'asc'
+                })),
+                URL.format(params=urlencode({
+                    'block_number': 4,
+                    'parent_transaction_index': 0,
+                    'transaction_index': 1,
+                    'limit': 3,
+                    'order': 'asc'
+                })),
+        ),
+        (
+                URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
+                [(3, 1, 2), (3, 1, 1), (3, 0, 2)],
+                URL.format(params=urlencode({
+                    'block_number': 3,
+                    'parent_transaction_index': 0,
+                    'transaction_index': 1,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+                URL.format(params=urlencode({
+                    'block_number': 3,
+                    'parent_transaction_index': 1,
+                    'transaction_index': 2,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+        ),
+        (
+                URL.format(params=urlencode({
+                    'block_number': 3,
+                    'parent_transaction_index': 0,
+                    'transaction_index': 2,
+                    'limit': 3
+                })),
+                [(3, 0, 2), (3, 0, 1), (2, 1, 2)],
+                URL.format(params=urlencode({
+                    'block_number': 2,
+                    'parent_transaction_index': 1,
+                    'transaction_index': 1,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+                URL.format(params=urlencode({
+                    'block_number': 3,
+                    'parent_transaction_index': 0,
+                    'transaction_index': 2,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+        ),
+        (
+                URL.format(params=urlencode({
+                    'block_number': 3,
+                    'parent_transaction_index': 0,
+                    'transaction_index': 1,
+                    'limit': 3
+                })),
+                [(3, 0, 1), (2, 1, 2), (2, 1, 1)],
+                URL.format(params=urlencode({
+                    'block_number': 2,
+                    'parent_transaction_index': 0,
+                    'transaction_index': 2,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+                URL.format(params=urlencode({
+                    'block_number': 3,
+                    'parent_transaction_index': 0,
+                    'transaction_index': 1,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+        ),
+        (
+                URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
+                [(4, 1, 2), (4, 1, 1), (4, 0, 2)],
+                URL.format(params=urlencode({
+                    'block_number': 4,
+                    'parent_transaction_index': 0,
+                    'transaction_index': 1,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+                URL.format(params=urlencode({
+                    'block_number': 4,
+                    'parent_transaction_index': 1,
+                    'transaction_index': 2,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+        ),
     ],
     ids=[
         URL.format(params=urlencode({'limit': 3})),
-        # URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
-        # URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
-        # URL.format(params=urlencode({'block_number': 3, 'transaction_index': 1, 'limit': 3})),
-        # URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
+        URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
+        URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
+        URL.format(params=urlencode({
+            'block_number': 3,
+            'parent_transaction_index': 0,
+            'transaction_index': 2,
+            'limit': 3
+        })),
+        URL.format(params=urlencode({
+            'block_number': 3,
+            'parent_transaction_index': 0,
+            'transaction_index': 1,
+            'limit': 3
+        })),
+        URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
     ]
 )
 async def test_get_account_internal_transactions(cli,
@@ -216,13 +268,29 @@ async def test_get_account_internal_transactions(cli,
                 "code": "INVALID_ORDER_VALUE"
             }
         ]),
+        (URL.format(params=urlencode({'block_number': 3, 'transaction_index': 1, 'limit': 3})), [
+            {
+                "field": "__all__",
+                "message": "Filter `transaction_index` requires `parent_transaction_index` value.",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        (URL.format(params=urlencode({'parent_transaction_index': 1, 'limit': 3})), [
+            {
+                "field": "__all__",
+                "message": "Filter `parent_transaction_index` requires `block_number` value.",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
     ],
     ids=[
         "invalid_tag",
         "invalid_timestamp",
         "either_number_or_timestamp",
         "invalid_limit",
-        "invalid_order"
+        "invalid_order",
+        "transaction_index_requires_parent_transaction_index",
+        "parent_transaction_index_requires_block_number",
     ]
 )
 async def test_get_account_internal_transactions_errors(
