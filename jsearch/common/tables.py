@@ -131,6 +131,7 @@ transactions_t = sa.Table(
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, index=True, primary_key=True),
     sa.Column('transaction_index', HexInteger, primary_key=True),
+    sa.Column('timestamp', HexInteger),
     sa.Column('from', sa.String, index=True),
     sa.Column('to', sa.String, index=True),
     sa.Column('gas', sa.String),

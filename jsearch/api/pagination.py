@@ -1,6 +1,7 @@
-from typing import NamedTuple, List, Dict, Any
+from typing import NamedTuple, List, Dict, Any, Optional
+from yarl import URL
 
-from jsearch.api.structs import Ordering
+from jsearch.api.ordering import Ordering
 
 
 class Page(NamedTuple):
@@ -18,19 +19,25 @@ class Page(NamedTuple):
         }
 
 
-def get_link(url, fields: List[str], item: Dict[str, Any], mapping: Dict[str, str], params: Dict[str, Any]) -> str:
-    query = {mapping.get(key) or key: item[key] for key in fields}
+def get_link(
+        url: URL,
+        fields: List[str],
+        item: Dict[str, Any],
+        mapping: Optional[Dict[str, str]],
+        params: Dict[str, Any]
+) -> str:
+    query = {mapping and mapping.get(key) or key: item[key] for key in fields}
     absolute_url = url.with_query({**query, **params})
     if absolute_url:
         return str(absolute_url)
 
 
 def get_page(
-        url,
+        url: URL,
+        limit: int,
         ordering: Ordering,
         items: List[Dict[str, Any]],
-        mapping: Dict[str, str],
-        limit: int,
+        mapping: Optional[Dict[str, str]] = None,
 ) -> Page:
     """
     If there we have (limit + 1) items - we can

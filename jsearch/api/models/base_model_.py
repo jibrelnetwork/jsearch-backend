@@ -1,9 +1,9 @@
 import pprint
-import typing
-from datetime import datetime
 from decimal import Decimal
 
 import six
+import typing
+from datetime import datetime
 
 T = typing.TypeVar('T')
 
@@ -78,6 +78,9 @@ class Model(object):
         :rtype: str
         """
         return pprint.pformat(self.to_dict())
+
+    def __getitem__(self, item):
+        return getattr(self, item, None)
 
     def __repr__(self):
         """For `print` and `pprint`"""
