@@ -2,7 +2,6 @@ from typing import Callable, Awaitable, NamedTuple
 
 import pytest
 from aiohttp.test_utils import TestClient
-from pytest_mock import MockFixture
 
 from jsearch.api.storage import Storage
 from jsearch.api.structs import BlockchainTip, BlockInfo
