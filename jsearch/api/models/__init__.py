@@ -1,4 +1,4 @@
-from jsearch.api.models.all import (
+from .all import (  # noqa: F401
     Account,
     Balance,
     Block,
@@ -14,20 +14,22 @@ from jsearch.api.models.all import (
     AssetTransfer,
     WalletEvent
 )
+from .base_model_ import Model  # noqa: F401
 
 __ALL__ = (
-    Account,
-    Balance,
-    Block,
-    Log,
-    Receipt,
-    Reward,
-    TokenTransfer,
-    Transaction,
-    InternalTransaction,
-    PendingTransaction,
-    Uncle,
-    TokenHolder,
-    AssetTransfer,
-    WalletEvent
+    "Account",
+    "AssetTransfer",
+    "Balance",
+    "Block",
+    "InternalTransaction",
+    "Log",
+    "Model",
+    "PendingTransaction",
+    "Receipt",
+    "Reward",
+    "TokenHolder",
+    "TokenTransfer",
+    "Transaction",
+    "Uncle",
+    "WalletEvent",
 )

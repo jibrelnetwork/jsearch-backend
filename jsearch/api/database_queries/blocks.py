@@ -1,16 +1,12 @@
-from sqlalchemy import and_, false, Column, select, desc, asc
+from sqlalchemy import and_, false, Column, select, desc
 from sqlalchemy.orm import Query
-from typing import List, Optional
+from typing import List, Optional, Dict
 
-from jsearch.api.helpers import get_order, ORDER_ASC, ORDER_DESC
-from jsearch.api.structs import Ordering
+from jsearch.api.database_queries.transactions import get_ordering
+from jsearch.api.helpers import get_order
+from jsearch.api.ordering import ORDER_DESC, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, Ordering
 from jsearch.common.tables import blocks_t
 from jsearch.typing import Columns, OrderScheme, OrderDirection
-
-DIRECTIONS = {
-    ORDER_ASC: asc,
-    ORDER_DESC: desc
-}
 
 
 def get_default_fields():
@@ -39,31 +35,12 @@ def get_default_fields():
     ]
 
 
-ORDER_SCHEME_BY_NUMBER: OrderScheme = 'order_by_number'
-ORDER_SCHEME_BY_TIMESTAMP: OrderScheme = 'order_by_timestamp'
-
-
-def get_order_schema(timestamp: Optional[int]) -> OrderScheme:
-    if timestamp is None:
-        return ORDER_SCHEME_BY_NUMBER
-
-    return ORDER_SCHEME_BY_TIMESTAMP
-
-
-def get_ordering(scheme: OrderScheme, direction=OrderDirection) -> Ordering:
-    columns: Columns = {
+def get_blocks_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+    columns: Dict[OrderScheme, Columns] = {
         ORDER_SCHEME_BY_NUMBER: [blocks_t.c.number],
         ORDER_SCHEME_BY_TIMESTAMP: [blocks_t.c.timestamp]
-    }[scheme]
-
-    direction_func = DIRECTIONS[direction]
-
-    return Ordering(
-        columns=[direction_func(column) for column in columns],
-        fields=[column.name for column in columns],
-        scheme=scheme,
-        direction=direction
-    )
+    }
+    return get_ordering(columns, scheme, direction)
 
 
 def get_blocks_query(
