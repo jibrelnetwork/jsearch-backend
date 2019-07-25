@@ -12,29 +12,29 @@ from jsearch.api.helpers import (
 )
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_page
-from jsearch.api.serializers.blocks import BlocksSchema
+from jsearch.api.serializers.blocks import BlockListSchema
 from jsearch.api.utils import use_kwargs
 
 
 @ApiError.catch
-@use_kwargs(BlocksSchema())
+@use_kwargs(BlockListSchema())
 async def get_blocks(
         request: Request,
         limit: int,
         order: Ordering,
-        number: Optional[Union[int, str]] = None,
+        block_number: Optional[Union[int, str]] = None,
         timestamp: Optional[Union[int, str]] = None
 ) -> Response:
     """
     Get blocks list
     """
     storage = request.app['storage']
-    number, timestamp = await get_block_number_and_timestamp(number, timestamp, request)
+    block_number, timestamp = await get_block_number_and_timestamp(block_number, timestamp, request)
 
     # Notes: we need to query limit + 1 items to get link on next page
     blocks, last_affected_block = await storage.get_blocks(
         limit=limit + 1,
-        number=number,
+        number=block_number,
         timestamp=timestamp,
         order=order,
     )
@@ -46,7 +46,7 @@ async def get_blocks(
     blocks = [] if tip_is_stale else blocks
 
     url = request.app.router['blocks'].url_for()
-    page = get_page(url=url, items=blocks, limit=limit, ordering=order, mapping=BlocksSchema.mapping)
+    page = get_page(url=url, items=blocks, limit=limit, ordering=order, mapping=BlockListSchema.mapping)
 
     return api_success(data=[x.to_dict() for x in page.items], page=page)
 
