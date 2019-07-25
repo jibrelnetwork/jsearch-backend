@@ -242,6 +242,7 @@ async def test_get_account_transactions_with_tip(
 @pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
 async def test_get_account_internal_transactions_with_tip(
         cli: TestClient,
+        block_factory,
         internal_transaction_factory: InternalTransactionFactory,
         case: BlockchainTipCase,
         _get_tip: TipGetter,
@@ -254,6 +255,7 @@ async def test_get_account_internal_transactions_with_tip(
         block_number=target_block_number,
         block_hash='0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad',
         parent_tx_hash='0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5',
+        parent_tx_index=1,
         op='suicide',
         call_depth='2',
         tx_origin='0xab515c53f5dc7d22cdff536309c24ad87a9fe6af',
@@ -277,6 +279,7 @@ async def test_get_account_internal_transactions_with_tip(
             "blockNumber": target_block_number,
             "blockHash": "0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad",
             "parentTxHash": "0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5",
+            "parentTxIndex": 1,
             "op": "suicide",
             "callDepth": 2,
             "from": "0xab515c53f5dc7d22cdff536309c24ad87a9fe6af",

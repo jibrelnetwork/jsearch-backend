@@ -83,7 +83,7 @@ class Model(object):
     def __repr__(self):
         """For `print` and `pprint`"""
         params = {key: getattr(self, key, None) for key in self._keys}
-        return f"<{self.__class__.__name__}: {params}\>"
+        return f"<{self.__class__.__name__}: {params} >"
 
     def __eq__(self, other):
         """Returns true if both objects are equal"""
