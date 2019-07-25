@@ -1,15 +1,6 @@
 from attr import dataclass
 from typing import NamedTuple, Optional, List
 
-from jsearch.typing import Columns, OrderDirection, OrderScheme
-
-
-class Ordering(NamedTuple):
-    columns: Columns
-    fields: List[str]
-    scheme: OrderScheme
-    direction: OrderDirection
-
 
 @dataclass
 class BlockInfo:

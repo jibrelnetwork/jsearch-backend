@@ -2,15 +2,15 @@ from aiohttp.web_request import Request
 from aiohttp.web_response import Response
 from typing import Optional, Union
 
+from jsearch.api.handlers.common import get_block_number_and_timestamp
 from jsearch.api.helpers import (
     get_tag,
     api_success,
-    api_error_response_404,
-    Tag
+    api_error_response_404
 )
+from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.blocks import BlocksSchema
-from jsearch.api.structs import Ordering
 from jsearch.api.utils import use_kwargs
 
 
@@ -26,15 +26,10 @@ async def get_blocks(
     Get blocks list
     """
     storage = request.app['storage']
-
-    if {number, timestamp} & {Tag.LATEST}:
-        last_block = await storage.get_latest_block_info()
-        number = number and last_block.number
-        timestamp = timestamp and last_block.timestamp
+    number, timestamp = await get_block_number_and_timestamp(number, timestamp, request)
 
     # Notes: we need to query limit + 1 items to get link on next page
     blocks = await storage.get_blocks(limit=limit + 1, number=number, timestamp=timestamp, order=order)
-
     data = [block.to_dict() for block in blocks]
 
     url = request.app.router['blocks'].url_for()

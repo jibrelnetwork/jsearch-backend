@@ -6,13 +6,14 @@ from functools import partial
 from typing import Tuple, Optional
 
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.helpers import ApiError, ORDER_ASC, get_positive_number
+from jsearch.api.helpers import ApiError, get_positive_number
 from jsearch.api.helpers import (
     validate_params,
     api_success,
     api_error_response,
     get_from_joined_string,
 )
+from jsearch.api.ordering import ORDER_ASC
 from jsearch.api.structs import BlockInfo
 
 logger = logging.getLogger(__name__)
