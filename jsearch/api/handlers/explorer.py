@@ -55,7 +55,7 @@ async def get_uncles(request):
     """
     params = validate_params(request)
     storage = request.app['storage']
-    uncles = await storage.get_uncles(params['limit'], params['offset'], params['order'])
+    uncles, last_affected_block = await storage.get_uncles(params['limit'], params['offset'], params['order'])
     return api_success([uncle.to_dict() for uncle in uncles])
 
 

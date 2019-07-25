@@ -29,7 +29,12 @@ async def get_blocks(
     number, timestamp = await get_block_number_and_timestamp(number, timestamp, request)
 
     # Notes: we need to query limit + 1 items to get link on next page
-    blocks = await storage.get_blocks(limit=limit + 1, number=number, timestamp=timestamp, order=order)
+    blocks, last_affected_block = await storage.get_blocks(
+        limit=limit + 1,
+        number=number,
+        timestamp=timestamp,
+        order=order,
+    )
     data = [block.to_dict() for block in blocks]
 
     url = request.app.router['blocks'].url_for()

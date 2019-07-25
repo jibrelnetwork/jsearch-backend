@@ -49,3 +49,5 @@ Columns = List[Column]
 
 OrderDirection = TypeVar('OrderDirection', bound=str)
 OrderScheme = TypeVar('OrderScheme', bound=str)
+
+LastAffectedBlock = TypeVar('LastAffectedBlock', bound=int)
