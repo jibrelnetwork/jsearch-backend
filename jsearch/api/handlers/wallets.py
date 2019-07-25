@@ -54,7 +54,7 @@ def get_tip_hash(request) -> Optional[str]:
 
 
 async def get_tip_block(storage, block_hash: str) -> BlockInfo:
-    block_info = await storage.get_block_number(block_hash)
+    block_info = await storage.get_block_info(block_hash)
     if block_info is None:
         raise ApiError(
             {
@@ -121,7 +121,7 @@ async def get_wallet_events(request):
 
     events = await storage.get_wallet_events(address, start_from, until_to, **params)
 
-    tip = await storage.get_blockchain_tip(tip=tip_block, last_block=latest_block)
+    tip = await storage.get_blockchain_tip(tip_block, latest_block)
     is_event_affected = (
             tip.is_in_fork and
             tip.last_unchanged_block is not None and
