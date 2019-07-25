@@ -20,7 +20,7 @@ async def maybe_apply_tip(
         # by clients. If it was omitted, do not apply tip.
         return data, None
 
-    tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
+    tip = await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
     return empty if tip_is_stale else data, tip
