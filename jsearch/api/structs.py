@@ -1,5 +1,5 @@
 from attr import dataclass
-from typing import NamedTuple, Optional, List, Dict, Any, TypeVar
+from typing import NamedTuple, Optional, List
 
 from jsearch.typing import BlockchainTipAsDict
 
