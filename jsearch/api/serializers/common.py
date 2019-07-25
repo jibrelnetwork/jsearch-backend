@@ -69,13 +69,13 @@ class BlockRelatedListSchema(Schema):
     class Meta:
         strict = True
 
-    def _get_tx_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         pass
 
     @post_load
     def update_ordering(self, item: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
         order_schema = get_order_schema(item.get('timestamp'))
-        ordering = self._get_tx_ordering(scheme=order_schema, direction=item['order'])
+        ordering = self._get_ordering(scheme=order_schema, direction=item['order'])
 
         # set default value for missing number or timestamp
         for field in ordering.fields:

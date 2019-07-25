@@ -9,15 +9,13 @@ async def test_get_tip_or_raise_api_error_raises_an_error_if_there_s_no_tip_bloc
     with pytest.raises(ApiError) as exc:
         await get_tip_or_raise_api_error(storage, '0x1')
 
-    assert exc.value.errors
-    error = exc.value.errors[0]
-    assert {
-        'field': error['field'],
-        'error_code': error['error_code'],
-    } == {
-        'field': 'tip',
-        'error_code': 'BLOCK_NOT_FOUND',
-    }
+    assert exc.value.errors == [
+        {
+            'field': 'tip',
+            'error_code': 'BLOCK_NOT_FOUND',
+            'error_message': 'Block with hash 0x1 not found'
+        }
+    ]
 
 
 @pytest.mark.parametrize('is_tip_forked', (True, False))

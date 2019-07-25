@@ -13,5 +13,5 @@ class BlockListSchema(BlockRelatedListSchema):
         'number': 'block_number'
     }
 
-    def _get_tx_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         return get_blocks_ordering(scheme, direction)

@@ -18,5 +18,5 @@ class AccountsTxsSchema(BlockRelatedListSchema):
     class Meta:
         strict = True
 
-    def _get_tx_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         return get_tx_ordering(scheme, direction)
