@@ -31,13 +31,11 @@ class BlockchainTipCase(NamedTuple):
 
 
 cases = [
-    # Not yet implemented.
-    #
-    # BlockchainTipCase(
-    #     is_tip_forked=True,
-    #     is_data_recent=True,
-    #     has_empty_data_response=True,
-    # ),
+    BlockchainTipCase(
+        is_tip_forked=True,
+        is_data_recent=True,
+        has_empty_data_response=True,
+    ),
     BlockchainTipCase(
         is_tip_forked=True,
         is_data_recent=False,
