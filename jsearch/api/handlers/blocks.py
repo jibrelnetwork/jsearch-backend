@@ -40,12 +40,12 @@ async def get_blocks(
         order=order,
     )
 
-    blocks, tip_or_none = await maybe_apply_tip(storage, tip_hash, blocks, last_affected_block, empty=[])
+    blocks, tip_meta = await maybe_apply_tip(storage, tip_hash, blocks, last_affected_block, empty=[])
 
     url = request.app.router['blocks'].url_for()
     page = get_page(url=url, items=blocks, limit=limit, ordering=order, mapping=BlockListSchema.mapping)
 
-    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_or_none and tip_or_none.to_dict())
+    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
 
 
 async def get_block(request):
