@@ -1,5 +1,3 @@
-from operator import or_
-
 from sqlalchemy import select, Column, and_, or_, false
 from sqlalchemy.orm import Query
 from typing import List, Optional, Dict
