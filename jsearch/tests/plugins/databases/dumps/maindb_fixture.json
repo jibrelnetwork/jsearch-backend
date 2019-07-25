@@ -843,55 +843,64 @@
       "account_address": "a1",
       "token_address": "t1",
       "decimals": 2,
-      "balance": 1000
+      "balance": 1000,
+      "block_number": 6700502
     },
     {
       "account_address": "a1",
       "token_address": "t2",
       "decimals": 2,
-      "balance": 2000
+      "balance": 2000,
+      "block_number": 6700502
     },
     {
       "account_address": "a1",
       "token_address": "t3",
       "decimals": 2,
-      "balance": 3000
+      "balance": 3000,
+      "block_number": 6700502
     },
     {
       "account_address": "a2",
       "token_address": "t1",
       "decimals": 2,
-      "balance": 2000
+      "balance": 2000,
+      "block_number": 6700502
     },
     {
       "account_address": "a2",
       "token_address": "t2",
       "decimals": 2,
-      "balance": 1000
+      "balance": 1000,
+      "block_number": 6700502
     },
     {
       "account_address": "a3",
       "token_address": "t1",
       "decimals": 2,
-      "balance": 3000
+      "balance": 3000,
+      "block_number": 6700502
     },
     {
       "account_address": "a3",
       "token_address": "t3",
       "decimals": 2,
-      "balance": 5000
+      "balance": 5000,
+      "block_number": 6700502
     },
     {
       "account_address": "a4",
       "token_address": "t3",
       "decimals": 2,
-      "balance": 6000
+      "balance": 6000,
+      "block_number": 6700502
     },
     {
       "account_address": "a5",
       "token_address": "t3",
       "decimals": 2,
-      "balance": 7000
+      "balance": 7000,
+      "block_number": 6700502
     }
   ],
   "token_transfers": [
