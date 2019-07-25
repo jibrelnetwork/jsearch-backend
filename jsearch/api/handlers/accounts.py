@@ -32,6 +32,7 @@ async def get_accounts_balances(request):
     """
     storage = request.app['storage']
     addresses = get_from_joined_string(request.query.get('addresses'))
+    tip_hash = request.query.get('blockchain_tip') or None
 
     if len(addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
         return api_error_response_400(errors=[
@@ -45,7 +46,6 @@ async def get_accounts_balances(request):
     balances, last_affected_block = await storage.get_accounts_balances(addresses)
     balances = [b.to_dict() for b in balances]
 
-    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
@@ -62,6 +62,7 @@ async def get_account(request):
     storage = request.app['storage']
     address = request.match_info.get('address').lower()
     tag = get_tag(request)
+    tip_hash = request.query.get('blockchain_tip') or None
 
     account, last_affected_block = await storage.get_account(address, tag)
     account = account and account.to_dict()
@@ -69,7 +70,6 @@ async def get_account(request):
     if account is None:
         return api_error_response_404()
 
-    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
@@ -94,6 +94,7 @@ async def get_account_transactions(
     """
     storage = request.app['storage']
     block_number, timestamp = await get_block_number_and_timestamp(block_number, timestamp, request)
+    tip_hash = request.query.get('blockchain_tip') or None
 
     txs, last_affected_block = await storage.get_account_transactions(
         address=address,
@@ -104,7 +105,6 @@ async def get_account_transactions(
         tx_index=transaction_index
     )
 
-    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
@@ -123,6 +123,7 @@ async def get_account_internal_transactions(request):
     storage = request.app['storage']
     address = request.match_info.get('address').lower()
     params = validate_params(request)
+    tip_hash = request.query.get('blockchain_tip') or None
 
     internal_txs, last_affected_block = await storage.get_account_internal_transactions(
         address,
@@ -133,7 +134,6 @@ async def get_account_internal_transactions(request):
 
     internal_txs = [it.to_dict() for it in internal_txs]
 
-    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
@@ -171,6 +171,7 @@ async def get_account_logs(request):
     storage = request.app['storage']
     address = request.match_info.get('address').lower()
     params = validate_params(request)
+    tip_hash = request.query.get('blockchain_tip') or None
 
     block_from = get_positive_number(request=request, attr='block_range_start')
     block_until = get_positive_number(request=request, attr='block_range_end')
@@ -185,7 +186,6 @@ async def get_account_logs(request):
     )
     logs = [l.to_dict() for l in logs]
 
-    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
@@ -202,6 +202,7 @@ async def get_account_mined_blocks(request):
     storage = request.app['storage']
     address = request.match_info.get('address').lower()
     params = validate_params(request)
+    tip_hash = request.query.get('blockchain_tip') or None
 
     blocks, last_affected_block = await storage.get_account_mined_blocks(
         address,
@@ -211,7 +212,6 @@ async def get_account_mined_blocks(request):
     )
     blocks = [b.to_dict() for b in blocks]
 
-    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
@@ -228,6 +228,7 @@ async def get_account_mined_uncles(request):
     storage = request.app['storage']
     address = request.match_info.get('address').lower()
     params = validate_params(request)
+    tip_hash = request.query.get('blockchain_tip') or None
 
     uncles, last_affected_block = await storage.get_account_mined_uncles(
         address,
@@ -237,7 +238,6 @@ async def get_account_mined_uncles(request):
     )
     uncles = [u.to_dict() for u in uncles]
 
-    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
@@ -251,6 +251,7 @@ async def get_account_token_transfers(request):
     storage = request.app['storage']
     params = validate_params(request)
     account_address = request.match_info['address'].lower()
+    tip_hash = request.query.get('blockchain_tip') or None
 
     transfers, last_affected_block = await storage.get_account_tokens_transfers(
         address=account_address,
@@ -260,7 +261,6 @@ async def get_account_token_transfers(request):
     )
     transfers = [t.to_dict() for t in transfers]
 
-    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
@@ -274,6 +274,7 @@ async def get_account_token_balance(request):
     storage = request.app['storage']
     token_address = request.match_info['token_address'].lower()
     account_address = request.match_info['address'].lower()
+    tip_hash = request.query.get('blockchain_tip') or None
 
     holder, last_affected_block = await storage.get_account_token_balance(
         account_address=account_address,
@@ -285,7 +286,6 @@ async def get_account_token_balance(request):
     if holder is None:
         return api_error_response_404()
 
-    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 

@@ -57,10 +57,11 @@ async def get_uncles(request):
     """
     params = validate_params(request)
     storage = request.app['storage']
+    tip_hash = request.query.get('blockchain_tip') or None
+
     uncles, last_affected_block = await storage.get_uncles(params['limit'], params['offset'], params['order'])
     uncles = [u.to_dict() for u in uncles]
 
-    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 

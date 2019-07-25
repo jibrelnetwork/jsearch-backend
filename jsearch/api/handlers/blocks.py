@@ -30,6 +30,7 @@ async def get_blocks(
     """
     storage = request.app['storage']
     block_number, timestamp = await get_block_number_and_timestamp(block_number, timestamp, request)
+    tip_hash = request.query.get('blockchain_tip') or None
 
     # Notes: we need to query limit + 1 items to get link on next page
     blocks, last_affected_block = await storage.get_blocks(
@@ -39,7 +40,6 @@ async def get_blocks(
         order=order,
     )
 
-    tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
