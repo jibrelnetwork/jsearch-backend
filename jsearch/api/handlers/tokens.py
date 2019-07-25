@@ -18,12 +18,12 @@ async def get_token_transfers(request):
         offset=params['offset'],
         order=params['order']
     )
-    transfers = [t.to_dict() for t in transfers]
 
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
     transfers = [] if tip_is_stale else transfers
+    transfers = [t.to_dict() for t in transfers]
 
     return api_success(transfers)
 
@@ -40,11 +40,11 @@ async def get_token_holders(request):
         offset=params['offset'],
         order=params['order']
     )
-    holders = [h.to_dict() for h in holders]
 
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
     holders = [] if tip_is_stale else holders
+    holders = [h.to_dict() for h in holders]
 
     return api_success(holders)
