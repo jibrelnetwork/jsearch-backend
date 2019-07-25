@@ -45,7 +45,7 @@ async def get_accounts_balances(request):
 
     balances, last_affected_block = await storage.get_accounts_balances(addresses)
     balances, tip_or_none = await maybe_apply_tip(storage, tip_hash, balances, last_affected_block, empty=[])
-    balances = balances and [b.to_dict() for b in balances] or []
+    balances = [b.to_dict() for b in balances]
 
     return api_success(balances)
 
