@@ -2,7 +2,7 @@ from sqlalchemy import select, Column, desc
 from sqlalchemy.orm import Query
 from typing import List, Optional
 
-from jsearch.api.helpers import ORDER_ASC
+from jsearch.api.ordering import ORDER_ASC
 from jsearch.common.tables import logs_t
 
 

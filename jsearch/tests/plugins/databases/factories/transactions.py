@@ -13,6 +13,7 @@ class TransactionModel(Base):
             transactions_t.c.hash,
             transactions_t.c.block_hash,
             transactions_t.c.address,
+            transactions_t.c.transaction_index,
         ]
     }
 
@@ -52,8 +53,14 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     @classmethod
     def create_for_block(cls, block, **kwargs):
-        data = cls.stub(block_number=block.number, block_hash=block.hash, **kwargs).__dict__
+        data = cls.stub(
+            block_number=block.number,
+            block_hash=block.hash,
+            timestamp=block.timestamp,
+            **kwargs
+        ).__dict__
         data.pop('address', None)
+
         data['from_'] = data.pop('from', None)
 
         results = list()

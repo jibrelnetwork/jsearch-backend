@@ -29,14 +29,16 @@ from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_account
 )
 from jsearch.api.database_queries.transactions import (
-    get_tx_by_address,
     get_txs_for_events_query,
-    get_tx_by_hash
+    get_tx_by_hash,
+    get_tx_by_address_and_block_query,
+    get_tx_by_address_and_timestamp_query
 )
 from jsearch.api.database_queries.wallet_events import get_wallet_events_query
 from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
-from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo, Ordering
+from jsearch.api.ordering import Ordering
+from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import blocks_t, chain_splits_t, reorgs_t, wallet_events_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
@@ -128,20 +130,28 @@ class Storage:
 
     async def get_account_transactions(
             self,
-            address,
-            limit,
-            offset,
-            order
+            address: str,
+            limit: int,
+            ordering: Ordering,
+            block_number: int,
+            timestamp: int,
+            tx_index: Optional[int] = None
     ) -> Tuple[List[models.Transaction], Optional[LastAffectedBlock]]:
 
         limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
 
-        query = get_tx_by_address(address.lower(), order)
-        query = query.limit(limit)
-        query = query.offset(offset)
+        if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_tx_by_address_and_block_query(address, block_number, ordering, tx_index)
+        else:
+            query = get_tx_by_address_and_timestamp_query(address, timestamp, ordering, tx_index)
 
-        rows = await fetch(self.pool, query)
-        rows = in_app_distinct(rows)
+        # Notes: syncer writes txs to main db with denormalization (x2 records per transaction)
+        query = query.limit(limit * 2)
+
+        async with self.pool.acquire() as connection:
+            rows = await fetch(connection, query)
+
+        rows = in_app_distinct(rows)[:limit]
 
         txs = [models.Transaction(**r) for r in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)

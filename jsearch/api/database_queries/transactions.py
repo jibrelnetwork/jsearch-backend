@@ -1,14 +1,19 @@
+from operator import or_
+
 from sqlalchemy import select, Column, and_, false
 from sqlalchemy.orm import Query
-from typing import List, Optional
+from typing import List, Optional, Dict
 
+from jsearch.api.ordering import get_ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, Ordering
 from jsearch.common.tables import transactions_t
+from jsearch.typing import OrderScheme, OrderDirection, Columns
 
 
 def get_default_fields() -> List[Column]:
     return [
         transactions_t.c.block_hash,
         transactions_t.c.block_number,
+        transactions_t.c.timestamp,
         getattr(transactions_t.c, 'from'),
         transactions_t.c.gas,
         transactions_t.c.gas_price,
@@ -23,6 +28,14 @@ def get_default_fields() -> List[Column]:
         transactions_t.c.value,
         transactions_t.c.status,
     ]
+
+
+def get_tx_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+    columns: Dict[OrderScheme, Columns] = {
+        ORDER_SCHEME_BY_NUMBER: [transactions_t.c.block_number, transactions_t.c.transaction_index],
+        ORDER_SCHEME_BY_TIMESTAMP: [transactions_t.c.timestamp, transactions_t.c.transaction_index]
+    }
+    return get_ordering(columns, scheme, direction)
 
 
 def get_tx_hashes_by_block_hash_query(block_hash: str) -> Query:
@@ -51,15 +64,57 @@ def get_tx_by_hash(tx_hash: str, columns: List[Column] = None) -> Query:
     ).limit(1)
 
 
-def get_tx_by_address(address: str, order: str, columns: List[Column] = None) -> Query:
-    query = select(
+def get_tx_by_address_query(address: str, ordering: Ordering, columns: List[Column] = None) -> Query:
+    return select(
         columns=columns or get_default_fields(),
         whereclause=and_(
             transactions_t.c.is_forked == false(),
             transactions_t.c.address == address,
         )
-    )
-    return _order_tx_query(query, order)
+    ).order_by(*ordering.columns)
+
+
+def get_tx_by_address_and_block_query(
+        address: str,
+        block_number: int,
+        ordering: Ordering,
+        tx_index: Optional[int] = None,
+        columns: Optional[Columns] = None
+) -> Query:
+    query = get_tx_by_address_query(address, ordering, columns)
+
+    if tx_index is None:
+        q = ordering.operator_or_equal(transactions_t.c.block_number, block_number)
+    else:
+        q = or_(
+            ordering.operator(transactions_t.c.block_number, block_number),
+            and_(
+                transactions_t.c.block_number == block_number,
+                ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
+            )
+        )
+    return query.where(q)
+
+
+def get_tx_by_address_and_timestamp_query(
+        address: str,
+        timestamp: int,
+        ordering: Ordering,
+        tx_index: Optional[int] = None,
+        columns: Optional[Columns] = None
+) -> Query:
+    query = get_tx_by_address_query(address, ordering, columns)
+    if tx_index is None:
+        q = ordering.operator_or_equal(transactions_t.c.timestamp, timestamp)
+    else:
+        q = or_(
+            ordering.operator(transactions_t.c.timestamp, timestamp),
+            and_(
+                transactions_t.c.timestamp == timestamp,
+                ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
+            )
+        )
+    return query.where(q)
 
 
 def _order_tx_query(query: Query, direction: str) -> Query:

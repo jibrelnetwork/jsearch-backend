@@ -2,7 +2,6 @@ from typing import Callable, Awaitable, NamedTuple
 
 import pytest
 from aiohttp.test_utils import TestClient
-from pytest_mock import MockFixture
 
 from jsearch.api.storage import Storage
 from jsearch.api.structs import BlockchainTip, BlockInfo
@@ -107,6 +106,7 @@ async def test_get_accounts_balances_with_tip(
 
     response = await cli.get(f'/v1/accounts/balances?addresses={account_state.address}&blockchain_tip={tip.tip_hash}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
@@ -151,6 +151,7 @@ async def test_get_account_with_tip(
 
     response = await cli.get(f'/v1/accounts/{account.address}?tag=latest&blockchain_tip={tip.tip_hash}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = dict() if case.has_empty_data_response else {
         "blockNumber": target_block_number,
@@ -187,6 +188,7 @@ async def test_get_account_transactions_with_tip(
         to='0xcd424c53f5dc7d22cdff536309c24ad87a97e6af',
         address='0xcd424c53f5dc7d22cdff536309c24ad87a97e6af',
         hash='0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5',
+        timestamp='1453686776',
         transaction_index='84',
         block_number=target_block_number,
         block_hash='0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad',
@@ -200,8 +202,10 @@ async def test_get_account_transactions_with_tip(
         value='2808270086200000000',
     )
 
-    response = await cli.get(f'/v1/accounts/{transaction.address}/transactions?blockchain_tip={tip.tip_hash}')
+    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    response = await cli.get(f'/v1/accounts/{transaction.address}/transactions?{query_params}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
@@ -219,7 +223,8 @@ async def test_get_account_transactions_with_tip(
             "to": "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af",
             "transactionIndex": 84,
             "v": "0x1c",
-            "value": "2808270086200000000"
+            "value": "2808270086200000000",
+            "timestamp": 1453686776,
         }
     ]
 
@@ -260,8 +265,10 @@ async def test_get_account_internal_transactions_with_tip(
     )
     account_address = getattr(internal_tx, 'from')
 
-    response = await cli.get(f'/v1/accounts/{account_address}/internal_transactions?blockchain_tip={tip.tip_hash}')
+    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    response = await cli.get(f'/v1/accounts/{account_address}/internal_transactions?{query_params}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
@@ -322,8 +329,10 @@ async def test_get_account_mined_blocks_with_tip(
         transactions_root='0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
         uncle_inclusion_reward='0',
     )
-    response = await cli.get(f'/v1/accounts/{block.miner}/mined_blocks?blockchain_tip={tip.tip_hash}')
+    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    response = await cli.get(f'/v1/accounts/{block.miner}/mined_blocks?{query_params}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
@@ -392,8 +401,10 @@ async def test_get_account_mined_uncles_with_tip(
         total_difficulty='10694243015446',
         transactions_root='0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
     )
-    response = await cli.get(f'/v1/accounts/{uncle.miner}/mined_uncles?blockchain_tip={tip.tip_hash}')
+    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    response = await cli.get(f'/v1/accounts/{uncle.miner}/mined_uncles?{query_params}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
@@ -450,8 +461,10 @@ async def test_get_account_token_transfers_with_tip(
         timestamp='1548229016',
     )
 
-    response = await cli.get(f'/v1/accounts/{token_transfer.address}/token_transfers?blockchain_tip={tip.tip_hash}')
+    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    response = await cli.get(f'/v1/accounts/{token_transfer.address}/token_transfers?{query_params}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
@@ -498,6 +511,7 @@ async def test_get_account_token_balance_with_tip(
 
     response = await cli.get(f'/v1/accounts/{address}/token_balance/{token_address}?blockchain_tip={tip.tip_hash}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = dict() if case.has_empty_data_response else {
         "accountAddress": "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0",
@@ -540,8 +554,10 @@ async def test_get_account_logs_with_tip(
         transaction_index='2',
     )
 
-    response = await cli.get(f'/v1/accounts/{log.address}/logs?blockchain_tip={tip.tip_hash}')
+    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    response = await cli.get(f'/v1/accounts/{log.address}/logs?{query_params}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
@@ -571,7 +587,6 @@ async def test_get_account_logs_with_tip(
 @pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
 async def test_get_blocks_with_tip(
         cli: TestClient,
-        mocker: MockFixture,
         block_factory: BlockFactory,
         case: BlockchainTipCase,
         _get_tip: TipGetter,
@@ -605,8 +620,10 @@ async def test_get_blocks_with_tip(
 
     # WTF: Misc blocks are created in `_get_tip`, so select only target block to
     # validate.
-    response = await cli.get(f'/v1/blocks?block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}')
+    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    response = await cli.get(f'/v1/blocks?{query_params}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
@@ -639,7 +656,6 @@ async def test_get_blocks_with_tip(
             "success": True,
             "errors": []
         },
-        "paging": mocker.ANY,
         "data": data,
     }
 
@@ -677,8 +693,10 @@ async def test_get_uncles_with_tip(
         transactions_root='0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
     )
 
-    response = await cli.get(f'/v1/uncles?blockchain_tip={tip.tip_hash}')
+    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    response = await cli.get(f'/v1/uncles?{query_params}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
@@ -734,8 +752,10 @@ async def test_get_token_transfers_with_tip(
         timestamp='1548229016',
     )
 
-    response = await cli.get(f'/v1/tokens/{token_transfer.token_address}/transfers?blockchain_tip={tip.tip_hash}')
+    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    response = await cli.get(f'/v1/tokens/{token_transfer.token_address}/transfers?{query_params}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
@@ -777,8 +797,10 @@ async def test_get_token_holders_with_tip(
         decimals="18",
     )
 
-    response = await cli.get(f'/v1/tokens/{token_holder.token_address}/holders?blockchain_tip={tip.tip_hash}')
+    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    response = await cli.get(f'/v1/tokens/{token_holder.token_address}/holders?{query_params}')
     response_json = await response.json()
+    response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {

@@ -10,18 +10,13 @@ from sqlalchemy.orm import Query
 from typing import Any, Dict, List, Optional, Union
 
 from jsearch.api.error_code import ErrorCode
+from jsearch.api.ordering import DEFAULT_ORDER, ORDER_ASC, ORDER_DESC
 from jsearch.api.pagination import Page
-from jsearch.typing import OrderDirection
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
 DEFAULT_OFFSET = 0
 MAX_OFFSET = 10000
-
-ORDER_ASC: OrderDirection = 'asc'
-ORDER_DESC: OrderDirection = 'desc'
-
-DEFAULT_ORDER = ORDER_DESC
 
 
 class Tag:

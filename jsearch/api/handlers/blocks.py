@@ -3,15 +3,16 @@ from aiohttp.web_response import Response
 from typing import Optional, Union
 
 from jsearch.api.blockchain_tip import get_tip_or_raise_api_error, is_tip_stale
+from jsearch.api.handlers.common import get_block_number_and_timestamp
 from jsearch.api.helpers import (
     get_tag,
     api_success,
     api_error_response_404,
-    Tag,
-    ApiError)
+    ApiError,
+)
+from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.blocks import BlocksSchema
-from jsearch.api.structs import Ordering
 from jsearch.api.utils import use_kwargs
 
 
@@ -28,11 +29,7 @@ async def get_blocks(
     Get blocks list
     """
     storage = request.app['storage']
-
-    if {number, timestamp} & {Tag.LATEST}:
-        last_block = await storage.get_latest_block_info()
-        number = number and last_block.number
-        timestamp = timestamp and last_block.timestamp
+    number, timestamp = await get_block_number_and_timestamp(number, timestamp, request)
 
     # Notes: we need to query limit + 1 items to get link on next page
     blocks, last_affected_block = await storage.get_blocks(
@@ -42,18 +39,16 @@ async def get_blocks(
         order=order,
     )
 
-    data = [block.to_dict() for block in blocks]
-
     tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
-    data = [] if tip_is_stale else data
+    blocks = [] if tip_is_stale else blocks
 
     url = request.app.router['blocks'].url_for()
-    page = get_page(url=url, items=data, limit=limit, ordering=order, mapping=BlocksSchema.mapping)
+    page = get_page(url=url, items=blocks, limit=limit, ordering=order, mapping=BlocksSchema.mapping)
 
-    return api_success(data=page.items, page=page)
+    return api_success(data=[x.to_dict() for x in page.items], page=page)
 
 
 async def get_block(request):

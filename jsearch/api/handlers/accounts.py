@@ -1,8 +1,12 @@
 import logging
 
+from aiohttp.web_request import Request
+from typing import Optional, Union
+
 from jsearch import settings
 from jsearch.api.blockchain_tip import get_tip_or_raise_api_error, is_tip_stale
 from jsearch.api.error_code import ErrorCode
+from jsearch.api.handlers.common import get_block_number_and_timestamp
 from jsearch.api.helpers import (
     get_tag,
     validate_params,
@@ -10,7 +14,13 @@ from jsearch.api.helpers import (
     api_error_response_400,
     api_error_response_404,
     get_from_joined_string,
-    get_positive_number, ApiError)
+    get_positive_number,
+    ApiError,
+)
+from jsearch.api.ordering import Ordering
+from jsearch.api.pagination import get_page
+from jsearch.api.serializers.accounts import AccountsTxsSchema
+from jsearch.api.utils import use_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -69,21 +79,30 @@ async def get_account(request):
 
 
 @ApiError.catch
-async def get_account_transactions(request):
+@use_kwargs(AccountsTxsSchema())
+async def get_account_transactions(
+        request: Request,
+        address: str,
+        limit: int,
+        order: Ordering,
+        block_number: Optional[Union[int, str]] = None,
+        timestamp: Optional[int] = None,
+        transaction_index: Optional[int] = None,
+):
     """
     Get account transactions
     """
     storage = request.app['storage']
-    address = request.match_info.get('address').lower()
-    params = validate_params(request, default_order='asc')
+    block_number, timestamp = await get_block_number_and_timestamp(block_number, timestamp, request)
 
     txs, last_affected_block = await storage.get_account_transactions(
-        address,
-        params['limit'],
-        params['offset'],
-        params['order']
+        address=address,
+        limit=limit + 1,
+        ordering=order,
+        block_number=block_number,
+        timestamp=timestamp,
+        tx_index=transaction_index
     )
-    txs = [t.to_dict() for t in txs]
 
     tip_hash = request.query.get('blockchain_tip') or None
     tip = tip_hash and await get_tip_or_raise_api_error(storage, tip_hash)
@@ -91,7 +110,9 @@ async def get_account_transactions(request):
 
     txs = [] if tip_is_stale else txs
 
-    return api_success(txs)
+    url = request.app.router['accounts_txs'].url_for(address=address)
+    page = get_page(url=url, items=txs, limit=limit, ordering=order)
+    return api_success(data=[x.to_dict() for x in page.items], page=page)
 
 
 @ApiError.catch

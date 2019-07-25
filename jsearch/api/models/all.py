@@ -59,6 +59,7 @@ class Transaction(Model):
     swagger_types = {
         'block_hash': str,
         'block_number': int,
+        'timestamp': int,
         'from': str,
         'gas': str,
         'gas_price': str,
@@ -77,6 +78,7 @@ class Transaction(Model):
     attribute_map = {
         'block_hash': 'blockHash',
         'block_number': 'blockNumber',
+        'timestamp': 'timestamp',
         'from': 'from',
         'gas': 'gas',
         'gas_price': 'gasPrice',
