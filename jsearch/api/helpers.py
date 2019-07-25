@@ -4,14 +4,14 @@ import asyncpgsa
 from aiohttp import web
 from asyncpg import Connection
 from functools import partial
-from marshmallow.marshalling import SCHEMA
 from sqlalchemy import asc, desc, Column
 from sqlalchemy.orm import Query
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Callable
 
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.ordering import DEFAULT_ORDER, ORDER_ASC, ORDER_DESC
 from jsearch.api.pagination import Page
+from jsearch.typing import AnyCoroutine
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
@@ -255,41 +255,20 @@ class ApiError(Exception):
         raise ApiError(status=404, error={'field': 'Not found'})
     """
 
-    def __init__(self, error: Dict[str, str], status: int = 400) -> None:
-        self.error = error
+    def __init__(self, errors: Union[List[Dict[str, str]], Dict[str, str]], status: int = 400) -> None:
+        if isinstance(errors, dict):
+            errors = [errors]
+
+        self.errors = errors
         self.status = status
 
     @classmethod
-    def catch(cls, func):
+    def catch(cls, func: Callable[..., AnyCoroutine]) -> Callable[..., AnyCoroutine]:
 
         async def _wrapper(*args, **kwargs):
             try:
                 return await func(*args, **kwargs)
             except ApiError as exc:
-
-                return api_error_response(status=exc.status, errors=[exc.error], data={})
+                return api_error_response(status=exc.status, errors=exc.errors, data={})
 
         return _wrapper
-
-
-def get_field(field: str) -> str:
-    if field == SCHEMA:
-        return '__all__'
-    return field
-
-
-def get_error_code(field: str) -> str:
-    return {
-        'limit': ErrorCode.INVALID_LIMIT_VALUE,
-        'order': ErrorCode.INVALID_ORDER_VALUE,
-        SCHEMA: ErrorCode.VALIDATION_ERROR,
-    }.get(field, ErrorCode.INVALID_VALUE)
-
-
-def get_flatten_error_messages(messages: Dict[str, List[str]]) -> List[Dict[str, str]]:
-    flatten_messages = []
-    for field, msgs in messages.items():
-        for msg in msgs:
-            message = {'field': get_field(field), 'message': msg, 'code': get_error_code(field)}
-            flatten_messages.append(message)
-    return flatten_messages
