@@ -176,10 +176,6 @@ def test_is_tip_stale(is_in_fork, is_historical_data, is_stale) -> None:
     assert is_tip_stale(tip, block_to_check) is is_stale
 
 
-def test_is_tip_stale_no_tip_provided() -> None:
-    assert is_tip_stale(tip=None, block_number=10) is False
-
-
 def test_is_tip_stale_no_block_number_provided() -> None:
     tip = BlockchainTip(
         tip_hash='0x1',
