@@ -32,14 +32,6 @@ async def get_internal_transactions(request):
     return response
 
 
-async def get_pending_transactions(request):
-    """
-    Get pending transactions by transaction hash
-    """
-    # todo: implement it
-    return api_success([])
-
-
 async def get_receipt(request):
     storage = request.app['storage']
     txhash = request.match_info.get('txhash')

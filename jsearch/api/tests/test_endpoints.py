@@ -864,7 +864,9 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
         }
     )
 
-    resp = await cli.get(f'v1/transactions/internal/0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e')
+    resp = await cli.get(
+        f'v1/transactions/0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e/internal_transactions'
+    )
     resp_json = await resp.json()
 
     assert resp.status == 200
