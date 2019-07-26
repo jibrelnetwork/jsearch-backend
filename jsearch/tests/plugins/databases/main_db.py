@@ -40,7 +40,7 @@ def teardown_database(connection_string):
 
 @pytest.fixture(scope="session")
 def db_dsn():
-    return os.environ['JSEARCH_MAIN_DB_TEST']
+    return os.environ['JSEARCH_MAIN_DB']
 
 
 @pytest.fixture(scope="function")
@@ -102,11 +102,6 @@ def do_truncate_db(db):
 def truncate_db(do_truncate_db):
     yield
     do_truncate_db()
-
-
-@pytest.fixture(scope='function', autouse=True)
-def mock_db_dsn(mocker, db_dsn):
-    mocker.patch('jsearch.settings.JSEARCH_MAIN_DB', db_dsn)
 
 
 @pytest.mark.asyncio
