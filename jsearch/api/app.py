@@ -64,8 +64,7 @@ async def make_app():
     app.router.add_route('GET', '/v1/blocks/{tag}/uncles', blocks.get_block_uncles)
 
     app.router.add_route('GET', '/v1/transactions/{txhash}', explorer.get_transaction)
-    app.router.add_route('GET', '/v1/transactions/internal/{txhash}', explorer.get_internal_transactions)
-    app.router.add_route('GET', '/v1/transactions/pending/{txhash}', explorer.get_pending_transactions)
+    app.router.add_route('GET', '/v1/transactions/{txhash}/internal_transactions', explorer.get_internal_transactions)
     app.router.add_route('GET', '/v1/receipts/{txhash}', explorer.get_receipt)
 
     app.router.add_route('GET', '/v1/uncles', explorer.get_uncles)
