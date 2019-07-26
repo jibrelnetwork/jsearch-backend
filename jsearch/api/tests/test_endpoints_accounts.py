@@ -13,8 +13,8 @@ _account_1_transfers = [
         'from': 'a3',
         'timestamp': 1529159847,
         'to': 'a1',
-        'tokenAddress': 'c2',
-        'tokenDecimals': 2,
+        'contractAddress': 'c2',
+        'decimals': 2,
         'amount': '500',
         'transactionHash': 't2'
     },
@@ -22,8 +22,8 @@ _account_1_transfers = [
         'from': 'a1',
         'timestamp': 1529159847,
         'to': 'a3',
-        'tokenAddress': 'c1',
-        'tokenDecimals': 2,
+        'contractAddress': 'c1',
+        'decimals': 2,
         'amount': '300',
         'transactionHash': 't1'
     },
@@ -31,8 +31,8 @@ _account_1_transfers = [
         'from': 'a2',
         'timestamp': 1529159847,
         'to': 'a1',
-        'tokenAddress': 'c2',
-        'tokenDecimals': 2,
+        'contractAddress': 'c2',
+        'decimals': 2,
         'amount': '200',
         'transactionHash': 't1'
     },
@@ -40,8 +40,8 @@ _account_1_transfers = [
         'from': 'a2',
         'timestamp': 1529159847,
         'to': 'a1',
-        'tokenAddress': 'c1',
-        'tokenDecimals': 2,
+        'contractAddress': 'c1',
+        'decimals': 2,
         'amount': '100',
         'transactionHash': 't1'
     }
@@ -171,15 +171,15 @@ async def test_get_account_token_transfers_a2(cli, main_db_data):
     assert (await resp.json())['data'] == [{'from': 'a2',
                                             'timestamp': 1529159847,
                                             'to': 'a1',
-                                            'tokenAddress': 'c2',
-                                            'tokenDecimals': 2,
+                                            'contractAddress': 'c2',
+                                            'decimals': 2,
                                             'amount': '200',
                                             'transactionHash': 't1'},
                                            {'from': 'a2',
                                             'timestamp': 1529159847,
                                             'to': 'a1',
-                                            'tokenAddress': 'c1',
-                                            'tokenDecimals': 2,
+                                            'contractAddress': 'c1',
+                                            'decimals': 2,
                                             'amount': '100',
                                             'transactionHash': 't1'}]
 
@@ -204,34 +204,34 @@ async def test_get_token_holders(cli, main_db_data):
     resp = await cli.get(f'/v1/tokens/t1/holders')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == [{'accountAddress': 'a3', 'decimals': 2, 'balance': 3000, 'tokenAddress': 't1'},
-                   {'accountAddress': 'a2', 'decimals': 2, 'balance': 2000, 'tokenAddress': 't1'},
-                   {'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'tokenAddress': 't1'}]
+    assert res == [{'accountAddress': 'a3', 'decimals': 2, 'balance': 3000, 'contractAddress': 't1'},
+                   {'accountAddress': 'a2', 'decimals': 2, 'balance': 2000, 'contractAddress': 't1'},
+                   {'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'contractAddress': 't1'}]
 
     resp = await cli.get(f'/v1/tokens/t1/holders?order=asc')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == [{'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'tokenAddress': 't1'},
-                   {'accountAddress': 'a2', 'decimals': 2, 'balance': 2000, 'tokenAddress': 't1'},
-                   {'accountAddress': 'a3', 'decimals': 2, 'balance': 3000, 'tokenAddress': 't1'}]
+    assert res == [{'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'contractAddress': 't1'},
+                   {'accountAddress': 'a2', 'decimals': 2, 'balance': 2000, 'contractAddress': 't1'},
+                   {'accountAddress': 'a3', 'decimals': 2, 'balance': 3000, 'contractAddress': 't1'}]
 
     resp = await cli.get(f'/v1/tokens/t3/holders?order=asc&limit=2&offset=1')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == [{'accountAddress': 'a3', 'decimals': 2, 'balance': 5000, 'tokenAddress': 't3'},
-                   {'accountAddress': 'a4', 'decimals': 2, 'balance': 6000, 'tokenAddress': 't3'}]
+    assert res == [{'accountAddress': 'a3', 'decimals': 2, 'balance': 5000, 'contractAddress': 't3'},
+                   {'accountAddress': 'a4', 'decimals': 2, 'balance': 6000, 'contractAddress': 't3'}]
 
 
 async def test_get_account_token_balance(cli, main_db_data):
     resp = await cli.get(f'/v1/accounts/a1/token_balance/t1')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == {'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'tokenAddress': 't1'}
+    assert res == {'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'contractAddress': 't1'}
 
     resp = await cli.get(f'/v1/accounts/a3/token_balance/t3')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == {'accountAddress': 'a3', 'decimals': 2, 'balance': 5000, 'tokenAddress': 't3'}
+    assert res == {'accountAddress': 'a3', 'decimals': 2, 'balance': 5000, 'contractAddress': 't3'}
 
     resp = await cli.get(f'/v1/accounts/a3/token_balance/tX')
     await assert_not_404_response(resp)
@@ -461,11 +461,11 @@ async def test_get_account_token_balances_multi_ok(cli, token_holder_factory):
     assert resp_json['data'] == [{'accountAddress': '0x1111111111111111111111111111111111111111',
                                   'balance': 2000,
                                   'decimals': 1,
-                                  'tokenAddress': '0x1111111111111111111111111111111111111112'},
+                                  'contractAddress': '0x1111111111111111111111111111111111111112'},
                                  {'accountAddress': '0x1111111111111111111111111111111111111111',
                                   'balance': 30000,
                                   'decimals': 3,
-                                  'tokenAddress': '0x1111111111111111111111111111111111111113'}]
+                                  'contractAddress': '0x1111111111111111111111111111111111111113'}]
     assert 'meta' not in resp_json
 
 

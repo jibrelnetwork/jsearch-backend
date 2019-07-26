@@ -141,7 +141,7 @@ async def get_wallet_events(request):
     return api_success({
         "blockchainTip": tip.to_dict(),
         "events": events,
-        "pending_events": pending_events
+        "pendingEvents": pending_events
     })
 
 
