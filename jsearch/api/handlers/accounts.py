@@ -263,3 +263,14 @@ async def get_account_token_balance(request):
     holder = {} if holder is None else holder.to_dict()
 
     return api_success(holder)
+
+
+@ApiError.catch
+async def get_account_token_balances_multi(request):
+    storage = request.app['storage']
+    account_address = request.match_info['address'].lower()
+    tokens_addresses = [a for a in request.query.get('tokens_addresses', '').lower().split(',') if a]
+    tip_hash = request.query.get('blockchain_tip') or None
+
+    balances, last_affected_block = await storage.get_account_tokens_balances(account_address, tokens_addresses)
+    return api_success([b.to_dict() for b in balances])

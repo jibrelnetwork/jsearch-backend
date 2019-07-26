@@ -525,6 +525,24 @@ class Storage:
 
         return holder, last_affected_block
 
+    async def get_account_tokens_balances(self, account_address: str, tokens_addresses: List[str]) \
+            -> Tuple[Optional[models.TokenHolder], Optional[LastAffectedBlock]]:
+        query = """
+        SELECT account_address, token_address, balance, decimals, block_number
+        FROM token_holders
+        WHERE account_address=$1 AND token_address=ANY($2::varchar[])
+        """
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, account_address, tokens_addresses)
+
+        if not rows:
+            last_affected_block = None
+        else:
+            last_affected_block = max([r['block_number'] for r in rows])
+
+        holders = [models.TokenHolder(**row) for row in rows]
+        return holders, last_affected_block
+
     async def get_latest_block_info(self) -> Optional[BlockInfo]:
         last_block_query = get_last_block_query()
         async with self.pool.acquire() as conn:

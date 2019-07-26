@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.engine import Connection
 from typing import List
+from aiohttp import ClientResponse
 
 from jsearch.common.tables import (
     blocks_t
@@ -28,3 +29,4 @@ def link_txs_with_block(db: Connection):
         return txs
 
     return link
+
