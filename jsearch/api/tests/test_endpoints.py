@@ -613,8 +613,8 @@ _token_1_transfers = [
         'from': 'a1',
         'timestamp': 1529159847,
         'to': 'a3',
-        'tokenAddress': 'c1',
-        'tokenDecimals': 2,
+        'contractAddress': 'c1',
+        'decimals': 2,
         'amount': '300',
         'transactionHash': 't1'
     },
@@ -622,8 +622,8 @@ _token_1_transfers = [
         'from': 'a2',
         'timestamp': 1529159847,
         'to': 'a1',
-        'tokenAddress': 'c1',
-        'tokenDecimals': 2,
+        'contractAddress': 'c1',
+        'decimals': 2,
         'amount': '100',
         'transactionHash': 't1'
     }
@@ -945,7 +945,7 @@ async def test_get_wallet_events(cli, block_factory, wallet_events_factory, tran
                     'blockNumber': block.number
                 }
             },
-            'pending_events': [],
+            'pendingEvents': [],
             'events': [
                 {
                     'events': [
@@ -1194,7 +1194,7 @@ async def test_get_wallet_events_tip_in_fork(cli,
                 }
             },
             'events': [],
-            'pending_events': []
+            'pendingEvents': []
         }
     }
 
@@ -1372,7 +1372,7 @@ async def test_get_wallet_events_tip_in_fork_but_events_not_affected(cli,
                     }
                 }
             ],
-            'pending_events': [],
+            'pendingEvents': [],
         }
     }
 
@@ -1598,7 +1598,7 @@ async def test_get_wallet_events_pending_txs(cli,
                 }
             },
             'events': [],
-            'pending_events': [
+            'pendingEvents': [
                 {
                     'events': [{
                         'eventData': [
@@ -1661,4 +1661,4 @@ async def test_get_wallet_events_pending_txs_limit(cli,
 
     # then
 
-    assert len(response_json['data']['pending_events']) == 100
+    assert len(response_json['data']['pendingEvents']) == 100
