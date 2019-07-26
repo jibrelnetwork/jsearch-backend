@@ -538,7 +538,7 @@ class Storage:
         if not rows:
             last_affected_block = None
         else:
-            last_affected_block = max([r['block_number'] for r in rows])
+            last_affected_block = max([r['block_number'] for r in rows], default=None)
 
         holders = [models.TokenHolder(**row) for row in rows]
         return holders, last_affected_block
