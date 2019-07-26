@@ -1,19 +1,7 @@
 import logging
-from unittest import mock
-from urllib.parse import urlencode
 
 import pytest
-
-from asynctest import CoroutineMock
-from typing import Optional, Set, Union
-
 from jsearch import settings
-from jsearch.api.error_code import ErrorCode
-from jsearch.common.tables import (
-    assets_transfers_t,
-    assets_summary_t
-)
-from jsearch.tests.entities import BlockFromDumpWrapper
 from jsearch.api.tests.utils import assert_not_404_response
 
 logger = logging.getLogger(__name__)
