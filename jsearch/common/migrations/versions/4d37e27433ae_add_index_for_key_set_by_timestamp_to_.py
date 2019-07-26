@@ -14,7 +14,7 @@ branch_labels = None
 depends_on = None
 
 UP_SQL = """
-CREATE INDEX CONCURRENTLY ix_transactions_keyset_by_timestamp 
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_transactions_keyset_by_timestamp
 ON internal_transactions(tx_origin, "timestamp", parent_tx_index, transaction_index) WHERE is_forked = false;
 """
 

@@ -15,8 +15,8 @@ depends_on = None
 
 UP_SQL = """
 ALTER TABLE transactions ADD COLUMN "timestamp" integer;
-CREATE INDEX ix_transactions_timestamp_index ON transactions("timestamp", transaction_index) 
-WHERE "timestamp" is not null; 
+CREATE INDEX IF NOT EXISTS ix_transactions_timestamp_index ON transactions("timestamp", transaction_index) 
+WHERE "timestamp" and is_forked = false; 
 
 UPDATE transactions SET "timestamp" = blocks.timestamp 
 FROM blocks 

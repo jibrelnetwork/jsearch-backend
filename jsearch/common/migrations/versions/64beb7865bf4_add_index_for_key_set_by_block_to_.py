@@ -14,7 +14,7 @@ branch_labels = None
 depends_on = None
 
 UP_SQL = """
-CREATE INDEX CONCURRENTLY ix_transactions_keyset_by_block
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_transactions_keyset_by_block 
 ON internal_transactions(tx_origin, block_number, parent_tx_index, transaction_index) WHERE is_forked = false;
 """
 
