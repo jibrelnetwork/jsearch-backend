@@ -19,10 +19,10 @@ async def get_token_transfers(request):
         order=params['order']
     )
 
-    transfers, tip_or_none = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
+    transfers, tip_meta = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
     transfers = [t.to_dict() for t in transfers]
 
-    return api_success(transfers)
+    return api_success(transfers, meta=tip_meta)
 
 
 async def get_token_holders(request):
@@ -38,7 +38,7 @@ async def get_token_holders(request):
         order=params['order']
     )
 
-    holders, tip_or_none = await maybe_apply_tip(storage, tip_hash, holders, last_affected_block, empty=[])
+    holders, tip_meta = await maybe_apply_tip(storage, tip_hash, holders, last_affected_block, empty=[])
     holders = [h.to_dict() for h in holders]
 
-    return api_success(holders)
+    return api_success(holders, meta=tip_meta)

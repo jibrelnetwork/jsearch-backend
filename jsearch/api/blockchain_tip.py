@@ -4,6 +4,7 @@ from jsearch.api.error_code import ErrorCode
 from jsearch.api.helpers import ApiError
 from jsearch.api.storage import Storage
 from jsearch.api.structs import BlockchainTip, BlockInfo
+from jsearch.typing import BlockchainTipAsDict
 
 T = TypeVar('T')
 
@@ -14,7 +15,7 @@ async def maybe_apply_tip(
         data: T,
         last_affected_block: Optional[int],
         empty: T,
-) -> Tuple[T, Optional[BlockchainTip]]:
+) -> Tuple[T, Optional[BlockchainTipAsDict]]:
     if tip_hash is None:
         # WTF: `BlockchainTip` is not a required query param and can be omitted
         # by clients. If it was omitted, do not apply tip.
@@ -23,7 +24,7 @@ async def maybe_apply_tip(
     tip = await get_tip_or_raise_api_error(storage, tip_hash)
     tip_is_stale = is_tip_stale(tip, last_affected_block)
 
-    return empty if tip_is_stale else data, tip
+    return empty if tip_is_stale else data, tip.to_dict()
 
 
 async def get_tip_or_raise_api_error(
