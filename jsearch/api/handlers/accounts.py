@@ -44,10 +44,10 @@ async def get_accounts_balances(request):
         ])
 
     balances, last_affected_block = await storage.get_accounts_balances(addresses)
-    balances, tip_or_none = await maybe_apply_tip(storage, tip_hash, balances, last_affected_block, empty=[])
+    balances, tip_meta = await maybe_apply_tip(storage, tip_hash, balances, last_affected_block, empty=[])
     balances = [b.to_dict() for b in balances]
 
-    return api_success(balances)
+    return api_success(balances, meta=tip_meta)
 
 
 @ApiError.catch
@@ -65,10 +65,10 @@ async def get_account(request):
     if account is None:
         return api_error_response_404()
 
-    account, tip_or_none = await maybe_apply_tip(storage, tip_hash, account, last_affected_block, empty=None)
+    account, tip_meta = await maybe_apply_tip(storage, tip_hash, account, last_affected_block, empty=None)
     account = {} if account is None else account.to_dict()
 
-    return api_success(account)
+    return api_success(account, meta=tip_meta)
 
 
 @ApiError.catch
@@ -98,12 +98,12 @@ async def get_account_transactions(
         tx_index=transaction_index
     )
 
-    txs, tip_or_none = await maybe_apply_tip(storage, tip_hash, txs, last_affected_block, empty=[])
+    txs, tip_meta = await maybe_apply_tip(storage, tip_hash, txs, last_affected_block, empty=[])
 
     url = request.app.router['accounts_txs'].url_for(address=address)
     page = get_page(url=url, items=txs, limit=limit, ordering=order)
 
-    return api_success(data=[x.to_dict() for x in page.items], page=page)
+    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
 
 
 @ApiError.catch
@@ -123,10 +123,10 @@ async def get_account_internal_transactions(request):
         order=params['order'],
     )
 
-    internal_txs, tip_or_none = await maybe_apply_tip(storage, tip_hash, internal_txs, last_affected_block, empty=[])
+    internal_txs, tip_meta = await maybe_apply_tip(storage, tip_hash, internal_txs, last_affected_block, empty=[])
     internal_txs = [it.to_dict() for it in internal_txs]
 
-    return api_success(internal_txs)
+    return api_success(internal_txs, meta=tip_meta)
 
 
 async def get_account_pending_transactions(request):
@@ -172,10 +172,10 @@ async def get_account_logs(request):
         block_until=block_until,
     )
 
-    logs, tip_or_none = await maybe_apply_tip(storage, tip_hash, logs, last_affected_block, empty=[])
+    logs, tip_meta = await maybe_apply_tip(storage, tip_hash, logs, last_affected_block, empty=[])
     logs = [l.to_dict() for l in logs]
 
-    return api_success(logs)
+    return api_success(logs, meta=tip_meta)
 
 
 @ApiError.catch
@@ -195,10 +195,10 @@ async def get_account_mined_blocks(request):
         params['order'],
     )
 
-    blocks, tip_or_none = await maybe_apply_tip(storage, tip_hash, blocks, last_affected_block, empty=[])
+    blocks, tip_meta = await maybe_apply_tip(storage, tip_hash, blocks, last_affected_block, empty=[])
     blocks = [b.to_dict() for b in blocks]
 
-    return api_success(blocks)
+    return api_success(blocks, meta=tip_meta)
 
 
 @ApiError.catch
@@ -218,10 +218,10 @@ async def get_account_mined_uncles(request):
         params['order']
     )
 
-    uncles, tip_or_none = await maybe_apply_tip(storage, tip_hash, uncles, last_affected_block, empty=[])
+    uncles, tip_meta = await maybe_apply_tip(storage, tip_hash, uncles, last_affected_block, empty=[])
     uncles = [u.to_dict() for u in uncles]
 
-    return api_success(uncles)
+    return api_success(uncles, meta=tip_meta)
 
 
 @ApiError.catch
@@ -238,10 +238,10 @@ async def get_account_token_transfers(request):
         order=params['order']
     )
 
-    transfers, tip_or_none = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
+    transfers, tip_meta = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
     transfers = [t.to_dict() for t in transfers]
 
-    return api_success(transfers)
+    return api_success(transfers, meta=tip_meta)
 
 
 @ApiError.catch
@@ -259,18 +259,28 @@ async def get_account_token_balance(request):
     if holder is None:
         return api_error_response_404()
 
-    holder, tip_or_none = await maybe_apply_tip(storage, tip_hash, holder, last_affected_block, empty=None)
+    holder, tip_meta = await maybe_apply_tip(storage, tip_hash, holder, last_affected_block, empty=None)
     holder = {} if holder is None else holder.to_dict()
 
-    return api_success(holder)
+    return api_success(holder, meta=tip_meta)
 
 
 @ApiError.catch
 async def get_account_token_balances_multi(request):
     storage = request.app['storage']
     account_address = request.match_info['address'].lower()
-    tokens_addresses = [a for a in request.query.get('tokens_addresses', '').lower().split(',') if a]
+    tokens_addresses = get_from_joined_string(request.query.get('tokens_addresses'))
     tip_hash = request.query.get('blockchain_tip') or None
 
+    if len(tokens_addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
+        return api_error_response_400(errors=[
+            {
+                'field': 'tokens_addresses',
+                'error_code': ErrorCode.TOO_MANY_ITEMS,
+                'error_message': 'Too many addresses requested'
+            }
+        ])
+
     balances, last_affected_block = await storage.get_account_tokens_balances(account_address, tokens_addresses)
-    return api_success([b.to_dict() for b in balances])
+    balances, tip_meta = await maybe_apply_tip(storage, tip_hash, balances, last_affected_block, empty=[])
+    return api_success([b.to_dict() for b in balances], meta=tip_meta)

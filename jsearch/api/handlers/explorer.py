@@ -61,10 +61,10 @@ async def get_uncles(request):
 
     uncles, last_affected_block = await storage.get_uncles(params['limit'], params['offset'], params['order'])
 
-    uncles, tip_or_none = await maybe_apply_tip(storage, tip_hash, uncles, last_affected_block, empty=[])
+    uncles, tip_meta = await maybe_apply_tip(storage, tip_hash, uncles, last_affected_block, empty=[])
     uncles = [u.to_dict() for u in uncles]
 
-    return api_success(uncles)
+    return api_success(uncles, meta=tip_meta)
 
 
 async def get_uncle(request):

@@ -128,7 +128,7 @@ def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -
     return strings_list
 
 
-def api_success(data, page: Optional[Page] = None):
+def api_success(data, page: Optional[Page] = None, meta: Optional[Dict[str, Any]] = None):
     body = {
         'status': {
             'success': True,
@@ -140,6 +140,8 @@ def api_success(data, page: Optional[Page] = None):
     if page:
         body.update(page.to_dict())
 
+    if meta:
+        body['meta'] = meta
     return web.json_response(body)
 
 

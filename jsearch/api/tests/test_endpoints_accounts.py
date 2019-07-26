@@ -443,34 +443,42 @@ async def test_get_account_token_balances_multi_ok(cli, token_holder_factory):
     token_holder_factory.create(
         account_address='0x1111111111111111111111111111111111111111',
         token_address='0x1111111111111111111111111111111111111112',
-        balance=2000
+        balance=2000,
+        decimals=1
     )
     token_holder_factory.create(
         account_address='0x1111111111111111111111111111111111111111',
         token_address='0x1111111111111111111111111111111111111113',
-        balance=30000
+        balance=30000,
+        decimals=3
     )
-    params = 'tokens_addresses=0x1111111111111111111111111111111111111112,0x1111111111111111111111111111111111111113'
+    token_holder_factory.create(
+        account_address='0x1111111111111111111111111111111111111111',
+        token_address='0x1111111111111111111111111111111111111114',
+        balance=30000,
+        decimals=3
+    )
+    token_holder_factory.create(
+        account_address='0x1111111111111111111111111111111111111112',
+        token_address='0x1111111111111111111111111111111111111113',
+        balance=30000,
+        decimals=3
+    )
+
+    params = f'tokens_addresses=0x1111111111111111111111111111111111111112,0x1111111111111111111111111111111111111113'
     resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/token_balances?{params}')
     assert resp.status == 200
     resp_json = await resp.json()
     assert len(resp_json['data']) == 2
     assert resp_json['data'] == [{'accountAddress': '0x1111111111111111111111111111111111111111',
                                   'balance': 2000,
-                                  'decimals': 18,
+                                  'decimals': 1,
                                   'tokenAddress': '0x1111111111111111111111111111111111111112'},
                                  {'accountAddress': '0x1111111111111111111111111111111111111111',
                                   'balance': 30000,
-                                  'decimals': 16,
+                                  'decimals': 3,
                                   'tokenAddress': '0x1111111111111111111111111111111111111113'}]
-    assert resp_json['meta'] == {
-        'currentBlockchainTip': {
-
-        },
-        'blockchainTipStatus': {
-
-        }
-    }
+    assert 'meta' not in resp_json
 
 
 async def test_get_account_token_balances_multi_no_addresses(cli, token_holder_factory):
@@ -486,22 +494,31 @@ async def test_get_account_token_balances_multi_no_addresses(cli, token_holder_f
     )
     params = ''
     resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/token_balances?{params}')
+    assert resp.status == 200
+    resp_json = await resp.json()
+    assert len(resp_json['data']) == 0
+    assert resp_json['data'] == []
+
+
+async def test_get_account_token_balances_multi_too_many_addresses(cli, token_holder_factory):
+    token_holder_factory.create(
+        account_address='0x1111111111111111111111111111111111111111',
+        token_address='0x1111111111111111111111111111111111111112',
+        balance=2000
+    )
+    token_holder_factory.create(
+        account_address='0x1111111111111111111111111111111111111111',
+        token_address='0x1111111111111111111111111111111111111113',
+        balance=30000
+    )
+
+    addresses = ','.join(['0x11111111111111111111111111111111111111{}'.format(n) for n in range(12, 38)])
+    params = f'tokens_addresses={addresses}'
+    resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/token_balances?{params}')
     assert resp.status == 400
     resp_json = await resp.json()
-    assert len(resp_json['data']) == 2
-    assert resp_json['data'] == [{'accountAddress': '0x1111111111111111111111111111111111111111',
-                                  'balance': 2000,
-                                  'decimals': 18,
-                                  'tokenAddress': '0x1111111111111111111111111111111111111112'},
-                                 {'accountAddress': '0x1111111111111111111111111111111111111111',
-                                  'balance': 30000,
-                                  'decimals': 16,
-                                  'tokenAddress': '0x1111111111111111111111111111111111111113'}]
-    assert resp_json['meta'] == {
-        'currentBlockchainTip': {
-
-        },
-        'blockchainTipStatus': {
-
-        }
-    }
+    assert resp_json == {'data': None,
+                         'status': {'errors': [{'error_code': 'TOO_MANY_ITEMS',
+                                                'error_message': 'Too many addresses requested',
+                                                'field': 'tokens_addresses'}],
+                                    'success': False}}

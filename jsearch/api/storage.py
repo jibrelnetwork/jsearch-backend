@@ -529,8 +529,8 @@ class Storage:
             -> Tuple[Optional[models.TokenHolder], Optional[LastAffectedBlock]]:
         query = """
         SELECT account_address, token_address, balance, decimals, block_number
-        FROM token_holders
-        WHERE account_address=$1 AND token_address=ANY($2::varchar[])
+            FROM token_holders
+            WHERE account_address=$1 AND token_address=ANY($2::varchar[])
         """
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, account_address, tokens_addresses)
