@@ -40,7 +40,7 @@ def teardown_database(connection_string):
 
 @pytest.fixture(scope="session")
 def db_dsn():
-    return os.environ.get('JSEARCH_MAIN_DB_TEST', "postgres://postgres:postgres@test_db/jsearch_main_test")
+    return os.environ['JSEARCH_MAIN_DB_TEST']
 
 
 @pytest.fixture(scope="function")
