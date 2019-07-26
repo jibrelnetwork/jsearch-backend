@@ -1,6 +1,7 @@
 import logging
 import os
 from asyncio import AbstractEventLoop
+import warnings
 
 import aiopg
 import asyncpg
@@ -16,11 +17,15 @@ logger = logging.getLogger(__name__)
 
 
 def setup_database(connection_string):
+    logging.getLogger('alembic').setLevel(logging.CRITICAL)
+    warnings.simplefilter("ignore")
     from jsearch.common.alembic_utils import upgrade
     upgrade(connection_string, 'head')
 
 
 def teardown_database(connection_string):
+    logging.getLogger('alembic').setLevel(logging.CRITICAL)
+    warnings.simplefilter("ignore")
     from jsearch.common.alembic_utils import downgrade
 
     parsed_dsn = dsnparse.parse(connection_string)
