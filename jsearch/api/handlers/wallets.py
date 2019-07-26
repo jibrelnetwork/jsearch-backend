@@ -130,8 +130,8 @@ async def get_wallet_events(request):
     events = not is_event_affected and events or []
 
     pending_events = []
-    include_pending_events = request.query.get('include_pending_events', False)
-    if include_pending_events:
+    include_pending_txs = request.query.get('include_pending_txs', False)
+    if include_pending_txs:
         pending_events = await storage.get_account_pending_events(
             address,
             order=ORDER_ASC,
