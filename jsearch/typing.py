@@ -51,3 +51,4 @@ OrderDirection = TypeVar('OrderDirection', bound=str)
 OrderScheme = TypeVar('OrderScheme', bound=str)
 
 LastAffectedBlock = TypeVar('LastAffectedBlock', bound=int)
+BlockchainTipAsDict = Dict[str, Any]

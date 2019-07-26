@@ -16,6 +16,37 @@ from jsearch.tests.plugins.databases.factories.token_transfers import TokenTrans
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 from jsearch.tests.plugins.databases.factories.uncles import UncleFactory
 
+API_STATUS_SUCCESS = {
+    "success": True,
+    "errors": []
+}
+
+API_META_TIP_FORKED = {
+    "blockchainTipStatus": {
+        "blockHash": "0xFORKED",
+        "blockNumber": 11,
+        "isOrphaned": True,
+        "lastUnchangedBlock": 10,
+    },
+    "currentBlockchainTip": {
+        "blockHash": "0x03225db5f45479904b9e0f5c8311c5267a43beaf8e92bc323a0a5315b38a9d5e",
+        "blockNumber": 100,
+    }
+}
+
+API_META_TIP_CANONICAL = {
+    "blockchainTipStatus": {
+        "blockHash": "0xCANONICAL",
+        "blockNumber": 11,
+        "isOrphaned": False,
+        "lastUnchangedBlock": None,
+    },
+    "currentBlockchainTip": {
+        "blockHash": "0x03225db5f45479904b9e0f5c8311c5267a43beaf8e92bc323a0a5315b38a9d5e",
+        "blockNumber": 100,
+    }
+}
+
 TipGetter = Callable[[bool], Awaitable[BlockchainTip]]
 
 pytestmark = [
@@ -28,6 +59,10 @@ class BlockchainTipCase(NamedTuple):
     is_tip_forked: bool
     is_data_recent: bool
     has_empty_data_response: bool
+
+    @property
+    def api_meta(self):
+        return API_META_TIP_FORKED if self.is_tip_forked else API_META_TIP_CANONICAL
 
 
 cases = [
@@ -65,8 +100,14 @@ def _get_tip(
     async def inner(is_forked: bool) -> BlockchainTip:
         common_block = block_factory.create(number=10)
 
-        canonical_block = block_factory.create(parent_hash=common_block.hash, number=11)
-        forked_block = block_factory.create(parent_hash=common_block.hash, number=11)
+        canonical_block = block_factory.create(parent_hash=common_block.hash, hash='0xCANONICAL', number=11)
+        forked_block = block_factory.create(parent_hash=common_block.hash, hash='0xFORKED', number=11)
+
+        # WTF: Making last block for consistent `currentBlockchainTip`.
+        block_factory.create(
+            hash='0x03225db5f45479904b9e0f5c8311c5267a43beaf8e92bc323a0a5315b38a9d5e',
+            number=100,
+        )
 
         chain_splits = chain_split_factory.create(
             common_block_hash=common_block.hash,
@@ -116,11 +157,9 @@ async def test_get_accounts_balances_with_tip(
     ]
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -164,11 +203,9 @@ async def test_get_account_with_tip(
     }
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -229,11 +266,9 @@ async def test_get_account_transactions_with_tip(
     ]
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -291,11 +326,9 @@ async def test_get_account_internal_transactions_with_tip(
     ]
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -364,11 +397,9 @@ async def test_get_account_mined_blocks_with_tip(
     ]
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -433,11 +464,9 @@ async def test_get_account_mined_uncles_with_tip(
     ]
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -482,11 +511,9 @@ async def test_get_account_token_transfers_with_tip(
     ]
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -524,11 +551,9 @@ async def test_get_account_token_balance_with_tip(
     }
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -579,11 +604,9 @@ async def test_get_account_logs_with_tip(
     ]
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -655,11 +678,9 @@ async def test_get_blocks_with_tip(
     ]
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -725,11 +746,9 @@ async def test_get_uncles_with_tip(
     ]
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -773,11 +792,9 @@ async def test_get_token_transfers_with_tip(
     ]
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
 
 
@@ -815,9 +832,7 @@ async def test_get_token_holders_with_tip(
     ]
 
     assert response_json == {
-        "status": {
-            "success": True,
-            "errors": []
-        },
+        "status": API_STATUS_SUCCESS,
         "data": data,
+        "meta": case.api_meta,
     }
