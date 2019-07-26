@@ -5,8 +5,6 @@ ENV LOG_LEVEL=INFO \
     RAVEN_DSN="" \
     JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_main" \
     JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw" \
-    JSEARCH_MAIN_DB_TEST="postgres://postgres:postgres@test_db/jsearch_main_test" \
-    JSEARCH_RAW_DB_TEST="postgres://postgres:postgres@test_raw_db/jsearch_raw?sslmode=disable" \
     JSEARCH_CONTRACTS_API="http://contracts:8080" \
     JSEARCH_COMPILER_API="http://compiler" \
     ETH_NODE_URL="https://main-node.jwallet.network" \
