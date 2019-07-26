@@ -1571,7 +1571,7 @@ async def test_get_wallet_events_pending_txs(cli,
         f'blockchain_address={pending_tx.to}&' \
         f'blockchain_tip={block.hash}&' \
         f'block_range_start={block.number}&' \
-        f'include_pending_events=1'
+        f'include_pending_txs=1'
 
     # when
     response = await cli.get(url)
@@ -1653,7 +1653,7 @@ async def test_get_wallet_events_pending_txs_limit(cli,
         f'blockchain_address={event.address}&' \
         f'blockchain_tip={block.hash}&' \
         f'block_range_start={block.number}&' \
-        f'include_pending_events=1'
+        f'include_pending_txs=1'
 
     # when
     response = await cli.get(url)
