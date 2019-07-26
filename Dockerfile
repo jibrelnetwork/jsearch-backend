@@ -6,14 +6,30 @@ ENV LOG_LEVEL=INFO \
     JSEARCH_SYNC_PARALLEL="10" \
     JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_main" \
     JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw" \
+    JSEARCH_MAIN_DB_TEST="postgres://postgres:postgres@test_db/jsearch_main_test" \
+    JSEARCH_RAW_DB_TEST="postgres://postgres:postgres@test_raw_db/jsearch_raw?sslmode=disable" \
     JSEARCH_CONTRACTS_API="http://contracts:8080" \
     JSEARCH_COMPILER_API="http://compiler" \
     JSEARCH_API_ENABLE_RESET_LOGS_PROCESSING="1" \
     ENH_NODE_URL="https://main-node.jwallet.network" \
-    KAFKA_BOOTSTRAP_SERVERS="" \
+    KAFKA_BOOTSTRAP_SERVERS="kafka:9092" \
     SYNCER_BACKOFF_MAX_TRIES="5" \
     PENDING_SYNCER_BACKOFF_MAX_TRIES="5" \
-    DOCKERIZE_VERSION="v0.6.1"
+    DOCKERIZE_VERSION="v0.6.1" \
+    PORT="8080" \
+    NO_JSON_FORMATTER="0" \
+    NOTABLE_ACCOUNT_UPDATE_IF_EXISTS="1" \
+    ETH_BALANCE_BLOCK_OFFSET="6" \
+    ETH_NODE_BATCH_REQUEST_SIZE="20" \
+    ETH_NODE_ID="0x83f47b4ec7fc8a709e649df7fd2a77d34119dbd0a2e47b5430e85033108142e9" \
+    PENDING_TX_BATCH_SIZE="300" \
+    PENDING_TX_SLEEP_ON_NO_TXS="1" \
+    POST_PROCESSING_API_PORT="8080" \
+    SYNCER_API_PORT="8080" \
+    WALLET_WORKER_API_PORT="8080" \
+    WORKER_API_PORT="8080" \
+    NOTABLES_WORKER_API_PORT="8080" \
+    MONITOR_OFFSET="6"
 
 RUN groupadd -g 999 app \
  && useradd -r -u 999 -g app app \
