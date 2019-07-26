@@ -48,10 +48,7 @@ def truncate(db):
 
 @pytest.fixture(scope="session")
 def raw_db_dsn():
-    return os.environ.get(
-        'JSEARCH_RAW_DB_TEST',
-        "postgres://postgres:postgres@test_raw_db/jsearch_raw?sslmode=disable"
-    )
+    return os.environ['JSEARCH_RAW_DB_TEST']
 
 
 @pytest.fixture(scope='function', autouse=True)

@@ -10,7 +10,7 @@ keys = {}
 class UserBehavior(TaskSet):
 
     def setup(self):
-        conn = psycopg2.connect(os.getenv('JSEARCH_MAIN_DB'))
+        conn = psycopg2.connect(os.environ['JSEARCH_MAIN_DB'])
         print('Loading keys...')
         cur = conn.cursor()
         cur.execute('SELECT number, hash from blocks ORDER BY number DESC LIMIT 10000')
