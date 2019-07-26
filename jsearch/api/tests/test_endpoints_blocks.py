@@ -4,6 +4,8 @@ from urllib.parse import parse_qs
 import pytest
 from typing import List, Dict, Any, Tuple
 
+from jsearch.api.models import InternalTransaction
+
 logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
@@ -135,3 +137,19 @@ async def test_get_blocks_errors(cli, block_factory, url, errors):
     assert resp.status == 400
     assert not resp_json['status']['success']
     assert resp_json['status']['errors'] == errors
+
+
+async def test_get_block_internal_txs_ok(cli, internal_transaction_factory):
+    t1 = internal_transaction_factory.create(block_number=1)
+    t2 = internal_transaction_factory.create(block_number=2)
+    t3 = internal_transaction_factory.create(block_number=1)
+
+    url = "v1/blocks/1/internal_transactions"
+    resp = await cli.get(url)
+    assert resp.status == 200
+    resp_json = await resp.json()
+
+    assert len(resp_json['data']) == 2
+    assert resp_json['data'][0] == InternalTransaction(**t1.as_dict()).to_dict()
+
+
