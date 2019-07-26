@@ -15,12 +15,13 @@ depends_on = None
 
 UP_SQL = """
 ALTER TABLE transactions ADD COLUMN "timestamp" integer;
-CREATE INDEX IF NOT EXISTS ix_transactions_timestamp_index ON transactions("timestamp", transaction_index) 
-WHERE "timestamp" and is_forked = false; 
 
 UPDATE transactions SET "timestamp" = blocks.timestamp 
 FROM blocks 
 WHERE transactions.block_hash = blocks.hash;
+
+CREATE INDEX IF NOT EXISTS ix_transactions_timestamp_index ON transactions("timestamp", transaction_index) 
+WHERE is_forked = false; 
 """
 
 DOWN_SQL = """
