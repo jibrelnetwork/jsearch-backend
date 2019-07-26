@@ -66,7 +66,7 @@ class Manage(object):
 
         args = parser.parse_args(sys.argv[2:])
         print(f'Running alembic revision --autogenerate -m "{args.m}"')
-        alembic.revision(args.db or os.getenv('JSEARCH_MAIN_DB'), args.m, True)
+        alembic.revision(args.db or os.environ['JSEARCH_MAIN_DB'], args.m, True)
 
     def upgrade(self):
         parser = argparse.ArgumentParser(
@@ -83,7 +83,7 @@ class Manage(object):
 
         args = parser.parse_args(sys.argv[2:])
         print(f'Running alembic upgrade {args.revision}')
-        alembic.upgrade(args.db or os.getenv('JSEARCH_MAIN_DB'), args.revision)
+        alembic.upgrade(args.db or os.environ['JSEARCH_MAIN_DB'], args.revision)
 
     def downgrade(self):
         parser = argparse.ArgumentParser(
@@ -100,7 +100,7 @@ class Manage(object):
 
         args = parser.parse_args(sys.argv[2:])
         print(f'Running alembic downgrade {args.revision}.')
-        alembic.downgrade(args.db or os.getenv('JSEARCH_MAIN_DB'), args.revision)
+        alembic.downgrade(args.db or os.environ['JSEARCH_MAIN_DB'], args.revision)
 
     def json_dump(self):
         parser = argparse.ArgumentParser(usage=f"usage {self.script_name} [-h]")
@@ -109,7 +109,7 @@ class Manage(object):
 
         args = parser.parse_args(sys.argv[2:])
         print('Running json_dump')
-        alembic.json_dump(args.db or os.getenv('JSEARCH_MAIN_DB'), args.out)
+        alembic.json_dump(args.db or os.environ['JSEARCH_MAIN_DB'], args.out)
 
     def add_test_contract(self):
         from jsearch.tests.utils import add_test_contract
