@@ -22,7 +22,7 @@ DEFAULT_OFFSET = 6
 
 
 def get_offset():
-    offset = os.getenv('MONITOR_OFFSET', DEFAULT_OFFSET)
+    offset = os.environ['MONITOR_OFFSET']
     logging.info('Set settings', extra={'offset': offset})
     return int(offset)
 
