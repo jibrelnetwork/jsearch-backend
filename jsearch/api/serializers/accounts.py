@@ -21,6 +21,7 @@ class AccountsTxsSchema(BlockRelatedListSchema):
 
 
 class AccountsInternalTxsSchema(BlockRelatedListSchema):
+    tip_hash = fields.Str(load_from='blockchain_tip')
     address = fields.Str(validate=Length(min=1, max=100), location='match_info')
     transaction_index = fields.Int(validate=Range(min=1))
     parent_transaction_index = fields.Int(validate=Range(min=0), load_from='parent_transaction_index')

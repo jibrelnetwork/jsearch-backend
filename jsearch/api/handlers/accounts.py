@@ -117,6 +117,7 @@ async def get_account_internal_transactions(
         timestamp: Optional[int] = None,
         parent_transaction_index: Optional[int] = None,
         transaction_index: Optional[int] = None,
+        tip_hash: Optional[str] = None,
 ):
     """
     Get account internal transactions
@@ -124,7 +125,7 @@ async def get_account_internal_transactions(
     storage = request.app['storage']
     block_number, timestamp = await get_block_number_and_timestamp(block_number, timestamp, request)
 
-    txs, last_affected_blocks = await storage.get_account_internal_transactions(
+    txs, last_affected_block = await storage.get_account_internal_transactions(
         address=address,
         limit=limit + 1,
         ordering=order,
@@ -133,6 +134,8 @@ async def get_account_internal_transactions(
         parent_tx_index=parent_transaction_index,
         tx_index=transaction_index
     )
+    txs, tip_or_none = await maybe_apply_tip(storage, tip_hash, txs, last_affected_block, empty=[])
+
     url = request.app.router['accounts_internal_txs'].url_for(address=address)
     page = get_page(url=url, items=txs, limit=limit, ordering=order, mapping=AccountsInternalTxsSchema.mapping)
     return api_success(data=[x.to_dict() for x in page.items], page=page)
