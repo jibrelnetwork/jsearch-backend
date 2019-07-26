@@ -275,7 +275,6 @@ async def test_get_account_transactions_with_tip(
 @pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
 async def test_get_account_internal_transactions_with_tip(
         cli: TestClient,
-        block_factory,
         internal_transaction_factory: InternalTransactionFactory,
         case: BlockchainTipCase,
         _get_tip: TipGetter,
