@@ -124,7 +124,6 @@ async def get_account_internal_transactions(
     """
     storage = request.app['storage']
     block_number, timestamp = await get_block_number_and_timestamp(block_number, timestamp, request)
-
     txs, last_affected_block = await storage.get_account_internal_transactions(
         address=address,
         limit=limit + 1,

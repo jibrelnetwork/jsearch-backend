@@ -2,7 +2,8 @@ import logging
 from urllib.parse import parse_qs, urlencode
 
 import pytest
-from typing import List, Dict, Any, Tuple, Callable
+import time
+from typing import List, Dict, Any, Tuple, Callable, Optional
 
 from jsearch.typing import AnyCoroutine
 
@@ -22,19 +23,24 @@ def create_account_internal_txs(
         block_factory,
         transaction_factory,
         internal_transaction_factory
-) -> Callable[[str], AnyCoroutine]:
+) -> Callable[[str, Optional[int]], AnyCoroutine]:
     account_address = None
 
-    async def create_env(account: str, block_count=5, tx_in_block=2, internal_tx_in_block=2) -> None:
+    async def create_env(account: str,
+                         block_count=5,
+                         tx_in_block=2,
+                         internal_tx_in_block=2) -> None:
         # Notes: some black magic to increase tests speed
         # we need to pass
         nonlocal account_address
+
         if account_address and account_address != account:
             raise ValueError(f'Fixture already was called for {account_address}')
         elif not account_address:
-            blocks = block_factory.create_batch(block_count)
 
-            for block in blocks:
+            for block_i in range(block_count):
+                timestamp = TIMESTAMP + block_i
+                block = block_factory.create(timestamp=timestamp)
                 for i in range(0, tx_in_block):
                     kwargs = {'transaction_index': i}
                     kwargs.update({'from_': account})
@@ -43,7 +49,7 @@ def create_account_internal_txs(
                     for internal_tx_index in range(1, internal_tx_in_block + 1):
                         internal_transaction_factory.create_for_tx(
                             tx=new_txs[0],
-                            transaction_index=internal_tx_index
+                            transaction_index=internal_tx_index,
                         )
 
             account_address = account
@@ -59,6 +65,9 @@ URL = '/v1/accounts/address/internal_transactions?{params}'
 
 def get_index(tx: Dict[str, Any]):
     return tx['blockNumber'], tx['parentTxIndex'], tx['transactionIndex']
+
+
+TIMESTAMP = int(time.time())
 
 
 @pytest.mark.parametrize(
@@ -80,6 +89,24 @@ def get_index(tx: Dict[str, Any]):
                     'transaction_index': 2,
                     'limit': 3,
                     'order': 'desc'
+                })),
+        ),
+        (
+                URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 5, 'order': 'asc'})),
+                [(0, 0, 1), (0, 0, 2), (0, 1, 1), (0, 1, 2), (1, 0, 1)],
+                URL.format(params=urlencode({
+                    'timestamp': TIMESTAMP + 1,
+                    'parent_transaction_index': 0,
+                    'transaction_index': 2,
+                    'limit': 5,
+                    'order': 'asc'
+                })),
+                URL.format(params=urlencode({
+                    'timestamp': TIMESTAMP,
+                    'parent_transaction_index': 0,
+                    'transaction_index': 1,
+                    'limit': 5,
+                    'order': 'asc'
                 })),
         ),
         (
@@ -185,6 +212,7 @@ def get_index(tx: Dict[str, Any]):
     ],
     ids=[
         URL.format(params=urlencode({'limit': 3})),
+        URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 3, 'order': 'asc'})),
         URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
         URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
         URL.format(params=urlencode({

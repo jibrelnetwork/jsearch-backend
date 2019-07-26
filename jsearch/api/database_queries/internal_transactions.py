@@ -120,7 +120,7 @@ def get_internal_txs_by_address_and_timestamp_query(
         q = or_(
             ordering.operator(internal_transactions_t.c.timestamp, timestamp),
             and_(
-                internal_transactions_t.c.block_number == timestamp,
+                internal_transactions_t.c.timestamp == timestamp,
                 ordering.operator_or_equal(internal_transactions_t.c.parent_tx_index, parent_tx_index),
             )
         )
@@ -128,7 +128,7 @@ def get_internal_txs_by_address_and_timestamp_query(
         q = or_(
             ordering.operator(internal_transactions_t.c.timestamp, timestamp),
             and_(
-                internal_transactions_t.c.block_number == timestamp,
+                internal_transactions_t.c.timestamp == timestamp,
                 internal_transactions_t.c.parent_tx_index == parent_tx_index,
                 ordering.operator_or_equal(internal_transactions_t.c.transaction_index, tx_index),
             )

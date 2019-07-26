@@ -14,12 +14,12 @@ branch_labels = None
 depends_on = None
 
 UP_SQL = """
-CREATE INDEX ix_transactions_keyset_by_timestamp 
+CREATE INDEX CONCURRENTLY ix_transactions_keyset_by_timestamp 
 ON internal_transactions(tx_origin, "timestamp", parent_tx_index, transaction_index) WHERE is_forked = false;
 """
 
 DOWN_SQL = """
-DROP INDEX  ix_transactions_keyset_by_timestamp;
+DROP INDEX CONCURRENTLY ix_transactions_keyset_by_timestamp;
 """
 
 
