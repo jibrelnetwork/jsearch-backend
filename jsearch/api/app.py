@@ -65,8 +65,7 @@ async def make_app():
     app.router.add_route('GET', '/v1/blocks/{tag}/uncles', blocks.get_block_uncles)
 
     app.router.add_route('GET', '/v1/transactions/{txhash}', explorer.get_transaction)
-    app.router.add_route('GET', '/v1/transactions/internal/{txhash}', explorer.get_internal_transactions)
-    app.router.add_route('GET', '/v1/transactions/pending/{txhash}', explorer.get_pending_transactions)
+    app.router.add_route('GET', '/v1/transactions/{txhash}/internal_transactions', explorer.get_internal_transactions)
     app.router.add_route('GET', '/v1/receipts/{txhash}', explorer.get_receipt)
 
     app.router.add_route('GET', '/v1/uncles', explorer.get_uncles)
@@ -77,11 +76,11 @@ async def make_app():
     app.router.add_route('GET', '/v1/tokens/{address}/transfers', tokens.get_token_transfers)
     app.router.add_route('GET', '/v1/tokens/{address}/holders', tokens.get_token_holders)
 
-    app.router.add_route('GET', '/v1/gas_price', node_proxy.get_gas_price)
-    app.router.add_route('POST', '/v1/transaction_count', node_proxy.get_transaction_count)
-    app.router.add_route('POST', '/v1/estimate_gas', node_proxy.calculate_estimate_gas)
-    app.router.add_route('POST', '/v1/call_contract', node_proxy.call_contract)
-    app.router.add_route('POST', '/v1/send_raw_transaction', node_proxy.send_raw_transaction)
+    app.router.add_route('GET', '/v1/proxy/gas_price', node_proxy.get_gas_price)
+    app.router.add_route('POST', '/v1/proxy/transaction_count', node_proxy.get_transaction_count)
+    app.router.add_route('POST', '/v1/proxy/estimate_gas', node_proxy.calculate_estimate_gas)
+    app.router.add_route('POST', '/v1/proxy/call_contract', node_proxy.call_contract)
+    app.router.add_route('POST', '/v1/proxy/send_raw_transaction', node_proxy.send_raw_transaction)
 
     app.router.add_route('GET', '/v1/wallet/blockchain_tip', wallets.get_blockchain_tip)
     app.router.add_route('GET', '/v1/wallet/assets_summary', wallets.get_assets_summary)
