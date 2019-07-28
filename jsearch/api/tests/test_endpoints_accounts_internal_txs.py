@@ -306,7 +306,7 @@ async def test_get_account_internal_transactions(cli,
         (URL.format(params=urlencode({'parent_transaction_index': 1, 'limit': 3})), [
             {
                 "field": "__all__",
-                "message": "Filter `parent_transaction_index` requires `block_number` value.",
+                "message": "Filter `parent_transaction_index` requires `block_number` or `timestamp` value.",
                 "code": "VALIDATION_ERROR"
             }
         ]),

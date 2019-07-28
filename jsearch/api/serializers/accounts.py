@@ -35,12 +35,16 @@ class AccountsInternalTxsSchema(BlockRelatedListSchema):
 
     @validates_schema
     def validate_filters(self, data, **kwargs):
+        timestamp = data.get('timestamp')
         block_number = data.get("block_number")
+
+        there_is_not_pointer_to_block = timestamp is None and block_number is None
+
         transaction_index = data.get("transaction_index")
         parent_transaction_index = data.get("parent_transaction_index")
 
-        if block_number is None and parent_transaction_index is not None:
-            raise ValidationError("Filter `parent_transaction_index` requires `block_number` value.")
+        if there_is_not_pointer_to_block and parent_transaction_index is not None:
+            raise ValidationError("Filter `parent_transaction_index` requires `block_number` or `timestamp` value.")
 
-        if block_number is not None and transaction_index is not None and parent_transaction_index is None:
+        if transaction_index is not None and parent_transaction_index is None:
             raise ValidationError("Filter `transaction_index` requires `parent_transaction_index` value.")

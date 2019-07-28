@@ -807,6 +807,7 @@ class Storage:
 
         if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
             query = get_internal_txs_by_address_and_block_query(
+                limit=limit,
                 address=address,
                 block_number=block_number,
                 ordering=ordering,
@@ -815,14 +816,13 @@ class Storage:
             )
         else:
             query = get_internal_txs_by_address_and_timestamp_query(
+                limit=limit,
                 address=address,
                 timestamp=timestamp,
                 ordering=ordering,
                 tx_index=tx_index,
                 parent_tx_index=parent_tx_index,
             )
-
-        query = query.limit(limit)
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection, query)

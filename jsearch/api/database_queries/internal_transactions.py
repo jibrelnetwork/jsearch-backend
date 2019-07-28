@@ -1,4 +1,4 @@
-from sqlalchemy import select, Column, and_, false, or_
+from sqlalchemy import select, Column, and_, false, union
 from sqlalchemy.orm import Query
 from typing import List, Dict, Optional
 
@@ -75,6 +75,7 @@ def get_internal_txs_by_address_query(address: str, ordering: Ordering) -> Query
 
 
 def get_internal_txs_by_address_and_block_query(
+        limit: int,
         address: str,
         block_number: int,
         ordering: Ordering,
@@ -84,28 +85,46 @@ def get_internal_txs_by_address_and_block_query(
     query = get_internal_txs_by_address_query(address, ordering)
 
     if parent_tx_index is None and tx_index is None:
-        q = ordering.operator_or_equal(internal_transactions_t.c.block_number, block_number)
+        query = query.where(ordering.operator_or_equal(internal_transactions_t.c.block_number, block_number))
     elif tx_index is None:
-        q = or_(
-            ordering.operator(internal_transactions_t.c.block_number, block_number),
-            and_(
-                internal_transactions_t.c.block_number == block_number,
-                ordering.operator_or_equal(internal_transactions_t.c.parent_tx_index, parent_tx_index),
-            )
+        query = union(
+            query.where(
+                ordering.operator(internal_transactions_t.c.block_number, block_number),
+            ).limit(limit).alias('after_block'),
+            query.where(
+                and_(
+                    internal_transactions_t.c.block_number == block_number,
+                    ordering.operator_or_equal(internal_transactions_t.c.parent_tx_index, parent_tx_index),
+                )
+            ).limit(limit).alias('after_parent_tx'),
         )
+        query = query.order_by(*ordering.get_ordering_for_union_query(query))
     else:
-        q = or_(
-            ordering.operator(internal_transactions_t.c.block_number, block_number),
-            and_(
-                internal_transactions_t.c.block_number == block_number,
-                internal_transactions_t.c.parent_tx_index == parent_tx_index,
-                ordering.operator_or_equal(internal_transactions_t.c.transaction_index, tx_index),
-            )
+        query = union(
+            query.where(
+                ordering.operator(internal_transactions_t.c.block_number, block_number),
+            ).limit(limit).alias('after_block'),
+            query.where(
+                and_(
+                    internal_transactions_t.c.block_number == block_number,
+                    ordering.operator(internal_transactions_t.c.parent_tx_index, parent_tx_index),
+                )
+            ).limit(limit).alias('after_parent_tx'),
+            query.where(
+                and_(
+                    internal_transactions_t.c.block_number == block_number,
+                    internal_transactions_t.c.parent_tx_index == parent_tx_index,
+                    ordering.operator_or_equal(internal_transactions_t.c.transaction_index, tx_index),
+                )
+            ).limit(limit).alias('after_tx')
         )
-    return query.where(q)
+        query = query.order_by(*ordering.get_ordering_for_union_query(query))
+    query = query.limit(limit)
+    return query
 
 
 def get_internal_txs_by_address_and_timestamp_query(
+        limit: int,
         address: str,
         timestamp: int,
         ordering: Ordering,
@@ -115,22 +134,40 @@ def get_internal_txs_by_address_and_timestamp_query(
     query = get_internal_txs_by_address_query(address, ordering)
 
     if parent_tx_index is None and tx_index is None:
-        q = ordering.operator_or_equal(internal_transactions_t.c.timestamp, timestamp)
+        query = query.where(ordering.operator_or_equal(internal_transactions_t.c.timestamp, timestamp))
     elif tx_index is None:
-        q = or_(
-            ordering.operator(internal_transactions_t.c.timestamp, timestamp),
-            and_(
-                internal_transactions_t.c.timestamp == timestamp,
-                ordering.operator_or_equal(internal_transactions_t.c.parent_tx_index, parent_tx_index),
-            )
+        query = union(
+            query.where(
+                ordering.operator(internal_transactions_t.c.timestamp, timestamp),
+            ).limit(limit).alias('after_block'),
+            query.where(
+                and_(
+                    internal_transactions_t.c.timestamp == timestamp,
+                    ordering.operator_or_equal(internal_transactions_t.c.parent_tx_index, parent_tx_index),
+                )
+            ).limit(limit).alias('after_parent_tx'),
         )
+        query = query.order_by(*ordering.get_ordering_for_union_query(query))
     else:
-        q = or_(
-            ordering.operator(internal_transactions_t.c.timestamp, timestamp),
-            and_(
-                internal_transactions_t.c.timestamp == timestamp,
-                internal_transactions_t.c.parent_tx_index == parent_tx_index,
-                ordering.operator_or_equal(internal_transactions_t.c.transaction_index, tx_index),
-            )
-        )
-    return query.where(q)
+        query = union(
+            query.where(
+                ordering.operator(internal_transactions_t.c.timestamp, timestamp),
+            ).limit(limit).alias('after_block'),
+            query.where(
+                and_(
+                    internal_transactions_t.c.timestamp == timestamp,
+                    ordering.operator(internal_transactions_t.c.parent_tx_index, parent_tx_index),
+                )
+            ).limit(limit).alias('after_parent_tx'),
+            query.where(
+                and_(
+                    internal_transactions_t.c.timestamp == timestamp,
+                    internal_transactions_t.c.parent_tx_index == parent_tx_index,
+                    ordering.operator_or_equal(internal_transactions_t.c.transaction_index, tx_index),
+                )
+            ).limit(limit).alias('after_tx')
+        ).order_by(*ordering.columns)
+        query = query.order_by(*ordering.get_ordering_for_union_query(query))
+
+    query = query.limit(limit)
+    return query
