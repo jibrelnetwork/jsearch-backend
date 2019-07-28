@@ -37,11 +37,11 @@ async def cli_with_node(event_loop, db_dsn, aiohttp_client, node_server, overrid
 @pytest.mark.parametrize(
     ('method', 'path'),
     (
-        ('get', '/v1/gas_price'),
-        ('post', '/v1/transaction_count'),
-        ('post', '/v1/estimate_gas'),
-        ('post', '/v1/call_contract'),
-        ('post', '/v1/send_raw_transaction'),
+        ('get', '/v1/proxy/gas_price'),
+        ('post', '/v1/proxy/transaction_count'),
+        ('post', '/v1/proxy/estimate_gas'),
+        ('post', '/v1/proxy/call_contract'),
+        ('post', '/v1/proxy/send_raw_transaction'),
     )
 )
 async def test_node_via_proxy_recieves_correct_user_agent(method, path, override_settings, node_server, cli_with_node):

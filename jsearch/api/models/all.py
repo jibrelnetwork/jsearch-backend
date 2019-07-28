@@ -351,9 +351,9 @@ class TokenTransfer(Model):
         "timestamp": "timestamp",
         "from_address": "from",
         "to_address": "to",
-        "token_address": "tokenAddress",
+        "token_address": "contractAddress",
         "token_value": "amount",
-        "token_decimals": "tokenDecimals",
+        "token_decimals": "decimals",
     }
 
     int_to_str = {"amount"}
@@ -369,7 +369,7 @@ class TokenHolder(Model):
 
     attribute_map = {
         'account_address': 'accountAddress',
-        'token_address': 'tokenAddress',
+        'token_address': 'contractAddress',
         'balance': 'balance',
         'decimals': 'decimals'
     }

@@ -142,7 +142,6 @@ def api_success(data, page: Optional[Page] = None, meta: Optional[Dict[str, Any]
 
     if meta:
         body['meta'] = meta
-
     return web.json_response(body)
 
 

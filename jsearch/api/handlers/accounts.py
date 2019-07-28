@@ -275,3 +275,24 @@ async def get_account_token_balance(request):
     holder = {} if holder is None else holder.to_dict()
 
     return api_success(holder, meta=tip_meta)
+
+
+@ApiError.catch
+async def get_account_token_balances_multi(request):
+    storage = request.app['storage']
+    account_address = request.match_info['address'].lower()
+    tokens_addresses = get_from_joined_string(request.query.get('tokens_addresses'))
+    tip_hash = request.query.get('blockchain_tip') or None
+
+    if len(tokens_addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
+        return api_error_response_400(errors=[
+            {
+                'field': 'tokens_addresses',
+                'error_code': ErrorCode.TOO_MANY_ITEMS,
+                'error_message': 'Too many addresses requested'
+            }
+        ])
+
+    balances, last_affected_block = await storage.get_account_tokens_balances(account_address, tokens_addresses)
+    balances, tip_meta = await maybe_apply_tip(storage, tip_hash, balances, last_affected_block, empty=[])
+    return api_success([b.to_dict() for b in balances], meta=tip_meta)

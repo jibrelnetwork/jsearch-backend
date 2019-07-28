@@ -1,5 +1,4 @@
 import asyncio
-import concurrent.futures
 import logging
 
 import backoff
@@ -13,8 +12,6 @@ from jsearch.syncer.processor import SyncProcessor
 logger = logging.getLogger(__name__)
 
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
-REORGS_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL / 2
-PENDING_TX_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL * 2
 
 SYNCER_BALANCE_MODE_LATEST = 'latest'
 SYNCER_BALANCE_MODE_OFFSET = 'offset'
@@ -111,11 +108,8 @@ class Manager:
         self.raw_db = raw_db
         self.sync_range = sync_range
         self._running = False
-        self.chunk_size = settings.JSEARCH_SYNC_PARALLEL
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
         self.balance_mode = balance_mode
-
-        self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
 
         self.latest_available_block_num = None
         self.latest_synced_block_num = None

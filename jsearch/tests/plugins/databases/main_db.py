@@ -1,6 +1,7 @@
 import logging
 import os
 from asyncio import AbstractEventLoop
+import warnings
 
 import aiopg
 import asyncpg
@@ -16,11 +17,15 @@ logger = logging.getLogger(__name__)
 
 
 def setup_database(connection_string):
+    logging.getLogger('alembic').setLevel(logging.CRITICAL)
+    warnings.simplefilter("ignore")
     from jsearch.common.alembic_utils import upgrade
     upgrade(connection_string, 'head')
 
 
 def teardown_database(connection_string):
+    logging.getLogger('alembic').setLevel(logging.CRITICAL)
+    warnings.simplefilter("ignore")
     from jsearch.common.alembic_utils import downgrade
 
     parsed_dsn = dsnparse.parse(connection_string)
@@ -40,7 +45,7 @@ def teardown_database(connection_string):
 
 @pytest.fixture(scope="session")
 def db_dsn():
-    return os.environ['JSEARCH_MAIN_DB_TEST']
+    return os.environ['JSEARCH_MAIN_DB']
 
 
 @pytest.fixture(scope="function")
@@ -102,11 +107,6 @@ def do_truncate_db(db):
 def truncate_db(do_truncate_db):
     yield
     do_truncate_db()
-
-
-@pytest.fixture(scope='function', autouse=True)
-def mock_db_dsn(mocker, db_dsn):
-    mocker.patch('jsearch.settings.JSEARCH_MAIN_DB', db_dsn)
 
 
 @pytest.mark.asyncio

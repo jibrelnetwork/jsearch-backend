@@ -503,9 +503,9 @@ async def test_get_account_token_transfers_with_tip(
             "transactionHash": "0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c",
             "from": "0xf73c3c65bde10bf26c2e1763104e609a41702efe",
             "to": "0x355941cf7ac065310fd4023e1b913209f076a48a",
-            "tokenAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
+            "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
             "amount": "1664600000000000000000",
-            "tokenDecimals": 18,
+            "decimals": 18,
         }
     ]
 
@@ -544,7 +544,7 @@ async def test_get_account_token_balance_with_tip(
 
     data = dict() if case.has_empty_data_response else {
         "accountAddress": "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0",
-        "tokenAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
+        "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
         "balance": 1000000,
         "decimals": 18,
     }
@@ -784,9 +784,9 @@ async def test_get_token_transfers_with_tip(
             "transactionHash": "0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c",
             "from": "0xf73c3c65bde10bf26c2e1763104e609a41702efe",
             "to": "0x355941cf7ac065310fd4023e1b913209f076a48a",
-            "tokenAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
+            "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
             "amount": "1664600000000000000000",
-            "tokenDecimals": 18,
+            "decimals": 18,
         }
     ]
 
@@ -824,7 +824,7 @@ async def test_get_token_holders_with_tip(
     data = [] if case.has_empty_data_response else [
         {
             "accountAddress": "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0",
-            "tokenAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
+            "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
             "balance": 1000000,
             "decimals": 18,
         }
