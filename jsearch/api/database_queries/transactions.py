@@ -1,4 +1,4 @@
-from sqlalchemy import select, Column, and_, or_, false
+from sqlalchemy import select, Column, and_, false, union
 from sqlalchemy.orm import Query
 from typing import List, Optional, Dict
 
@@ -73,6 +73,7 @@ def get_tx_by_address_query(address: str, ordering: Ordering, columns: List[Colu
 
 
 def get_tx_by_address_and_block_query(
+        limit: int,
         address: str,
         block_number: int,
         ordering: Ordering,
@@ -82,19 +83,28 @@ def get_tx_by_address_and_block_query(
     query = get_tx_by_address_query(address, ordering, columns)
 
     if tx_index is None:
-        q = ordering.operator_or_equal(transactions_t.c.block_number, block_number)
-    else:
-        q = or_(
-            ordering.operator(transactions_t.c.block_number, block_number),
-            and_(
-                transactions_t.c.block_number == block_number,
-                ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
-            )
+        query = query.where(
+            ordering.operator_or_equal(transactions_t.c.block_number, block_number)
         )
-    return query.where(q)
+    else:
+        query = union(
+            query.where(
+                ordering.operator(transactions_t.c.block_number, block_number),
+            ).limit(limit).alias('after_block'),
+            query.where(
+                and_(
+                    transactions_t.c.block_number == block_number,
+                    ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
+                )
+            ).limit(limit).alias('after_transaction')
+        )
+        query = query.order_by(*ordering.get_ordering_for_union_query(query))
+
+    return query.limit(limit)
 
 
 def get_tx_by_address_and_timestamp_query(
+        limit: str,
         address: str,
         timestamp: int,
         ordering: Ordering,
@@ -105,13 +115,18 @@ def get_tx_by_address_and_timestamp_query(
     if tx_index is None:
         q = ordering.operator_or_equal(transactions_t.c.timestamp, timestamp)
     else:
-        q = or_(
-            ordering.operator(transactions_t.c.timestamp, timestamp),
-            and_(
-                transactions_t.c.timestamp == timestamp,
-                ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
-            )
+        query = union(
+            query.where(
+                ordering.operator(transactions_t.c.timestamp, timestamp),
+            ).limit(limit).alias('after_block'),
+            query.where(
+                and_(
+                    transactions_t.c.timestamp == timestamp,
+                    ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
+                )
+            ).limit(limit).alias('after_transaction')
         )
+        query = query.order_by(*ordering.get_ordering_for_union_query(query))
     return query.where(q)
 
 

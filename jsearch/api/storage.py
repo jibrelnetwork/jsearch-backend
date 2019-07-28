@@ -141,13 +141,12 @@ class Storage:
 
         limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
 
-        if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_tx_by_address_and_block_query(address, block_number, ordering, tx_index)
-        else:
-            query = get_tx_by_address_and_timestamp_query(address, timestamp, ordering, tx_index)
-
         # Notes: syncer writes txs to main db with denormalization (x2 records per transaction)
-        query = query.limit(limit * 2)
+        query_limit = limit * 2
+        if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_tx_by_address_and_block_query(query_limit, address, block_number, ordering, tx_index)
+        else:
+            query = get_tx_by_address_and_timestamp_query(query_limit, address, timestamp, ordering, tx_index)
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection, query)
