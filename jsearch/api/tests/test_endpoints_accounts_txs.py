@@ -2,11 +2,14 @@ import logging
 from urllib.parse import parse_qs, urlencode
 
 import pytest
+import time
 from typing import List, Dict, Any, Tuple, Callable
 
 from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
+
+TIMESTAMP = int(time.time())
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
 
@@ -28,9 +31,10 @@ def create_account_txs(block_factory, transaction_factory) -> Callable[[str], An
         if account_address and account_address != account:
             raise ValueError(f'Fixture already was called for {account_address}')
         elif not account_address:
-            blocks = block_factory.create_batch(block_count)
             txs = []
-            for block in blocks:
+            for block_i in range(block_count):
+                timestamp = TIMESTAMP + block_i
+                block = block_factory.create(timestamp=timestamp)
                 for i in range(0, tx_in_block):
                     kwargs = {'transaction_index': i}
                     if block.number % 2:
@@ -84,6 +88,22 @@ URL = '/v1/accounts/address/transactions?{params}'
                 URL.format(params=urlencode({'block_number': 3, 'transaction_index': 0, 'limit': 3, 'order': 'desc'})),
                 URL.format(params=urlencode({'block_number': 4, 'transaction_index': 1, 'limit': 3, 'order': 'desc'}))
         ),
+        (
+                URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 3, 'order': 'asc'})),
+                [(0, 0), (0, 1), (1, 0)],
+                URL.format(params=urlencode({
+                    'timestamp': TIMESTAMP + 1,
+                    'transaction_index': 1,
+                    'limit': 3,
+                    'order': 'asc'
+                })),
+                URL.format(params=urlencode({
+                    'timestamp': TIMESTAMP,
+                    'transaction_index': 0,
+                    'limit': 3,
+                    'order': 'asc'
+                })),
+        ),
     ],
     ids=[
         URL.format(params=urlencode({'limit': 3})),
@@ -91,6 +111,7 @@ URL = '/v1/accounts/address/transactions?{params}'
         URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
         URL.format(params=urlencode({'block_number': 3, 'transaction_index': 1, 'limit': 3})),
         URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
+        URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 3, 'order': 'asc'})),
     ]
 )
 async def test_account_transactions(cli,
