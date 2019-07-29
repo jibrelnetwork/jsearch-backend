@@ -4,6 +4,8 @@ from urllib.parse import parse_qs
 import pytest
 from typing import List, Dict, Any, Tuple
 
+from jsearch.api.models import InternalTransaction
+
 logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
@@ -135,3 +137,85 @@ async def test_get_blocks_errors(cli, block_factory, url, errors):
     assert resp.status == 400
     assert not resp_json['status']['success']
     assert resp_json['status']['errors'] == errors
+
+
+@pytest.fixture
+def blocks_422(block_factory):
+    return [
+        block_factory.create(),
+        block_factory.create(),
+        block_factory.create(),
+    ]
+
+
+@pytest.fixture
+def internal_txs_422(blocks_422, internal_transaction_factory):
+    return [
+        internal_transaction_factory.create(block_hash=blocks_422[0].hash, block_number=blocks_422[0].number),
+        internal_transaction_factory.create(block_hash=blocks_422[0].hash, block_number=blocks_422[0].number),
+        internal_transaction_factory.create(block_hash=blocks_422[1].hash, block_number=blocks_422[1].number),
+        internal_transaction_factory.create(block_hash=blocks_422[1].hash, block_number=blocks_422[1].number),
+        internal_transaction_factory.create(block_hash=blocks_422[1].hash, block_number=blocks_422[2].number,
+                                            is_forked=True),
+        internal_transaction_factory.create(block_hash=blocks_422[2].hash, block_number=blocks_422[2].number,
+                                            parent_tx_hash='0xt1'),
+        internal_transaction_factory.create(block_hash=blocks_422[2].hash, block_number=blocks_422[2].number),
+    ]
+
+
+async def test_get_block_internal_txs_bynumber_ok(cli, blocks_422, internal_txs_422):
+
+    url = "v1/blocks/{}/internal_transactions".format(blocks_422[2].number)
+    resp = await cli.get(url)
+    assert resp.status == 200
+    resp_json = await resp.json()
+
+    assert len(resp_json['data']) == 2
+    assert resp_json['data'][0] == InternalTransaction(**internal_txs_422[5].as_dict()).to_dict()
+    assert resp_json['data'][1] == InternalTransaction(**internal_txs_422[6].as_dict()).to_dict()
+
+    url = "v1/blocks/{}/internal_transactions?parent_tx_hash=0xt1".format(blocks_422[2].number)
+    resp = await cli.get(url)
+    assert resp.status == 200
+    resp_json = await resp.json()
+
+    assert len(resp_json['data']) == 1
+    assert resp_json['data'][0] == InternalTransaction(**internal_txs_422[5].as_dict()).to_dict()
+
+
+async def test_get_block_internal_txs_byhash_ok(cli, blocks_422, internal_txs_422):
+    url = "v1/blocks/{}/internal_transactions".format(blocks_422[2].hash)
+    resp = await cli.get(url)
+    assert resp.status == 200
+    resp_json = await resp.json()
+
+    assert len(resp_json['data']) == 2
+    assert resp_json['data'][0] == InternalTransaction(**internal_txs_422[5].as_dict()).to_dict()
+    assert resp_json['data'][1] == InternalTransaction(**internal_txs_422[6].as_dict()).to_dict()
+
+    url = "v1/blocks/{}/internal_transactions?parent_tx_hash=0xt1".format(blocks_422[2].hash)
+    resp = await cli.get(url)
+    assert resp.status == 200
+    resp_json = await resp.json()
+
+    assert len(resp_json['data']) == 1
+    assert resp_json['data'][0] == InternalTransaction(**internal_txs_422[5].as_dict()).to_dict()
+
+
+async def test_get_block_internal_txs_latest_ok(cli, blocks_422, internal_txs_422, block_factory):
+
+    url = "v1/blocks/latest/internal_transactions"
+    resp = await cli.get(url)
+    assert resp.status == 200
+    resp_json = await resp.json()
+
+    assert len(resp_json['data']) == 2
+    assert resp_json['data'][0] == InternalTransaction(**internal_txs_422[5].as_dict()).to_dict()
+    assert resp_json['data'][1] == InternalTransaction(**internal_txs_422[6].as_dict()).to_dict()
+
+    block_factory.create()
+    resp = await cli.get(url)
+    assert resp.status == 200
+    resp_json = await resp.json()
+
+    assert len(resp_json['data']) == 0
