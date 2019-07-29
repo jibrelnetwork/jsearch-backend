@@ -1,9 +1,40 @@
 swagger: '2.0'
 info:
-  version: "1.0.2"
+  version: "1.0.3"
   title: Jsearch API
   description: |
     Jsearch - Ethereum Blockchain Explorer API
+
+    **Common information**
+
+    **Requests and Responses**
+
+    Response body of any call can be is an empty string or JSON object, like:
+
+    Successful case
+    ```
+    {
+      'status': {
+        'success': true,
+        'errors': [],
+      }
+      "data": [...],
+      "meta": {...},
+      "paging": {...}
+    }
+    ```
+    Error case
+    ```
+    {
+        'status': {
+            'success': false,
+            'errors': [
+                ...
+            ],
+        }
+    }
+    ```
+    **note**: `paging` and `meta` objects are optional and can be omitted in response.
 
     **API errors**
 
@@ -19,8 +50,7 @@ info:
                   'message': 'some err text'
                 }
             ],
-        },
-        'data': null
+        }
     }
     ```
     - 500 series error codes do not return JSON bodies.
@@ -38,9 +68,9 @@ info:
       "status": {...},
       "data": [...],
       "meta": {...},
-      "links": {
-        "current": "https://jsearch.jdev.network/v1/...",
-        "next": "https://jsearch.jdev.network/v1/..."
+      "paging": {
+        "link": "/v1/...",
+        "next": "/v1/..."
       }
     }
     ```
@@ -187,8 +217,8 @@ parameters:
     description: "A parent transaction index that points to the start of the requested data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
     type: integer
     default: 0
-  last_synced:
-    name: last_synced
+  id:
+    name: id
     in: query
     required: false
     description: "A last synced row id that points to the start of the requested data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
@@ -240,18 +270,19 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "addresses", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/accounts/{address}:
+  /v1/accounts/{address}/{tag}:
     get:
       summary: Get Account State by address
       description: |
-        You can use this endpoint to receive `Account State` data on the specified block hash or on the latest known block by address.
+        You can use this endpoint to receive `Account State` data on the specified block number or hash or on the latest known block by address.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
       operationId: getAccount
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
+      - $ref: '#/parameters/tag'
+      - $ref: '#/parameters/blockchain_tip'
         description: Account address
       responses:
         200:
@@ -304,8 +335,8 @@ paths:
                   $ref: '#/definitions/Log'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -340,8 +371,8 @@ paths:
                   $ref: '#/definitions/Transaction'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -377,8 +408,8 @@ paths:
                   $ref: '#/definitions/InternalTransaction'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -396,7 +427,7 @@ paths:
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/timestamp'
-      - $ref: '#/parameters/last_synced'
+      - $ref: '#/parameters/id'
       responses:
         200:
           description: pending transactions for specific address
@@ -408,8 +439,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/PendingTransaction'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -443,8 +474,8 @@ paths:
                   $ref: '#/definitions/Block'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -477,8 +508,8 @@ paths:
                 $ref: '#/definitions/Uncle'
             meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-            links:
-                $ref: '#/definitions/links'
+            paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -578,8 +609,8 @@ paths:
                   $ref: '#/definitions/TokenTransfer'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -640,8 +671,8 @@ paths:
                   $ref: '#/definitions/EthTransfer'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -674,8 +705,8 @@ paths:
                   $ref: '#/definitions/Block'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -736,8 +767,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Transaction'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -773,8 +804,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/InternalTransaction'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -866,8 +897,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/InternalTransaction'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -936,8 +967,8 @@ paths:
                   $ref: '#/definitions/Uncle'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -983,7 +1014,7 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/order'
-      - $ref: '#/parameters/last_synced'
+      - $ref: '#/parameters/id'
       responses:
         200:
           description: Contract
@@ -996,8 +1027,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Contract'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -1040,7 +1071,7 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/order'
-      - $ref: '#/parameters/last_synced'
+      - $ref: '#/parameters/id'
       responses:
         200:
           description: Token
@@ -1053,8 +1084,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Token'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -1120,8 +1151,8 @@ paths:
                   $ref: '#/definitions/TokenTransfer'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -1140,7 +1171,7 @@ paths:
       - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/contract_address'
       - $ref: '#/parameters/order'
-      - $ref: '#/parameters/last_synced'
+      - $ref: '#/parameters/id'
       responses:
         200:
           description: token holders list
@@ -1155,8 +1186,8 @@ paths:
                   $ref: '#/definitions/TokenHolder'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -1348,7 +1379,7 @@ paths:
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
 
-  /v1/wallet/get_events:
+  /v1/wallet/events:
     get:
       summary: Get blockchain events (contract call, erc20 transfer, either transfer, transactions cancelation) for address.
       description: "Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint\">link</a> for details"
@@ -1378,8 +1409,8 @@ paths:
                       $ref: '#/definitions/PendingTransactionInfo'
               meta:
                 $ref: '#/definitions/BlockchainTipInfo'
-              links:
-                $ref: '#/definitions/links'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: Validation errors
           schema:
@@ -2180,19 +2211,19 @@ definitions:
               type: string
               description: Hash of the method signature and encoded parameters.
               example: "0x6740d36c0000000000000000000000000000000000000000000000000000000000000005"
-  links:
-    description: The links object that’s a sibling of the paginated data
+  paging:
+    description: The paging object that’s a sibling of the paginated data
     properties:
-      current:
+      link:
         type: string
-        description: The current page of data.
+        description: The current page of data (relative url).
         format: url
-        example: "https://jsearch.jdev.network/v1/..."
+        example: "/v1/..."
       next:
         type: string
-        description: The next page of data. The server MUST determine whether a next page exists, and return null as the next link if not.
+        description: The next page of data (relative url). The server MUST determine whether a next page exists, and return null as the next link if not.
         format: url
-        example: "https://jsearch.jdev.network/v1/..."
+        example: "/v1/..."
 
 schemes:
  - http
