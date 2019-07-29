@@ -23,8 +23,8 @@ def get_link(
         url: URL,
         fields: List[str],
         item: Dict[str, Any],
-        mapping: Optional[Dict[str, str]],
-        params: Dict[str, Any]
+        params: Dict[str, Any],
+        mapping: Optional[Dict[str, str]] = None,
 ) -> str:
     query = {mapping and mapping.get(key) or key: item[key] for key in fields}
     absolute_url = url.with_query({**query, **params})

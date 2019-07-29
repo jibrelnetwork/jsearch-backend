@@ -64,6 +64,10 @@ class BlockRelatedListSchema(Schema):
     default_values = {
         'block_number': Tag.LATEST
     }
+    # Notes: there are cases when outer filters names don't match
+    # with fields in database. When we need a mapping.
+    # On left side: field name for outer HTTP interface
+    # On right side: field name for table
     mapping = {}
 
     class Meta:
