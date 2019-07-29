@@ -77,5 +77,6 @@ async def get_block_uncles(request):
 async def get_block_internal_transactions(request):
     storage = request.app['storage']
     tag = get_tag(request)
-    txs = await storage.get_block_internal_transactions(tag)
+    parent_tx_hash = request.query.get('parent_tx_hash')
+    txs = await storage.get_block_internal_transactions(tag, parent_tx_hash=parent_tx_hash)
     return api_success([t.to_dict() for t in txs])

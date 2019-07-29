@@ -185,14 +185,21 @@ class Storage:
 
             return [models.Transaction(**r) for r in rows]
 
-    async def get_block_internal_transactions(self, tag):
+    async def get_block_internal_transactions(self, tag, parent_tx_hash=None):
         fields = models.InternalTransaction.select_fields()
+        params = [tag.value]
+
         if tag.is_hash():
             condition = "block_hash=$1 AND is_forked=false"
         elif tag.is_number():
             condition = "block_number=$1 AND is_forked=false"
         else:
             condition = "block_number=(SELECT max(number) FROM blocks) AND is_forked=false"
+            params = []
+
+        if parent_tx_hash:
+            condition += " AND parent_tx_hash=$2"
+            params.append(parent_tx_hash)
 
         q = f"""SELECT {fields} FROM internal_transactions
                     WHERE {condition} AND is_forked=false 
@@ -202,8 +209,7 @@ class Storage:
             if tag.is_latest():
                 rows = await conn.fetch(q)
             else:
-                rows = await conn.fetch(q, tag.value)
-
+                rows = await conn.fetch(q, *params)
             return [models.InternalTransaction(**r) for r in rows]
 
     async def get_block(self, tag: Tag):
