@@ -86,10 +86,14 @@ uncles_t = sa.Table(
 internal_transactions_t = sa.Table(
     'internal_transactions',
     metadata,
+    # denormalization for `internal_transaction.transaction.from`
+    sa.Column('tx_origin', sa.String),
+
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, primary_key=True),
     sa.Column('parent_tx_hash', sa.String, primary_key=True),
-    sa.Column('tx_origin', sa.String),
+    # denormalization for `internal_transactions.transaction.transaction_index`
+    sa.Column('parent_tx_index', sa.String, primary_key=True),
     sa.Column('op', sa.String),
     sa.Column('call_depth', HexInteger),
     sa.Column('timestamp', HexInteger),
