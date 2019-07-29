@@ -10,7 +10,7 @@ from uuid import uuid4
 from sqlalchemy.ext.declarative import as_declarative
 
 
-main_db_dsn = os.environ['JSEARCH_MAIN_DB_TEST']
+main_db_dsn = os.environ['JSEARCH_MAIN_DB']
 main_db_engine = create_engine(main_db_dsn)
 
 session: Session = scoped_session(sessionmaker(bind=main_db_engine, autocommit=True, autoflush=True))
