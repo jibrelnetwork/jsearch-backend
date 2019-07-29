@@ -286,6 +286,7 @@ async def test_get_account_internal_transactions_with_tip(
     internal_tx = internal_transaction_factory.create(
         block_number=target_block_number,
         block_hash='0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad',
+        timestamp=1550000000,
         parent_tx_hash='0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5',
         op='suicide',
         call_depth='2',
@@ -309,6 +310,7 @@ async def test_get_account_internal_transactions_with_tip(
         {
             "blockNumber": target_block_number,
             "blockHash": "0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad",
+            "timestamp": 1550000000,
             "parentTxHash": "0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5",
             "op": "suicide",
             "callDepth": 2,
