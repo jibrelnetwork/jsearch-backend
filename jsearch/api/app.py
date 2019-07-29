@@ -89,7 +89,7 @@ async def make_app():
     app.router.add_route('GET', '/v1/wallet/assets_summary', wallets.get_assets_summary)
     app.router.add_route('GET', '/v1/wallet/transfers', wallets.get_wallet_transfers)
     app.router.add_route('GET', '/v1/wallet/transactions', wallets.get_wallet_transactions)
-    app.router.add_route('GET', '/v1/wallet/get_events', wallets.get_wallet_events)
+    app.router.add_route('GET', '/v1/wallet/get_events', wallets.get_wallet_events, name='wallet_events')
 
     app.router.add_static('/docs', swagger_ui_path)
     setup_swagger(app, swagger_from_file=swagger_file)

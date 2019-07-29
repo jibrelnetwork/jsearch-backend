@@ -37,3 +37,11 @@ class PositiveIntOrTagField(fields.Field):
             return value.lower()
 
         self.fail('invalid')
+
+
+class StrLower(fields.String):
+
+    def _deserialize(self, value, attr, data):
+        value = super(StrLower, self)._deserialize(value, attr, data)
+        if value:
+            return value.lower()

@@ -27,7 +27,7 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     address = factory.LazyFunction(generate_address)
 
     hash = factory.LazyFunction(generate_address)
-    transaction_index = factory.Sequence(lambda n: n)
+    transaction_index = factory.Sequence(lambda n: n % 200)
 
     block_number = factory.Sequence(lambda n: n)
     block_hash = factory.LazyFunction(generate_address)
