@@ -202,7 +202,7 @@ class Storage:
             params.append(parent_tx_hash)
 
         q = f"""SELECT {fields} FROM internal_transactions
-                    WHERE {condition} AND is_forked=false 
+                    WHERE {condition} AND is_forked=false
                     ORDER BY transaction_index;"""
 
         async with self.pool.acquire() as conn:

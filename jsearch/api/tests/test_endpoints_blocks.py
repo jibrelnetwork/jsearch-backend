@@ -155,8 +155,10 @@ def internal_txs_422(blocks_422, internal_transaction_factory):
         internal_transaction_factory.create(block_hash=blocks_422[0].hash, block_number=blocks_422[0].number),
         internal_transaction_factory.create(block_hash=blocks_422[1].hash, block_number=blocks_422[1].number),
         internal_transaction_factory.create(block_hash=blocks_422[1].hash, block_number=blocks_422[1].number),
-        internal_transaction_factory.create(block_hash=blocks_422[1].hash, block_number=blocks_422[2].number, is_forked=True),
-        internal_transaction_factory.create(block_hash=blocks_422[2].hash, block_number=blocks_422[2].number, parent_tx_hash='0xt1'),
+        internal_transaction_factory.create(block_hash=blocks_422[1].hash, block_number=blocks_422[2].number,
+                                            is_forked=True),
+        internal_transaction_factory.create(block_hash=blocks_422[2].hash, block_number=blocks_422[2].number,
+                                            parent_tx_hash='0xt1'),
         internal_transaction_factory.create(block_hash=blocks_422[2].hash, block_number=blocks_422[2].number),
     ]
 

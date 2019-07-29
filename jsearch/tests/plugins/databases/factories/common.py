@@ -4,7 +4,6 @@ import datetime
 from eth_utils import to_normalized_address, keccak
 from requests import Session
 from sqlalchemy import create_engine, inspect
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 from uuid import uuid4
 from sqlalchemy.ext.declarative import as_declarative
