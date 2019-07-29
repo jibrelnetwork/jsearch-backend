@@ -1,7 +1,6 @@
 from operator import le, ge, gt, lt
 
 from sqlalchemy import asc, desc
-from sqlalchemy.sql import CompoundSelect
 from typing import Optional, Dict, NamedTuple, List, Callable, Any
 
 from jsearch.typing import OrderScheme, Columns, OrderDirection
@@ -40,9 +39,6 @@ class Ordering(NamedTuple):
     @property
     def apply_direction(self):
         return DIRECTIONS[self.direction]
-
-    def get_ordering_for_union_query(self, table: CompoundSelect):
-        return [self.apply_direction(getattr(table.c, field)) for field in self.fields]
 
 
 def get_order_schema(timestamp: Optional[int]) -> OrderScheme:

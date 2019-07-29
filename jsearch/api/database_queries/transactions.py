@@ -1,4 +1,4 @@
-from sqlalchemy import select, Column, and_, false, union
+from sqlalchemy import select, Column, and_, false, tuple_
 from sqlalchemy.orm import Query
 from typing import List, Optional, Dict
 
@@ -83,24 +83,16 @@ def get_tx_by_address_and_block_query(
     query = get_tx_by_address_query(address, ordering, columns)
 
     if tx_index is None:
-        query = query.where(
-            ordering.operator_or_equal(transactions_t.c.block_number, block_number)
-        )
+        q = ordering.operator_or_equal(transactions_t.c.block_number, block_number)
     else:
-        query = union(
-            query.where(
-                ordering.operator(transactions_t.c.block_number, block_number),
-            ).limit(limit).alias('after_block'),
-            query.where(
-                and_(
-                    transactions_t.c.block_number == block_number,
-                    ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
-                )
-            ).limit(limit).alias('after_transaction')
+        q = ordering.operator_or_equal(
+            tuple_(
+                transactions_t.c.block_number,
+                transactions_t.c.transaction_index
+            ),
+            (block_number, tx_index)
         )
-        query = query.order_by(*ordering.get_ordering_for_union_query(query))
-
-    return query.limit(limit)
+    return query.where(q).limit(limit)
 
 
 def get_tx_by_address_and_timestamp_query(
@@ -113,22 +105,16 @@ def get_tx_by_address_and_timestamp_query(
 ) -> Query:
     query = get_tx_by_address_query(address, ordering, columns)
     if tx_index is None:
-        query = query.where(ordering.operator_or_equal(transactions_t.c.timestamp, timestamp))
+        q = ordering.operator_or_equal(transactions_t.c.timestamp, timestamp)
     else:
-        query = union(
-            query.where(
-                ordering.operator(transactions_t.c.timestamp, timestamp),
-            ).limit(limit).alias('after_block'),
-            query.where(
-                and_(
-                    transactions_t.c.timestamp == timestamp,
-                    ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
-                )
-            ).limit(limit).alias('after_transaction')
+        q = ordering.operator_or_equal(
+            tuple_(
+                transactions_t.c.timestamp,
+                transactions_t.c.transaction_index
+            ),
+            (timestamp, tx_index)
         )
-        query = query.order_by(*ordering.get_ordering_for_union_query(query))
-
-    return query.limit(limit)
+    return query.where(q).limit(limit)
 
 
 def _order_tx_query(query: Query, direction: str) -> Query:
