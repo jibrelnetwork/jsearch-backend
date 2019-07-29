@@ -24,11 +24,9 @@ class Model(object):
     int_to_str = set()
 
     def __init__(self, **fields):
+        self._keys = list(fields.keys())
         for k, v in fields.items():
-            # assert k in self.attribute_map, 'Invalid field "{}"'.format(k)
-            # assert k in self.swagger_types, 'Invalid field "{}"'.format(k)
-            if k in self.attribute_map:
-                setattr(self, k, v)
+            setattr(self, k, v)
 
     def to_dict(self):
         """Returns the model properties as a dict
@@ -84,7 +82,8 @@ class Model(object):
 
     def __repr__(self):
         """For `print` and `pprint`"""
-        return self.int_to_str()
+        params = {key: getattr(self, key, None) for key in self._keys}
+        return f"<{self.__class__.__name__}: {params} >"
 
     def __eq__(self, other):
         """Returns true if both objects are equal"""

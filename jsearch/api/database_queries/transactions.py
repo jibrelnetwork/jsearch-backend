@@ -1,4 +1,4 @@
-from sqlalchemy import select, Column, and_, or_, false
+from sqlalchemy import select, Column, and_, false, tuple_
 from sqlalchemy.orm import Query
 from typing import List, Optional, Dict
 
@@ -73,6 +73,7 @@ def get_tx_by_address_query(address: str, ordering: Ordering, columns: List[Colu
 
 
 def get_tx_by_address_and_block_query(
+        limit: int,
         address: str,
         block_number: int,
         ordering: Ordering,
@@ -84,17 +85,18 @@ def get_tx_by_address_and_block_query(
     if tx_index is None:
         q = ordering.operator_or_equal(transactions_t.c.block_number, block_number)
     else:
-        q = or_(
-            ordering.operator(transactions_t.c.block_number, block_number),
-            and_(
-                transactions_t.c.block_number == block_number,
-                ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
-            )
+        q = ordering.operator_or_equal(
+            tuple_(
+                transactions_t.c.block_number,
+                transactions_t.c.transaction_index
+            ),
+            (block_number, tx_index)
         )
-    return query.where(q)
+    return query.where(q).limit(limit)
 
 
 def get_tx_by_address_and_timestamp_query(
+        limit: str,
         address: str,
         timestamp: int,
         ordering: Ordering,
@@ -105,14 +107,14 @@ def get_tx_by_address_and_timestamp_query(
     if tx_index is None:
         q = ordering.operator_or_equal(transactions_t.c.timestamp, timestamp)
     else:
-        q = or_(
-            ordering.operator(transactions_t.c.timestamp, timestamp),
-            and_(
-                transactions_t.c.timestamp == timestamp,
-                ordering.operator_or_equal(transactions_t.c.transaction_index, tx_index),
-            )
+        q = ordering.operator_or_equal(
+            tuple_(
+                transactions_t.c.timestamp,
+                transactions_t.c.transaction_index
+            ),
+            (timestamp, tx_index)
         )
-    return query.where(q)
+    return query.where(q).limit(limit)
 
 
 def _order_tx_query(query: Query, direction: str) -> Query:
