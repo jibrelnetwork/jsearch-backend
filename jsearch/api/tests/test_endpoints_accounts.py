@@ -267,19 +267,6 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
     ]
 
 
-async def test_get_account_logs(cli, db, main_db_data):
-    from jsearch.api import models
-
-    address = "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a"
-    logs = [models.Log(**item).to_dict() for item in main_db_data['logs'] if item['address'] == address]
-
-    resp = await cli.get(f'/v1/accounts/{address}/logs?order=asc')
-    resp_json = await resp.json()
-
-    assert resp_json['data'] == logs
-    assert resp_json == {'data': logs, 'status': {'errors': [], 'success': True}}
-
-
 @pytest.mark.parametrize(
     "from_,to",
     [
