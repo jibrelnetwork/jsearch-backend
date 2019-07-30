@@ -1,6 +1,6 @@
 swagger: '2.0'
 info:
-  version: "1.0.3"
+  version: "1.0.4"
   title: Jsearch API
   description: |
     Jsearch - Ethereum Blockchain Explorer API
@@ -172,6 +172,13 @@ parameters:
     type: string
     schema:
       example: "latest"
+  tagOptional:
+    name: tag
+    in: query
+    description: block hash, block number or "latest" keyword
+    type: string
+    schema:
+      example: "latest"
   txhash:
     name: txhash
     in: path
@@ -194,6 +201,13 @@ parameters:
     in: query
     required: false
     description: "A block number value that points to the start of the range of block-number-based data. Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 0
+  uncle_number:
+    name: uncle_number
+    in: query
+    required: false
+    description: "An uncle number value that points to the start of the range of uncle-number-based data. Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
     type: integer
     default: 0
   timestamp:
@@ -270,7 +284,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "addresses", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/accounts/{address}/{tag}:
+  /v1/accounts/{address}:
     get:
       summary: Get Account State by address
       description: |
@@ -281,7 +295,7 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/tag'
+      - $ref: '#/parameters/tagOptional'
       - $ref: '#/parameters/blockchain_tip'
         description: Account address
       responses:
@@ -951,7 +965,7 @@ paths:
       parameters:
       - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
-      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/uncle_number'
       - $ref: '#/parameters/timestamp'
       responses:
         200:
@@ -978,7 +992,7 @@ paths:
     get:
       summary: Get Uncle by hash or number or keyword
       description: |
-        You can use this endpoint to receive `Uncle` data by block hash or number or keyword
+        You can use this endpoint to receive `Uncle` data by uncle hash or number or keyword
       operationId: getUncle
       produces:
       - application/json
@@ -1553,6 +1567,9 @@ definitions:
         type: string
         format: hash
         example: "0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5"
+      parentTxIndex:
+        type: integer
+        example: 3
       op:
         type: string
         example: "suicide"
