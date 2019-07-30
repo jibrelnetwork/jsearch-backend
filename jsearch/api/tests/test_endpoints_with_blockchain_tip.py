@@ -8,7 +8,6 @@ from jsearch.api.storage import Storage
 from jsearch.api.structs import BlockchainTip, BlockInfo
 from jsearch.tests.plugins.databases.factories.accounts import AccountStateFactory, AccountFactory
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
-from jsearch.tests.plugins.databases.factories.chain_splits import ChainSplitFactory
 from jsearch.tests.plugins.databases.factories.internal_transactions import InternalTransactionFactory
 from jsearch.tests.plugins.databases.factories.logs import LogFactory
 from jsearch.tests.plugins.databases.factories.reorgs import ReorgFactory
@@ -95,7 +94,7 @@ cases = [
 def _get_tip(
         storage: Storage,
         block_factory: BlockFactory,
-        chain_split_factory: ChainSplitFactory,
+        chain_events_factory,
         reorg_factory: ReorgFactory,
 ) -> Callable[[bool], Awaitable[BlockchainTip]]:
     async def inner(is_forked: bool) -> BlockchainTip:
@@ -110,9 +109,9 @@ def _get_tip(
             number=100,
         )
 
-        chain_splits = chain_split_factory.create(
-            common_block_hash=common_block.hash,
-            common_block_number=common_block.number,
+        chain_splits = chain_events_factory.create(
+            block_hash=common_block.hash,
+            block_number=common_block.number,
         )
         reorg_factory.create(
             block_hash=forked_block.hash,
