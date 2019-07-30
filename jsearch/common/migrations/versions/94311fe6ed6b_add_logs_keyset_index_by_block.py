@@ -12,18 +12,18 @@ from jsearch.common import tables
 
 # revision identifiers, used by Alembic.
 revision = '94311fe6ed6b'
-down_revision = '7ad9df46ab41'
+down_revision = '90d4195a9021'
 branch_labels = None
 depends_on = None
 
 
 UP_SQL = """
-CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_logs_keyset_by_block
-ON logs(address, block_number, transaction_index, log_index) WHERE is_forked = false;
+CREATE INDEX CONCURRENTLY ix_logs_keyset_by_block
+ON logs(address, block_number, transaction_index, log_index) WHERE is_forked = false
 """
 
 DOWN_SQL = """
-DROP INDEX CONCURRENTLY ix_logs_keyset_by_block;
+DROP INDEX CONCURRENTLY ix_logs_keyset_by_block
 """
 
 
