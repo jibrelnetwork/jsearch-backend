@@ -23,12 +23,10 @@ FROM blocks
 WHERE logs.block_hash = blocks.hash;
 """
 
-DOWN_SQL = ""
-
 
 def upgrade():
     op.execute(UP_SQL)
 
 
 def downgrade():
-    op.execute(DOWN_SQL)
+    pass
