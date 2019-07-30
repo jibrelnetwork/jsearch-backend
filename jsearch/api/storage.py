@@ -24,7 +24,9 @@ from jsearch.api.database_queries.blocks import (
 )
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, \
     get_internal_txs_by_address_and_block_query, get_internal_txs_by_address_and_timestamp_query
-from jsearch.api.database_queries.logs import get_logs_by_address_query
+from jsearch.api.database_queries.logs import (
+    get_logs_by_address_and_block_query, get_logs_by_address_and_timestamp_query
+)
 from jsearch.api.database_queries.pending_transactions import (
     get_pending_txs_by_account,
     get_outcoming_pending_txs_count,
@@ -434,14 +436,34 @@ class Storage:
             rows = await conn.fetch(query, tx_hash)
             return [models.Log(**r) for r in rows]
 
-    async def get_account_logs(self,
-                               address: str,
-                               block_from: int,
-                               block_until: int,
-                               order: str,
-                               limit: int,
-                               offset: int) -> Tuple[List[models.Log], Optional[LastAffectedBlock]]:
-        query = get_logs_by_address_query(address, order, limit, offset, block_from, block_until)
+    async def get_account_logs(
+            self,
+            address: str,
+            limit: int,
+            ordering: Ordering,
+            block_number: Optional[int],
+            timestamp: Optional[int],
+            transaction_index: Optional[int],
+            log_index: Optional[int],
+    ) -> Tuple[List[models.Log], Optional[LastAffectedBlock]]:
+        if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_logs_by_address_and_block_query(
+                address=address,
+                limit=limit,
+                ordering=ordering,
+                block_number=block_number,
+                transaction_index=transaction_index,
+                log_index=log_index,
+            )
+        else:
+            query = get_logs_by_address_and_timestamp_query(
+                address=address,
+                limit=limit,
+                ordering=ordering,
+                timestamp=timestamp,
+                transaction_index=transaction_index,
+                log_index=log_index,
+            )
 
         async with self.pool.acquire() as conn:
             rows = await fetch(conn, query)
