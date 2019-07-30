@@ -4,7 +4,7 @@ from collections import defaultdict, OrderedDict
 
 import asyncpgsa
 from itertools import groupby
-from sqlalchemy import select
+from sqlalchemy import select, func, and_, false
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
@@ -24,7 +24,10 @@ from jsearch.api.database_queries.blocks import (
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, \
     get_internal_txs_by_address_and_block_query, get_internal_txs_by_address_and_timestamp_query
 from jsearch.api.database_queries.logs import get_logs_by_address_query
-from jsearch.api.database_queries.pending_transactions import get_pending_txs_by_account
+from jsearch.api.database_queries.pending_transactions import (
+    get_pending_txs_by_account,
+    get_outcoming_pending_txs_count,
+)
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_token,
     get_token_transfers_by_account
@@ -41,7 +44,7 @@ from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import blocks_t, chain_splits_t, reorgs_t, wallet_events_t
+from jsearch.common.tables import blocks_t, chain_splits_t, reorgs_t, wallet_events_t, accounts_state_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock
 
@@ -797,7 +800,7 @@ class Storage:
 
         query = """
             SELECT "nonce" FROM accounts_state
-            WHERE address=$1 ORDER BY block_number DESC LIMIT 1;
+            WHERE address=$1 AND is_forked=false ORDER BY block_number DESC LIMIT 1;
         """
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, address)
@@ -901,3 +904,19 @@ class Storage:
             result.append(tx_data)
 
         return result
+
+    async def get_account_transaction_count(self, account_address, include_pending_txs=True):
+        query = select([func.max(accounts_state_t.c.nonce)]).where(
+            and_(accounts_state_t.c.address == account_address,
+                 accounts_state_t.c.is_forked.is_(false())
+                 )
+        )
+
+        rows = await fetch(self.pool, query)
+        res = rows[0]['max_1']
+        res = await self.get_nonce(account_address)
+        if include_pending_txs:
+            query = get_outcoming_pending_txs_count(account_address)
+            rows = await fetch(self.pool, query)
+            res += rows[0]['count_1']
+        return res
