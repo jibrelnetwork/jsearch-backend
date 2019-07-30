@@ -280,20 +280,20 @@ async def test_get_account_logs(cli, db, main_db_data):
     assert resp_json == {'data': logs, 'status': {'errors': [], 'success': True}}
 
 
-async def test_get_account_internal_transactions(cli, transaction_factory, internal_transaction_factory):
-    transaction_factory.create(
-        hash='0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
-        address='0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
-        from_='0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
-        to='0x70137010922f2fc2964b3792907f79fbb75febe8',
-    )
+async def test_get_account_internal_transactions(cli, block_factory, transaction_factory, internal_transaction_factory):
+    block = block_factory.create(timestamp=1550000000)
+
+    tx = transaction_factory.create_for_block(
+        block=block,
+        **{
+            'hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+            'address': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+            'from_': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+            'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+        }
+    )[0]
 
     internal_transaction_data = {
-        'block_number': 42,
-        'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
-        'timestamp': 1550000000,
-        'parent_tx_hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
-        'tx_origin': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
         'op': 'suicide',
         'call_depth': NotImplemented,
         'from_': NotImplemented,
@@ -305,7 +305,8 @@ async def test_get_account_internal_transactions(cli, transaction_factory, inter
         'transaction_index': NotImplemented,
     }
 
-    internal_transaction_factory.create(
+    internal_transaction_factory.create_for_tx(
+        tx=tx,
         **{
             **internal_transaction_data,
             **{
@@ -316,7 +317,8 @@ async def test_get_account_internal_transactions(cli, transaction_factory, inter
             }
         }
     )
-    internal_transaction_factory.create(
+    internal_transaction_factory.create_for_tx(
+        tx=tx,
         **{
             **internal_transaction_data,
             **{
@@ -328,60 +330,62 @@ async def test_get_account_internal_transactions(cli, transaction_factory, inter
         }
     )
 
-    resp = await cli.get(f'v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/internal_transactions')
+    resp = await cli.get(
+        f'v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/'
+        f'internal_transactions?timestamp=1550000000')
     resp_json = await resp.json()
 
     assert resp.status == 200
-    assert resp_json == {
-        'status': {
-            'success': True,
-            'errors': [],
-        },
-        'data': [
-            {
-                'blockNumber': 42,
-                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
-                'timestamp': 1550000000,
-                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
-                'op': 'suicide',
-                'callDepth': 2,
-                'from': '0x2222222222222222222222222222222222222222',
-                'to': '0x3333333333333333333333333333333333333333',
-                'value': '1000',
-                'gasLimit': '2000',
-                'input': '0x',
-                'status': 'success',
-                'transactionIndex': 8,
-            },
-            {
-                'blockNumber': 42,
-                'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
-                'timestamp': 1550000000,
-                'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
-                'op': 'suicide',
-                'callDepth': 1,
-                'from': '0x1111111111111111111111111111111111111111',
-                'to': '0x2222222222222222222222222222222222222222',
-                'value': '1000',
-                'gasLimit': '2000',
-                'input': '0x',
-                'status': 'success',
-                'transactionIndex': 7,
-            }
-        ]
+    assert resp_json['status'] == {
+        'success': True,
+        'errors': [],
     }
+    assert resp_json['data'] == [
+        {
+            'blockNumber': tx.block_number,
+            'blockHash': tx.block_hash,
+            'timestamp': tx.timestamp,
+            'parentTxHash': tx.hash,
+            'parentTxIndex': tx.transaction_index,
+            'op': 'suicide',
+            'callDepth': 2,
+            'from': '0x2222222222222222222222222222222222222222',
+            'to': '0x3333333333333333333333333333333333333333',
+            'value': '1000',
+            'gasLimit': '2000',
+            'input': '0x',
+            'status': 'success',
+            'transactionIndex': 8,
+        },
+        {
+            'blockNumber': tx.block_number,
+            'blockHash': tx.block_hash,
+            'timestamp': tx.timestamp,
+            'parentTxHash': tx.hash,
+            'parentTxIndex': tx.transaction_index,
+            'op': 'suicide',
+            'callDepth': 1,
+            'from': '0x1111111111111111111111111111111111111111',
+            'to': '0x2222222222222222222222222222222222222222',
+            'value': '1000',
+            'gasLimit': '2000',
+            'input': '0x',
+            'status': 'success',
+            'transactionIndex': 7,
+        }
+    ]
 
 
 @pytest.mark.parametrize(
     "from_,to",
     [
         (
-                '0x1111111111111111111111111111111111111111',
-                '0x2222222222222222222222222222222222222222',
+            '0x1111111111111111111111111111111111111111',
+            '0x2222222222222222222222222222222222222222',
         ),
         (
-                '0x2222222222222222222222222222222222222222',
-                '0x1111111111111111111111111111111111111111',
+            '0x2222222222222222222222222222222222222222',
+            '0x1111111111111111111111111111111111111111',
         ),
     ],
 )
