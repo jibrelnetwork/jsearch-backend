@@ -1,4 +1,4 @@
-from sqlalchemy import select, Column, desc, false, and_, tuple_
+from sqlalchemy import select, Column, false, and_, tuple_
 from sqlalchemy.orm import Query
 from typing import List, Optional, Dict
 
