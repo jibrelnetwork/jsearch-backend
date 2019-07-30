@@ -654,7 +654,7 @@ class Storage:
             )
             wallet_events.append(wallet_event)
 
-        last_affected_block = max([event['blockNumber'] for event in wallet_events], default=0)
+        last_affected_block = max([event['blockNumber'] for event in wallet_events], default=None)
         return wallet_events, last_affected_block
 
     async def get_wallet_assets_transfers(self, addresses: List[str], limit: int, offset: int,
