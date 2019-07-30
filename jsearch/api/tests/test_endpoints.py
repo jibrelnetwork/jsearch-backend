@@ -353,6 +353,7 @@ async def test_get_receipt(cli, main_db_data):
             {'address': main_db_data['logs'][0]['address'],
              'blockHash': main_db_data['logs'][0]['block_hash'],
              'blockNumber': main_db_data['logs'][0]['block_number'],
+             'timestamp': main_db_data['logs'][0]['timestamp'],
              'data': main_db_data['logs'][0]['data'],
              'logIndex': main_db_data['logs'][0]['log_index'],
              'removed': main_db_data['logs'][0]['removed'],

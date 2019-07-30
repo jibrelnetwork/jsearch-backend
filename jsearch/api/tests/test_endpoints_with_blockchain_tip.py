@@ -562,6 +562,7 @@ async def test_get_account_logs_with_tip(
     log = log_factory.create(
         block_number=target_block_number,
         block_hash='0x4c285ba67d33a3cd670f5c4decfb10a41b929e7c4139766abfd60a24ee1fa148',
+        timestamp=1561100257,
         log_index='0',
         address='0x47071214d1ef76eeb26e9ac3ec6cc965ab8eb75b',
         data='0x00000000000000000000000013f26856cbacaaba9c4488a31c72e605fae029fc',
@@ -583,6 +584,7 @@ async def test_get_account_logs_with_tip(
             "address": "0x47071214d1ef76eeb26e9ac3ec6cc965ab8eb75b",
             "blockHash": "0x4c285ba67d33a3cd670f5c4decfb10a41b929e7c4139766abfd60a24ee1fa148",
             "blockNumber": target_block_number,
+            "timestamp": 1561100257,
             "data": "0x00000000000000000000000013f26856cbacaaba9c4488a31c72e605fae029fc",
             "logIndex": 0,
             "removed": False,
