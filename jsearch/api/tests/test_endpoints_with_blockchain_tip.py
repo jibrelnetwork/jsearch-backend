@@ -845,7 +845,7 @@ async def test_get_wallet_events_with_tip(
     tx, _ = transaction_factory.create_for_block(block=block)
     event = wallet_events_factory.create_token_transfer(tx=tx, block=block)
 
-    url = 'v1/wallet/get_events?{query_params}'.format(
+    url = 'v1/wallet/events?{query_params}'.format(
         query_params=urlencode({
             'blockchain_address': event.address,
             'blockchain_tip': tip.tip_hash,
