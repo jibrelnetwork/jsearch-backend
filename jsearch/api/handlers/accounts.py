@@ -296,3 +296,13 @@ async def get_account_token_balances_multi(request):
     balances, last_affected_block = await storage.get_account_tokens_balances(account_address, tokens_addresses)
     balances, tip_meta = await maybe_apply_tip(storage, tip_hash, balances, last_affected_block, empty=[])
     return api_success([b.to_dict() for b in balances], meta=tip_meta)
+
+
+@ApiError.catch
+async def get_account_transaction_count(request):
+    storage = request.app['storage']
+    account_address = request.match_info['address'].lower()
+    include_pending_txs = not request.query.get('include_pending_txs') == 'false'
+
+    tx_count = await storage.get_account_transaction_count(account_address, include_pending_txs)
+    return api_success(tx_count)
