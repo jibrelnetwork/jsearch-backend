@@ -434,14 +434,25 @@ class Storage:
             rows = await conn.fetch(query, tx_hash)
             return [models.Log(**r) for r in rows]
 
-    async def get_account_logs(self,
-                               address: str,
-                               block_from: int,
-                               block_until: int,
-                               order: str,
-                               limit: int,
-                               offset: int) -> Tuple[List[models.Log], Optional[LastAffectedBlock]]:
-        query = get_logs_by_address_query(address, order, limit, offset, block_from, block_until)
+    async def get_account_logs(
+            self,
+            address: str,
+            limit: int,
+            ordering: Ordering,
+            block_number: Optional[int],
+            timestamp: Optional[int],
+            transaction_index: Optional[int],
+            log_index: Optional[int],
+    ) -> Tuple[List[models.Log], Optional[LastAffectedBlock]]:
+        query = get_logs_by_address_query(
+            address=address,
+            limit=limit,
+            ordering=ordering,
+            block_number=block_number,
+            timestamp=timestamp,
+            transaction_index=transaction_index,
+            log_index=log_index,
+        )
 
         async with self.pool.acquire() as conn:
             rows = await fetch(conn, query)
