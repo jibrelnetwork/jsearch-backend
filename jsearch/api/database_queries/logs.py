@@ -1,4 +1,4 @@
-from sqlalchemy import select, Column, desc
+from sqlalchemy import select, Column, desc, false, and_, tuple_
 from sqlalchemy.orm import Query
 from typing import List, Optional, Dict
 
@@ -38,18 +38,91 @@ def get_logs_ordering(scheme: OrderScheme, direction: OrderDirection) -> Orderin
     return get_ordering(columns, scheme, direction)
 
 
-def get_logs_by_address_query(
+def get_logs_by_address_query(address: str, ordering: Ordering) -> Query:
+    return select(
+        columns=get_default_fields(),
+        whereclause=and_(
+            logs_t.c.is_forked == false(),
+            logs_t.c.address == address,
+        )
+    ).order_by(*ordering.columns)
+
+
+def get_logs_by_address_and_block_query(
         address: str,
         limit: int,
         ordering: Ordering,
         block_number: Optional[int],
+        transaction_index: Optional[int],
+        log_index: Optional[int],
+) -> Query:
+    query = get_logs_by_address_query(address, ordering)
+
+    if transaction_index is None and log_index is None:
+        q = ordering.operator_or_equal(logs_t.c.block_number, block_number)
+    elif log_index is None:
+        q = ordering.operator_or_equal(
+            tuple_(
+                logs_t.c.block_number,
+                logs_t.c.transaction_index,
+            ),
+            (
+                block_number,
+                transaction_index,
+            )
+        )
+    else:
+        q = ordering.operator_or_equal(
+            tuple_(
+                logs_t.c.block_number,
+                logs_t.c.transaction_index,
+                logs_t.c.log_index,
+            ),
+            (
+                block_number,
+                transaction_index,
+                log_index,
+            )
+        ).self_group()
+
+    return query.where(q).limit(limit)
+
+
+def get_logs_by_address_and_timestamp_query(
+        address: str,
+        limit: int,
+        ordering: Ordering,
         timestamp: Optional[int],
         transaction_index: Optional[int],
         log_index: Optional[int],
 ) -> Query:
-    query = select(
-        columns=get_default_fields(),
-        whereclause=logs_t.c.address == address,
-    ).limit(limit)
+    query = get_logs_by_address_query(address, ordering)
 
-    return query
+    if transaction_index is None and log_index is None:
+        q = ordering.operator_or_equal(logs_t.c.timestamp, timestamp)
+    elif log_index is None:
+        q = ordering.operator_or_equal(
+            tuple_(
+                logs_t.c.timestamp,
+                logs_t.c.transaction_index,
+            ),
+            (
+                timestamp,
+                transaction_index,
+            )
+        )
+    else:
+        q = ordering.operator_or_equal(
+            tuple_(
+                logs_t.c.timestamp,
+                logs_t.c.transaction_index,
+                logs_t.c.log_index,
+            ),
+            (
+                timestamp,
+                transaction_index,
+                log_index,
+            )
+        ).self_group()
+
+    return query.where(q).limit(limit)
