@@ -175,6 +175,7 @@ logs_t = sa.Table(
     metadata,
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, index=True, primary_key=True),
+    sa.Column('timestamp', HexInteger),
     sa.Column('log_index', HexInteger, primary_key=True),
     sa.Column('address', sa.String),
     sa.Column('data', sa.String),

@@ -150,6 +150,7 @@ class SyncProcessor:
             transactions=transactions_data,
             block_number=block_number,
             block_hash=block_hash,
+            timestamp=timestamp,
             is_forked=is_forked
         )
         accounts_data = self.process_accounts(accounts, block_number, block_hash, is_forked)
@@ -314,6 +315,7 @@ class SyncProcessor:
                          transactions: List[Dict[str, Any]],
                          block_number: int,
                          block_hash: str,
+                         timestamp: int,
                          is_forked: bool) -> Tuple[List[Dict[str, Any]], Logs]:
         rdata: List[Dict[str, Any]] = receipts['fields']['Receipts'] or []
         recpt_items = []
@@ -342,11 +344,11 @@ class SyncProcessor:
             recpt_items.append(recpt_data)
             tx['status'] = recpt_data['status']
             transactions[i * 2 + 1]['status'] = recpt_data['status']
-            logs = self.process_logs(logs, status=recpt_data['status'], is_forked=is_forked)
+            logs = self.process_logs(logs, status=recpt_data['status'], is_forked=is_forked, timestamp=timestamp)
             logs_items.extend(logs)
         return recpt_items, logs_items
 
-    def process_logs(self, logs: Logs, status: bool, is_forked: bool) -> Logs:
+    def process_logs(self, logs: Logs, status: bool, is_forked: bool, timestamp: int) -> Logs:
         items = []
         for log_record in logs:
             data = dict_keys_case_convert(log_record)
@@ -359,6 +361,7 @@ class SyncProcessor:
             data['event_args'] = None
             data['status'] = status
             data['is_forked'] = is_forked
+            data['timestamp'] = timestamp
             data = process_log_event(data)
             items.append(data)
         return items

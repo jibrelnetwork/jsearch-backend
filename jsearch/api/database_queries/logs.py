@@ -11,6 +11,7 @@ def get_default_fields() -> List[Column]:
         logs_t.c.address,
         logs_t.c.block_hash,
         logs_t.c.block_number,
+        logs_t.c.timestamp,
         logs_t.c.data,
         logs_t.c.log_index,
         logs_t.c.removed,
