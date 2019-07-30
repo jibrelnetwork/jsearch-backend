@@ -104,6 +104,7 @@ class InternalTransaction(Model):
     swagger_types = {
         'block_number': int,
         'block_hash': str,
+        'timestamp': int,
         'parent_tx_hash': str,
         'parent_tx_index': int,
         'op': str,
@@ -120,6 +121,7 @@ class InternalTransaction(Model):
     attribute_map = {
         'block_number': 'blockNumber',
         'block_hash': 'blockHash',
+        'timestamp': 'timestamp',
         'parent_tx_hash': 'parentTxHash',
         'parent_tx_index': 'parentTxIndex',
         'op': 'op',

@@ -225,12 +225,12 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
 
 async def test_get_block_transactions_forked(cli, db):
     # given
-    db.execute('INSERT INTO transactions (block_number, block_hash, hash, is_forked, transaction_index)'
-               'values (%s, %s, %s, %s, %s)', [
-                   (1, 'aa', 'tx1', False, 1),
-                   (2, 'ab', 'tx2', False, 1),
-                   (2, 'ax', 'tx3', True, 1),
-                   (3, 'ac', 'tx3', False, 1),
+    db.execute('INSERT INTO transactions (block_number, block_hash, timestamp, hash, is_forked, transaction_index)'
+               'values (%s, %s, %s, %s, %s, %s)', [
+                   (1, 'aa', 1550000000, 'tx1', False, 1),
+                   (2, 'ab', 1550000000, 'tx2', False, 1),
+                   (2, 'ax', 1550000000, 'tx3', True, 1),
+                   (3, 'ac', 1550000000, 'tx3', False, 1),
                ])
     # then
     resp = await cli.get('/v1/blocks/2/transactions')
@@ -877,6 +877,7 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
     internal_transaction_data = {
         'block_number': 42,
         'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+        'timestamp': 1550000000,
         'parent_tx_hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
         'op': 'suicide',
         'call_depth': 3,
@@ -923,6 +924,7 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
             {
                 'blockNumber': 42,
                 'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'timestamp': 1550000000,
                 'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
                 'parentTxIndex': 1,
                 'op': 'suicide',
@@ -938,6 +940,7 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
             {
                 'blockNumber': 42,
                 'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'timestamp': 1550000000,
                 'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
                 'parentTxIndex': 1,
                 'op': 'suicide',

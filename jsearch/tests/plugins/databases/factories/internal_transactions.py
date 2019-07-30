@@ -47,18 +47,18 @@ class InternalTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     @classmethod
     def create_for_tx(cls, tx, **kwargs):
-        data = cls.stub(
-            block_number=tx.block_number,
-            block_hash=tx.block_hash,
-            timestamp=tx.timestamp,
-            tx_origin=getattr(tx, 'from'),
-            parent_tx_hash=tx.hash,
-            parent_tx_index=tx.transaction_index,
-            **kwargs
-        ).__dict__
-        data.pop('address', None)
-
-        return cls.create(**data)
+        return cls.create(
+            **{
+                **kwargs,
+                **{
+                    'block_number': tx.block_number,
+                    'block_hash': tx.block_hash,
+                    'timestamp': tx.timestamp,
+                    'tx_origin': getattr(tx, 'from'),
+                    'parent_tx_hash': tx.hash,
+                    'parent_tx_index': tx.transaction_index,
+                }
+              })
 
 
 @pytest.fixture()
