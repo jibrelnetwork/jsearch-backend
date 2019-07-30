@@ -1,6 +1,6 @@
 from sqlalchemy import select, Column, and_, false
 from sqlalchemy.orm import Query
-from typing import List, Optional, Dict
+from typing import List, Optional
 
 from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, get_ordering, ORDER_DESC
 from jsearch.common.tables import wallet_events_t
@@ -19,10 +19,10 @@ def get_default_fields() -> List[Column]:
 
 
 def get_events_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-    columns: Dict[OrderScheme, Columns] = {
+    columns: Columns = {
         ORDER_SCHEME_BY_NUMBER: [wallet_events_t.c.event_index],
         ORDER_SCHEME_BY_TIMESTAMP: [wallet_events_t.c.event_index],
-    }
+    }[scheme]
     return get_ordering(columns, scheme, direction)
 
 

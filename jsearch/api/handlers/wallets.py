@@ -5,8 +5,11 @@ from typing import Optional
 
 from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.handlers.common import get_last_block_number_and_timestamp, get_tip_block_number_and_timestamp, \
+from jsearch.api.handlers.common import (
+    get_last_block_number_and_timestamp,
+    get_tip_block_number_and_timestamp,
     get_block_number_or_tag_from_timestamp
+)
 from jsearch.api.helpers import ApiError
 from jsearch.api.helpers import (
     validate_params,
@@ -14,7 +17,7 @@ from jsearch.api.helpers import (
     api_error_response,
     get_from_joined_string,
 )
-from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_BY_NUMBER
+from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_NONE
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.wallets import WalletEventsSchema
 from jsearch.api.structs.wallets import wallet_events_to_json
@@ -87,8 +90,7 @@ async def get_wallet_events(
     pending_events = []
     if include_pending_txs:
         pending_events = await storage.get_account_pending_events(
-            address,
-            order=ORDER_DESC,
+            account=address,
             limit=PENDING_EVENTS_DEFAULT_LIMIT
         )
 
