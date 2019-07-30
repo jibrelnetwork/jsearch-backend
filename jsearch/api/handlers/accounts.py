@@ -6,7 +6,7 @@ from typing import Optional, Union
 from jsearch import settings
 from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.handlers.common import get_block_number_and_timestamp
+from jsearch.api.handlers.common import get_last_block_number_and_timestamp
 from jsearch.api.helpers import (
     get_tag,
     validate_params,
@@ -78,6 +78,7 @@ async def get_account_transactions(
         address: str,
         limit: int,
         order: Ordering,
+        tip_hash: Optional[str] = None,
         block_number: Optional[Union[int, str]] = None,
         timestamp: Optional[int] = None,
         transaction_index: Optional[int] = None,
@@ -86,8 +87,7 @@ async def get_account_transactions(
     Get account transactions
     """
     storage = request.app['storage']
-    block_number, timestamp = await get_block_number_and_timestamp(block_number, timestamp, request)
-    tip_hash = request.query.get('blockchain_tip') or None
+    block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
 
     txs, last_affected_block = await storage.get_account_transactions(
         address=address,
@@ -113,17 +113,17 @@ async def get_account_internal_transactions(
         address: str,
         limit: int,
         order: Ordering,
+        tip_hash: Optional[str] = None,
         block_number: Optional[Union[int, str]] = None,
         timestamp: Optional[int] = None,
         parent_transaction_index: Optional[int] = None,
         transaction_index: Optional[int] = None,
-        tip_hash: Optional[str] = None,
 ):
     """
     Get account internal transactions
     """
     storage = request.app['storage']
-    block_number, timestamp = await get_block_number_and_timestamp(block_number, timestamp, request)
+    block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     txs, last_affected_block = await storage.get_account_internal_transactions(
         address=address,
         limit=limit + 1,

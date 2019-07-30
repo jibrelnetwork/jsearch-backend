@@ -4,7 +4,8 @@ from typing import List, Optional, Dict
 
 from jsearch.api.database_queries.transactions import get_ordering
 from jsearch.api.helpers import get_order
-from jsearch.api.ordering import ORDER_DESC, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, Ordering
+from jsearch.api.ordering import ORDER_DESC, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, Ordering, DIRECTIONS, \
+    DIRECTIONS_OPERATOR_OR_EQUAL_MAPS
 from jsearch.common.tables import blocks_t
 from jsearch.typing import Columns, OrderScheme, OrderDirection
 
@@ -140,4 +141,13 @@ def get_last_block_query(columns: List[Column] = None) -> Query:
 
 
 def get_block_number_by_hash_query(block_hash: str) -> Query:
-    return select([blocks_t.c.number]).where(blocks_t.c.hash == block_hash)
+    return select([blocks_t.c.number, blocks_t.c.timestamp]).where(blocks_t.c.hash == block_hash)
+
+
+def get_block_number_by_timestamp_query(timestamp: int, order_direction: OrderDirection) -> Query:
+    direction_func = DIRECTIONS[order_direction]
+    operator_or_equal = DIRECTIONS_OPERATOR_OR_EQUAL_MAPS[order_direction]
+
+    return select([blocks_t.c.number, blocks_t.c.hash, blocks_t.c.timestamp]).where(
+        operator_or_equal(blocks_t.c.timestamp, timestamp)
+    ).order_by(direction_func(blocks_t.c.timestamp))

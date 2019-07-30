@@ -36,10 +36,6 @@ class Ordering(NamedTuple):
     operator: Callable[[Any, Any], Any]
     direction: OrderDirection
 
-    @property
-    def apply_direction(self):
-        return DIRECTIONS[self.direction]
-
 
 def get_order_schema(timestamp: Optional[int]) -> OrderScheme:
     if timestamp is None:
