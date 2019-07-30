@@ -6,6 +6,7 @@ import pytest
 from asynctest import CoroutineMock
 from typing import Optional, Set, Union
 
+from jsearch import settings
 from jsearch.api.error_code import ErrorCode
 from jsearch.common.tables import (
     assets_transfers_t,
@@ -835,6 +836,45 @@ async def test_get_wallet_assets_summary(cli, db):
                    ]
 
 
+async def test_get_accounts_balances_does_not_complain_on_addresses_count_less_than_limit(cli):
+    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH)]
+    addresses_str = ','.join(addresses)
+
+    resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
+
+    assert resp.status == 200
+
+
+async def test_get_accounts_balances_complains_on_addresses_count_more_than_limit(cli):
+    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH + 1)]
+    addresses_str = ','.join(addresses)
+
+    resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
+    resp_json = await resp.json()
+
+    assert resp.status == 400
+    assert resp_json['status']['errors'] == [
+        {
+            'field': 'addresses',
+            'error_code': 'TOO_MANY_ITEMS',
+            'error_message': 'Too many addresses requested'
+        }
+    ]
+
+
+async def test_get_account_logs(cli, db, main_db_data):
+    from jsearch.api import models
+
+    address = "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a"
+    logs = [models.Log(**item).to_dict() for item in main_db_data['logs'] if item['address'] == address]
+
+    resp = await cli.get(f'/v1/accounts/{address}/logs?order=asc')
+    resp_json = await resp.json()
+
+    assert resp_json['data'] == logs
+    assert resp_json == {'data': logs, 'status': {'errors': [], 'success': True}}
+
+
 async def test_get_internal_transactions(cli, internal_transaction_factory):
     internal_transaction_data = {
         'block_number': 42,
@@ -855,13 +895,19 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
     internal_transaction_factory.create(
         **{
             **internal_transaction_data,
-            **{'transaction_index': 42},
+            **{
+                'parent_tx_index': 1,
+                'transaction_index': 42
+            },
         }
     )
     internal_transaction_factory.create(
         **{
             **internal_transaction_data,
-            **{'transaction_index': 43},
+            **{
+                'parent_tx_index': 1,
+                'transaction_index': 43
+            },
         }
     )
 
@@ -882,6 +928,7 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
                 'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
                 'timestamp': 1550000000,
                 'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'parentTxIndex': 1,
                 'op': 'suicide',
                 'callDepth': 3,
                 'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
@@ -897,6 +944,7 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
                 'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
                 'timestamp': 1550000000,
                 'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+                'parentTxIndex': 1,
                 'op': 'suicide',
                 'callDepth': 3,
                 'from': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',

@@ -45,7 +45,10 @@ async def make_app():
         'GET', '/v1/accounts/{address}/transactions', accounts.get_account_transactions, name='accounts_txs'
     )
     app.router.add_route(
-        'GET', '/v1/accounts/{address}/internal_transactions', accounts.get_account_internal_transactions
+        'GET',
+        '/v1/accounts/{address}/internal_transactions',
+        accounts.get_account_internal_transactions,
+        name='accounts_internal_txs'
     )
     app.router.add_route(
         'GET', '/v1/accounts/{address}/pending_transactions', accounts.get_account_pending_transactions
@@ -63,6 +66,7 @@ async def make_app():
     app.router.add_route('GET', '/v1/blocks/{tag}', blocks.get_block)
     app.router.add_route('GET', '/v1/blocks/{tag}/transactions', blocks.get_block_transactions)
     app.router.add_route('GET', '/v1/blocks/{tag}/uncles', blocks.get_block_uncles)
+    app.router.add_route('GET', '/v1/blocks/{tag}/internal_transactions', blocks.get_block_internal_transactions)
 
     app.router.add_route('GET', '/v1/transactions/{txhash}', explorer.get_transaction)
     app.router.add_route('GET', '/v1/transactions/{txhash}/internal_transactions', explorer.get_internal_transactions)

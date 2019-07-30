@@ -21,7 +21,8 @@ from jsearch.api.database_queries.blocks import (
     ORDER_SCHEME_BY_NUMBER,
     get_blocks_by_number_query
 )
-from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, get_internal_txs_by_account
+from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, \
+    get_internal_txs_by_address_and_block_query, get_internal_txs_by_address_and_timestamp_query
 from jsearch.api.database_queries.logs import get_logs_by_address_query
 from jsearch.api.database_queries.pending_transactions import get_pending_txs_by_account
 from jsearch.api.database_queries.token_transfers import (
@@ -140,13 +141,12 @@ class Storage:
 
         limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
 
-        if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_tx_by_address_and_block_query(address, block_number, ordering, tx_index)
-        else:
-            query = get_tx_by_address_and_timestamp_query(address, timestamp, ordering, tx_index)
-
         # Notes: syncer writes txs to main db with denormalization (x2 records per transaction)
-        query = query.limit(limit * 2)
+        query_limit = limit * 2
+        if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_tx_by_address_and_block_query(query_limit, address, block_number, ordering, tx_index)
+        else:
+            query = get_tx_by_address_and_timestamp_query(query_limit, address, timestamp, ordering, tx_index)
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection, query)
@@ -184,6 +184,33 @@ class Storage:
             rows = in_app_distinct([dict(row) for row in rows])
 
             return [models.Transaction(**r) for r in rows]
+
+    async def get_block_internal_transactions(self, tag, parent_tx_hash=None):
+        fields = models.InternalTransaction.select_fields()
+        params = [tag.value]
+
+        if tag.is_hash():
+            condition = "block_hash=$1 AND is_forked=false"
+        elif tag.is_number():
+            condition = "block_number=$1 AND is_forked=false"
+        else:
+            condition = "block_number=(SELECT max(number) FROM blocks) AND is_forked=false"
+            params = []
+
+        if parent_tx_hash:
+            condition += " AND parent_tx_hash=$2"
+            params.append(parent_tx_hash)
+
+        q = f"""SELECT {fields} FROM internal_transactions
+                    WHERE {condition} AND is_forked=false
+                    ORDER BY transaction_index;"""
+
+        async with self.pool.acquire() as conn:
+            if tag.is_latest():
+                rows = await conn.fetch(q)
+            else:
+                rows = await conn.fetch(q, *params)
+            return [models.InternalTransaction(**r) for r in rows]
 
     async def get_block(self, tag: Tag):
         if tag.is_hash():
@@ -795,21 +822,41 @@ class Storage:
 
     async def get_account_internal_transactions(
             self,
-            account: str,
+            address: str,
             limit: int,
-            offset: int,
-            order: str
+            ordering: Ordering,
+            block_number: int,
+            timestamp: int,
+            parent_tx_index: Optional[int] = None,
+            tx_index: Optional[int] = None
     ) -> Tuple[List[models.InternalTransaction], Optional[LastAffectedBlock]]:
 
-        query = get_internal_txs_by_account(account, order)
-        query = query.limit(limit)
-        query = query.offset(offset)
+        if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_internal_txs_by_address_and_block_query(
+                limit=limit,
+                address=address,
+                block_number=block_number,
+                ordering=ordering,
+                tx_index=tx_index,
+                parent_tx_index=parent_tx_index,
+            )
+        else:
+            query = get_internal_txs_by_address_and_timestamp_query(
+                limit=limit,
+                address=address,
+                timestamp=timestamp,
+                ordering=ordering,
+                tx_index=tx_index,
+                parent_tx_index=parent_tx_index,
+            )
 
-        rows = await fetch(self.pool, query)
-        internal_txs = [models.InternalTransaction(**r) for r in rows]
+        async with self.pool.acquire() as connection:
+            rows = await fetch(connection, query)
+
+        txs = [models.InternalTransaction(**r) for r in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
 
-        return internal_txs, last_affected_block
+        return txs, last_affected_block
 
     async def get_account_pending_transactions(self,
                                                account: str,

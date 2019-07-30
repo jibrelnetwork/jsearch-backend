@@ -1,6 +1,7 @@
 import logging
 
 import pytest
+
 from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
 
