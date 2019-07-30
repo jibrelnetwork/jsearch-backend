@@ -1,6 +1,4 @@
-import json
-
-from typing import List, Dict, Any
+from typing import List
 
 from jsearch.api.models.base_model_ import Model
 
@@ -10,6 +8,7 @@ class Log(Model):
         'address': str,
         'block_hash': str,
         'block_number': int,
+        'timestamp': int,
         'data': str,
         'log_index': int,
         'removed': str,
@@ -22,6 +21,7 @@ class Log(Model):
         'address': 'address',
         'block_hash': 'blockHash',
         'block_number': 'blockNumber',
+        'timestamp': 'timestamp',
         'data': 'data',
         'log_index': 'logIndex',
         'removed': 'removed',
@@ -59,6 +59,7 @@ class Transaction(Model):
     swagger_types = {
         'block_hash': str,
         'block_number': int,
+        'timestamp': int,
         'from': str,
         'gas': str,
         'gas_price': str,
@@ -77,6 +78,7 @@ class Transaction(Model):
     attribute_map = {
         'block_hash': 'blockHash',
         'block_number': 'blockNumber',
+        'timestamp': 'timestamp',
         'from': 'from',
         'gas': 'gas',
         'gas_price': 'gasPrice',
@@ -103,6 +105,7 @@ class InternalTransaction(Model):
         'block_number': int,
         'block_hash': str,
         'parent_tx_hash': str,
+        'parent_tx_index': int,
         'op': str,
         'call_depth': int,
         'from': str,
@@ -118,6 +121,7 @@ class InternalTransaction(Model):
         'block_number': 'blockNumber',
         'block_hash': 'blockHash',
         'parent_tx_hash': 'parentTxHash',
+        'parent_tx_index': 'parentTxIndex',
         'op': 'op',
         'call_depth': 'callDepth',
         'from': 'from',
@@ -340,8 +344,6 @@ class TokenTransfer(Model):
         "token_address": str,
         "token_value": int,
         "token_decimals": int,
-        "token_name": str,
-        "token_symbol": str,
     }
 
     attribute_map = {
@@ -349,11 +351,9 @@ class TokenTransfer(Model):
         "timestamp": "timestamp",
         "from_address": "from",
         "to_address": "to",
-        "token_address": "tokenAddress",
+        "token_address": "contractAddress",
         "token_value": "amount",
-        "token_decimals": "tokenDecimals",
-        "token_name": "tokenName",
-        "token_symbol": "tokenSymbol",
+        "token_decimals": "decimals",
     }
 
     int_to_str = {"amount"}
@@ -369,7 +369,7 @@ class TokenHolder(Model):
 
     attribute_map = {
         'account_address': 'accountAddress',
-        'token_address': 'tokenAddress',
+        'token_address': 'contractAddress',
         'balance': 'balance',
         'decimals': 'decimals'
     }
@@ -392,27 +392,3 @@ class AssetTransfer(Model):
         'amount': 'amount',
         'tx_data': 'txData',
     }
-
-
-class WalletEvent(Model):
-    swagger_types = {
-        "type": str,
-        "event_index": int,
-        "event_data": Dict[str, Any],
-    }
-    attribute_map = {
-        'type': 'eventType',
-        'event_index': 'eventIndex',
-        'event_data': 'eventData'
-    }
-
-    def to_dict(self):
-        data = super(WalletEvent, self).to_dict()
-
-        event_data = getattr(self, 'event_data', {})
-        if isinstance(event_data, str):
-            event_data = json.loads(event_data)
-
-        data['eventData'] = [{'fieldName': name, 'fieldValue': value} for name, value in event_data.items()]
-
-        return data

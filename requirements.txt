@@ -1,5 +1,7 @@
 aiohttp-swagger==1.0.5
-aiohttp==3.1.2
+aiohttp==3.5.4
+marshmallow==2.19.5
+webargs==5.3.2
 aiomonitor==0.4.4
 aiopg==0.16.0
 alembic==0.9.9

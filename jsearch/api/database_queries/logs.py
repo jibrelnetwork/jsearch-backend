@@ -2,7 +2,7 @@ from sqlalchemy import select, Column, desc
 from sqlalchemy.orm import Query
 from typing import List, Optional
 
-from jsearch.api.helpers import ORDER_ASC
+from jsearch.api.ordering import ORDER_ASC
 from jsearch.common.tables import logs_t
 
 
@@ -11,6 +11,7 @@ def get_default_fields() -> List[Column]:
         logs_t.c.address,
         logs_t.c.block_hash,
         logs_t.c.block_number,
+        logs_t.c.timestamp,
         logs_t.c.data,
         logs_t.c.log_index,
         logs_t.c.removed,

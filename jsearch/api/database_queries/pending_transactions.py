@@ -1,4 +1,4 @@
-from sqlalchemy import select, Column, or_, and_, false
+from sqlalchemy import select, Column, or_, and_, false, func
 from sqlalchemy.orm import Query
 from typing import List
 
@@ -45,3 +45,11 @@ def get_pending_txs_by_account(account: str, order: str, columns: List[Column] =
             order,
         )
     )
+
+
+def get_outcoming_pending_txs_count(account: str) -> Query:
+    query = select([func.count(pending_transactions_t.c.last_synced_id)]).where(
+        and_(pending_transactions_t.c.removed.is_(false()),
+             pending_transactions_t.c['from'] == account)
+    )
+    return query

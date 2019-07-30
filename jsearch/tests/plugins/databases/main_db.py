@@ -1,23 +1,31 @@
 import logging
 import os
 from asyncio import AbstractEventLoop
+import warnings
 
 import aiopg
+import asyncpg
 import dsnparse
 import pytest
 from aiopg.sa import Engine
 from functools import partial
 from sqlalchemy import create_engine
 
+from jsearch.api.storage import Storage
+
 logger = logging.getLogger(__name__)
 
 
 def setup_database(connection_string):
+    logging.getLogger('alembic').setLevel(logging.CRITICAL)
+    warnings.simplefilter("ignore")
     from jsearch.common.alembic_utils import upgrade
     upgrade(connection_string, 'head')
 
 
 def teardown_database(connection_string):
+    logging.getLogger('alembic').setLevel(logging.CRITICAL)
+    warnings.simplefilter("ignore")
     from jsearch.common.alembic_utils import downgrade
 
     parsed_dsn = dsnparse.parse(connection_string)
@@ -37,7 +45,7 @@ def teardown_database(connection_string):
 
 @pytest.fixture(scope="session")
 def db_dsn():
-    return os.environ.get('JSEARCH_MAIN_DB_TEST', "postgres://postgres:postgres@test_db/jsearch_main_test")
+    return os.environ['JSEARCH_MAIN_DB']
 
 
 @pytest.fixture(scope="function")
@@ -101,6 +109,12 @@ def truncate_db(do_truncate_db):
     do_truncate_db()
 
 
-@pytest.fixture(scope='function', autouse=True)
-def mock_db_dsn(mocker, db_dsn):
-    mocker.patch('jsearch.settings.JSEARCH_MAIN_DB', db_dsn)
+@pytest.mark.asyncio
+@pytest.fixture()
+async def storage(db_dsn: str, loop: AbstractEventLoop) -> Storage:
+    db_pool = await asyncpg.create_pool(dsn=db_dsn)
+    storage = Storage(db_pool)
+
+    yield storage
+
+    await db_pool.close()
