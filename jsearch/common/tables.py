@@ -353,6 +353,7 @@ wallet_events_t = sa.Table(
     sa.Column('is_forked', sa.Boolean, default=False),
     sa.Column('tx_data', postgresql.JSONB),
     sa.Column('event_data', postgresql.JSONB),
+    sa.Column('timestamp', sa.Integer),
 )
 
 chain_events_t = sa.Table(

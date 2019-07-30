@@ -416,3 +416,22 @@ class WalletEvent(Model):
         data['eventData'] = [{'fieldName': name, 'fieldValue': value} for name, value in event_data.items()]
 
         return data
+
+
+class EthTransfer(Model):
+    swagger_types = {
+        'timestamp': int,
+        'tx_hash': str,
+        'to': str,
+        'from': str,
+        'amount': str,
+
+    }
+    attribute_map = {
+        'tx_hash': 'transactionHash',
+        'timestamp': 'timestamp',
+        'to': 'to',
+        'from': 'from',
+        'amount': 'amount',
+    }
+

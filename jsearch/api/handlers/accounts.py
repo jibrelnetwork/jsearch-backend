@@ -306,3 +306,21 @@ async def get_account_transaction_count(request):
 
     tx_count = await storage.get_account_transaction_count(account_address, include_pending_txs)
     return api_success(tx_count)
+
+
+@ApiError.catch
+async def get_account_eth_transfers(request):
+    storage = request.app['storage']
+    account_address = request.match_info['address'].lower()
+    tip_hash = request.query.get('blockchain_tip') or None
+    block_number = request.query.get('block_number') or None
+    event_index = request.query.get('event_index') or None
+    timestamp = request.query.get('timestamp') or None
+    order = request.query.get('order') or 'desc'
+
+    transfers = await storage.get_account_eth_transfers(account_address,
+                                                        block_number=block_number,
+                                                        timestamp=timestamp,
+                                                        event_index=event_index,
+                                                        order=order)
+    return api_success([t.to_dict() for t in transfers])
