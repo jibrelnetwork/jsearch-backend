@@ -267,6 +267,102 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
     ]
 
 
+async def test_get_account_internal_transactions(cli, block_factory, transaction_factory, internal_transaction_factory):
+    block = block_factory.create(timestamp=1550000000)
+
+    tx = transaction_factory.create_for_block(
+        block=block,
+        **{
+            'hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+            'address': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+            'from_': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+            'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+        }
+    )[0]
+
+    internal_transaction_data = {
+        'op': 'suicide',
+        'call_depth': NotImplemented,
+        'from_': NotImplemented,
+        'to': NotImplemented,
+        'value': 1000,
+        'gas_limit': 2000,
+        'payload': '0x',
+        'status': 'success',
+        'transaction_index': NotImplemented,
+    }
+
+    internal_transaction_factory.create_for_tx(
+        tx=tx,
+        **{
+            **internal_transaction_data,
+            **{
+                'call_depth': 1,
+                'from_': '0x1111111111111111111111111111111111111111',
+                'to': '0x2222222222222222222222222222222222222222',
+                'transaction_index': 7,
+            }
+        }
+    )
+    internal_transaction_factory.create_for_tx(
+        tx=tx,
+        **{
+            **internal_transaction_data,
+            **{
+                'call_depth': 2,
+                'from_': '0x2222222222222222222222222222222222222222',
+                'to': '0x3333333333333333333333333333333333333333',
+                'transaction_index': 8,
+            }
+        }
+    )
+
+    resp = await cli.get(
+        f'v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/'
+        f'internal_transactions?timestamp=1550000000')
+    resp_json = await resp.json()
+
+    assert resp.status == 200
+    assert resp_json['status'] == {
+        'success': True,
+        'errors': [],
+    }
+    assert resp_json['data'] == [
+        {
+            'blockNumber': tx.block_number,
+            'blockHash': tx.block_hash,
+            'timestamp': tx.timestamp,
+            'parentTxHash': tx.hash,
+            'parentTxIndex': tx.transaction_index,
+            'op': 'suicide',
+            'callDepth': 2,
+            'from': '0x2222222222222222222222222222222222222222',
+            'to': '0x3333333333333333333333333333333333333333',
+            'value': '1000',
+            'gasLimit': '2000',
+            'input': '0x',
+            'status': 'success',
+            'transactionIndex': 8,
+        },
+        {
+            'blockNumber': tx.block_number,
+            'blockHash': tx.block_hash,
+            'timestamp': tx.timestamp,
+            'parentTxHash': tx.hash,
+            'parentTxIndex': tx.transaction_index,
+            'op': 'suicide',
+            'callDepth': 1,
+            'from': '0x1111111111111111111111111111111111111111',
+            'to': '0x2222222222222222222222222222222222222222',
+            'value': '1000',
+            'gasLimit': '2000',
+            'input': '0x',
+            'status': 'success',
+            'transactionIndex': 7,
+        }
+    ]
+
+
 @pytest.mark.parametrize(
     "from_,to",
     [
