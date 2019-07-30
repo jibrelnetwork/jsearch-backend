@@ -17,7 +17,7 @@ from jsearch.api.helpers import (
     api_error_response,
     get_from_joined_string,
 )
-from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_NONE
+from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.wallets import WalletEventsSchema
 from jsearch.api.structs.wallets import wallet_events_to_json

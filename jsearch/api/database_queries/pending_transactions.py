@@ -1,5 +1,5 @@
-from sqlalchemy import select, Column, tuple_, union, false
-from sqlalchemy import select, Column, or_, and_, false, func
+from sqlalchemy import select, Column, and_, false, func
+from sqlalchemy import tuple_, union
 from sqlalchemy.orm import Query
 from sqlalchemy.sql import CompoundSelect
 from sqlalchemy.sql.elements import ClauseList
