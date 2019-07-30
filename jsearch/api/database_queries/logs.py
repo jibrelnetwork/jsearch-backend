@@ -1,9 +1,10 @@
 from sqlalchemy import select, Column, desc
 from sqlalchemy.orm import Query
-from typing import List, Optional
+from typing import List, Optional, Dict
 
-from jsearch.api.ordering import ORDER_ASC
+from jsearch.api.ordering import ORDER_ASC, Ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, get_ordering
 from jsearch.common.tables import logs_t
+from jsearch.typing import OrderScheme, OrderDirection, Columns
 
 
 def get_default_fields() -> List[Column]:
@@ -19,6 +20,22 @@ def get_default_fields() -> List[Column]:
         logs_t.c.transaction_hash,
         logs_t.c.transaction_index,
     ]
+
+
+def get_logs_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+    columns: Dict[OrderScheme, Columns] = {
+        ORDER_SCHEME_BY_NUMBER: [
+            logs_t.c.block_number,
+            logs_t.c.transaction_index,
+            logs_t.c.log_index,
+        ],
+        ORDER_SCHEME_BY_TIMESTAMP: [
+            logs_t.c.timestamp,
+            logs_t.c.transaction_index,
+            logs_t.c.log_index
+        ]
+    }
+    return get_ordering(columns, scheme, direction)
 
 
 def _order_query(query: Query, direction: str) -> Query:
