@@ -2,7 +2,7 @@ import logging
 
 from marshmallow import Schema, fields, post_load, validates_schema, ValidationError
 from marshmallow.marshalling import SCHEMA
-from marshmallow.validate import Range, OneOf
+from marshmallow.validate import Range, OneOf, Length
 from typing import Dict, Any, List
 
 from jsearch.api.error_code import ErrorCode
@@ -15,7 +15,7 @@ from jsearch.api.helpers import (
     ApiError
 )
 from jsearch.api.ordering import get_order_schema, Ordering
-from jsearch.api.serializers.fields import PositiveIntOrTagField
+from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower
 from jsearch.typing import OrderScheme, OrderDirection
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,8 @@ def get_flatten_error_messages(messages: Dict[str, List[str]]) -> List[Dict[str,
 
 
 class BlockRelatedListSchema(Schema):
+    tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
+
     limit = fields.Int(
         missing=DEFAULT_LIMIT,
         validate=Range(min=1, max=MAX_LIMIT)

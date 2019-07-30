@@ -25,20 +25,10 @@ wait_main_db_ready () {
 
 
 if [[ "$1" = "jsearch-syncer" ]]; then
-    wait_kafka_ready
     wait_raw_db_ready
     wait_main_db_ready
 elif [[ "$1" = "jsearch-syncer-pending" ]]; then
     wait_raw_db_ready
-    wait_main_db_ready
-elif [[ "$1" = "jsearch-post-processing" ]]; then
-    wait_kafka_ready
-    wait_main_db_ready
-elif [[ "$1" = "jsearch-worker" ]]; then
-    wait_kafka_ready
-    wait_main_db_ready
-elif [[ "$1" = "jsearch-wallet-worker" ]]; then
-    wait_kafka_ready
     wait_main_db_ready
 elif [[ "$1" = "jsearch-notable-accounts-worker" ]]; then
     wait_kafka_ready

@@ -518,3 +518,34 @@ async def test_get_account_token_balances_multi_too_many_addresses(cli, token_ho
                                                 'error_message': 'Too many addresses requested',
                                                 'field': 'tokens_addresses'}],
                                     'success': False}}
+
+
+async def test_get_account_transaction_count_w_pending(cli, account_state_factory, pending_transaction_factory):
+    account_state_factory.create(
+        address='0x1111111111111111111111111111111111111111',
+        nonce=5,
+        block_number=5,
+        is_forked=False,
+    )
+    account_state_factory.create(
+        address='0x1111111111111111111111111111111111111111',
+        nonce=6,
+        block_number=7,
+        is_forked=False,
+    )
+    account_state_factory.create(
+        address='0x1111111111111111111111111111111111111111',
+        nonce=7,
+        block_number=9,
+        is_forked=True,
+    )
+    pending_transaction_factory.create(
+        from_='0x1111111111111111111111111111111111111111',
+        removed=False,
+        last_synced_id=123
+    )
+
+    resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/transaction_count')
+    assert resp.status == 200
+    resp_json = await resp.json()
+    assert resp_json['data'] == 7

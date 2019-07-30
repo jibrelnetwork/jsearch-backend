@@ -1,7 +1,8 @@
-from typing import Callable, Awaitable, NamedTuple
+from urllib.parse import urlencode
 
 import pytest
 from aiohttp.test_utils import TestClient
+from typing import Callable, Awaitable, NamedTuple
 
 from jsearch.api.storage import Storage
 from jsearch.api.structs import BlockchainTip, BlockInfo
@@ -15,6 +16,7 @@ from jsearch.tests.plugins.databases.factories.token_holder import TokenHolderFa
 from jsearch.tests.plugins.databases.factories.token_transfers import TokenTransferFactory
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 from jsearch.tests.plugins.databases.factories.uncles import UncleFactory
+from jsearch.tests.plugins.databases.factories.wallet_events import WalletEventsFactory
 
 API_STATUS_SUCCESS = {
     "success": True,
@@ -23,7 +25,7 @@ API_STATUS_SUCCESS = {
 
 API_META_TIP_FORKED = {
     "blockchainTipStatus": {
-        "blockHash": "0xFORKED",
+        "blockHash": "0xforked",
         "blockNumber": 11,
         "isOrphaned": True,
         "lastUnchangedBlock": 10,
@@ -36,7 +38,7 @@ API_META_TIP_FORKED = {
 
 API_META_TIP_CANONICAL = {
     "blockchainTipStatus": {
-        "blockHash": "0xCANONICAL",
+        "blockHash": "0xcanonical",
         "blockNumber": 11,
         "isOrphaned": False,
         "lastUnchangedBlock": None,
@@ -96,12 +98,11 @@ def _get_tip(
         chain_split_factory: ChainSplitFactory,
         reorg_factory: ReorgFactory,
 ) -> Callable[[bool], Awaitable[BlockchainTip]]:
-
     async def inner(is_forked: bool) -> BlockchainTip:
         common_block = block_factory.create(number=10)
 
-        canonical_block = block_factory.create(parent_hash=common_block.hash, hash='0xCANONICAL', number=11)
-        forked_block = block_factory.create(parent_hash=common_block.hash, hash='0xFORKED', number=11)
+        canonical_block = block_factory.create(parent_hash=common_block.hash, hash='0xcanonical', number=11)
+        forked_block = block_factory.create(parent_hash=common_block.hash, hash='0xforked', number=11)
 
         # WTF: Making last block for consistent `currentBlockchainTip`.
         block_factory.create(
@@ -120,7 +121,7 @@ def _get_tip(
         )
 
         tip_block = forked_block if is_forked else canonical_block
-        tip_block_info = BlockInfo(number=tip_block.number, hash=tip_block.hash)
+        tip_block_info = BlockInfo(number=tip_block.number, hash=tip_block.hash, timestamp=0)
         tip = await storage.get_blockchain_tip(tip_block_info)
 
         return tip
@@ -135,7 +136,6 @@ async def test_get_accounts_balances_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -171,7 +171,6 @@ async def test_get_account_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -216,7 +215,6 @@ async def test_get_account_transactions_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -279,7 +277,6 @@ async def test_get_account_internal_transactions_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -340,7 +337,6 @@ async def test_get_account_mined_blocks_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -411,7 +407,6 @@ async def test_get_account_mined_uncles_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -478,7 +473,6 @@ async def test_get_account_token_transfers_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -525,7 +519,6 @@ async def test_get_account_token_balance_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -565,13 +558,13 @@ async def test_get_account_logs_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
     log = log_factory.create(
         block_number=target_block_number,
         block_hash='0x4c285ba67d33a3cd670f5c4decfb10a41b929e7c4139766abfd60a24ee1fa148',
+        timestamp=1561100257,
         log_index='0',
         address='0x47071214d1ef76eeb26e9ac3ec6cc965ab8eb75b',
         data='0x00000000000000000000000013f26856cbacaaba9c4488a31c72e605fae029fc',
@@ -593,6 +586,7 @@ async def test_get_account_logs_with_tip(
             "address": "0x47071214d1ef76eeb26e9ac3ec6cc965ab8eb75b",
             "blockHash": "0x4c285ba67d33a3cd670f5c4decfb10a41b929e7c4139766abfd60a24ee1fa148",
             "blockNumber": target_block_number,
+            "timestamp": 1561100257,
             "data": "0x00000000000000000000000013f26856cbacaaba9c4488a31c72e605fae029fc",
             "logIndex": 0,
             "removed": False,
@@ -618,7 +612,6 @@ async def test_get_blocks_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -692,7 +685,6 @@ async def test_get_uncles_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -760,7 +752,6 @@ async def test_get_token_transfers_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -806,7 +797,6 @@ async def test_get_token_holders_with_tip(
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
-
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
@@ -831,6 +821,77 @@ async def test_get_token_holders_with_tip(
             "decimals": 18,
         }
     ]
+
+    assert response_json == {
+        "status": API_STATUS_SUCCESS,
+        "data": data,
+        "meta": case.api_meta,
+    }
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_wallet_events_with_tip(
+        cli: TestClient,
+        block_factory: BlockFactory,
+        transaction_factory: TransactionFactory,
+        wallet_events_factory: WalletEventsFactory,
+        case: BlockchainTipCase,
+        _get_tip: TipGetter,
+) -> None:
+    tip = await _get_tip(case.is_tip_forked)
+
+    target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
+
+    block = block_factory.create(number=target_block_number)
+    tx, _ = transaction_factory.create_for_block(block=block)
+    event = wallet_events_factory.create_token_transfer(tx=tx, block=block)
+
+    url = 'v1/wallet/get_events?{query_params}'.format(
+        query_params=urlencode({
+            'blockchain_address': event.address,
+            'blockchain_tip': tip.tip_hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+    response_json.pop('paging', None)
+
+    data = {'events': [], 'pendingEvents': []} if case.has_empty_data_response else {
+        'pendingEvents': [],
+        'events': [
+            {
+                'events': [
+                    {
+                        'eventData': [
+                            {'fieldName': key, 'fieldValue': value} for key, value in event.event_data.items()
+                        ],
+                        'eventIndex': event.event_index,
+                        'eventType': event.type
+                    }
+                ],
+                'rootTxData': {
+                    'blockHash': tx.block_hash,
+                    'blockNumber': tx.block_number,
+                    'timestamp': tx.timestamp,
+                    'from': getattr(tx, 'from'),
+                    'gas': tx.gas,
+                    'gasPrice': tx.gas_price,
+                    'hash': tx.hash,
+                    'input': tx.input,
+                    'nonce': tx.nonce,
+                    'status': True,
+                    'r': tx.r,
+                    's': tx.s,
+                    'to': tx.to,
+                    'transactionIndex': tx.transaction_index,
+                    'v': tx.v,
+                    'value': tx.value
+                }
+            }
+        ]
+    }
 
     assert response_json == {
         "status": API_STATUS_SUCCESS,

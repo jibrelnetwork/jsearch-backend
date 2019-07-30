@@ -44,6 +44,11 @@ def fixture_bodies(raw_db_sample, block_hash):
 
 
 @pytest.fixture
+def fixture_headers(raw_db_sample, block_hash):
+    return raw_db_sample['headers']
+
+
+@pytest.fixture
 def fixture_internal_transactions(raw_db_sample, block_hash):
     return raw_db_sample['internal_transactions']
 
@@ -112,6 +117,13 @@ def fixture_accounts(raw_db_sample):
             **dict_keys_case_convert(fields)
         })
     return accounts
+
+
+@pytest.fixture
+def block_header(fixture_headers, block_hash):
+    for item in fixture_headers:
+        if item['block_hash'] == block_hash:
+            return item
 
 
 @pytest.fixture
@@ -221,7 +233,7 @@ async def test_sync_block_check_receipts(db, raw_db_sample, raw_db_dsn, db_dsn, 
         assert receipts[i].is_forked is False
 
 
-async def test_sync_block_check_logs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_tx_logs):
+async def test_sync_block_check_logs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_header, block_tx_logs):
     # when
     await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
 
@@ -231,6 +243,7 @@ async def test_sync_block_check_logs(db, raw_db_sample, raw_db_dsn, db_dsn, bloc
     ).fetchall()
 
     for i, origin in enumerate(block_tx_logs):
+        assert logs[i].timestamp == int(block_header['fields']['timestamp'], 16)
         assert logs[i].transaction_hash == origin['transactionHash']
         assert logs[i].block_hash == origin['blockHash']
         assert logs[i].block_number == origin['block_number']

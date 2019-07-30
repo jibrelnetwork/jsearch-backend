@@ -1,6 +1,4 @@
-import json
-
-from typing import List, Dict, Any
+from typing import List
 
 from jsearch.api.models.base_model_ import Model
 
@@ -10,6 +8,7 @@ class Log(Model):
         'address': str,
         'block_hash': str,
         'block_number': int,
+        'timestamp': int,
         'data': str,
         'log_index': int,
         'removed': str,
@@ -22,6 +21,7 @@ class Log(Model):
         'address': 'address',
         'block_hash': 'blockHash',
         'block_number': 'blockNumber',
+        'timestamp': 'timestamp',
         'data': 'data',
         'log_index': 'logIndex',
         'removed': 'removed',
@@ -394,27 +394,3 @@ class AssetTransfer(Model):
         'amount': 'amount',
         'tx_data': 'txData',
     }
-
-
-class WalletEvent(Model):
-    swagger_types = {
-        "type": str,
-        "event_index": int,
-        "event_data": Dict[str, Any],
-    }
-    attribute_map = {
-        'type': 'eventType',
-        'event_index': 'eventIndex',
-        'event_data': 'eventData'
-    }
-
-    def to_dict(self):
-        data = super(WalletEvent, self).to_dict()
-
-        event_data = getattr(self, 'event_data', {})
-        if isinstance(event_data, str):
-            event_data = json.loads(event_data)
-
-        data['eventData'] = [{'fieldName': name, 'fieldValue': value} for name, value in event_data.items()]
-
-        return data

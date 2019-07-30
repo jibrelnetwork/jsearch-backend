@@ -37,7 +37,9 @@ def get_page(
         limit: int,
         ordering: Ordering,
         items: List[Dict[str, Any]],
+        key_set_fields: Optional[List[str]] = None,
         mapping: Optional[Dict[str, str]] = None,
+        url_params: Optional[Dict[str, Any]] = None
 ) -> Page:
     """
     If there we have (limit + 1) items - we can
@@ -48,17 +50,19 @@ def get_page(
         'order': ordering.direction,
         'limit': limit,
     }
+    if url_params:
+        params.update(url_params)
 
     if len(items) > limit:
         next_chunk_item = items[-1]
-        next_link = get_link(url, ordering.fields, next_chunk_item, mapping=mapping, params=params)
+        next_link = get_link(url, key_set_fields or ordering.fields, next_chunk_item, mapping=mapping, params=params)
 
         items = items[:-1]
     else:
         next_link = None
 
     if items:
-        link = get_link(url, ordering.fields, items[0], mapping=mapping, params=params)
+        link = get_link(url, key_set_fields or ordering.fields, items[0], mapping=mapping, params=params)
     else:
         link = None
 

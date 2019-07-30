@@ -3,7 +3,7 @@ from urllib.parse import parse_qs, urlencode
 
 import pytest
 import time
-from typing import List, Dict, Any, Tuple, Callable, Optional
+from typing import List, Dict, Any, Tuple, Callable
 
 from jsearch.typing import AnyCoroutine
 
@@ -23,7 +23,7 @@ def create_account_internal_txs(
         block_factory,
         transaction_factory,
         internal_transaction_factory
-) -> Callable[[str, Optional[int]], AnyCoroutine]:
+) -> Callable[[str], AnyCoroutine]:
     account_address = None
 
     async def create_env(account: str,

@@ -101,7 +101,7 @@ async def test_get_tip_or_raise_api_error_finds_tip_last_block_provided(
     tip = await get_tip_or_raise_api_error(
         storage,
         canonical_block.hash,
-        last_block=BlockInfo(hash='0xLASTBLOCK', number=42)
+        last_block=BlockInfo(hash='0xLASTBLOCK', number=42, timestamp=0)
     )
 
     assert {

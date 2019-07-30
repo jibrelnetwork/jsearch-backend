@@ -12,7 +12,6 @@ from .all import (  # noqa: F401
     Uncle,
     TokenHolder,
     AssetTransfer,
-    WalletEvent
 )
 from .base_model_ import Model  # noqa: F401
 

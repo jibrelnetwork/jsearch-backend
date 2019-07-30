@@ -24,10 +24,11 @@ class Tag:
     Block tag, can be block number, block hash or 'latest' label
     """
     LATEST = 'latest'
+    TIP = 'tip'
     NUMBER = 'number'
     HASH = 'hash'
 
-    __types = [LATEST, NUMBER, HASH]
+    __types = [LATEST, NUMBER, HASH, TIP]
 
     def __init__(self, type_, value):
         assert type_ in self.__types, 'Invalid tag type: {}'.format(type_)

@@ -8,7 +8,7 @@ from jsearch.typing import BlockchainTipAsDict
 class BlockInfo:
     hash: str
     number: int
-    timestamp: Optional[int] = None
+    timestamp: int = 0
 
 
 class BlockchainTip(NamedTuple):
