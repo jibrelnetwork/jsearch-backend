@@ -8,7 +8,7 @@ from aiohttp_swagger import setup_swagger
 
 from jsearch import settings
 from jsearch.api.handlers import contracts
-from jsearch.api.handlers import monitoring, accounts, blocks, explorer, tokens, node_proxy, wallets
+from jsearch.api.handlers import monitoring, accounts, blocks, uncles, explorer, tokens, node_proxy, wallets
 from jsearch.api.middlewares import cors_middleware
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.api.storage import Storage
@@ -73,8 +73,8 @@ async def make_app():
     app.router.add_route('GET', '/v1/transactions/{txhash}/internal_transactions', explorer.get_internal_transactions)
     app.router.add_route('GET', '/v1/receipts/{txhash}', explorer.get_receipt)
 
-    app.router.add_route('GET', '/v1/uncles', explorer.get_uncles)
-    app.router.add_route('GET', '/v1/uncles/{tag}', explorer.get_uncle)
+    app.router.add_route('GET', '/v1/uncles', uncles.get_uncles, name='uncles')
+    app.router.add_route('GET', '/v1/uncles/{tag}', uncles.get_uncle)
 
     app.router.add_route('POST', '/v1/verify_contract', contracts.verify_contract)
 

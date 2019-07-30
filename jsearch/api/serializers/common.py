@@ -44,7 +44,7 @@ def get_flatten_error_messages(messages: Dict[str, List[str]]) -> List[Dict[str,
     return flatten_messages
 
 
-class BlockRelatedListSchema(Schema):
+class TimeRelatedListSchema(Schema):
     tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
 
     limit = fields.Int(
@@ -52,10 +52,6 @@ class BlockRelatedListSchema(Schema):
         validate=Range(min=1, max=MAX_LIMIT)
     )
 
-    block_number = PositiveIntOrTagField(
-        load_from='block_number',
-        tags={Tag.LATEST}
-    )
     timestamp = PositiveIntOrTagField(tags={Tag.LATEST})
 
     order = fields.Str(
@@ -63,9 +59,6 @@ class BlockRelatedListSchema(Schema):
         validate=OneOf([ORDER_ASC, ORDER_DESC], error='Ordering can be either "asc" or "desc".'),
     )
 
-    default_values = {
-        'block_number': Tag.LATEST
-    }
     # Notes: there are cases when outer filters names don't match
     # with fields in database. When we need a mapping.
     # On left side: field name for outer HTTP interface
@@ -92,11 +85,6 @@ class BlockRelatedListSchema(Schema):
         item['order'] = ordering
         return item
 
-    @validates_schema
-    def validate_numbers(self, data, **kwargs):
-        if data.get("block_number") and data.get("timestamp"):
-            raise ValidationError("Filtration should be either by number or by timestamp")
-
     def handle_error(self, exc: ValidationError, data: Dict[str, Any]) -> None:
         """
         Notes:
@@ -105,3 +93,19 @@ class BlockRelatedListSchema(Schema):
         messages = {self.mapping and self.mapping.get(key) or key: value for key, value in exc.messages.items()}
         messages = get_flatten_error_messages(messages)
         raise ApiError(messages)
+
+
+class BlockRelatedListSchema(TimeRelatedListSchema):
+    block_number = PositiveIntOrTagField(
+        load_from='block_number',
+        tags={Tag.LATEST}
+    )
+
+    default_values = {
+        'block_number': Tag.LATEST,
+    }
+
+    @validates_schema
+    def validate_numbers(self, data, **kwargs):
+        if data.get("block_number") and data.get("timestamp"):
+            raise ValidationError("Filtration should be either by number or by timestamp")
