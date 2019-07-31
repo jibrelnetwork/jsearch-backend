@@ -1,6 +1,6 @@
 swagger: '2.0'
 info:
-  version: "1.0.3"
+  version: "1.0.4"
   title: Jsearch API
   description: |
     Jsearch - Ethereum Blockchain Explorer API
@@ -172,6 +172,13 @@ parameters:
     type: string
     schema:
       example: "latest"
+  tagOptional:
+    name: tag
+    in: query
+    description: block hash, block number or "latest" keyword
+    type: string
+    schema:
+      example: "latest"
   txhash:
     name: txhash
     in: path
@@ -194,6 +201,13 @@ parameters:
     in: query
     required: false
     description: "A block number value that points to the start of the range of block-number-based data. Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 0
+  uncle_number:
+    name: uncle_number
+    in: query
+    required: false
+    description: "An uncle number value that points to the start of the range of uncle-number-based data. Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
     type: integer
     default: 0
   timestamp:
@@ -238,6 +252,13 @@ parameters:
     description: "A event index that points to the start of the requested data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
     type: integer
     default: 0
+  limit:
+    name: limit
+    in: query
+    required: false
+    type: integer
+    default: 20
+    description: "Limit the number of records returned based on a limit value. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
 
 paths:
   /v1/accounts/balances:
@@ -270,7 +291,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "addresses", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/accounts/{address}/{tag}:
+  /v1/accounts/{address}:
     get:
       summary: Get Account State by address
       description: |
@@ -281,7 +302,7 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/tag'
+      - $ref: '#/parameters/tagOptional'
       - $ref: '#/parameters/blockchain_tip'
         description: Account address
       responses:
@@ -320,7 +341,9 @@ paths:
         - $ref: '#/parameters/order'
         - $ref: '#/parameters/block_number'
         - $ref: '#/parameters/timestamp'
+        - $ref: '#/parameters/transaction_index'
         - $ref: '#/parameters/log_index'
+        - $ref: '#/parameters/limit'
       responses:
         200:
           description: logs
@@ -358,6 +381,7 @@ paths:
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
       - $ref: '#/parameters/transaction_index'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: transactions for specific address
@@ -395,6 +419,7 @@ paths:
       - $ref: '#/parameters/timestamp'
       - $ref: '#/parameters/transaction_index'
       - $ref: '#/parameters/parent_transaction_index'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: internal transactions for specific address
@@ -428,6 +453,7 @@ paths:
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/timestamp'
       - $ref: '#/parameters/id'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: pending transactions for specific address
@@ -461,6 +487,7 @@ paths:
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: blocks mined by specific address
@@ -496,6 +523,7 @@ paths:
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: uncles mined by specific address
@@ -596,6 +624,7 @@ paths:
       - $ref: '#/parameters/timestamp'
       - $ref: '#/parameters/transaction_index'
       - $ref: '#/parameters/log_index'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: tokens transfered to or from specific address
@@ -658,6 +687,7 @@ paths:
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
       - $ref: '#/parameters/event_index'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: Eth transfered to or from specific address
@@ -692,6 +722,7 @@ paths:
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: blocks list
@@ -754,7 +785,6 @@ paths:
       parameters:
       - $ref: '#/parameters/tag'
       - $ref: '#/parameters/order'
-      - $ref: '#/parameters/transaction_index'
       responses:
         200:
           description: transactions from specific block
@@ -790,8 +820,6 @@ paths:
       parameters:
       - $ref: '#/parameters/tag'
       - $ref: '#/parameters/order'
-      - $ref: '#/parameters/transaction_index'
-      - $ref: '#/parameters/parent_transaction_index'
       responses:
         200:
           description: transactions from specific block
@@ -884,7 +912,6 @@ paths:
       parameters:
         - $ref: '#/parameters/txhash'
         - $ref: '#/parameters/order'
-        - $ref: '#/parameters/transaction_index'
       responses:
         200:
           description: transaction
@@ -951,8 +978,9 @@ paths:
       parameters:
       - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
-      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/uncle_number'
       - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: uncles list
@@ -978,7 +1006,7 @@ paths:
     get:
       summary: Get Uncle by hash or number or keyword
       description: |
-        You can use this endpoint to receive `Uncle` data by block hash or number or keyword
+        You can use this endpoint to receive `Uncle` data by uncle hash or number or keyword
       operationId: getUncle
       produces:
       - application/json
@@ -1015,6 +1043,7 @@ paths:
       parameters:
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/id'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: Contract
@@ -1072,6 +1101,7 @@ paths:
       parameters:
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/id'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: Token
@@ -1137,6 +1167,7 @@ paths:
       - $ref: '#/parameters/timestamp'
       - $ref: '#/parameters/transaction_index'
       - $ref: '#/parameters/log_index'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: token transfers
@@ -1172,6 +1203,7 @@ paths:
       - $ref: '#/parameters/contract_address'
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/id'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: token holders list
@@ -1391,6 +1423,7 @@ paths:
         - $ref: '#/parameters/block_number'
         - $ref: '#/parameters/timestamp'
         - $ref: '#/parameters/event_index'
+        - $ref: '#/parameters/limit'
       responses:
         200:
           schema:
@@ -1553,6 +1586,9 @@ definitions:
         type: string
         format: hash
         example: "0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5"
+      parentTxIndex:
+        type: integer
+        example: 3
       op:
         type: string
         example: "suicide"
@@ -1885,6 +1921,10 @@ definitions:
       transactionIndex:
         type: integer
         example: 2
+      timestamp:
+        type: integer
+        example: 1548229016
+
 
   TokenBalance:
     properties:

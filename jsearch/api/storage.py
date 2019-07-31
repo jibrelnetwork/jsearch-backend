@@ -4,7 +4,7 @@ from collections import defaultdict
 
 import asyncpgsa
 from itertools import groupby
-from sqlalchemy import select, func, and_, false
+from sqlalchemy import select, func, and_, false, desc
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
@@ -21,6 +21,10 @@ from jsearch.api.database_queries.blocks import (
     get_mined_blocks_query,
     ORDER_SCHEME_BY_NUMBER,
     ORDER_SCHEME_BY_TIMESTAMP,
+)
+from jsearch.api.database_queries.uncles import (
+    get_uncles_by_timestamp_query,
+    get_uncles_by_number_query
 )
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, \
     get_internal_txs_by_address_and_block_query, get_internal_txs_by_address_and_timestamp_query
@@ -50,7 +54,7 @@ from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent
 from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import blocks_t, chain_splits_t, reorgs_t, wallet_events_t, accounts_state_t
+from jsearch.common.tables import blocks_t, reorgs_t, wallet_events_t, accounts_state_t, chain_events_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock, OrderDirection
 
@@ -359,16 +363,29 @@ class Storage:
             data['reward'] = int(data['reward'])
             return models.Uncle(**data)
 
-    async def get_uncles(self, limit, offset, order) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = f"""SELECT * FROM uncles ORDER BY number {order} LIMIT $1 OFFSET $2"""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, limit, offset)
-            rows = [dict(r) for r in rows]
-            for r in rows:
-                del r['block_hash']
-                del r['is_forked']
-                r['reward'] = int(r['reward'])
+    async def get_uncles(
+            self,
+            limit: int,
+            order: Ordering,
+            number: Optional[int] = None,
+            timestamp: Optional[int] = None
+    ) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
+        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+            query = get_uncles_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
+
+        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_uncles_by_number_query(limit, number=number, order=order)
+
+        else:
+            raise ValueError('Invalid scheme: {scheme}')
+
+        async with self.pool.acquire() as connection:
+            rows = await fetch(connection=connection, query=query)
+
+            for row in rows:
+                row.update({
+                    'reward': int(row['reward']),
+                })
 
         uncles = [models.Uncle(**row) for row in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
@@ -670,15 +687,21 @@ class Storage:
         is_in_fork = False
         last_unchanged = None
         if tip_block:
-            split_query = select([chain_splits_t.c.common_block_number]).where(
-                chain_splits_t.c.id == select([reorgs_t.c.split_id]).where(reorgs_t.c.block_hash == tip_block.hash)
-            )
+            split_query = select(
+                [chain_events_t.c.block_number]
+            ).where(
+                chain_events_t.c.id == select(
+                    [reorgs_t.c.split_id]
+                ).where(
+                    reorgs_t.c.block_hash == tip_block.hash
+                ).order_by(desc(reorgs_t.c.split_id)).limit(1)
+            ).order_by(chain_events_t.c.block_number)
 
             async with self.pool.acquire() as conn:
                 chain_split = await fetch_row(conn, query=split_query)
 
             is_in_fork = chain_split is not None
-            common_block_number = chain_split and chain_split['common_block_number']
+            common_block_number = chain_split and chain_split['block_number']
             if is_in_fork and common_block_number is not None:
                 last_unchanged = common_block_number
 

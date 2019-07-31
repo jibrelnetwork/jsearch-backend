@@ -8,7 +8,6 @@ from jsearch.api.storage import Storage
 from jsearch.api.structs import BlockchainTip, BlockInfo
 from jsearch.tests.plugins.databases.factories.accounts import AccountStateFactory, AccountFactory
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
-from jsearch.tests.plugins.databases.factories.chain_splits import ChainSplitFactory
 from jsearch.tests.plugins.databases.factories.internal_transactions import InternalTransactionFactory
 from jsearch.tests.plugins.databases.factories.logs import LogFactory
 from jsearch.tests.plugins.databases.factories.reorgs import ReorgFactory
@@ -95,7 +94,7 @@ cases = [
 def _get_tip(
         storage: Storage,
         block_factory: BlockFactory,
-        chain_split_factory: ChainSplitFactory,
+        chain_events_factory,
         reorg_factory: ReorgFactory,
 ) -> Callable[[bool], Awaitable[BlockchainTip]]:
     async def inner(is_forked: bool) -> BlockchainTip:
@@ -110,9 +109,9 @@ def _get_tip(
             number=100,
         )
 
-        chain_splits = chain_split_factory.create(
-            common_block_hash=common_block.hash,
-            common_block_number=common_block.number,
+        chain_splits = chain_events_factory.create(
+            block_hash=common_block.hash,
+            block_number=common_block.number,
         )
         reorg_factory.create(
             block_hash=forked_block.hash,
@@ -688,10 +687,11 @@ async def test_get_uncles_with_tip(
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
+    uncle_number = target_block_number - 1
     uncle_factory.create(
         hash='0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413',
         parent_hash='0x9e4f201db6e56a43980881cd09855b99b2f2aeefc84ffb2ad0ccf3f42de6fba2',
-        number=tip.tip_number,
+        number=uncle_number,
         block_number=target_block_number,
         difficulty='10694243015446',
         gas_used='0',
@@ -710,7 +710,7 @@ async def test_get_uncles_with_tip(
         transactions_root='0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
     )
 
-    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    query_params = f'uncle_number={uncle_number}&limit=1&blockchain_tip={tip.tip_hash}'
     response = await cli.get(f'/v1/uncles?{query_params}')
     response_json = await response.json()
     response_json.pop('paging', None)
@@ -726,7 +726,7 @@ async def test_get_uncles_with_tip(
             "miner": "0xf8b483dba2c3b7176a3da549ad41a48bb3121069",
             "mixHash": "0x02a775f306082912b617e858fef268597a277de056dbe924ee6aabfa35a33c44",
             "nonce": "496358969209982823",
-            "number": tip.tip_number,
+            "number": uncle_number,
             "parentHash": "0x9e4f201db6e56a43980881cd09855b99b2f2aeefc84ffb2ad0ccf3f42de6fba2",
             "receiptsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "sha3Uncles": "0x2843dd2134eb02067b585e76ce6a7fc89d22d3eae1d38827b1eb15a3b5153347",
