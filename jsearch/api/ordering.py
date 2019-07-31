@@ -1,10 +1,12 @@
 from operator import le, ge, gt, lt
 
 from sqlalchemy import asc, desc
-from typing import Optional, Dict, NamedTuple, List, Callable, Any
+from sqlalchemy.sql import CompoundSelect
+from typing import Optional, NamedTuple, List, Callable, Any
 
 from jsearch.typing import OrderScheme, Columns, OrderDirection
 
+ORDER_SCHEME_NONE: OrderScheme = ''
 ORDER_SCHEME_BY_NUMBER: OrderScheme = 'order_by_number'
 ORDER_SCHEME_BY_TIMESTAMP: OrderScheme = 'order_by_timestamp'
 
@@ -36,6 +38,13 @@ class Ordering(NamedTuple):
     operator: Callable[[Any, Any], Any]
     direction: OrderDirection
 
+    @property
+    def apply_direction(self):
+        return DIRECTIONS[self.direction]
+
+    def get_ordering_for_union_query(self, table: CompoundSelect):
+        return [self.apply_direction(getattr(table.c, field)) for field in self.fields]
+
 
 def get_order_schema(timestamp: Optional[int]) -> OrderScheme:
     if timestamp is None:
@@ -44,8 +53,7 @@ def get_order_schema(timestamp: Optional[int]) -> OrderScheme:
     return ORDER_SCHEME_BY_TIMESTAMP
 
 
-def get_ordering(mapping: Dict[str, Columns], scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-    columns: Columns = mapping[scheme]
+def get_ordering(columns: Columns, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
     apply_order_direction = DIRECTIONS[direction]
     operator = DIRECTIONS_OPERATOR_MAPS[direction]
     operator_or_equal = DIRECTIONS_OPERATOR_OR_EQUAL_MAPS[direction]

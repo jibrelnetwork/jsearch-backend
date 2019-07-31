@@ -36,10 +36,10 @@ def get_default_fields():
 
 
 def get_uncles_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-    columns: Dict[OrderScheme, Columns] = {
+    columns: Columns = {
         ORDER_SCHEME_BY_NUMBER: [uncles_t.c.number],
         ORDER_SCHEME_BY_TIMESTAMP: [uncles_t.c.timestamp]
-    }
+    }[scheme]
     return get_ordering(columns, scheme, direction)
 
 

@@ -44,32 +44,24 @@ def get_flatten_error_messages(messages: Dict[str, List[str]]) -> List[Dict[str,
     return flatten_messages
 
 
-class TimeRelatedListSchema(Schema):
-    tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
-
+class ListSchema(Schema):
     limit = fields.Int(
         missing=DEFAULT_LIMIT,
         validate=Range(min=1, max=MAX_LIMIT)
     )
-
-    timestamp = PositiveIntOrTagField(tags={Tag.LATEST})
-
     order = fields.Str(
         missing=ORDER_DESC,
         validate=OneOf([ORDER_ASC, ORDER_DESC], error='Ordering can be either "asc" or "desc".'),
     )
-
     # Notes: there are cases when outer filters names don't match
     # with fields in database. When we need a mapping.
     # On left side: field name for outer HTTP interface
     # On right side: field name for table
     mapping = {}
+    default_values = {}
 
     class Meta:
         strict = True
-
-    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-        pass
 
     @post_load
     def update_ordering(self, item: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
@@ -85,6 +77,9 @@ class TimeRelatedListSchema(Schema):
         item['order'] = ordering
         return item
 
+    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+        pass
+
     def handle_error(self, exc: ValidationError, data: Dict[str, Any]) -> None:
         """
         Notes:
@@ -95,14 +90,17 @@ class TimeRelatedListSchema(Schema):
         raise ApiError(messages)
 
 
-class BlockRelatedListSchema(TimeRelatedListSchema):
+class BlockRelatedListSchema(ListSchema):
+    tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
+
     block_number = PositiveIntOrTagField(
         load_from='block_number',
         tags={Tag.LATEST}
     )
+    timestamp = PositiveIntOrTagField(tags={Tag.LATEST})
 
     default_values = {
-        'block_number': Tag.LATEST,
+        'block_number': Tag.LATEST
     }
 
     @validates_schema

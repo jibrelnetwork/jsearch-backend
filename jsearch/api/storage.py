@@ -33,7 +33,9 @@ from jsearch.api.database_queries.logs import (
 )
 from jsearch.api.database_queries.pending_transactions import (
     get_pending_txs_by_account,
+    get_account_pending_txs_timestamp,
     get_outcoming_pending_txs_count,
+    get_pending_txs_ordering
 )
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_token,
@@ -48,7 +50,7 @@ from jsearch.api.database_queries.transactions import (
 from jsearch.api.database_queries.wallet_events import get_wallet_events_query
 from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
-from jsearch.api.ordering import Ordering
+from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent
 from jsearch.common.queries import in_app_distinct
@@ -917,36 +919,36 @@ class Storage:
 
         return txs, last_affected_block
 
-    async def get_account_pending_transactions(self,
-                                               account: str,
-                                               order: str,
-                                               limit: Optional[int] = None,
-                                               offset: Optional[int] = None):
-
-        query = get_pending_txs_by_account(account, order)
-
-        if limit:
-            query = query.limit(limit)
-
-        if offset:
-            query = query.offset(offset)
-
+    async def get_account_pending_transactions(
+            self,
+            account: str, limit: int,
+            ordering: Ordering,
+            timestamp: int,
+            id: Optional[int],
+    ) -> List[models.PendingTransaction]:
+        query = get_pending_txs_by_account(account, limit, ordering, timestamp, id)
         rows = await fetch(self.pool, query)
+        for row in rows:
+            row['timestamp'] = row['timestamp'] and int(row['timestamp'].timestamp())
         return [models.PendingTransaction(**r) for r in rows]
 
-    async def get_account_pending_events(self,
-                                         account: str,
-                                         order: str,
-                                         limit: Optional[int] = None,
-                                         offset: Optional[int] = None) -> List[Dict[str, Any]]:
+    async def get_account_pending_tx_timestamp(
+            self,
+            account: str,
+            ordering: Ordering,
+    ) -> Optional[int]:
+        query = get_account_pending_txs_timestamp(account, ordering)
+        row = await fetch_row(self.pool, query)
+        if row:
+            value = row['timestamp']
+            return value and value
 
-        query = get_pending_txs_by_account(account, order)
+    async def get_account_pending_events(self, account: str, limit: int) -> List[Dict[str, Any]]:
+        ordering = get_pending_txs_ordering(scheme=ORDER_SCHEME_NONE, direction=ORDER_DESC)
+        query = get_pending_txs_by_account(account, limit, ordering, )
 
         if limit:
             query = query.limit(limit)
-
-        if offset:
-            query = query.offset(offset)
 
         rows = await fetch(self.pool, query)
 

@@ -1,11 +1,17 @@
 from sqlalchemy import and_, false, Column, select, desc
 from sqlalchemy.orm import Query
-from typing import List, Optional, Dict
+from typing import List, Optional
 
 from jsearch.api.database_queries.transactions import get_ordering
 from jsearch.api.helpers import get_order
-from jsearch.api.ordering import ORDER_DESC, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, Ordering, DIRECTIONS, \
+from jsearch.api.ordering import (
+    ORDER_DESC,
+    ORDER_SCHEME_BY_NUMBER,
+    ORDER_SCHEME_BY_TIMESTAMP,
+    Ordering,
+    DIRECTIONS,
     DIRECTIONS_OPERATOR_OR_EQUAL_MAPS
+)
 from jsearch.common.tables import blocks_t
 from jsearch.typing import Columns, OrderScheme, OrderDirection
 
@@ -37,10 +43,10 @@ def get_default_fields():
 
 
 def get_blocks_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-    columns: Dict[OrderScheme, Columns] = {
+    columns: Columns = {
         ORDER_SCHEME_BY_NUMBER: [blocks_t.c.number],
         ORDER_SCHEME_BY_TIMESTAMP: [blocks_t.c.timestamp]
-    }
+    }[scheme]
     return get_ordering(columns, scheme, direction)
 
 
