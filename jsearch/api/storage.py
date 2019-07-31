@@ -4,7 +4,7 @@ from collections import defaultdict
 
 import asyncpgsa
 from itertools import groupby
-from sqlalchemy import select, func, and_, false
+from sqlalchemy import select, func, and_, false, desc
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
@@ -651,7 +651,9 @@ class Storage:
             ).where(
                 chain_events_t.c.id == select(
                     [reorgs_t.c.split_id]
-                ).where(reorgs_t.c.block_hash == tip_block.hash)
+                ).where(
+                    reorgs_t.c.block_hash == tip_block.hash
+                ).order_by(desc(reorgs_t.c.split_id)).limit(1)
             ).order_by(chain_events_t.c.block_number)
 
             async with self.pool.acquire() as conn:
