@@ -4,7 +4,7 @@ from collections import defaultdict
 
 import asyncpgsa
 from itertools import groupby
-from sqlalchemy import select, func, and_, false
+from sqlalchemy import select, func, and_, false, desc
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
@@ -54,7 +54,7 @@ from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent
 from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import blocks_t, chain_splits_t, reorgs_t, wallet_events_t, accounts_state_t
+from jsearch.common.tables import blocks_t, reorgs_t, wallet_events_t, accounts_state_t, chain_events_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock, OrderDirection
 
@@ -663,15 +663,21 @@ class Storage:
         is_in_fork = False
         last_unchanged = None
         if tip_block:
-            split_query = select([chain_splits_t.c.common_block_number]).where(
-                chain_splits_t.c.id == select([reorgs_t.c.split_id]).where(reorgs_t.c.block_hash == tip_block.hash)
-            )
+            split_query = select(
+                [chain_events_t.c.block_number]
+            ).where(
+                chain_events_t.c.id == select(
+                    [reorgs_t.c.split_id]
+                ).where(
+                    reorgs_t.c.block_hash == tip_block.hash
+                ).order_by(desc(reorgs_t.c.split_id)).limit(1)
+            ).order_by(chain_events_t.c.block_number)
 
             async with self.pool.acquire() as conn:
                 chain_split = await fetch_row(conn, query=split_query)
 
             is_in_fork = chain_split is not None
-            common_block_number = chain_split and chain_split['common_block_number']
+            common_block_number = chain_split and chain_split['block_number']
             if is_in_fork and common_block_number is not None:
                 last_unchanged = common_block_number
 
