@@ -32,7 +32,6 @@ async def get_tip_or_raise_api_error(
         tip_hash: str,
         last_block: Optional[BlockInfo] = None,
 ) -> BlockchainTip:
-
     tip_block = await storage.get_block_info(tip_hash)
 
     if tip_block is None:
@@ -55,7 +54,7 @@ def is_tip_stale(tip: BlockchainTip, block_number: Optional[int]) -> bool:
         return False
 
     return (
-        tip.is_in_fork and
-        tip.last_unchanged_block is not None and
-        tip.last_unchanged_block < block_number
+            tip.is_in_fork and
+            tip.last_unchanged_block is not None and
+            tip.last_unchanged_block < block_number
     )
