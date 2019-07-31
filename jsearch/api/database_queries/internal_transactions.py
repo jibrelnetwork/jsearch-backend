@@ -1,6 +1,6 @@
 from sqlalchemy import select, Column, and_, false, tuple_
 from sqlalchemy.orm import Query
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 from jsearch.api.helpers import get_order
 from jsearch.api.ordering import ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, get_ordering, Ordering
@@ -28,7 +28,7 @@ def get_default_fields() -> List[Column]:
 
 
 def get_internal_txs_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-    columns: Dict[OrderScheme, Columns] = {
+    columns: Columns = {
         ORDER_SCHEME_BY_NUMBER: [
             internal_transactions_t.c.block_number,
             internal_transactions_t.c.parent_tx_index,
@@ -39,7 +39,7 @@ def get_internal_txs_ordering(scheme: OrderScheme, direction: OrderDirection) ->
             internal_transactions_t.c.parent_tx_index,
             internal_transactions_t.c.transaction_index
         ]
-    }
+    }[scheme]
     return get_ordering(columns, scheme, direction)
 
 

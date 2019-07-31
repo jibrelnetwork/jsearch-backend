@@ -44,39 +44,24 @@ def get_flatten_error_messages(messages: Dict[str, List[str]]) -> List[Dict[str,
     return flatten_messages
 
 
-class BlockRelatedListSchema(Schema):
-    tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
-
+class ListSchema(Schema):
     limit = fields.Int(
         missing=DEFAULT_LIMIT,
         validate=Range(min=1, max=MAX_LIMIT)
     )
-
-    block_number = PositiveIntOrTagField(
-        load_from='block_number',
-        tags={Tag.LATEST}
-    )
-    timestamp = PositiveIntOrTagField(tags={Tag.LATEST})
-
     order = fields.Str(
         missing=ORDER_DESC,
         validate=OneOf([ORDER_ASC, ORDER_DESC], error='Ordering can be either "asc" or "desc".'),
     )
-
-    default_values = {
-        'block_number': Tag.LATEST
-    }
     # Notes: there are cases when outer filters names don't match
     # with fields in database. When we need a mapping.
     # On left side: field name for outer HTTP interface
     # On right side: field name for table
     mapping = {}
+    default_values = {}
 
     class Meta:
         strict = True
-
-    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-        pass
 
     @post_load
     def update_ordering(self, item: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
@@ -92,10 +77,8 @@ class BlockRelatedListSchema(Schema):
         item['order'] = ordering
         return item
 
-    @validates_schema
-    def validate_numbers(self, data, **kwargs):
-        if data.get("block_number") and data.get("timestamp"):
-            raise ValidationError("Filtration should be either by number or by timestamp")
+    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+        pass
 
     def handle_error(self, exc: ValidationError, data: Dict[str, Any]) -> None:
         """
@@ -105,3 +88,22 @@ class BlockRelatedListSchema(Schema):
         messages = {self.mapping and self.mapping.get(key) or key: value for key, value in exc.messages.items()}
         messages = get_flatten_error_messages(messages)
         raise ApiError(messages)
+
+
+class BlockRelatedListSchema(ListSchema):
+    tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
+
+    block_number = PositiveIntOrTagField(
+        load_from='block_number',
+        tags={Tag.LATEST}
+    )
+    timestamp = PositiveIntOrTagField(tags={Tag.LATEST})
+
+    default_values = {
+        'block_number': Tag.LATEST
+    }
+
+    @validates_schema
+    def validate_numbers(self, data, **kwargs):
+        if data.get("block_number") and data.get("timestamp"):
+            raise ValidationError("Filtration should be either by number or by timestamp")

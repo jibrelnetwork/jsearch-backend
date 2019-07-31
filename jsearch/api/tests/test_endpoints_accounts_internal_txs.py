@@ -1,21 +1,16 @@
 import logging
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import urlencode
 
 import pytest
 import time
-from typing import List, Dict, Any, Tuple, Callable
+from typing import List, Dict, Any, Callable
 
+from jsearch.api.tests.utils import parse_url
 from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
-
-def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
-    if url:
-        path, params = url.split("?")
-        return path, parse_qs(params)
 
 
 @pytest.fixture()
