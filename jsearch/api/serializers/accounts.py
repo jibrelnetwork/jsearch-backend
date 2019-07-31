@@ -6,6 +6,7 @@ from marshmallow.validate import Range, Length
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_ordering
 from jsearch.api.database_queries.logs import get_logs_ordering
 from jsearch.api.database_queries.pending_transactions import get_pending_txs_ordering
+from jsearch.api.database_queries.token_transfers import get_transfers_ordering
 from jsearch.api.database_queries.transactions import get_tx_ordering
 from jsearch.api.ordering import Ordering
 from jsearch.api.serializers.common import BlockRelatedListSchema, ListSchema
@@ -30,6 +31,16 @@ class AccountsTxsSchema(BlockRelatedListSchema):
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         return get_tx_ordering(scheme, direction)
+
+
+class AccountsTransfersSchema(BlockRelatedListSchema):
+    address = StrLower(validate=Length(min=1, max=100), location='match_info')
+
+    log_index = fields.Integer(validate=Range(min=0))
+    transaction_index = fields.Integer(validate=Range(min=0))
+
+    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+        return get_transfers_ordering(scheme, direction)
 
 
 class AccountsInternalTxsSchema(BlockRelatedListSchema):

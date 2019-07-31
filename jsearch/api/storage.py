@@ -34,8 +34,8 @@ from jsearch.api.database_queries.pending_transactions import (
     get_pending_txs_ordering
 )
 from jsearch.api.database_queries.token_transfers import (
-    get_token_transfers_by_token,
-    get_token_transfers_by_account
+    get_token_transfers_by_account_and_block_number,
+    get_token_transfers_by_token_and_block_number
 )
 from jsearch.api.database_queries.transactions import (
     get_txs_for_events_query,
@@ -492,20 +492,28 @@ class Storage:
 
         return balances, last_affected_block
 
-    async def get_tokens_transfers(self,
-                                   address: str,
-                                   limit: int,
-                                   offset: int,
-                                   order: str) -> Tuple[List[models.TokenTransfer], Optional[LastAffectedBlock]]:
+    async def get_tokens_transfers(
+            self,
+            address: str,
+            limit: int,
+            ordering: Ordering,
+            block_number: int,
+            transaction_index: Optional[int] = None,
+            log_index: Optional[int] = None
+    ) -> Tuple[List[models.TokenTransfer], Optional[LastAffectedBlock]]:
         # HACK: There're 2 times more entries due to denormalization, see
         # `log_to_transfers`. Because of this, `offset` and `limit` should be
         # multiplied first and rows should be deduped second.
-        offset *= 2
         limit *= 2
 
-        query = get_token_transfers_by_token(address.lower(), order)
-        query = query.limit(limit)
-        query = query.offset(offset)
+        query = get_token_transfers_by_token_and_block_number(
+            address=address,
+            ordering=ordering,
+            limit=limit,
+            block_number=block_number,
+            transaction_index=transaction_index,
+            log_index=log_index
+        )
 
         rows = await fetch(self.pool, query)
         # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
@@ -521,16 +529,32 @@ class Storage:
             self,
             address: str,
             limit: int,
-            offset: int,
-            order: str
+            ordering: Ordering,
+            block_number: int,
+            transaction_index: Optional[int] = None,
+            log_index: Optional[int] = None
     ) -> Tuple[List[models.TokenTransfer], Optional[LastAffectedBlock]]:
 
-        query = get_token_transfers_by_account(address.lower(), order)
-        query = query.limit(limit)
-        query = query.offset(offset)
+        # HACK: There're 2 times more entries due to denormalization, see
+        # `log_to_transfers`. Because of this, `offset` and `limit` should be
+        # multiplied first and rows should be deduped second.
+        limit *= 2
+
+        query = get_token_transfers_by_account_and_block_number(
+            address=address,
+            ordering=ordering,
+            limit=limit,
+            block_number=block_number,
+            transaction_index=transaction_index,
+            log_index=log_index
+        )
 
         rows = await fetch(self.pool, query)
-        transfers = _rows_to_token_transfers(rows)
+        # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
+        # `in_app_distinct` instead.
+        rows_distinct = in_app_distinct(rows)
+
+        transfers = _rows_to_token_transfers(rows_distinct)
         last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return transfers, last_affected_block
