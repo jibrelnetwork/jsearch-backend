@@ -1,18 +1,23 @@
 import factory
 import pytest
 
-from jsearch.common.tables import chain_splits_t
+from jsearch.common.tables import chain_events_t
 from .common import Base, generate_address, session
 
 
-class ChainSplitModel(Base):
-    __table__ = chain_splits_t
+class ChainEventModel(Base):
+    __table__ = chain_events_t
+    __mapper_args__ = {
+        'primary_key': [
+            chain_events_t.c.id
+        ]
+    }
 
 
-class ChainSplitFactory(factory.alchemy.SQLAlchemyModelFactory):
+class ChainEventFactory(factory.alchemy.SQLAlchemyModelFactory):
     id = factory.Sequence(lambda n: n)
-    common_block_hash = factory.LazyFunction(generate_address)
-    common_block_number = factory.Sequence(lambda n: n)
+    block_hash = factory.LazyFunction(generate_address)
+    block_number = factory.Sequence(lambda n: n)
     drop_length = factory.Sequence(lambda n: n % 6)
     drop_block_hash = factory.LazyFunction(generate_address)
     add_length = factory.Sequence(lambda n: n % 6)
@@ -20,11 +25,12 @@ class ChainSplitFactory(factory.alchemy.SQLAlchemyModelFactory):
     node_id = factory.Sequence(lambda n: n % 10)
 
     class Meta:
-        model = ChainSplitModel
+        model = ChainEventModel
         sqlalchemy_session = session
         sqlalchemy_session_persistence = 'flush'
 
 
 @pytest.fixture()
-def chain_split_factory():
-    return ChainSplitFactory
+def chain_events_factory():
+    yield ChainEventFactory
+    ChainEventFactory.reset_sequence()

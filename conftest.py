@@ -11,7 +11,7 @@ pytest_plugins = (
     "jsearch.tests.plugins.databases.factories.assets_summary",
     "jsearch.tests.plugins.databases.factories.assets_transfers",
     "jsearch.tests.plugins.databases.factories.blocks",
-    "jsearch.tests.plugins.databases.factories.chain_splits",
+    "jsearch.tests.plugins.databases.factories.chain_events",
     "jsearch.tests.plugins.databases.factories.common",
     "jsearch.tests.plugins.databases.factories.contracts",
     "jsearch.tests.plugins.databases.factories.internal_transactions",
