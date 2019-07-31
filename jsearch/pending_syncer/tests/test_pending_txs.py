@@ -1,10 +1,12 @@
 import asyncio
+
 import datetime
 import pytest
-from jsearch.common.structs import SyncRange
 from psycopg2._json import Json
+from sqlalchemy import select
 from sqlalchemy.engine import Engine
 
+from jsearch.common.structs import SyncRange
 from jsearch.common.tables import pending_transactions_t
 from jsearch.pending_syncer.services import PendingSyncerService
 
@@ -25,8 +27,38 @@ pending_tx_fields = {
     'gasPrice': '0x165a0bc00',
 }
 
-
 pytestmark = pytest.mark.asyncio
+
+
+def get_pending_txs_query():
+    return select(
+        [
+            pending_transactions_t.c.last_synced_id,
+            pending_transactions_t.c.timestamp,
+            pending_transactions_t.c.node_id,
+            pending_transactions_t.c.hash,
+            pending_transactions_t.c.status,
+            pending_transactions_t.c.removed,
+            pending_transactions_t.c.r,
+            pending_transactions_t.c.s,
+            pending_transactions_t.c.v,
+            pending_transactions_t.c.to,
+            getattr(pending_transactions_t.c, 'from'),
+            pending_transactions_t.c.gas,
+            pending_transactions_t.c.gas_price,
+            pending_transactions_t.c.input,
+            pending_transactions_t.c.nonce,
+            pending_transactions_t.c.value,
+        ]
+    )
+
+
+def get_pending_txs(db: Engine):
+    query = get_pending_txs_query()
+    pending_txs = db.execute(query).fetchall()
+    pending_txs = [dict(tx) for tx in pending_txs]
+
+    return pending_txs
 
 
 @pytest.fixture()
@@ -35,7 +67,6 @@ async def pending_syncer_service(
         db_dsn,
         raw_db_dsn,
 ) -> PendingSyncerService:
-
     service = PendingSyncerService(
         raw_db_dsn=raw_db_dsn,
         main_db_dsn=db_dsn,
@@ -48,11 +79,10 @@ async def pending_syncer_service(
     await service.on_stop()
 
 
-@pytest.mark.usefixtures("mock_service_bus")
+@pytest.mark.usefixtures("pending_transaction_factory")
 async def test_pending_tx_is_not_saved_if_there_is_none(
         db: Engine,
         raw_db_dsn,
-        db_dsn,
         pending_syncer_service: PendingSyncerService
 ) -> None:
     # No pending TXs are in DB.
@@ -60,9 +90,7 @@ async def test_pending_tx_is_not_saved_if_there_is_none(
     txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
     await pending_syncer_service.sync_pending_txs(txs)
 
-    pending_txs = db.execute(pending_transactions_t.select()).fetchall()
-    pending_txs = [dict(tx) for tx in pending_txs]
-
+    pending_txs = get_pending_txs(db)
     assert pending_txs == []
 
 
@@ -99,9 +127,7 @@ async def test_pending_tx_is_saved_to_main_db(
     txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
     await pending_syncer_service.sync_pending_txs(txs)
 
-    pending_txs = db.execute(pending_transactions_t.select()).fetchall()
-    pending_txs = [dict(tx) for tx in pending_txs]
-
+    pending_txs = get_pending_txs(db)
     assert pending_txs == [
         {
             'last_synced_id': 1,
@@ -130,7 +156,6 @@ async def test_pending_tx_is_marked_as_removed(
         raw_db: Engine,
         pending_syncer_service: PendingSyncerService
 ) -> None:
-
     raw_db.execute(
         """
         INSERT INTO pending_transactions (
@@ -167,9 +192,7 @@ async def test_pending_tx_is_marked_as_removed(
     txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
     await pending_syncer_service.sync_pending_txs(txs)
 
-    pending_txs = db.execute(pending_transactions_t.select()).fetchall()
-    pending_txs = [dict(tx) for tx in pending_txs]
-
+    pending_txs = get_pending_txs(db)
     assert pending_txs == [
         {
             'last_synced_id': 2,
@@ -198,7 +221,6 @@ async def test_pending_tx_can_be_saved_with_a_big_value(
         raw_db: Engine,
         pending_syncer_service: PendingSyncerService
 ) -> None:
-
     raw_db.execute(
         """
         INSERT INTO pending_transactions (
@@ -226,9 +248,7 @@ async def test_pending_tx_can_be_saved_with_a_big_value(
     txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
     await pending_syncer_service.sync_pending_txs(txs)
 
-    pending_txs = db.execute(pending_transactions_t.select()).fetchall()
-    pending_txs = [dict(tx) for tx in pending_txs]
-
+    pending_txs = get_pending_txs(db)
     assert pending_txs == [
         {
             'last_synced_id': 1,
@@ -257,7 +277,6 @@ async def test_pending_syncer_processes_related_txs_in_order(
         raw_db: Engine,
         pending_syncer_service: PendingSyncerService
 ) -> None:
-
     raw_db.execute(
         """
         INSERT INTO pending_transactions (
@@ -366,7 +385,7 @@ async def test_pending_syncer_processes_related_txs_in_order(
     txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
     await pending_syncer_service.sync_pending_txs(txs)
 
-    pending_txs_query = pending_transactions_t.select().order_by(pending_transactions_t.c.last_synced_id)
+    pending_txs_query = get_pending_txs_query().order_by(pending_transactions_t.c.last_synced_id)
     pending_txs = db.execute(pending_txs_query).fetchall()
     pending_txs = [{'last_synced_id': tx['last_synced_id'], 'hash': tx['hash']} for tx in pending_txs]
 
@@ -395,7 +414,6 @@ async def test_pending_syncer_overrides_stale_data_in_db(
         db: Engine,
         pending_syncer_service: PendingSyncerService
 ) -> None:
-
     # Already synced first row.
     db.execute(
         pending_transactions_t.insert().values(
@@ -434,10 +452,7 @@ async def test_pending_syncer_overrides_stale_data_in_db(
         ]
     )
 
-    pending_txs_query = pending_transactions_t.select()
-    pending_txs = db.execute(pending_txs_query).fetchall()
-    pending_txs = [dict(tx) for tx in pending_txs]
-
+    pending_txs = get_pending_txs(db)
     assert pending_txs == [
         {
             'last_synced_id': 2,
@@ -465,7 +480,6 @@ async def test_pending_syncer_does_not_override_stale_data_in_db(
         db: Engine,
         pending_syncer_service: PendingSyncerService
 ) -> None:
-
     # Already synced first row.
     db.execute(
         pending_transactions_t.insert().values(
@@ -504,10 +518,7 @@ async def test_pending_syncer_does_not_override_stale_data_in_db(
         ]
     )
 
-    pending_txs_query = pending_transactions_t.select()
-    pending_txs = db.execute(pending_txs_query).fetchall()
-    pending_txs = [dict(tx) for tx in pending_txs]
-
+    pending_txs = get_pending_txs(db)
     assert pending_txs == [
         {
             'last_synced_id': 2,
@@ -536,7 +547,6 @@ async def test_pending_syncer_can_fetch_txs_if_none_synced_yet_and_first_one_is_
         raw_db: Engine,
         pending_syncer_service: PendingSyncerService
 ) -> None:
-
     raw_db.execute(
         """
         INSERT INTO pending_transactions (
@@ -562,5 +572,4 @@ async def test_pending_syncer_can_fetch_txs_if_none_synced_yet_and_first_one_is_
     )
 
     txs = await pending_syncer_service.get_pending_txs_to_sync(last_synced_id=None)
-
     assert len(txs) == 1

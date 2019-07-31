@@ -18,7 +18,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_pending_transactions_from_partial ON 
 """
 
 DOWN_SQL = """
-DROP INDEX CONCURRENTLY ix_pending_transactions_from_partial;
+DROP INDEX IF EXISTS ix_pending_transactions_from_partial;
 """
 
 
@@ -28,5 +28,4 @@ def upgrade():
 
 
 def downgrade():
-    op.execute('COMMIT')  # HACK: stop transaction and do action concurrently
     op.execute(DOWN_SQL)

@@ -363,65 +363,6 @@ async def test_get_account_internal_transactions(cli, block_factory, transaction
     ]
 
 
-@pytest.mark.parametrize(
-    "from_,to",
-    [
-        (
-                '0x1111111111111111111111111111111111111111',
-                '0x2222222222222222222222222222222222222222',
-        ),
-        (
-                '0x2222222222222222222222222222222222222222',
-                '0x1111111111111111111111111111111111111111',
-        ),
-    ],
-)
-async def test_get_account_pending_transactions(cli, from_, to, pending_transaction_factory):
-    pending_transaction_factory.create(
-        hash='0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
-        status='',
-        removed=False,
-        r='0x11',
-        s='0x22',
-        v='0x33',
-        to=to,
-        from_=from_,
-        gas=2100,
-        gas_price=10000000000,
-        input='0x0',
-        nonce=42,
-        value='1111111111111111111111111111111111111111',
-    )
-
-    resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/pending_transactions')
-    resp_json = await resp.json()
-
-    assert resp.status == 200
-    assert resp_json == {
-        'status': {
-            'success': True,
-            'errors': [],
-        },
-        'data': [
-            {
-                'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
-                'status': '',
-                'removed': False,
-                'r': '0x11',
-                's': '0x22',
-                'v': '0x33',
-                'to': to,
-                'from': from_,
-                'gas': '2100',
-                'gasPrice': '10000000000',
-                'input': '0x0',
-                'nonce': '42',
-                'value': '1111111111111111111111111111111111111111',
-            },
-        ]
-    }
-
-
 async def test_get_account_token_balances_multi_ok(cli, token_holder_factory):
     token_holder_factory.create(
         account_address='0x1111111111111111111111111111111111111111',

@@ -110,6 +110,7 @@ internal_transactions_t = sa.Table(
 pending_transactions_t = sa.Table(
     'pending_transactions',
     metadata,
+    sa.Column('id', sa.BigInteger),
     sa.Column('last_synced_id', sa.BigInteger, index=True),
     sa.Column('hash', sa.String(70), primary_key=True),
     sa.Column('status', sa.String),

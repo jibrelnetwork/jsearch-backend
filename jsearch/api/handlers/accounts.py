@@ -19,7 +19,12 @@ from jsearch.api.helpers import (
 )
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_page
-from jsearch.api.serializers.accounts import AccountsTxsSchema, AccountsInternalTxsSchema, AccountLogsSchema
+from jsearch.api.serializers.accounts import (
+    AccountsTxsSchema,
+    AccountLogsSchema,
+    AccountsInternalTxsSchema,
+    AccountsPendingTxsSchema
+)
 from jsearch.api.utils import use_kwargs
 
 logger = logging.getLogger(__name__)
@@ -141,25 +146,36 @@ async def get_account_internal_transactions(
     return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
 
 
-async def get_account_pending_transactions(request):
+@ApiError.catch
+@use_kwargs(AccountsPendingTxsSchema())
+async def get_account_pending_transactions(
+        request,
+        limit: int,
+        order: Ordering,
+        address: str,
+        timestamp: Optional[int] = None,
+        tx_id: Optional[int] = None
+):
     """
     Get account pending transactions
     """
     storage = request.app['storage']
-    address = request.match_info.get('address').lower()
-    params = validate_params(request)
+    if timestamp is None:
+        timestamp = await storage.get_account_pending_tx_timestamp(address, order)
 
-    pending_txs = await storage.get_account_pending_transactions(
-        address,
-        order=params['order'],
-        limit=params['limit'],
-        offset=params['offset'],
+    # Notes: we need to query limit + 1 items to get link on next page
+    txs = [] if timestamp is None else await storage.get_account_pending_transactions(
+        account=address,
+        limit=limit + 1,
+        ordering=order,
+        timestamp=timestamp,
+        id=tx_id
     )
 
-    response_data = [pt.to_dict() for pt in pending_txs]
-    response = api_success(response_data)
+    url = request.app.router['accounts_pending_txs'].url_for(address=address)
+    page = get_page(url=url, items=txs, limit=limit, ordering=order, mapping=AccountsPendingTxsSchema.mapping)
 
-    return response
+    return api_success(data=[x.to_dict() for x in page.items], page=page)
 
 
 @ApiError.catch
