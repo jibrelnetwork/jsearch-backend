@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 
 from jsearch.api.models.base_model_ import Model
 
@@ -427,7 +427,8 @@ class EthTransfer(Model):
         'to': str,
         'from': str,
         'amount': str,
-
+        'block_number': int,
+        'event_index': int,
     }
     attribute_map = {
         'tx_hash': 'transactionHash',
@@ -435,5 +436,7 @@ class EthTransfer(Model):
         'to': 'to',
         'from': 'from',
         'amount': 'amount',
+        'block_number': 'block_number',
+        'event_index': 'event_index',
     }
 

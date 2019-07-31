@@ -996,9 +996,9 @@ class Storage:
         return res
 
     async def get_account_eth_transfers(self, account_address, block_number=None,
-                                        event_index=None, timestamp=None, order='desc'):
+                                        event_index=None, timestamp=None, order='desc', limit=20):
         query = get_eth_transfers_by_address_query(account_address, block_number=block_number,
-                                                   event_index=event_index, timestamp=timestamp, order=order)
+                                                   event_index=event_index, timestamp=timestamp, order=order, limit=limit)
         rows = await fetch(self.pool, query)
         res = []
         for r in rows:
@@ -1009,6 +1009,9 @@ class Storage:
                 'amount': event_data['amount'],
                 'from': event_data['sender'],
                 'to': event_data['recepient'],
+                'block_number': r['block_number'],
+                'event_index': r['event_index'],
             })
             res.append(t)
-        return res
+        last_affected_block_number = max([r['block_number'] for r in rows])
+        return res, last_affected_block_number

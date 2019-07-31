@@ -23,7 +23,8 @@ from jsearch.api.serializers.accounts import (
     AccountsTxsSchema,
     AccountLogsSchema,
     AccountsInternalTxsSchema,
-    AccountsPendingTxsSchema
+    AccountsPendingTxsSchema,
+    EthTransfersListSchema,
 )
 from jsearch.api.utils import use_kwargs
 
@@ -333,18 +334,29 @@ async def get_account_transaction_count(request):
 
 
 @ApiError.catch
-async def get_account_eth_transfers(request):
+@use_kwargs(EthTransfersListSchema())
+async def get_account_eth_transfers(request,
+                                    address,
+                                    tip_hash=None,
+                                    block_number=None,
+                                    event_index=None,
+                                    timestamp=None,
+                                    order=None,
+                                    limit=None):
     storage = request.app['storage']
-    account_address = request.match_info['address'].lower()
-    tip_hash = request.query.get('blockchain_tip') or None
-    block_number = request.query.get('block_number') or None
-    event_index = request.query.get('event_index') or None
-    timestamp = request.query.get('timestamp') or None
-    order = request.query.get('order') or 'desc'
-
-    transfers = await storage.get_account_eth_transfers(account_address,
-                                                        block_number=block_number,
-                                                        timestamp=timestamp,
-                                                        event_index=event_index,
-                                                        order=order)
-    return api_success([t.to_dict() for t in transfers])
+    transfers, last_affected_block = await storage.get_account_eth_transfers(address,
+                                                                             block_number=block_number,
+                                                                             timestamp=timestamp,
+                                                                             event_index=event_index,
+                                                                             order=order,
+                                                                             limit=limit + 1)
+    transfers, tip_meta = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
+    url = request.app.router['accounts_eth_transfers'].url_for(address=address)
+    page = get_page(url=url, items=transfers, limit=limit, ordering=order, mapping=EthTransfersListSchema.mapping)
+    data = []
+    for item in page.items:
+        d = item.to_dict()
+        del d['block_number']
+        del d['event_index']
+        data.append(d)
+    return api_success(data=data, page=page, meta=tip_meta)

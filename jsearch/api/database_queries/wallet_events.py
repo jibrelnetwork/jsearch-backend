@@ -57,22 +57,41 @@ def get_wallet_events_query(
     ).order_by(*ordering.columns).limit(limit)
 
 
-def get_eth_transfers_by_address_query(address: str, block_number=None,
-                                       event_index=None, timestamp=None, order='desc'):
+def get_wallet_events_ordering(scheme: OrderScheme, direction: OrderDirection):
+    columns = {
+        ORDER_SCHEME_BY_NUMBER: [wallet_events_t.c.block_number, wallet_events_t.c.event_index],
+        ORDER_SCHEME_BY_TIMESTAMP: [wallet_events_t.c.timestamp, wallet_events_t.c.event_index]
+    }[scheme]
+    return get_ordering(columns, scheme, direction)
 
+
+def get_eth_transfers_by_address_query(address: str, block_number=None,
+                                       event_index=None, timestamp=None, order='desc', limit=20):
+    from operator import ge, le
     page_filter_fields = []
     page_filter_values = []
 
-    if block_number:
+    order = order.direction
+
+    if order == 'desc':
+        order_criteria = wallet_events_t.c.event_index.desc()
+        paging_compare_op = le
+    elif order == 'asc':
+        order_criteria = wallet_events_t.c.event_index.asc()
+        paging_compare_op = ge
+    else:
+        raise ValueError(f'Invalid order value {order}')
+
+    if block_number and block_number != 'latest':
         page_filter_fields.append(wallet_events_t.c.block_number)
-        page_filter_values.append(int(block_number))
+        page_filter_values.append(block_number)
     elif timestamp:
         page_filter_fields.append(wallet_events_t.c.timestamp)
-        page_filter_values.append(int(timestamp))
+        page_filter_values.append(timestamp)
 
     if event_index:
         page_filter_fields.append(wallet_events_t.c.event_index)
-        page_filter_values.append(int(event_index))
+        page_filter_values.append(event_index)
 
     filter_criteria = [
         wallet_events_t.c.is_forked == False,
@@ -80,20 +99,13 @@ def get_eth_transfers_by_address_query(address: str, block_number=None,
     ]
 
     if page_filter_fields:
-        filter_criteria.append(tuple_(*page_filter_fields) >= tuple_(*page_filter_values))
+        filter_criteria.append(
+            paging_compare_op(tuple_(*page_filter_fields), tuple_(*page_filter_values))
+        )
 
     filter_criteria.append(wallet_events_t.c.type == WalletEventType.ETH_TRANSFER)
 
-    if order == 'desc':
-        order_criteria = wallet_events_t.c.event_index.desc()
-    elif order == 'asc':
-        order_criteria = wallet_events_t.c.event_index.asc()
-    else:
-        raise ValueError(f'Invalid order value {order}')
-
-    filter_criteria.append(wallet_events_t.c.type == WalletEventType.ETH_TRANSFER)
     query = wallet_events_t.select().where(
         and_(*filter_criteria)
-    ).order_by(order_criteria)
+    ).order_by(order_criteria).limit(limit)
     return query
-
