@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional
 
 from sqlalchemy import select, false
 from sqlalchemy.orm import Query
