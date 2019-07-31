@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import select, false
+from sqlalchemy import select, false, and_
 from sqlalchemy.orm import Query
 
 from jsearch.common.tables import uncles_t
@@ -43,15 +43,19 @@ def get_uncles_ordering(scheme: OrderScheme, direction: OrderDirection) -> Order
     return get_ordering(columns, scheme, direction)
 
 
-def get_blocks_query(
+def get_uncles_query(
         limit: int,
         order: Ordering,
-        columns: Optional[Columns] = None
+        columns: Optional[Columns] = None,
+        address: Optional[str] = None
 ) -> Query:
     columns = columns or get_default_fields()
     return select(
         columns=columns,
-        whereclause=uncles_t.c.is_forked == false(),
+        whereclause=and_(
+            uncles_t.c.is_forked == false(),
+            uncles_t.c.miner == address,
+        ) if address else uncles_t.c.is_forked == false(),
     ) \
         .order_by(*order.columns) \
         .limit(limit)
@@ -63,7 +67,7 @@ def get_uncles_by_number_query(
         order: Ordering,
         columns: Optional[Columns] = None
 ) -> Query:
-    query = get_blocks_query(limit, order=order, columns=columns)
+    query = get_uncles_query(limit=limit, order=order, columns=columns)
 
     if order.direction == ORDER_DESC:
         query = query.where(uncles_t.c.number <= number)
@@ -79,7 +83,41 @@ def get_uncles_by_timestamp_query(
         order: Ordering,
         columns: Optional[Columns] = None
 ) -> Query:
-    query = get_blocks_query(limit, order=order, columns=columns)
+    query = get_uncles_query(limit=limit, order=order, columns=columns)
+
+    if order.direction == ORDER_DESC:
+        query = query.where(uncles_t.c.timestamp <= timestamp)
+    else:
+        query = query.where(uncles_t.c.timestamp >= timestamp)
+
+    return query
+
+
+def get_uncles_by_miner_address_and_number_query(
+        address: str,
+        limit: int,
+        number: int,
+        order: Ordering,
+        columns: Optional[Columns] = None
+) -> Query:
+    query = get_uncles_query(address=address, limit=limit, order=order, columns=columns)
+
+    if order.direction == ORDER_DESC:
+        query = query.where(uncles_t.c.number <= number)
+    else:
+        query = query.where(uncles_t.c.number >= number)
+
+    return query
+
+
+def get_uncles_by_miner_address_and_timestamp_query(
+        address: str,
+        limit: int,
+        timestamp: int,
+        order: Ordering,
+        columns: Optional[Columns] = None
+) -> Query:
+    query = get_uncles_query(address=address, limit=limit, order=order, columns=columns)
 
     if order.direction == ORDER_DESC:
         query = query.where(uncles_t.c.timestamp <= timestamp)
