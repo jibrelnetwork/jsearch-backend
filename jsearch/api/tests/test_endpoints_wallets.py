@@ -55,7 +55,7 @@ def create_wallet_events(
     return create_env
 
 
-URL = '/v1/wallet/get_events?{params}'
+URL = '/v1/wallet/events?{params}'
 
 
 @pytest.mark.parametrize(
@@ -280,7 +280,7 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
     tx, _ = transaction_factory.create_for_block(block=block,)
     event = wallet_events_factory.create_token_transfer(tx=tx, block=block)
 
-    url = 'v1/wallet/get_events?{params}'.format(
+    url = 'v1/wallet/events?{params}'.format(
         params=urlencode({
             'blockchain_address': event.address,
             'blockchain_tip': block.hash,
@@ -312,7 +312,7 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
         },
         'paging': {
             'link': (
-                f'/v1/wallet/get_events?'
+                f'/v1/wallet/events?'
                 f'block_number={block.number}&'
                 f'event_index={event.event_index}'
                 f'&order=desc&'
