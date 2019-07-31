@@ -436,7 +436,7 @@ async def test_get_blocks_check_uncles_hashes_list(cli, main_db_data, block_hash
 
 @pytest.mark.usefixtures('uncles')
 async def test_get_uncles(cli, main_db_data):
-    resp = await cli.get('/v1/uncles')
+    resp = await cli.get('/v1/uncles?timestamp=1550000000')
     assert resp.status == 200
     assert (await resp.json())['data'] == [
         {'blockNumber': main_db_data['blocks'][2]['number'],
@@ -476,24 +476,6 @@ async def test_get_uncles(cli, main_db_data):
          'reward': hex(3750000000000000000),
          'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}
     ]
-
-
-@pytest.mark.usefixtures('uncles')
-async def test_get_uncles_asc(cli):
-    resp = await cli.get('/v1/uncles?order=asc')
-    assert resp.status == 200
-    uncles = (await resp.json())['data']
-    assert uncles[0]['number'] == 61
-    assert uncles[1]['number'] == 62
-
-
-@pytest.mark.usefixtures('uncles')
-async def test_get_uncles_offset_limit(cli):
-    resp = await cli.get('/v1/uncles?offset=1&limit=1')
-    assert resp.status == 200
-    uncles = (await resp.json())['data']
-    assert len(uncles) == 1
-    assert uncles[0]['number'] == 61
 
 
 @pytest.mark.usefixtures('uncles')
