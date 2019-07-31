@@ -8,7 +8,7 @@ from aiohttp_swagger import setup_swagger
 
 from jsearch import settings
 from jsearch.api.handlers import contracts
-from jsearch.api.handlers import monitoring, accounts, blocks, explorer, tokens, node_proxy, wallets
+from jsearch.api.handlers import monitoring, accounts, blocks, uncles, explorer, tokens, node_proxy, wallets
 from jsearch.api.middlewares import cors_middleware
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.api.storage import Storage
@@ -51,7 +51,10 @@ async def make_app():
         name='accounts_internal_txs'
     )
     app.router.add_route(
-        'GET', '/v1/accounts/{address}/pending_transactions', accounts.get_account_pending_transactions
+        'GET',
+        '/v1/accounts/{address}/pending_transactions',
+        accounts.get_account_pending_transactions,
+        name='accounts_pending_txs'
     )
     app.router.add_route('GET', '/v1/accounts/{address}/mined_blocks', accounts.get_account_mined_blocks)
     app.router.add_route('GET', '/v1/accounts/{address}/mined_uncles', accounts.get_account_mined_uncles)
@@ -60,7 +63,7 @@ async def make_app():
         'GET', '/v1/accounts/{address}/token_balance/{token_address}', accounts.get_account_token_balance
     )
     app.router.add_route('GET', '/v1/accounts/{address}/token_balances', accounts.get_account_token_balances_multi)
-    app.router.add_route('GET', '/v1/accounts/{address}/logs', accounts.get_account_logs)
+    app.router.add_route('GET', '/v1/accounts/{address}/logs', accounts.get_account_logs, name='accounts_logs')
     app.router.add_route('GET', '/v1/accounts/{address}/transaction_count', accounts.get_account_transaction_count)
     app.router.add_route('GET', '/v1/accounts/{address}/eth_transfers', accounts.get_account_eth_transfers)
 
@@ -74,8 +77,8 @@ async def make_app():
     app.router.add_route('GET', '/v1/transactions/{txhash}/internal_transactions', explorer.get_internal_transactions)
     app.router.add_route('GET', '/v1/receipts/{txhash}', explorer.get_receipt)
 
-    app.router.add_route('GET', '/v1/uncles', explorer.get_uncles)
-    app.router.add_route('GET', '/v1/uncles/{tag}', explorer.get_uncle)
+    app.router.add_route('GET', '/v1/uncles', uncles.get_uncles, name='uncles')
+    app.router.add_route('GET', '/v1/uncles/{tag}', uncles.get_uncle)
 
     app.router.add_route('POST', '/v1/verify_contract', contracts.verify_contract)
 
@@ -92,7 +95,7 @@ async def make_app():
     app.router.add_route('GET', '/v1/wallet/assets_summary', wallets.get_assets_summary)
     app.router.add_route('GET', '/v1/wallet/transfers', wallets.get_wallet_transfers)
     app.router.add_route('GET', '/v1/wallet/transactions', wallets.get_wallet_transactions)
-    app.router.add_route('GET', '/v1/wallet/get_events', wallets.get_wallet_events)
+    app.router.add_route('GET', '/v1/wallet/events', wallets.get_wallet_events, name='wallet_events')
 
     app.router.add_static('/docs', swagger_ui_path)
     setup_swagger(app, swagger_from_file=swagger_file)

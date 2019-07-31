@@ -23,7 +23,7 @@ async def test_get_tip_or_raise_api_error_finds_tip_not_forked(
         is_tip_forked,
         storage,
         block_factory,
-        chain_split_factory,
+        chain_events_factory,
         reorg_factory
 ) -> None:
     """
@@ -39,9 +39,9 @@ async def test_get_tip_or_raise_api_error_finds_tip_not_forked(
     canonical_block = block_factory.create(parent_hash=common_block.hash, number=16, hash='0x222a')
     forked_block = block_factory.create(parent_hash=common_block.hash, number=16, hash='0x222b')
 
-    chain_splits = chain_split_factory.create(
-        common_block_hash=common_block.hash,
-        common_block_number=common_block.number,
+    chain_splits = chain_events_factory.create(
+        block_hash=common_block.hash,
+        block_number=common_block.number,
     )
     reorg_factory.create(
         block_hash=forked_block.hash,
@@ -72,7 +72,7 @@ async def test_get_tip_or_raise_api_error_finds_tip_not_forked(
 async def test_get_tip_or_raise_api_error_finds_tip_last_block_provided(
         storage,
         block_factory,
-        chain_split_factory,
+        chain_events_factory,
         reorg_factory
 ) -> None:
     """
@@ -88,9 +88,9 @@ async def test_get_tip_or_raise_api_error_finds_tip_last_block_provided(
     canonical_block = block_factory.create(parent_hash=common_block.hash, number=16, hash='0x222a')
     forked_block = block_factory.create(parent_hash=common_block.hash, number=16, hash='0x222b')
 
-    chain_splits = chain_split_factory.create(
-        common_block_hash=common_block.hash,
-        common_block_number=common_block.number,
+    chain_splits = chain_events_factory.create(
+        block_hash=common_block.hash,
+        block_number=common_block.number,
     )
     reorg_factory.create(
         block_hash=forked_block.hash,
@@ -101,7 +101,7 @@ async def test_get_tip_or_raise_api_error_finds_tip_last_block_provided(
     tip = await get_tip_or_raise_api_error(
         storage,
         canonical_block.hash,
-        last_block=BlockInfo(hash='0xLASTBLOCK', number=42)
+        last_block=BlockInfo(hash='0xLASTBLOCK', number=42, timestamp=0)
     )
 
     assert {

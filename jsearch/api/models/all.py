@@ -1,6 +1,4 @@
-import json
-
-from typing import List, Dict, Any
+from typing import List
 
 from jsearch.api.models.base_model_ import Model
 
@@ -10,6 +8,7 @@ class Log(Model):
         'address': str,
         'block_hash': str,
         'block_number': int,
+        'timestamp': int,
         'data': str,
         'log_index': int,
         'removed': str,
@@ -22,6 +21,7 @@ class Log(Model):
         'address': 'address',
         'block_hash': 'blockHash',
         'block_number': 'blockNumber',
+        'timestamp': 'timestamp',
         'data': 'data',
         'log_index': 'logIndex',
         'removed': 'removed',
@@ -104,6 +104,7 @@ class InternalTransaction(Model):
     swagger_types = {
         'block_number': int,
         'block_hash': str,
+        'timestamp': int,
         'parent_tx_hash': str,
         'parent_tx_index': int,
         'op': str,
@@ -120,6 +121,7 @@ class InternalTransaction(Model):
     attribute_map = {
         'block_number': 'blockNumber',
         'block_hash': 'blockHash',
+        'timestamp': 'timestamp',
         'parent_tx_hash': 'parentTxHash',
         'parent_tx_index': 'parentTxIndex',
         'op': 'op',

@@ -1,10 +1,10 @@
 import json
 import logging
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
 import asyncpgsa
 from itertools import groupby
-from sqlalchemy import select, func, and_, false
+from sqlalchemy import select, func, and_, false, desc
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
@@ -13,20 +13,29 @@ from jsearch.api.database_queries.assets_summary import get_assets_summary_query
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
+    get_block_number_by_hash_query,
+    get_block_number_by_timestamp_query,
+    get_blocks_by_number_query,
+    get_blocks_by_timestamp_query,
     get_last_block_query,
     get_mined_blocks_query,
-    get_block_number_by_hash_query,
-    ORDER_SCHEME_BY_TIMESTAMP,
-    get_blocks_by_timestamp_query,
     ORDER_SCHEME_BY_NUMBER,
-    get_blocks_by_number_query
+    ORDER_SCHEME_BY_TIMESTAMP,
+)
+from jsearch.api.database_queries.uncles import (
+    get_uncles_by_timestamp_query,
+    get_uncles_by_number_query
 )
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, \
     get_internal_txs_by_address_and_block_query, get_internal_txs_by_address_and_timestamp_query
-from jsearch.api.database_queries.logs import get_logs_by_address_query
+from jsearch.api.database_queries.logs import (
+    get_logs_by_address_and_block_query, get_logs_by_address_and_timestamp_query
+)
 from jsearch.api.database_queries.pending_transactions import (
     get_pending_txs_by_account,
+    get_account_pending_txs_timestamp,
     get_outcoming_pending_txs_count,
+    get_pending_txs_ordering
 )
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_token,
@@ -44,12 +53,13 @@ from jsearch.api.database_queries.wallet_events import (
 )
 from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
-from jsearch.api.ordering import Ordering
+from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
+from jsearch.api.structs.wallets import WalletEvent
 from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import blocks_t, chain_splits_t, reorgs_t, wallet_events_t, accounts_state_t
+from jsearch.common.tables import blocks_t, reorgs_t, wallet_events_t, accounts_state_t, chain_events_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
-from jsearch.typing import LastAffectedBlock
+from jsearch.typing import LastAffectedBlock, OrderDirection
 
 logger = logging.getLogger(__name__)
 
@@ -356,16 +366,29 @@ class Storage:
             data['reward'] = int(data['reward'])
             return models.Uncle(**data)
 
-    async def get_uncles(self, limit, offset, order) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = f"""SELECT * FROM uncles ORDER BY number {order} LIMIT $1 OFFSET $2"""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, limit, offset)
-            rows = [dict(r) for r in rows]
-            for r in rows:
-                del r['block_hash']
-                del r['is_forked']
-                r['reward'] = int(r['reward'])
+    async def get_uncles(
+            self,
+            limit: int,
+            order: Ordering,
+            number: Optional[int] = None,
+            timestamp: Optional[int] = None
+    ) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
+        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+            query = get_uncles_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
+
+        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_uncles_by_number_query(limit, number=number, order=order)
+
+        else:
+            raise ValueError('Invalid scheme: {scheme}')
+
+        async with self.pool.acquire() as connection:
+            rows = await fetch(connection=connection, query=query)
+
+            for row in rows:
+                row.update({
+                    'reward': int(row['reward']),
+                })
 
         uncles = [models.Uncle(**row) for row in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
@@ -435,14 +458,34 @@ class Storage:
             rows = await conn.fetch(query, tx_hash)
             return [models.Log(**r) for r in rows]
 
-    async def get_account_logs(self,
-                               address: str,
-                               block_from: int,
-                               block_until: int,
-                               order: str,
-                               limit: int,
-                               offset: int) -> Tuple[List[models.Log], Optional[LastAffectedBlock]]:
-        query = get_logs_by_address_query(address, order, limit, offset, block_from, block_until)
+    async def get_account_logs(
+            self,
+            address: str,
+            limit: int,
+            ordering: Ordering,
+            block_number: Optional[int],
+            timestamp: Optional[int],
+            transaction_index: Optional[int],
+            log_index: Optional[int],
+    ) -> Tuple[List[models.Log], Optional[LastAffectedBlock]]:
+        if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_logs_by_address_and_block_query(
+                address=address,
+                limit=limit,
+                ordering=ordering,
+                block_number=block_number,
+                transaction_index=transaction_index,
+                log_index=log_index,
+            )
+        else:
+            query = get_logs_by_address_and_timestamp_query(
+                address=address,
+                limit=limit,
+                ordering=ordering,
+                timestamp=timestamp,
+                transaction_index=transaction_index,
+                log_index=log_index,
+            )
 
         async with self.pool.acquire() as conn:
             rows = await fetch(conn, query)
@@ -596,7 +639,20 @@ class Storage:
         if block is not None:
             return BlockInfo(
                 hash=block_hash,
-                number=block['number']
+                number=block['number'],
+                timestamp=block['timestamp']
+            )
+
+    async def get_block_by_timestamp(self, timestamp: int, order_direction: OrderDirection) -> Optional[BlockInfo]:
+        query = get_block_number_by_timestamp_query(timestamp, order_direction)
+        async with self.pool.acquire() as conn:
+            block = await fetch_row(conn, query=query)
+
+        if block is not None:
+            return BlockInfo(
+                hash=block['hash'],
+                number=block['number'],
+                timestamp=block['timestamp']
             )
 
     async def get_blockchain_tip(self,
@@ -610,15 +666,21 @@ class Storage:
         is_in_fork = False
         last_unchanged = None
         if tip_block:
-            split_query = select([chain_splits_t.c.common_block_number]).where(
-                chain_splits_t.c.id == select([reorgs_t.c.split_id]).where(reorgs_t.c.block_hash == tip_block.hash)
-            )
+            split_query = select(
+                [chain_events_t.c.block_number]
+            ).where(
+                chain_events_t.c.id == select(
+                    [reorgs_t.c.split_id]
+                ).where(
+                    reorgs_t.c.block_hash == tip_block.hash
+                ).order_by(desc(reorgs_t.c.split_id)).limit(1)
+            ).order_by(chain_events_t.c.block_number)
 
             async with self.pool.acquire() as conn:
                 chain_split = await fetch_row(conn, query=split_query)
 
             is_in_fork = chain_split is not None
-            common_block_number = chain_split and chain_split['common_block_number']
+            common_block_number = chain_split and chain_split['block_number']
             if is_in_fork and common_block_number is not None:
                 last_unchanged = common_block_number
 
@@ -631,27 +693,32 @@ class Storage:
             last_unchanged_block=last_unchanged
         )
 
-    async def get_wallet_events(self,
-                                address: str,
-                                from_block: int,
-                                until_block: int,
-                                limit: int,
-                                order: str,
-                                offset: int) -> List[Dict[str, Any]]:
+    async def get_wallet_events(
+            self,
+            address: str,
+            block_number: int,
+            limit: int,
+            tx_index: Optional[int],
+            event_index: int,
+            ordering: Ordering
+    ) -> Tuple[List[WalletEvent], Optional[LastAffectedBlock]]:
+        # Notes: syncer writes txs to main db with denormalization (x2 records per transaction)
+        query_limit = limit * 2
+
         query = get_wallet_events_query(
+            limit=query_limit,
             address=address,
-            from_block=from_block,
-            until_block=until_block,
-            limit=limit,
-            offset=offset,
-            order=order
+            block_number=block_number,
+            tx_index=tx_index,
+            event_index=event_index,
+            ordering=ordering
         )
         async with self.pool.acquire() as connection:
             events = await fetch(connection, query)
 
-        events = in_app_distinct(events)
+        events = in_app_distinct(events)[:limit]
 
-        result = OrderedDict()
+        wallet_events = []
         for event in events:
             tx_data = event['tx_data']
             if tx_data:
@@ -659,19 +726,16 @@ class Storage:
             else:
                 tx = {}
 
-            tx_hash = event['tx_hash']
-            tx_event = models.WalletEvent(**event).to_dict()
+            wallet_event = WalletEvent(
+                type=event.get('type'),
+                event_index=event.get('event_index'),
+                event_data=event.get('event_data'),
+                transaction=tx,
+            )
+            wallet_events.append(wallet_event)
 
-            item = result.get(tx_hash)
-            if item:
-                tx_events = item.get('events', [])
-                tx_events.append(tx_event)
-
-                item.update(events=tx_events)
-            else:
-                result[tx_hash] = {'rootTxData': tx, 'events': [tx_event]}
-
-        return [value for key, value in result.items()]
+        last_affected_block = max([event['blockNumber'] for event in wallet_events], default=None)
+        return wallet_events, last_affected_block
 
     async def get_wallet_assets_transfers(self, addresses: List[str], limit: int, offset: int,
                                           assets: Optional[List[str]] = None) -> List:
@@ -864,45 +928,52 @@ class Storage:
 
         return txs, last_affected_block
 
-    async def get_account_pending_transactions(self,
-                                               account: str,
-                                               order: str,
-                                               limit: Optional[int] = None,
-                                               offset: Optional[int] = None):
-
-        query = get_pending_txs_by_account(account, order)
-
-        if limit:
-            query = query.limit(limit)
-
-        if offset:
-            query = query.offset(offset)
-
+    async def get_account_pending_transactions(
+            self,
+            account: str, limit: int,
+            ordering: Ordering,
+            timestamp: int,
+            id: Optional[int],
+    ) -> List[models.PendingTransaction]:
+        query = get_pending_txs_by_account(account, limit, ordering, timestamp, id)
         rows = await fetch(self.pool, query)
+        for row in rows:
+            row['timestamp'] = row['timestamp'] and int(row['timestamp'].timestamp())
         return [models.PendingTransaction(**r) for r in rows]
 
-    async def get_account_pending_events(self,
-                                         account: str,
-                                         order: str,
-                                         limit: Optional[int] = None,
-                                         offset: Optional[int] = None) -> List[Dict[str, Any]]:
+    async def get_account_pending_tx_timestamp(
+            self,
+            account: str,
+            ordering: Ordering,
+    ) -> Optional[int]:
+        query = get_account_pending_txs_timestamp(account, ordering)
+        row = await fetch_row(self.pool, query)
+        if row:
+            value = row['timestamp']
+            return value and value
 
-        query = get_pending_txs_by_account(account, order)
+    async def get_account_pending_events(self, account: str, limit: int) -> List[Dict[str, Any]]:
+        ordering = get_pending_txs_ordering(scheme=ORDER_SCHEME_NONE, direction=ORDER_DESC)
+        query = get_pending_txs_by_account(account, limit, ordering, )
 
         if limit:
             query = query.limit(limit)
-
-        if offset:
-            query = query.offset(offset)
 
         rows = await fetch(self.pool, query)
 
         result = []
         for tx in rows:
             event = get_event_from_pending_tx(address=account, pending_tx=tx)
+            if event:
+                event = WalletEvent(
+                    type=event.get('type'),
+                    event_index=event.get('event_index'),
+                    event_data=event.get('event_data'),
+                    transaction=models.PendingTransaction(**tx).to_dict()
+                )
             tx_data = {
                 'rootTxData': models.PendingTransaction(**tx).to_dict(),
-                'events': [models.WalletEvent(**event).to_dict()] if event else []
+                'events': [event.to_dict()] if event is not None else None
             }
             result.append(tx_data)
 

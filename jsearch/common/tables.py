@@ -110,6 +110,7 @@ internal_transactions_t = sa.Table(
 pending_transactions_t = sa.Table(
     'pending_transactions',
     metadata,
+    sa.Column('id', sa.BigInteger),
     sa.Column('last_synced_id', sa.BigInteger, index=True),
     sa.Column('hash', sa.String(70), primary_key=True),
     sa.Column('status', sa.String),
@@ -175,6 +176,7 @@ logs_t = sa.Table(
     metadata,
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, index=True, primary_key=True),
+    sa.Column('timestamp', HexInteger),
     sa.Column('log_index', HexInteger, primary_key=True),
     sa.Column('address', sa.String),
     sa.Column('data', sa.String),

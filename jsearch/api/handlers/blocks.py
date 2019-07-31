@@ -3,7 +3,7 @@ from aiohttp.web_response import Response
 from typing import Optional, Union
 
 from jsearch.api.blockchain_tip import maybe_apply_tip
-from jsearch.api.handlers.common import get_block_number_and_timestamp
+from jsearch.api.handlers.common import get_last_block_number_and_timestamp
 from jsearch.api.helpers import (
     get_tag,
     api_success,
@@ -22,6 +22,7 @@ async def get_blocks(
         request: Request,
         limit: int,
         order: Ordering,
+        tip_hash: Optional[str] = None,
         block_number: Optional[Union[int, str]] = None,
         timestamp: Optional[Union[int, str]] = None
 ) -> Response:
@@ -29,8 +30,8 @@ async def get_blocks(
     Get blocks list
     """
     storage = request.app['storage']
-    block_number, timestamp = await get_block_number_and_timestamp(block_number, timestamp, request)
-    tip_hash = request.query.get('blockchain_tip') or None
+
+    block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
 
     # Notes: we need to query limit + 1 items to get link on next page
     blocks, last_affected_block = await storage.get_blocks(

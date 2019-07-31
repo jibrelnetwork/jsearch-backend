@@ -1,24 +1,24 @@
-"""add is pendings txs to partial
+"""Add pending txs index from
 
-Revision ID: 011a3c7b48e3
-Revises: 54d6212b1db9
-Create Date: 2019-04-24 13:45:02.895357
+Revision ID: 0e256b6ceec4
+Revises: 72071bdc6c60
+Create Date: 2019-07-30 11:18:06.055481
 
 """
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = '011a3c7b48e3'
-down_revision = '54d6212b1db9'
+revision = '0e256b6ceec4'
+down_revision = '72071bdc6c60'
 branch_labels = None
 depends_on = None
 
 UP_SQL = """
-CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_pending_transactions_to_partial ON pending_transactions("to") WHERE "removed" IS FALSE;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_pending_txs_from_partial ON pending_transactions("from", "timestamp", "id") WHERE "removed" = FALSE;
 """
 
 DOWN_SQL = """
-DROP INDEX CONCURRENTLY IF EXISTS ix_pending_transactions_to_partial; 
+DROP INDEX CONCURRENTLY ix_pending_txs_from_partial;
 """
 
 
