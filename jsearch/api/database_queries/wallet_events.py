@@ -65,8 +65,8 @@ def get_wallet_events_ordering(scheme: OrderScheme, direction: OrderDirection):
     return get_ordering(columns, scheme, direction)
 
 
-def get_eth_transfers_by_address_query(address: str, block_number=None,
-                                       event_index=None, timestamp=None, order='desc', limit=20):
+def get_eth_transfers_by_address_query(address: str, block_number: str,
+                                       event_index: int, timestamp: int, order: Ordering, limit: int):
     from operator import ge, le
     page_filter_fields = []
     page_filter_values = []
@@ -82,19 +82,19 @@ def get_eth_transfers_by_address_query(address: str, block_number=None,
     else:
         raise ValueError(f'Invalid order value {order}')
 
-    if block_number and block_number != 'latest':
+    if block_number is not None and block_number != 'latest':
         page_filter_fields.append(wallet_events_t.c.block_number)
         page_filter_values.append(block_number)
-    elif timestamp:
+    elif timestamp is not None:
         page_filter_fields.append(wallet_events_t.c.timestamp)
         page_filter_values.append(timestamp)
 
-    if event_index:
+    if event_index is not None:
         page_filter_fields.append(wallet_events_t.c.event_index)
         page_filter_values.append(event_index)
 
     filter_criteria = [
-        wallet_events_t.c.is_forked == False,
+        wallet_events_t.c.is_forked == false(),
         wallet_events_t.c.address == address,
     ]
 

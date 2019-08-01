@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+import json
 
 from jsearch.api.models.base_model_ import Model
 
@@ -439,4 +440,3 @@ class EthTransfer(Model):
         'block_number': 'block_number',
         'event_index': 'event_index',
     }
-

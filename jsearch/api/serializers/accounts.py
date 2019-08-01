@@ -12,7 +12,6 @@ from jsearch.api.ordering import Ordering
 from jsearch.api.serializers.common import BlockRelatedListSchema, ListSchema
 from jsearch.api.serializers.fields import StrLower, Timestamp
 from jsearch.typing import OrderScheme, OrderDirection
-from jsearch.api.serializers.fields import StrLower
 
 
 logger = logging.getLogger(__name__)
@@ -98,4 +97,3 @@ class EthTransfersListSchema(BlockRelatedListSchema):
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         return get_wallet_events_ordering(scheme, direction)
-
