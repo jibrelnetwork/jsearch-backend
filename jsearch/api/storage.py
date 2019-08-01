@@ -23,7 +23,9 @@ from jsearch.api.database_queries.blocks import (
 )
 from jsearch.api.database_queries.uncles import (
     get_uncles_by_timestamp_query,
-    get_uncles_by_number_query
+    get_uncles_by_number_query,
+    get_uncles_by_miner_address_and_timestamp_query,
+    get_uncles_by_miner_address_and_number_query,
 )
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, \
     get_internal_txs_by_address_and_block_query, get_internal_txs_by_address_and_timestamp_query
@@ -393,16 +395,39 @@ class Storage:
         return uncles, last_affected_block
 
     async def get_account_mined_uncles(
-            self, address, limit, offset, order
+            self,
+            address: str,
+            limit: int,
+            order: Ordering,
+            number: Optional[int] = None,
+            timestamp: Optional[int] = None
     ) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = f"""SELECT * FROM uncles WHERE miner=$1 ORDER BY number {order} LIMIT $2 OFFSET $3"""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, address, limit, offset)
-            rows = [dict(r) for r in rows]
-            for r in rows:
-                del r['block_hash']
-                r['reward'] = int(r['reward'])
+        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+            query = get_uncles_by_miner_address_and_timestamp_query(
+                address=address,
+                limit=limit,
+                timestamp=timestamp,
+                order=order
+            )
+
+        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_uncles_by_miner_address_and_number_query(
+                address=address,
+                limit=limit,
+                number=number,
+                order=order
+            )
+
+        else:
+            raise ValueError('Invalid scheme: {scheme}')
+
+        async with self.pool.acquire() as connection:
+            rows = await fetch(connection=connection, query=query)
+
+            for row in rows:
+                row.update({
+                    'reward': int(row['reward']),
+                })
 
         uncles = [models.Uncle(**row) for row in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)

@@ -59,7 +59,9 @@ async def make_app():
     app.router.add_route(
         'GET', '/v1/accounts/{address}/mined_blocks', accounts.get_account_mined_blocks, name='accounts_mined_blocks'
     )
-    app.router.add_route('GET', '/v1/accounts/{address}/mined_uncles', accounts.get_account_mined_uncles)
+    app.router.add_route(
+        'GET', '/v1/accounts/{address}/mined_uncles', accounts.get_account_mined_uncles, name='accounts_mined_uncles'
+    )
     app.router.add_route('GET', '/v1/accounts/{address}/token_transfers', accounts.get_account_token_transfers)
     app.router.add_route(
         'GET', '/v1/accounts/{address}/token_balance/{token_address}', accounts.get_account_token_balance
@@ -92,7 +94,7 @@ async def make_app():
     app.router.add_route('POST', '/v1/proxy/call_contract', node_proxy.call_contract)
     app.router.add_route('POST', '/v1/proxy/send_raw_transaction', node_proxy.send_raw_transaction)
 
-    app.router.add_route('GET', '/v1/wallet/blockchain_tip', wallets.get_blockchain_tip)
+    app.router.add_route('GET', '/v1/blockchain_tip', wallets.get_blockchain_tip)
     app.router.add_route('GET', '/v1/wallet/assets_summary', wallets.get_assets_summary)
     app.router.add_route('GET', '/v1/wallet/transfers', wallets.get_wallet_transfers)
     app.router.add_route('GET', '/v1/wallet/transactions', wallets.get_wallet_transactions)

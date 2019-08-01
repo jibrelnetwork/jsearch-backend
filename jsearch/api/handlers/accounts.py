@@ -2,6 +2,7 @@ import logging
 
 from aiohttp import web
 from aiohttp.web_request import Request
+from aiohttp.web_response import Response
 from typing import Optional, Union
 
 from jsearch import settings
@@ -25,6 +26,9 @@ from jsearch.api.serializers.accounts import (
     AccountsInternalTxsSchema,
     AccountsPendingTxsSchema,
     AccountMinedBlocksSchema,
+)
+from jsearch.api.serializers.uncles import (
+    AccountUncleSchema,
 )
 from jsearch.api.utils import use_kwargs
 
@@ -249,26 +253,37 @@ async def get_account_mined_blocks(
 
 
 @ApiError.catch
-async def get_account_mined_uncles(request):
+@use_kwargs(AccountUncleSchema())
+async def get_account_mined_uncles(
+        request: Request,
+        address: str,
+        limit: int,
+        order: Ordering,
+        tip_hash: Optional[str] = None,
+        uncle_number: Optional[Union[int, str]] = None,
+        timestamp: Optional[Union[int, str]] = None
+) -> Response:
     """
     Get account mined uncles
     """
     storage = request.app['storage']
-    address = request.match_info.get('address').lower()
-    params = validate_params(request)
-    tip_hash = request.query.get('blockchain_tip') or None
+    block_number, timestamp = await get_last_block_number_and_timestamp(uncle_number, timestamp, storage)
 
+    # Notes: we need to query limit + 1 items to get link on next page
     uncles, last_affected_block = await storage.get_account_mined_uncles(
-        address,
-        params['limit'],
-        params['offset'],
-        params['order']
+        limit=limit + 1,
+        number=block_number,
+        timestamp=timestamp,
+        order=order,
+        address=address,
     )
 
     uncles, tip_meta = await maybe_apply_tip(storage, tip_hash, uncles, last_affected_block, empty=[])
-    uncles = [u.to_dict() for u in uncles]
 
-    return api_success(uncles, meta=tip_meta)
+    url = request.app.router['accounts_mined_uncles'].url_for(address=address)
+    page = get_page(url=url, items=uncles, limit=limit, ordering=order, mapping=AccountUncleSchema.mapping)
+
+    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
 
 
 @ApiError.catch
