@@ -48,7 +48,10 @@ from jsearch.api.database_queries.transactions import (
     get_tx_by_address_and_block_query,
     get_tx_by_address_and_timestamp_query
 )
-from jsearch.api.database_queries.wallet_events import get_wallet_events_query
+from jsearch.api.database_queries.wallet_events import (
+    get_wallet_events_query,
+    get_eth_transfers_by_address_query,
+)
 from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
@@ -1016,3 +1019,25 @@ class Storage:
             rows = await fetch(self.pool, query)
             res += rows[0]['count_1']
         return res
+
+    async def get_account_eth_transfers(self, account_address, block_number=None,
+                                        event_index=None, timestamp=None, order='desc', limit=20):
+        query = get_eth_transfers_by_address_query(account_address, block_number=block_number,
+                                                   event_index=event_index, timestamp=timestamp,
+                                                   order=order, limit=limit)
+        rows = await fetch(self.pool, query)
+        res = []
+        for r in rows:
+            event_data = json.loads(r['event_data'])
+            t = models.EthTransfer(**{
+                'timestamp': r['timestamp'],
+                'tx_hash': r['tx_hash'],
+                'amount': event_data['amount'],
+                'from': event_data['sender'],
+                'to': event_data['recepient'],
+                'block_number': r['block_number'],
+                'event_index': r['event_index'],
+            })
+            res.append(t)
+        last_affected_block_number = max([r['block_number'] for r in rows], default=None)
+        return res, last_affected_block_number

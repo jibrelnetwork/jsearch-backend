@@ -24,8 +24,9 @@ from jsearch.api.serializers.accounts import (
     AccountsTxsSchema,
     AccountLogsSchema,
     AccountsInternalTxsSchema,
-    AccountsPendingTxsSchema,
     AccountMinedBlocksSchema,
+    AccountsPendingTxsSchema,
+    EthTransfersListSchema,
 )
 from jsearch.api.serializers.uncles import (
     AccountUncleSchema,
@@ -356,3 +357,32 @@ async def get_account_transaction_count(request):
 
     tx_count = await storage.get_account_transaction_count(account_address, include_pending_txs)
     return api_success(tx_count)
+
+
+@ApiError.catch
+@use_kwargs(EthTransfersListSchema())
+async def get_account_eth_transfers(request,
+                                    address,
+                                    tip_hash=None,
+                                    block_number=None,
+                                    event_index=None,
+                                    timestamp=None,
+                                    order=None,
+                                    limit=None):
+    storage = request.app['storage']
+    transfers, last_affected_block = await storage.get_account_eth_transfers(address,
+                                                                             block_number=block_number,
+                                                                             timestamp=timestamp,
+                                                                             event_index=event_index,
+                                                                             order=order,
+                                                                             limit=limit + 1)
+    transfers, tip_meta = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
+    url = request.app.router['accounts_eth_transfers'].url_for(address=address)
+    page = get_page(url=url, items=transfers, limit=limit, ordering=order, mapping=EthTransfersListSchema.mapping)
+    data = []
+    for item in page.items:
+        d = item.to_dict()
+        del d['block_number']
+        del d['event_index']
+        data.append(d)
+    return api_success(data=data, page=page, meta=tip_meta)
