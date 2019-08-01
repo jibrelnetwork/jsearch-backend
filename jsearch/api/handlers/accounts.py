@@ -241,9 +241,11 @@ async def get_account_mined_blocks(
     )
 
     blocks, tip_meta = await maybe_apply_tip(storage, tip_hash, blocks, last_affected_block, empty=[])
-    blocks = [b.to_dict() for b in blocks]
 
-    return api_success(blocks, meta=tip_meta)
+    url = request.app.router['accounts_mined_blocks'].url_for(address=address)
+    page = get_page(url=url, items=blocks, limit=limit, ordering=order)
+
+    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
 
 
 @ApiError.catch

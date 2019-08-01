@@ -56,7 +56,7 @@ async def make_app():
         accounts.get_account_pending_transactions,
         name='accounts_pending_txs'
     )
-    app.router.add_route('GET', '/v1/accounts/{address}/mined_blocks', accounts.get_account_mined_blocks)
+    app.router.add_route('GET', '/v1/accounts/{address}/mined_blocks', accounts.get_account_mined_blocks, name='accounts_mined_blocks')
     app.router.add_route('GET', '/v1/accounts/{address}/mined_uncles', accounts.get_account_mined_uncles)
     app.router.add_route('GET', '/v1/accounts/{address}/token_transfers', accounts.get_account_token_transfers)
     app.router.add_route(
