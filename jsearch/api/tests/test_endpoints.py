@@ -639,7 +639,7 @@ async def test_get_blockchain_tip(cli, block_factory):
     block_factory.create()
     last_block = block_factory.create()
 
-    response = await cli.get(f'/v1/wallet/blockchain_tip?tip=aa')
+    response = await cli.get(f'/v1/blockchain_tip?tip=aa')
     response_json = await response.json()
 
     assert response_json == {
