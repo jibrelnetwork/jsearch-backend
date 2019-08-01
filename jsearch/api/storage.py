@@ -20,8 +20,6 @@ from jsearch.api.database_queries.blocks import (
     get_last_block_query,
     ORDER_SCHEME_BY_NUMBER,
     ORDER_SCHEME_BY_TIMESTAMP,
-    get_mined_blocks_by_timestamp_query,
-    get_mined_blocks_by_number_query,
 )
 from jsearch.api.database_queries.uncles import (
     get_uncles_by_timestamp_query,
@@ -55,7 +53,7 @@ from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent
 from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import blocks_t, reorgs_t, wallet_events_t, accounts_state_t, chain_events_t
+from jsearch.common.tables import reorgs_t, wallet_events_t, accounts_state_t, chain_events_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock, OrderDirection
 
@@ -313,9 +311,9 @@ class Storage:
             number: Optional[int],
     ) -> Tuple[List[models.Block], Optional[LastAffectedBlock]]:
         if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-            query = get_mined_blocks_by_timestamp_query(miner=address, limit=limit, timestamp=timestamp, order=order)
+            query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order, miner=address)
         elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_mined_blocks_by_number_query(miner=address, limit=limit, number=number, order=order)
+            query = get_blocks_by_number_query(limit=limit, number=number, order=order, miner=address)
         else:
             raise ValueError('Invalid scheme: {scheme}')
 

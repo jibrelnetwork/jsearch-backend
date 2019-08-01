@@ -4,8 +4,6 @@ from urllib.parse import parse_qs
 import pytest
 from typing import List, Dict, Any, Tuple
 
-from jsearch.api.models import InternalTransaction
-
 logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
@@ -56,13 +54,13 @@ def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
         "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&block_number=latest",
     ]
 )
-async def test_get_blocks(cli,
-                          block_factory,
-                          url: str,
-                          blocks: int,
-                          blocks_on_page: List[int],
-                          next_link: str,
-                          link: str) -> None:
+async def test_get_accounts_blocks(cli,
+                                   block_factory,
+                                   url: str,
+                                   blocks: int,
+                                   blocks_on_page: List[int],
+                                   next_link: str,
+                                   link: str) -> None:
     # given
     block_factory.create_batch(blocks, miner='0x3f956bd03cbc756a4605a4000cb3602e5946f9c4')
 
@@ -125,9 +123,9 @@ async def test_get_blocks(cli,
         "invalid_order"
     ]
 )
-async def test_get_blocks_errors(cli, block_factory, url, errors):
+async def test_get_accounts_blocks_errors(cli, block_factory, url, errors):
     # given
-    block_factory.create_batch(10)
+    block_factory.create_batch(10, miner='0x3f956bd03cbc756a4605a4000cb3602e5946f9c4')
 
     # when
     resp = await cli.get(url)

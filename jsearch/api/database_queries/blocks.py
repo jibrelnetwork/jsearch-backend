@@ -3,7 +3,6 @@ from sqlalchemy.orm import Query
 from typing import List, Optional
 
 from jsearch.api.database_queries.transactions import get_ordering
-from jsearch.api.helpers import get_order
 from jsearch.api.ordering import (
     ORDER_DESC,
     ORDER_SCHEME_BY_NUMBER,
@@ -50,31 +49,34 @@ def get_blocks_ordering(scheme: OrderScheme, direction: OrderDirection) -> Order
     return get_ordering(columns, scheme, direction)
 
 
-def get_mined_blocks_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-    return get_blocks_ordering(scheme, direction)
-
-
 def get_blocks_query(
         limit: int,
         order: Ordering,
-        columns: Optional[Columns] = None
+        miner: Optional[str] = None,
+        columns: Optional[Columns] = None,
 ) -> Query:
     columns = columns or get_default_fields()
-    return select(
+    query = select(
         columns=columns,
         whereclause=blocks_t.c.is_forked == false(),
     ) \
         .order_by(*order.columns) \
         .limit(limit)
 
+    if miner is not None:
+        query = query.where(blocks_t.c.miner == miner)
+
+    return query
+
 
 def get_blocks_by_number_query(
         limit: int,
         number: int,
         order: Ordering,
-        columns: Optional[Columns] = None
+        miner: Optional[str] = None,
+        columns: Optional[Columns] = None,
 ) -> Query:
-    query = get_blocks_query(limit, order=order, columns=columns)
+    query = get_blocks_query(limit, order=order, miner=miner, columns=columns)
 
     if order.direction == ORDER_DESC:
         query = query.where(blocks_t.c.number <= number)
@@ -88,9 +90,10 @@ def get_blocks_by_timestamp_query(
         limit: int,
         timestamp: int,
         order: Ordering,
-        columns: Optional[Columns] = None
+        miner: Optional[str] = None,
+        columns: Optional[Columns] = None,
 ) -> Query:
-    query = get_blocks_query(limit, order=order, columns=columns)
+    query = get_blocks_query(limit, order=order, miner=miner, columns=columns)
 
     if order.direction == ORDER_DESC:
         query = query.where(blocks_t.c.timestamp <= timestamp)
@@ -98,32 +101,6 @@ def get_blocks_by_timestamp_query(
         query = query.where(blocks_t.c.timestamp >= timestamp)
 
     return query
-
-
-def get_mined_blocks_query(miner: str,
-                           limit: int,
-                           offset: int,
-                           order: List[Column],
-                           direction: Optional[str] = None,
-                           columns: List[Column] = None):
-    columns = columns or get_default_fields()
-    order = get_order(order, direction)
-    return select(
-        columns=columns,
-        whereclause=and_(
-            blocks_t.c.miner == miner,
-            blocks_t.c.is_forked == false()
-        ),
-    ) \
-        .order_by(*order) \
-        .offset(offset) \
-        .limit(limit)
-
-
-def get_mined_blocks_by_timestamp_query(miner: str, limit: int, timestamp: int, order: Ordering) -> Query: ...
-
-
-def get_mined_blocks_by_number_query(miner: str, limit: int, number: int, order: Ordering) -> Query: ...
 
 
 def get_block_by_hash_query(block_hash: str, columns: List[Column] = None) -> Query:

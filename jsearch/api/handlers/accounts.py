@@ -234,7 +234,7 @@ async def get_account_mined_blocks(
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     blocks, last_affected_block = await storage.get_account_mined_blocks(
         address,
-        limit,
+        limit + 1,
         order,
         timestamp,
         block_number,
@@ -243,7 +243,7 @@ async def get_account_mined_blocks(
     blocks, tip_meta = await maybe_apply_tip(storage, tip_hash, blocks, last_affected_block, empty=[])
 
     url = request.app.router['accounts_mined_blocks'].url_for(address=address)
-    page = get_page(url=url, items=blocks, limit=limit, ordering=order)
+    page = get_page(url=url, items=blocks, limit=limit, ordering=order, mapping=AccountMinedBlocksSchema.mapping)
 
     return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
 

@@ -3,7 +3,7 @@ import logging
 from marshmallow import fields, validates_schema, ValidationError
 from marshmallow.validate import Range, Length
 
-from jsearch.api.database_queries.blocks import get_mined_blocks_ordering
+from jsearch.api.database_queries.blocks import get_blocks_ordering
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_ordering
 from jsearch.api.database_queries.logs import get_logs_ordering
 from jsearch.api.database_queries.pending_transactions import get_pending_txs_ordering
@@ -93,5 +93,9 @@ class AccountMinedBlocksSchema(BlockRelatedListSchema):
     tip_hash = StrLower(load_from='blockchain_tip')
     address = fields.Str(validate=Length(min=1, max=100), location='match_info')
 
+    mapping = {
+        'number': 'block_number'
+    }
+
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-        return get_mined_blocks_ordering(scheme, direction)
+        return get_blocks_ordering(scheme, direction)
