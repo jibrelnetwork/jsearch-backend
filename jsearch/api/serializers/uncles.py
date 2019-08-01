@@ -39,3 +39,7 @@ class UncleListSchema(ListSchema):
     def validate_numbers(self, data, **kwargs):
         if data.get("uncle_number") and data.get("timestamp"):
             raise ValidationError("Filtration should be either by number or by timestamp")
+
+
+class AccountUncleSchema(UncleListSchema):
+    address = StrLower(validate=Length(min=1, max=100), location='match_info')
