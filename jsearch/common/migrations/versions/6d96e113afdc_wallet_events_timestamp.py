@@ -19,22 +19,10 @@ depends_on = None
 
 UP_SQL = """
 ALTER TABLE wallet_events ADD COLUMN "timestamp" integer;
-
-CREATE INDEX ix_wallet_events_address_timestamp_event_index ON wallet_events(address, "timestamp", event_index)
-    WHERE is_forked=false;
-CREATE INDEX ix_wallet_events_address_block_number_event_index ON wallet_events(address, block_number, event_index)
-    WHERE is_forked=false;
-    
-DROP INDEX IF EXISTS ix_wallets_events_address_block;
 """
 
 DOWN_SQL = """
 ALTER TABLE wallet_events DROP COLUMN "timestamp";
-
-DROP INDEX IF EXISTS ix_wallet_events_address_timestamp_event_index;
-DROP INDEX IF EXISTS ix_wallet_events_address_block_number_event_index;
-
-CREATE INDEX ix_wallets_events_address_block ON  wallet_events(address, block_number);
 """
 
 
@@ -44,3 +32,4 @@ def upgrade():
 
 def downgrade():
     op.execute(DOWN_SQL)
+

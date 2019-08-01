@@ -18,17 +18,20 @@ depends_on = None
 
 
 UP_SQL = """
-
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_wallet_events_address_block_number_event_index ON wallet_events(address, block_number, event_index)
+    WHERE is_forked=false;
 """
 
 DOWN_SQL = """
-
+DROP INDEX IF EXISTS ix_wallet_events_address_block_number_event_index;
 """
 
 
 def upgrade():
-    pass
+    op.execute('COMMIT')
+    op.execute(UP_SQL)
 
 
 def downgrade():
-    pass
+    op.execute('COMMIT')
+    op.execute(DOWN_SQL)
