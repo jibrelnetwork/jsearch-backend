@@ -50,6 +50,10 @@ def get_blocks_ordering(scheme: OrderScheme, direction: OrderDirection) -> Order
     return get_ordering(columns, scheme, direction)
 
 
+def get_mined_blocks_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+    return get_blocks_ordering(scheme, direction)
+
+
 def get_blocks_query(
         limit: int,
         order: Ordering,
