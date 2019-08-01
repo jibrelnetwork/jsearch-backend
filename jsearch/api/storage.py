@@ -18,9 +18,10 @@ from jsearch.api.database_queries.blocks import (
     get_blocks_by_number_query,
     get_blocks_by_timestamp_query,
     get_last_block_query,
-    get_mined_blocks_query,
     ORDER_SCHEME_BY_NUMBER,
     ORDER_SCHEME_BY_TIMESTAMP,
+    get_mined_blocks_by_timestamp_query,
+    get_mined_blocks_by_number_query,
 )
 from jsearch.api.database_queries.uncles import (
     get_uncles_by_timestamp_query,
@@ -305,21 +306,22 @@ class Storage:
 
     async def get_account_mined_blocks(
             self,
-            address,
-            limit,
-            offset,
-            order
+            address: str,
+            limit: int,
+            order: Ordering,
+            timestamp: Optional[int],
+            number: Optional[int],
     ) -> Tuple[List[models.Block], Optional[LastAffectedBlock]]:
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = get_mined_blocks_query(
-            miner=address,
-            limit=limit,
-            offset=offset,
-            order=[blocks_t.c.number],
-            direction=order
-        )
+        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+            query = get_mined_blocks_by_timestamp_query(miner=address, limit=limit, timestamp=timestamp, order=order)
+        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_mined_blocks_by_number_query(miner=address, limit=limit, number=number, order=order)
+        else:
+            raise ValueError('Invalid scheme: {scheme}')
+
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
+
             for row in rows:
                 uncles = row.get('uncles')
                 if uncles:

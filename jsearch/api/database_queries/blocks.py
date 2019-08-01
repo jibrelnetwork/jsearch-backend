@@ -120,6 +120,12 @@ def get_mined_blocks_query(miner: str,
         .limit(limit)
 
 
+def get_mined_blocks_by_timestamp_query(miner: str, limit: int, timestamp: int, order: Ordering) -> Query: ...
+
+
+def get_mined_blocks_by_number_query(miner: str, limit: int, number: int, order: Ordering) -> Query: ...
+
+
 def get_block_by_hash_query(block_hash: str, columns: List[Column] = None) -> Query:
     columns = columns or get_default_fields()
     return select(
