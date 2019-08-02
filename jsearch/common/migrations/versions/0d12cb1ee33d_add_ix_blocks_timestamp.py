@@ -12,7 +12,7 @@ from jsearch.common import tables
 
 # revision identifiers, used by Alembic.
 revision = '0d12cb1ee33d'
-down_revision = '562a23392b0b'
+down_revision = 'fbfdcf501ab4'
 branch_labels = None
 depends_on = None
 
