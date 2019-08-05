@@ -847,10 +847,8 @@ class Storage:
 
     async def get_wallet_assets_summary(self,
                                         addresses: List[str],
-                                        limit: int,
-                                        offset: int,
                                         assets: Optional[List[str]] = None) -> AddressesSummary:
-        query = get_assets_summary_query(addresses=addresses, assets=assets, limit=limit, offset=offset)
+        query = get_assets_summary_query(addresses=addresses, assets=assets)
 
         async with self.pool.acquire() as conn:
             rows = await fetch(conn, query)

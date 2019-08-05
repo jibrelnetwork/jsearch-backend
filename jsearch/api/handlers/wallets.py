@@ -122,7 +122,6 @@ async def get_blockchain_tip(request):
 
 
 async def get_assets_summary(request):
-    params = validate_params(request)
     addresses = get_from_joined_string(request.query.get('addresses'))
     assets = get_from_joined_string(request.query.get('assets'))
     storage = request.app['storage']
@@ -130,8 +129,6 @@ async def get_assets_summary(request):
     if addresses:
         summary = await storage.get_wallet_assets_summary(
             addresses,
-            limit=params['limit'],
-            offset=params['offset'],
             assets=assets
         )
     else:
