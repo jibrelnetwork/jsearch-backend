@@ -53,7 +53,7 @@ class Account(Model):
         'balance': 'balance',
     }
 
-    int_to_hex = {'balance'}
+    int_to_str = {'balance'}
 
 
 class Transaction(Model):
@@ -224,8 +224,8 @@ class Block(Model):
         'tx_fees': 'txFees',
     }
 
-    int_to_hex = {'staticReward', 'uncleInclusionReward', 'txFees'}
-    int_to_str = {'difficulty', 'gasLimit', 'gasUsed'}
+    int_to_str = {'staticReward', 'uncleInclusionReward', 'txFees',
+                  'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Uncle(Model):
@@ -271,8 +271,7 @@ class Uncle(Model):
         'reward': 'reward',
     }
 
-    int_to_hex = {'reward'}
-    int_to_str = {'difficulty', 'gasLimit', 'gasUsed'}
+    int_to_str = {'reward', 'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Receipt(Model):
@@ -321,7 +320,7 @@ class Reward(Model):
         'amount': 'amount',
     }
 
-    int_to_hex = {'amount'}
+    int_to_str = {'amount'}
 
 
 class Balance(Model):
@@ -335,7 +334,7 @@ class Balance(Model):
         'address': 'address',
     }
 
-    int_to_hex = {'balance'}
+    int_to_str = {'balance'}
 
 
 class TokenTransfer(Model):

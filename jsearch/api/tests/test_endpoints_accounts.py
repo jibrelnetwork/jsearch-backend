@@ -62,7 +62,7 @@ async def test_get_account(cli, main_db_data):
     account_base = main_db_data['accounts_base'][0]
     rdata = await resp.json()
     assert rdata['data'] == {'address': account_state['address'],
-                             'balance': hex(account_state['balance']),
+                             'balance': str(account_state['balance']),
                              'blockHash': account_state['block_hash'],
                              'blockNumber': account_state['block_number'],
                              'code': '0x' + account_base['code'],
@@ -80,7 +80,7 @@ async def test_get_account_block_number(cli, main_db_data):
     account_base = main_db_data['accounts_base'][0]
     rdata = await resp.json()
     assert rdata['data'] == {'address': account_state['address'],
-                             'balance': hex(account_state['balance']),
+                             'balance': str(account_state['balance']),
                              'blockHash': account_state['block_hash'],
                              'blockNumber': account_state['block_number'],
                              'code': '0x' + account_base['code'],
@@ -98,7 +98,7 @@ async def test_get_account_block_hash(cli, main_db_data):
     account_base = main_db_data['accounts_base'][0]
     rdata = await resp.json()
     assert rdata['data'] == {'address': account_state['address'],
-                             'balance': hex(account_state['balance']),
+                             'balance': str(account_state['balance']),
                              'blockHash': account_state['block_hash'],
                              'blockNumber': account_state['block_number'],
                              'code': '0x' + account_base['code'],
@@ -113,9 +113,9 @@ async def test_get_account_balances(cli, main_db_data):
     assert resp.status == 200
     res = (await resp.json())['data']
     assert res == [{'address': a1['address'],
-                    'balance': hex(main_db_data['accounts_state'][10]['balance'])},
+                    'balance': str(main_db_data['accounts_state'][10]['balance'])},
                    {'address': a2['address'],
-                    'balance': hex(main_db_data['accounts_state'][6]['balance'])}]
+                    'balance': str(main_db_data['accounts_state'][6]['balance'])}]
 
 
 async def test_get_account_balances_invalid_addresses_all(cli):
@@ -140,7 +140,7 @@ async def test_get_account_balances_invalid_addresses(cli: object, main_db_data:
     assert resp.status == 200
     res = (await resp.json())['data']
     assert res == [{'address': a1['address'],
-                    'balance': hex(main_db_data['accounts_state'][10]['balance'])}]
+                    'balance': str(main_db_data['accounts_state'][10]['balance'])}]
 
 
 async def test_get_account_token_transfers(cli, main_db_data):
