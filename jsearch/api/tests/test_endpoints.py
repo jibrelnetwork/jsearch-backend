@@ -53,9 +53,9 @@ async def test_get_block_by_number(cli, db, link_txs_with_block, block_factory, 
         'timestamp': block.timestamp,
         'transactions': [from_tx.hash, to_tx.hash],
         'transactionsRoot': block.transactions_root,
-        'staticReward': str(hex(int(block.static_reward))),
-        'txFees': str(hex(int(block.tx_fees))),
-        'uncleInclusionReward': str(hex(int(block.uncle_inclusion_reward))),
+        'staticReward': str(int(block.static_reward)),
+        'txFees': str(int(block.tx_fees)),
+        'uncleInclusionReward': str(int(block.uncle_inclusion_reward)),
         'uncles': []
     }
 
@@ -151,9 +151,9 @@ async def test_get_block_by_hash(cli, main_db_data):
         'timestamp': b['timestamp'],
         'transactions': [],
         'transactionsRoot': b['transactions_root'],
-        'staticReward': hex(b['static_reward']),
-        'txFees': hex(b['tx_fees']),
-        'uncleInclusionReward': hex(b['uncle_inclusion_reward']),
+        'staticReward': str(b['static_reward']),
+        'txFees': str(b['tx_fees']),
+        'uncleInclusionReward': str(b['uncle_inclusion_reward']),
         'uncles': []
     }
 
@@ -180,9 +180,9 @@ async def test_get_block_latest(cli, main_db_data):
         'timestamp': b['timestamp'],
         'transactions': [main_db_data['transactions'][-1]['hash']],
         'transactionsRoot': b['transactions_root'],
-        'staticReward': hex(b['static_reward']),
-        'txFees': hex(b['tx_fees']),
-        'uncleInclusionReward': hex(b['uncle_inclusion_reward']),
+        'staticReward': str(b['static_reward']),
+        'txFees': str(b['tx_fees']),
+        'uncleInclusionReward': str(b['uncle_inclusion_reward']),
         'uncles': []
     }
 
@@ -306,7 +306,7 @@ async def test_get_block_uncles(cli, main_db_data):
             'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
             'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
             'timestamp': 1438270332,
-            'reward': hex(3750000000000000000),
+            'reward': str(3750000000000000000),
             'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
         }
     ]
@@ -454,7 +454,7 @@ async def test_get_uncles(cli, main_db_data):
          'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
          'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
          'timestamp': 1438270505,
-         'reward': hex(3750000000000000000),
+         'reward': str(3750000000000000000),
          'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'},
         {'blockNumber': main_db_data['blocks'][1]['number'],
          'difficulty': "17578564779",
@@ -472,7 +472,7 @@ async def test_get_uncles(cli, main_db_data):
          'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
          'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
          'timestamp': 1438270332,
-         'reward': hex(3750000000000000000),
+         'reward': str(3750000000000000000),
          'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}
     ]
 
@@ -507,7 +507,7 @@ async def test_get_uncle_by_hash(cli, main_db_data):
         'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
         'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
         'timestamp': 1438270505,
-        'reward': hex(3750000000000000000),
+        'reward': str(3750000000000000000),
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
     }
 
@@ -533,7 +533,7 @@ async def test_get_uncle_by_number(cli, main_db_data):
         'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
         'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
         'timestamp': 1438270505,
-        'reward': hex(3750000000000000000),
+        'reward': str(3750000000000000000),
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
     }
 
