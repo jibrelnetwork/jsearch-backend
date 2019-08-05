@@ -24,6 +24,7 @@ from jsearch.api.serializers.accounts import (
     AccountsTxsSchema,
     AccountLogsSchema,
     AccountsInternalTxsSchema,
+    AccountMinedBlocksSchema,
     AccountsPendingTxsSchema,
     EthTransfersListSchema,
 )
@@ -220,26 +221,36 @@ async def get_account_logs(
 
 
 @ApiError.catch
-async def get_account_mined_blocks(request):
+@use_kwargs(AccountMinedBlocksSchema())
+async def get_account_mined_blocks(
+        request: web.Request,
+        address: str,
+        limit: int,
+        order: Ordering,
+        block_number: Optional[Union[int, str]] = None,
+        timestamp: Optional[Union[int, str]] = None,
+        tip_hash: Optional[str] = None,
+) -> web.Response:
     """
     Get account mined blocks
     """
     storage = request.app['storage']
-    address = request.match_info.get('address').lower()
-    params = validate_params(request)
-    tip_hash = request.query.get('blockchain_tip') or None
 
+    block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     blocks, last_affected_block = await storage.get_account_mined_blocks(
         address,
-        params['limit'],
-        params['offset'],
-        params['order'],
+        limit + 1,
+        order,
+        timestamp,
+        block_number,
     )
 
     blocks, tip_meta = await maybe_apply_tip(storage, tip_hash, blocks, last_affected_block, empty=[])
-    blocks = [b.to_dict() for b in blocks]
 
-    return api_success(blocks, meta=tip_meta)
+    url = request.app.router['accounts_mined_blocks'].url_for(address=address)
+    page = get_page(url=url, items=blocks, limit=limit, ordering=order, mapping=AccountMinedBlocksSchema.mapping)
+
+    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
 
 
 @ApiError.catch
