@@ -127,13 +127,13 @@ async def get_assets_summary(request):
     storage = request.app['storage']
     tip_hash = request.query.get('blockchain_tip')
     if addresses:
-        summary = await storage.get_wallet_assets_summary(
+        summary, last_affected_block = await storage.get_wallet_assets_summary(
             addresses,
             assets=assets
         )
     else:
         summary = []
-    last_affected_block = 11000
+        last_affected_block = None
     data, tip_meta = await maybe_apply_tip(storage, tip_hash, summary, last_affected_block, empty=summary)
     return api_success([item.to_dict() for item in data], meta=tip_meta)
 

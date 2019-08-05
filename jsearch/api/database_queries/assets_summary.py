@@ -13,7 +13,8 @@ def get_default_fields():
         assets_summary_t.c.value,
         assets_summary_t.c.decimals,
         assets_summary_t.c.tx_number,
-        assets_summary_t.c.nonce
+        assets_summary_t.c.nonce,
+        assets_summary_t.c.block_number,
     ]
 
 

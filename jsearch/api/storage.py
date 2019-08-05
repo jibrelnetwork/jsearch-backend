@@ -881,7 +881,8 @@ class Storage:
                     outgoing_transactions_number=str(nonce)
                 )
                 summary.append(item)
-            return summary
+            last_affected_block_number = max([r['block_number'] or 0 for r in rows], default=None)
+            return summary, last_affected_block_number
 
     async def get_nonce(self, address):
         """
