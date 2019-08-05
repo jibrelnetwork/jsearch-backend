@@ -12,6 +12,8 @@ from .all import (  # noqa: F401
     Uncle,
     TokenHolder,
     AssetTransfer,
+    WalletEvent,
+    EthTransfer,
 )
 from .base_model_ import Model  # noqa: F401
 
@@ -31,4 +33,5 @@ __ALL__ = (
     "Transaction",
     "Uncle",
     "WalletEvent",
+    "EthTransfer"
 )

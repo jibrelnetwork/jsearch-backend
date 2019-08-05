@@ -18,7 +18,6 @@ from jsearch.api.database_queries.blocks import (
     get_blocks_by_number_query,
     get_blocks_by_timestamp_query,
     get_last_block_query,
-    get_mined_blocks_query,
     ORDER_SCHEME_BY_NUMBER,
     ORDER_SCHEME_BY_TIMESTAMP,
 )
@@ -45,16 +44,21 @@ from jsearch.api.database_queries.transactions import (
 )
 from jsearch.api.database_queries.uncles import (
     get_uncles_by_timestamp_query,
-    get_uncles_by_number_query
+    get_uncles_by_number_query,
+    get_uncles_by_miner_address_and_timestamp_query,
+    get_uncles_by_miner_address_and_number_query,
 )
-from jsearch.api.database_queries.wallet_events import get_wallet_events_query
+from jsearch.api.database_queries.wallet_events import (
+    get_wallet_events_query,
+    get_eth_transfers_by_address_query,
+)
 from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent
 from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import blocks_t, reorgs_t, wallet_events_t, accounts_state_t, chain_events_t
+from jsearch.common.tables import reorgs_t, wallet_events_t, accounts_state_t, chain_events_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock, OrderDirection
 
@@ -305,21 +309,22 @@ class Storage:
 
     async def get_account_mined_blocks(
             self,
-            address,
-            limit,
-            offset,
-            order
+            address: str,
+            limit: int,
+            order: Ordering,
+            timestamp: Optional[int],
+            number: Optional[int],
     ) -> Tuple[List[models.Block], Optional[LastAffectedBlock]]:
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = get_mined_blocks_query(
-            miner=address,
-            limit=limit,
-            offset=offset,
-            order=[blocks_t.c.number],
-            direction=order
-        )
+        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+            query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order, miner=address)
+        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_blocks_by_number_query(limit=limit, number=number, order=order, miner=address)
+        else:
+            raise ValueError('Invalid scheme: {scheme}')
+
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
+
             for row in rows:
                 uncles = row.get('uncles')
                 if uncles:
@@ -393,16 +398,39 @@ class Storage:
         return uncles, last_affected_block
 
     async def get_account_mined_uncles(
-            self, address, limit, offset, order
+            self,
+            address: str,
+            limit: int,
+            order: Ordering,
+            number: Optional[int] = None,
+            timestamp: Optional[int] = None
     ) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = f"""SELECT * FROM uncles WHERE miner=$1 ORDER BY number {order} LIMIT $2 OFFSET $3"""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, address, limit, offset)
-            rows = [dict(r) for r in rows]
-            for r in rows:
-                del r['block_hash']
-                r['reward'] = int(r['reward'])
+        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+            query = get_uncles_by_miner_address_and_timestamp_query(
+                address=address,
+                limit=limit,
+                timestamp=timestamp,
+                order=order
+            )
+
+        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_uncles_by_miner_address_and_number_query(
+                address=address,
+                limit=limit,
+                number=number,
+                order=order
+            )
+
+        else:
+            raise ValueError('Invalid scheme: {scheme}')
+
+        async with self.pool.acquire() as connection:
+            rows = await fetch(connection=connection, query=query)
+
+            for row in rows:
+                row.update({
+                    'reward': int(row['reward']),
+                })
 
         uncles = [models.Uncle(**row) for row in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
@@ -843,10 +871,8 @@ class Storage:
 
     async def get_wallet_assets_summary(self,
                                         addresses: List[str],
-                                        limit: int,
-                                        offset: int,
                                         assets: Optional[List[str]] = None) -> AddressesSummary:
-        query = get_assets_summary_query(addresses=addresses, assets=assets, limit=limit, offset=offset)
+        query = get_assets_summary_query(addresses=addresses, assets=assets)
 
         async with self.pool.acquire() as conn:
             rows = await fetch(conn, query)
@@ -879,7 +905,8 @@ class Storage:
                     outgoing_transactions_number=str(nonce)
                 )
                 summary.append(item)
-            return summary
+            last_affected_block_number = max([r['block_number'] or 0 for r in rows], default=None)
+            return summary, last_affected_block_number
 
     async def get_nonce(self, address):
         """
@@ -1015,3 +1042,25 @@ class Storage:
             rows = await fetch(self.pool, query)
             res += rows[0]['count_1']
         return res
+
+    async def get_account_eth_transfers(self, account_address, block_number=None,
+                                        event_index=None, timestamp=None, order='desc', limit=20):
+        query = get_eth_transfers_by_address_query(account_address, block_number=block_number,
+                                                   event_index=event_index, timestamp=timestamp,
+                                                   order=order, limit=limit)
+        rows = await fetch(self.pool, query)
+        res = []
+        for r in rows:
+            event_data = json.loads(r['event_data'])
+            t = models.EthTransfer(**{
+                'timestamp': r['timestamp'],
+                'tx_hash': r['tx_hash'],
+                'amount': event_data['amount'],
+                'from': event_data['sender'],
+                'to': event_data['recepient'],
+                'block_number': r['block_number'],
+                'event_index': r['event_index'],
+            })
+            res.append(t)
+        last_affected_block_number = max([r['block_number'] for r in rows], default=None)
+        return res, last_affected_block_number

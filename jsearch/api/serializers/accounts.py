@@ -3,15 +3,18 @@ import logging
 from marshmallow import fields, validates_schema, ValidationError
 from marshmallow.validate import Range, Length
 
+from jsearch.api.database_queries.blocks import get_blocks_ordering
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_ordering
 from jsearch.api.database_queries.logs import get_logs_ordering
 from jsearch.api.database_queries.pending_transactions import get_pending_txs_ordering
 from jsearch.api.database_queries.token_transfers import get_transfers_ordering
 from jsearch.api.database_queries.transactions import get_tx_ordering
+from jsearch.api.database_queries.wallet_events import get_wallet_events_ordering
 from jsearch.api.ordering import Ordering
 from jsearch.api.serializers.common import BlockRelatedListSchema, ListSchema
 from jsearch.api.serializers.fields import StrLower, Timestamp
 from jsearch.typing import OrderScheme, OrderDirection
+
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +63,7 @@ class AccountsTransfersSchema(BlockRelatedListSchema):
 
 
 class AccountsInternalTxsSchema(BlockRelatedListSchema):
-    tip_hash = fields.Str(load_from='blockchain_tip')
+    tip_hash = StrLower(load_from='blockchain_tip')
     address = fields.Str(validate=Length(min=1, max=100), location='match_info')
     transaction_index = fields.Int(validate=Range(min=1))
     parent_transaction_index = fields.Int(validate=Range(min=0), load_from='parent_transaction_index')
@@ -90,7 +93,7 @@ class AccountsInternalTxsSchema(BlockRelatedListSchema):
 
 
 class AccountLogsSchema(BlockRelatedListSchema):
-    tip_hash = fields.Str(load_from='blockchain_tip')
+    tip_hash = StrLower(load_from='blockchain_tip')
     address = fields.Str(validate=Length(min=1, max=100), location='match_info')
     transaction_index = fields.Int(validate=Range(min=0))
     log_index = fields.Int(validate=Range(min=0))
@@ -113,3 +116,24 @@ class AccountLogsSchema(BlockRelatedListSchema):
 
         if log_index is not None and transaction_index is None:
             raise ValidationError("Filter `log_index` requires `transaction_index` value.")
+
+
+class AccountMinedBlocksSchema(BlockRelatedListSchema):
+    tip_hash = StrLower(load_from='blockchain_tip')
+    address = fields.Str(validate=Length(min=1, max=100), location='match_info')
+
+    mapping = {
+        'number': 'block_number'
+    }
+
+    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+        return get_blocks_ordering(scheme, direction)
+
+
+class EthTransfersListSchema(BlockRelatedListSchema):
+    tip_hash = StrLower(load_from='blockchain_tip')
+    address = StrLower(validate=Length(min=1, max=100), location='match_info')
+    event_index = fields.Int(validate=Range(min=0))
+
+    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+        return get_wallet_events_ordering(scheme, direction)
