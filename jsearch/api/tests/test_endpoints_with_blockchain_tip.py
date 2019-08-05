@@ -150,7 +150,7 @@ async def test_get_accounts_balances_with_tip(
 
     data = [] if case.has_empty_data_response else [
         {
-            "balance": hex(256391824440000),
+            "balance": str(256391824440000),
             "address": "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
         },
     ]
@@ -197,7 +197,7 @@ async def test_get_account_with_tip(
         "nonce": 976,
         "code": "0x",
         "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
-        "balance": hex(1029436321514224),
+        "balance": str(1029436321514224),
     }
 
     assert response_json == {
@@ -386,9 +386,9 @@ async def test_get_account_mined_blocks_with_tip(
             "transactions": None,
             "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "uncles": None,
-            "staticReward": hex(411095732236680000),
-            "uncleInclusionReward": hex(0),
-            "txFees": hex(411095732236680000),
+            "staticReward": str(411095732236680000),
+            "uncleInclusionReward": str(0),
+            "txFees": str(411095732236680000),
         }
     ]
 
@@ -454,7 +454,7 @@ async def test_get_account_mined_uncles_with_tip(
             "timestamp": 1453686776,
             "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "blockNumber": target_block_number,
-            "reward": hex(411095732236680000),
+            "reward": str(411095732236680000),
         }
     ]
 
@@ -668,9 +668,9 @@ async def test_get_blocks_with_tip(
             "transactions": None,
             "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "uncles": None,
-            "staticReward": hex(411095732236680000),
-            "uncleInclusionReward": hex(0),
-            "txFees": hex(411095732236680000),
+            "staticReward": str(411095732236680000),
+            "uncleInclusionReward": str(0),
+            "txFees": str(411095732236680000),
         }
     ]
 
@@ -738,7 +738,7 @@ async def test_get_uncles_with_tip(
             "timestamp": 1453686776,
             "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "blockNumber": target_block_number,
-            "reward": hex(411095732236680000),
+            "reward": str(411095732236680000),
         }
     ]
 
