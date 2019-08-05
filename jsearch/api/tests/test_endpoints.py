@@ -8,7 +8,6 @@ from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.common.tables import (
     assets_transfers_t,
-    assets_summary_t
 )
 from jsearch.tests.entities import BlockFromDumpWrapper
 
