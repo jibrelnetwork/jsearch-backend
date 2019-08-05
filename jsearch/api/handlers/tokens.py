@@ -30,7 +30,7 @@ async def get_token_transfers(
     storage = request.app['storage']
     if timestamp is not None:
         block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
-    timestamp = None
+        timestamp = None
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     transfers, last_affected_block = await storage.get_tokens_transfers(
