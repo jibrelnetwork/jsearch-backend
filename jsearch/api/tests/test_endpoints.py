@@ -8,7 +8,6 @@ from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.common.tables import (
     assets_transfers_t,
-    assets_summary_t
 )
 from jsearch.tests.entities import BlockFromDumpWrapper
 
@@ -755,64 +754,6 @@ async def test_get_wallet_transfers(cli, db):
                     'to': 'a2',
                     'txData': {"hash": "f1"},
                     'type': 'erc20-transfer'}
-                   ]
-
-
-async def test_get_wallet_assets_summary(cli, db):
-    assets = [
-        {
-            'address': 'a1',
-            'asset_address': 'c1',
-            'value': 100,
-            'decimals': 0,
-            'tx_number': 1,
-            'nonce': 10,
-        },
-        {
-            'address': 'a1',
-            'asset_address': 'c2',
-            'value': 20000,
-            'decimals': 2,
-            'tx_number': 2,
-            'nonce': 10,
-        },
-        {
-            'address': 'a1',
-            'asset_address': '',
-            'value': 300,
-            'decimals': 0,
-            'tx_number': 3,
-            'nonce': 10,
-        },
-        {
-            'address': 'a2',
-            'asset_address': 'c1',
-            'value': 1000,
-            'decimals': 1,
-            'tx_number': 1,
-            'nonce': 5,
-        },
-    ]
-    for a in assets:
-        db.execute(assets_summary_t.insert().values(**a))
-    resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1,a2')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'address': 'a1',
-                    'assetsSummary': [{'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 3},
-                                      {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 1},
-                                      {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 2}],
-                    'outgoingTransactionsNumber': "10"},
-                   {'address': 'a2',
-                    'assetsSummary': [{'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 1}],
-                    'outgoingTransactionsNumber': "5"}]
-
-    resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1&assets=c2')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'address': 'a1',
-                    'assetsSummary': [{'address': 'c2', 'balance': "20000", "decimals": "2", 'transfersNumber': 2}],
-                    'outgoingTransactionsNumber': "10"},
                    ]
 
 

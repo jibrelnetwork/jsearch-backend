@@ -5,6 +5,7 @@ from typing import List, Optional
 
 from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, get_ordering, ORDER_DESC
 from jsearch.common.tables import wallet_events_t
+
 from jsearch.common.wallet_events import make_event_index, WalletEventType
 from jsearch.typing import OrderScheme, OrderDirection, Columns
 
