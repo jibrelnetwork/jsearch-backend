@@ -200,7 +200,6 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
 
     # then
     res = (await resp.json())['data']
-    assert len(res) == 1
     assert res == [
         {
             'blockHash': tx.block_hash,
@@ -219,7 +218,7 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
             'transactionIndex': tx.transaction_index,
             'v': tx.v,
             'value': tx.value,
-        }
+        },
     ]
 
 
@@ -589,50 +588,6 @@ async def test_verify_contract_ok(db, cli, main_db_data, here, fuck_token):
     )
 
 
-_token_1_transfers = [
-    {
-        'from': 'a1',
-        'timestamp': 1529159847,
-        'to': 'a3',
-        'contractAddress': 'c1',
-        'decimals': 2,
-        'amount': '300',
-        'transactionHash': 't1'
-    },
-    {
-        'from': 'a2',
-        'timestamp': 1529159847,
-        'to': 'a1',
-        'contractAddress': 'c1',
-        'decimals': 2,
-        'amount': '100',
-        'transactionHash': 't1'
-    }
-]
-
-
-async def test_get_token_transfers(cli, main_db_data):
-    resp = await cli.get(f'/v1/tokens/c1/transfers')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _token_1_transfers[:]
-
-
-async def test_get_token_transfers_asc(cli, main_db_data):
-    resp = await cli.get(f'/v1/tokens/c1/transfers?order=asc')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _token_1_transfers[::-1]
-
-
-async def test_get_token_transfers_limit(cli, main_db_data):
-    resp = await cli.get(f'/v1/tokens/c1/transfers?limit=1')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _token_1_transfers[:1]
-
-
-async def test_get_token_transfers_offset(cli, main_db_data):
-    resp = await cli.get(f'/v1/tokens/c1/transfers?offset=1')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _token_1_transfers[1:]
 
 
 async def test_get_blockchain_tip(cli, block_factory):

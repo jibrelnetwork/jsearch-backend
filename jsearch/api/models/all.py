@@ -346,11 +346,17 @@ class TokenTransfer(Model):
         "token_address": str,
         "token_value": int,
         "token_decimals": int,
+        "block_number": str,
+        "log_index": str,
+        "transaction_index": str,
     }
 
     attribute_map = {
         "transaction_hash": "transactionHash",
         "timestamp": "timestamp",
+        "block_number": "blockNumber",
+        "transaction_index": "transactionIndex",
+        "log_index": "logIndex",
         "from_address": "from",
         "to_address": "to",
         "token_address": "contractAddress",

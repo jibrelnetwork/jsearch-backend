@@ -469,38 +469,42 @@ async def test_get_account_mined_uncles_with_tip(
 async def test_get_account_token_transfers_with_tip(
         cli: TestClient,
         transfer_factory: TokenTransferFactory,
+        block_factory: BlockFactory,
+        transaction_factory: TransactionFactory,
+        log_factory: LogFactory,
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
-    token_transfer = transfer_factory.create(
-        from_address='0xf73c3c65bde10bf26c2e1763104e609a41702efe',
-        to_address='0x355941cf7ac065310fd4023e1b913209f076a48a',
-        address='0xf73c3c65bde10bf26c2e1763104e609a41702efe',
-        transaction_hash='0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c',
-        block_number=target_block_number,
-        token_address='0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
-        token_value='1664600000000000000000',
-        token_decimals='18',
-        timestamp='1548229016',
-    )
+    block = block_factory.create(number=target_block_number)
+    tx = transaction_factory.create_for_block(block)[0]
+    log = log_factory.create_for_tx(tx)
+    transfer = transfer_factory.create_for_log(block, tx, log)[0]
 
-    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
-    response = await cli.get(f'/v1/accounts/{token_transfer.address}/token_transfers?{query_params}')
+    query_params = urlencode({
+        'block_number': target_block_number,
+        'blockchain_tip': tip.tip_hash,
+        'limit': 1,
+    })
+
+    response = await cli.get(f'/v1/accounts/{transfer.address}/token_transfers?{query_params}')
     response_json = await response.json()
     response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
-            "timestamp": 1548229016,
-            "transactionHash": "0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c",
-            "from": "0xf73c3c65bde10bf26c2e1763104e609a41702efe",
-            "to": "0x355941cf7ac065310fd4023e1b913209f076a48a",
-            "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
-            "amount": "1664600000000000000000",
-            "decimals": 18,
+            'amount': f'{int(transfer.token_value)}',
+            'blockNumber': transfer.block_number,
+            'contractAddress': transfer.token_address,
+            'decimals': transfer.token_decimals,
+            'from': transfer.from_address,
+            'timestamp': transfer.timestamp,
+            'to': transfer.to_address,
+            'transactionHash': transfer.transaction_hash,
+            'transactionIndex': transfer.transaction_index,
+            'logIndex': transfer.log_index,
         }
     ]
 
@@ -748,6 +752,9 @@ async def test_get_uncles_with_tip(
 @pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
 async def test_get_token_transfers_with_tip(
         cli: TestClient,
+        block_factory: BlockFactory,
+        transaction_factory: TransactionFactory,
+        log_factory: LogFactory,
         transfer_factory: TokenTransferFactory,
         case: BlockchainTipCase,
         _get_tip: TipGetter,
@@ -755,31 +762,33 @@ async def test_get_token_transfers_with_tip(
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
-    token_transfer = transfer_factory.create(
-        block_number=target_block_number,
-        from_address='0xf73c3c65bde10bf26c2e1763104e609a41702efe',
-        to_address='0x355941cf7ac065310fd4023e1b913209f076a48a',
-        token_address='0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
-        transaction_hash='0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c',
-        token_value='1664600000000000000000',
-        token_decimals='18',
-        timestamp='1548229016',
-    )
 
-    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
-    response = await cli.get(f'/v1/tokens/{token_transfer.token_address}/transfers?{query_params}')
+    block = block_factory.create(number=target_block_number)
+    tx = transaction_factory.create_for_block(block)[0]
+    log = log_factory.create_for_tx(tx)
+    transfer = transfer_factory.create_for_log(block, tx, log)[0]
+
+    query_params = urlencode({
+        'block_number': target_block_number,
+        'blockchain_tip': tip.tip_hash,
+        'limit': 1,
+    })
+    response = await cli.get(f'/v1/tokens/{transfer.token_address}/transfers?{query_params}')
     response_json = await response.json()
     response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
-            "timestamp": 1548229016,
-            "transactionHash": "0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c",
-            "from": "0xf73c3c65bde10bf26c2e1763104e609a41702efe",
-            "to": "0x355941cf7ac065310fd4023e1b913209f076a48a",
-            "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
-            "amount": "1664600000000000000000",
-            "decimals": 18,
+            'amount': f'{int(transfer.token_value)}',
+            'blockNumber': transfer.block_number,
+            'contractAddress': transfer.token_address,
+            'decimals': transfer.token_decimals,
+            'from': transfer.from_address,
+            'timestamp': transfer.timestamp,
+            'to': transfer.to_address,
+            'transactionHash': transfer.transaction_hash,
+            'transactionIndex': transfer.transaction_index,
+            'logIndex': transfer.log_index,
         }
     ]
 

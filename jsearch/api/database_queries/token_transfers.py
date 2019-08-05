@@ -96,8 +96,7 @@ def get_paginated_query_by_block_number(
             )
         ).self_group()
 
-    query = query.where(q).limit(limit)
-    return query
+    return query.where(q).limit(limit)
 
 
 def get_token_transfers_by_account_and_block_number(
@@ -109,7 +108,14 @@ def get_token_transfers_by_account_and_block_number(
         log_index: Optional[int] = None,
 ) -> Query:
     query = get_transfers_by_address_query(address, ordering)
-    return get_paginated_query_by_block_number(query, limit, block_number, ordering, transaction_index, log_index)
+    return get_paginated_query_by_block_number(
+        query=query,
+        limit=limit,
+        block_number=block_number,
+        ordering=ordering,
+        transaction_index=transaction_index,
+        log_index=log_index
+    )
 
 
 def get_token_transfers_by_token_and_block_number(
@@ -121,4 +127,11 @@ def get_token_transfers_by_token_and_block_number(
         log_index: Optional[int] = None,
 ) -> Query:
     query = get_transfers_by_token_query(address, ordering)
-    return get_paginated_query_by_block_number(query, limit, block_number, ordering, transaction_index, log_index)
+    return get_paginated_query_by_block_number(
+        query=query,
+        limit=limit,
+        block_number=block_number,
+        ordering=ordering,
+        transaction_index=transaction_index,
+        log_index=log_index
+    )

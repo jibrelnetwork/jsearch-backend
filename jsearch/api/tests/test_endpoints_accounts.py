@@ -9,45 +9,6 @@ logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
 
-_account_1_transfers = [
-    {
-        'from': 'a3',
-        'timestamp': 1529159847,
-        'to': 'a1',
-        'contractAddress': 'c2',
-        'decimals': 2,
-        'amount': '500',
-        'transactionHash': 't2'
-    },
-    {
-        'from': 'a1',
-        'timestamp': 1529159847,
-        'to': 'a3',
-        'contractAddress': 'c1',
-        'decimals': 2,
-        'amount': '300',
-        'transactionHash': 't1'
-    },
-    {
-        'from': 'a2',
-        'timestamp': 1529159847,
-        'to': 'a1',
-        'contractAddress': 'c2',
-        'decimals': 2,
-        'amount': '200',
-        'transactionHash': 't1'
-    },
-    {
-        'from': 'a2',
-        'timestamp': 1529159847,
-        'to': 'a1',
-        'contractAddress': 'c1',
-        'decimals': 2,
-        'amount': '100',
-        'transactionHash': 't1'
-    }
-]
-
 
 async def test_get_account_404(cli):
     resp = await cli.get('/v1/accounts/x')
@@ -140,49 +101,6 @@ async def test_get_account_balances_invalid_addresses(cli: object, main_db_data:
     res = (await resp.json())['data']
     assert res == [{'address': a1['address'],
                     'balance': hex(main_db_data['accounts_state'][10]['balance'])}]
-
-
-async def test_get_account_token_transfers(cli, main_db_data):
-    resp = await cli.get(f'/v1/accounts/a1/token_transfers')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _account_1_transfers[:]
-
-
-async def test_get_account_token_transfers_asc(cli, main_db_data):
-    resp = await cli.get(f'/v1/accounts/a1/token_transfers?order=asc')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _account_1_transfers[::-1]
-
-
-async def test_get_account_token_transfers_limit(cli, main_db_data):
-    resp = await cli.get(f'/v1/accounts/a1/token_transfers?limit=1')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _account_1_transfers[:1]
-
-
-async def test_get_account_token_transfers_offset(cli, main_db_data):
-    resp = await cli.get(f'/v1/accounts/a1/token_transfers?offset=1')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _account_1_transfers[1:]
-
-
-async def test_get_account_token_transfers_a2(cli, main_db_data):
-    resp = await cli.get(f'/v1/accounts/a2/token_transfers')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == [{'from': 'a2',
-                                            'timestamp': 1529159847,
-                                            'to': 'a1',
-                                            'contractAddress': 'c2',
-                                            'decimals': 2,
-                                            'amount': '200',
-                                            'transactionHash': 't1'},
-                                           {'from': 'a2',
-                                            'timestamp': 1529159847,
-                                            'to': 'a1',
-                                            'contractAddress': 'c1',
-                                            'decimals': 2,
-                                            'amount': '100',
-                                            'transactionHash': 't1'}]
 
 
 async def test_account_get_mined_blocks(cli, main_db_data):

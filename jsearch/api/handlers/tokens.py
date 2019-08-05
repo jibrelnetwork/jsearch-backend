@@ -28,7 +28,6 @@ async def get_token_transfers(
         log_index: Optional[int] = None,
 ):
     storage = request.app['storage']
-
     if timestamp is not None:
         block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
     timestamp = None

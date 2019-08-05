@@ -22,10 +22,6 @@ from jsearch.api.database_queries.blocks import (
     ORDER_SCHEME_BY_NUMBER,
     ORDER_SCHEME_BY_TIMESTAMP,
 )
-from jsearch.api.database_queries.uncles import (
-    get_uncles_by_timestamp_query,
-    get_uncles_by_number_query
-)
 from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, \
     get_internal_txs_by_address_and_block_query, get_internal_txs_by_address_and_timestamp_query
 from jsearch.api.database_queries.logs import (
@@ -46,6 +42,10 @@ from jsearch.api.database_queries.transactions import (
     get_tx_by_hash,
     get_tx_by_address_and_block_query,
     get_tx_by_address_and_timestamp_query
+)
+from jsearch.api.database_queries.uncles import (
+    get_uncles_by_timestamp_query,
+    get_uncles_by_number_query
 )
 from jsearch.api.database_queries.wallet_events import get_wallet_events_query
 from jsearch.api.helpers import Tag, fetch_row
@@ -521,12 +521,12 @@ class Storage:
         # HACK: There're 2 times more entries due to denormalization, see
         # `log_to_transfers`. Because of this, `offset` and `limit` should be
         # multiplied first and rows should be deduped second.
-        limit *= 2
+        query_limit = limit * 2
 
         query = get_token_transfers_by_token_and_block_number(
             address=address,
             ordering=ordering,
-            limit=limit,
+            limit=query_limit,
             block_number=block_number,
             transaction_index=transaction_index,
             log_index=log_index
@@ -535,9 +535,9 @@ class Storage:
         rows = await fetch(self.pool, query)
         # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
         # `in_app_distinct` instead.
-        rows_distinct = in_app_distinct(rows)
+        rows_distinct = in_app_distinct(rows)[:limit]
 
-        transfers = _rows_to_token_transfers(rows_distinct)
+        transfers = [models.TokenTransfer(**value) for value in rows_distinct]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return transfers, last_affected_block
@@ -555,12 +555,12 @@ class Storage:
         # HACK: There're 2 times more entries due to denormalization, see
         # `log_to_transfers`. Because of this, `offset` and `limit` should be
         # multiplied first and rows should be deduped second.
-        limit *= 2
+        query_limit = limit * 2
 
         query = get_token_transfers_by_account_and_block_number(
             address=address,
             ordering=ordering,
-            limit=limit,
+            limit=query_limit,
             block_number=block_number,
             transaction_index=transaction_index,
             log_index=log_index
@@ -569,9 +569,9 @@ class Storage:
         rows = await fetch(self.pool, query)
         # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
         # `in_app_distinct` instead.
-        rows_distinct = in_app_distinct(rows)
+        rows_distinct = in_app_distinct(rows)[:limit]
 
-        transfers = _rows_to_token_transfers(rows_distinct)
+        transfers = [models.TokenTransfer(**value) for value in rows_distinct]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return transfers, last_affected_block
