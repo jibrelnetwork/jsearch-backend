@@ -83,46 +83,19 @@ def get_internal_txs_by_address_and_block_query(
         parent_tx_index: Optional[int] = None,
 ) -> Query:
     query = get_internal_txs_by_address_query(address, ordering)
-
-    # if parent_tx_index is None and tx_index is None:
-    #     q = ordering.operator_or_equal(internal_transactions_t.c.block_number, block_number)
-    # elif tx_index is None:
-    #     q = ordering.operator_or_equal(
-    #         tuple_(
-    #             internal_transactions_t.c.block_number,
-    #             internal_transactions_t.c.parent_tx_index,
-    #         ),
-    #         (
-    #             block_number,
-    #             parent_tx_index,
-    #         )
-    #     )
-    # else:
-    #     q = ordering.operator_or_equal(
-    #         tuple_(
-    #             internal_transactions_t.c.block_number,
-    #             internal_transactions_t.c.parent_tx_index,
-    #             internal_transactions_t.c.transaction_index
-    #         ),
-    #         (
-    #             block_number,
-    #             parent_tx_index,
-    #             tx_index
-    #         )
-    #     ).self_group()
-    colums = []
+    columns = []
     params = []
     if block_number is not None and block_number != 'latest':
-        colums.append(internal_transactions_t.c.block_number)
+        columns.append(internal_transactions_t.c.block_number)
         params.append(block_number)
     if parent_tx_index is not None:
-        colums.append(internal_transactions_t.c.parent_tx_index)
+        columns.append(internal_transactions_t.c.parent_tx_index)
         params.append(parent_tx_index)
     if tx_index is not None:
-        colums.append(internal_transactions_t.c.transaction_index)
+        columns.append(internal_transactions_t.c.transaction_index)
         params.append(tx_index)
 
-    q = ordering.operator_or_equal(tuple_(*colums), tuple_(*params))
+    q = ordering.operator_or_equal(tuple_(*columns), tuple_(*params))
     query = query.where(q).limit(limit)
     return query
 
