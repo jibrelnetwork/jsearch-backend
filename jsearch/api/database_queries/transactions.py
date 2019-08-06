@@ -81,18 +81,19 @@ def get_tx_by_address_and_block_query(
         columns: Optional[Columns] = None
 ) -> Query:
     query = get_tx_by_address_query(address, ordering, columns)
-
-    if tx_index is None:
-        q = ordering.operator_or_equal(transactions_t.c.block_number, block_number)
+    columns = []
+    params = []
+    if block_number is not None:
+        columns.append(transactions_t.c.block_number)
+        params.append(block_number)
+    if tx_index is not None:
+        columns.append(transactions_t.c.transaction_index)
+        params.append(tx_index)
+    if columns:
+        q = ordering.operator_or_equal(tuple_(*columns), tuple_(*params))
+        return query.where(q).limit(limit)
     else:
-        q = ordering.operator_or_equal(
-            tuple_(
-                transactions_t.c.block_number,
-                transactions_t.c.transaction_index
-            ),
-            (block_number, tx_index)
-        )
-    return query.where(q).limit(limit)
+        return query.limit(limit)
 
 
 def get_tx_by_address_and_timestamp_query(

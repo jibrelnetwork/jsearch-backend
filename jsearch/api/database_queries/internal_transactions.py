@@ -84,35 +84,52 @@ def get_internal_txs_by_address_and_block_query(
 ) -> Query:
     query = get_internal_txs_by_address_query(address, ordering)
 
-    if parent_tx_index is None and tx_index is None:
-        q = ordering.operator_or_equal(internal_transactions_t.c.block_number, block_number)
-    elif tx_index is None:
-        q = ordering.operator_or_equal(
-            tuple_(
-                internal_transactions_t.c.block_number,
-                internal_transactions_t.c.parent_tx_index,
-            ),
-            (
-                block_number,
-                parent_tx_index,
-            )
-        )
-    else:
-        q = ordering.operator_or_equal(
-            tuple_(
-                internal_transactions_t.c.block_number,
-                internal_transactions_t.c.parent_tx_index,
-                internal_transactions_t.c.transaction_index
-            ),
-            (
-                block_number,
-                parent_tx_index,
-                tx_index
-            )
-        ).self_group()
+    # if parent_tx_index is None and tx_index is None:
+    #     q = ordering.operator_or_equal(internal_transactions_t.c.block_number, block_number)
+    # elif tx_index is None:
+    #     q = ordering.operator_or_equal(
+    #         tuple_(
+    #             internal_transactions_t.c.block_number,
+    #             internal_transactions_t.c.parent_tx_index,
+    #         ),
+    #         (
+    #             block_number,
+    #             parent_tx_index,
+    #         )
+    #     )
+    # else:
+    #     q = ordering.operator_or_equal(
+    #         tuple_(
+    #             internal_transactions_t.c.block_number,
+    #             internal_transactions_t.c.parent_tx_index,
+    #             internal_transactions_t.c.transaction_index
+    #         ),
+    #         (
+    #             block_number,
+    #             parent_tx_index,
+    #             tx_index
+    #         )
+    #     ).self_group()
+    #
+    # query = query.where(q).limit(limit)
+    # return query
 
-    query = query.where(q).limit(limit)
-    return query
+    columns = []
+    params = []
+    if block_number is not None:
+        columns.append(internal_transactions_t.c.block_number)
+        params.append(block_number)
+    if parent_tx_index is not None:
+        columns.append(internal_transactions_t.c.parent_tx_index)
+        params.append(parent_tx_index)
+    if tx_index is not None:
+        columns.append(internal_transactions_t.c.transaction_index)
+        params.append(tx_index)
+    if columns:
+        q = ordering.operator_or_equal(tuple_(*columns), tuple_(*params))
+        return query.where(q).limit(limit)
+    else:
+        return query.limit(limit)
 
 
 def get_internal_txs_by_address_and_timestamp_query(

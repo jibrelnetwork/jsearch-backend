@@ -30,9 +30,9 @@ async def get_blocks(
     Get blocks list
     """
     storage = request.app['storage']
-
+    print('BNN-Z', block_number, timestamp)
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
-
+    print('BNN', block_number, timestamp)
     # Notes: we need to query limit + 1 items to get link on next page
     blocks, last_affected_block = await storage.get_blocks(
         limit=limit + 1,

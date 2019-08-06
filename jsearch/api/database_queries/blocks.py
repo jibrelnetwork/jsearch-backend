@@ -65,7 +65,6 @@ def get_blocks_query(
 
     if miner is not None:
         query = query.where(blocks_t.c.miner == miner)
-
     return query
 
 
