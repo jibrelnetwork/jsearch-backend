@@ -329,6 +329,10 @@ async def test_sync_block_check_internal_txs(db, raw_db_sample, raw_db_dsn, db_d
     internal_txs = db.execute(internal_transactions_t.select()).fetchall()
     internal_txs = [dict(tx) for tx in internal_txs]
 
+    txs = db.execute(transactions_t.select()).fetchall()
+
+    index_map = {t.hash: t.transaction_index for t in txs}
+
     internal_txs = sorted(internal_txs, key=lambda x: (x['parent_tx_hash'], x['transaction_index']))
     block_internal_txs = sorted(block_internal_txs, key=lambda x: (x['parent_tx_hash'], x['index']))
 
@@ -337,7 +341,7 @@ async def test_sync_block_check_internal_txs(db, raw_db_sample, raw_db_dsn, db_d
             'block_number': origin['block_number'],
             'block_hash': origin['block_hash'],
             'parent_tx_hash': origin['parent_tx_hash'],
-            'parent_tx_index': None,
+            'parent_tx_index': index_map[origin['parent_tx_hash']],
             'tx_origin': origin['fields']['TxOrigin'],
             'op': origin['fields']['Operation'],
             'call_depth': origin['fields']['CallDepth'],

@@ -83,40 +83,9 @@ def get_internal_txs_by_address_and_block_query(
         parent_tx_index: Optional[int] = None,
 ) -> Query:
     query = get_internal_txs_by_address_query(address, ordering)
-
-    # if parent_tx_index is None and tx_index is None:
-    #     q = ordering.operator_or_equal(internal_transactions_t.c.block_number, block_number)
-    # elif tx_index is None:
-    #     q = ordering.operator_or_equal(
-    #         tuple_(
-    #             internal_transactions_t.c.block_number,
-    #             internal_transactions_t.c.parent_tx_index,
-    #         ),
-    #         (
-    #             block_number,
-    #             parent_tx_index,
-    #         )
-    #     )
-    # else:
-    #     q = ordering.operator_or_equal(
-    #         tuple_(
-    #             internal_transactions_t.c.block_number,
-    #             internal_transactions_t.c.parent_tx_index,
-    #             internal_transactions_t.c.transaction_index
-    #         ),
-    #         (
-    #             block_number,
-    #             parent_tx_index,
-    #             tx_index
-    #         )
-    #     ).self_group()
-    #
-    # query = query.where(q).limit(limit)
-    # return query
-
     columns = []
     params = []
-    if block_number is not None:
+    if block_number is not None and block_number != 'latest':
         columns.append(internal_transactions_t.c.block_number)
         params.append(block_number)
     if parent_tx_index is not None:
