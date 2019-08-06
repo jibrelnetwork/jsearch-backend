@@ -99,10 +99,28 @@ async def test_get_token_holders_pagination(
     assert items == holders
 
 
-async def test_get_token_holders(cli, main_db_data):
-    resp = await cli.get(f'/v1/tokens/t1/holders')
+async def test_get_token_holders(cli, token_holder_factory):
+    # given
+    data = {
+        'account_address': '0xa3dress',
+        'decimals': 2,
+        'balance': 3000,
+        'token_address': '0xt1ken'
+    }
+    transfer = token_holder_factory.create(**data)
+
+    # when
+    resp = await cli.get(f'/v1/tokens/{transfer.token_address}/holders')
+    resp_json = await resp.json()
+
+    # then
     assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'accountAddress': 'a3', 'decimals': 2, 'balance': 3000, 'contractAddress': 't1'},
-                   {'accountAddress': 'a2', 'decimals': 2, 'balance': 2000, 'contractAddress': 't1'},
-                   {'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'contractAddress': 't1'}]
+    assert resp_json['data'] == [
+        {
+            'accountAddress': '0xa3dress',
+            'decimals': 2,
+            'balance': 3000,
+            'contractAddress': '0xt1ken',
+            'id': transfer.id
+        },
+    ]
