@@ -53,21 +53,28 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     @classmethod
     def create_for_block(cls, block, **kwargs):
-        data = cls.stub(
-            block_number=block.number,
-            block_hash=block.hash,
-            timestamp=block.timestamp,
+        data = factory.build(dict, FACTORY_CLASS=TransactionFactory)
+        data.update({
+            **{
+                'block_number': block.number,
+                'block_hash': block.hash,
+                'timestamp': block.timestamp,
+                'from_': generate_address(),
+                'to': generate_address()
+            },
             **kwargs
-        ).__dict__
+        })
         data.pop('address', None)
 
-        data['from_'] = data.pop('from', None)
+        if 'from' in data:
+            data.pop('from', None)
+        else:
+            data['from_'] = data.pop('from', None)
 
-        results = list()
-        results.append(cls.create(address=data['from_'], **data))
-        results.append(cls.create(address=data['to'], **data))
-
-        return results
+        return [
+            cls.create(address=data['from_'], **data),
+            cls.create(address=data['to'], **data),
+        ]
 
 
 @pytest.fixture()
