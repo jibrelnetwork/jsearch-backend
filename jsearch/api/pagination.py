@@ -26,7 +26,7 @@ def get_link(
         params: Dict[str, Any],
         mapping: Optional[Dict[str, str]] = None,
 ) -> str:
-    query = {mapping and mapping.get(key) or key: item[key] for key in fields}
+    query = {mapping and mapping.get(key) or key: str(item[key]) for key in fields}
     absolute_url = url.with_query({**query, **params})
     if absolute_url:
         return str(absolute_url)

@@ -1,5 +1,6 @@
-from typing import List, Dict, Any
 import json
+
+from typing import List, Dict, Any
 
 from jsearch.api.models.base_model_ import Model
 
@@ -376,6 +377,24 @@ class TokenHolder(Model):
     }
 
     attribute_map = {
+        'account_address': 'accountAddress',
+        'token_address': 'contractAddress',
+        'balance': 'balance',
+        'decimals': 'decimals'
+    }
+
+
+class TokenHolderWithId(Model):
+    swagger_types = {
+        'id': int,
+        'account_address': str,
+        'token_address': str,
+        'balance': float,
+        'decimals': int
+    }
+
+    attribute_map = {
+        'id': 'id',
         'account_address': 'accountAddress',
         'token_address': 'contractAddress',
         'balance': 'balance',
