@@ -64,6 +64,12 @@ async def make_app():
     )
     app.router.add_route('GET', '/v1/accounts/{address}/token_transfers', accounts.get_account_token_transfers)
     app.router.add_route(
+        'GET',
+        '/v1/accounts/{address}/token_transfers',
+        accounts.get_account_token_transfers,
+        name='account_transfers'
+    )
+    app.router.add_route(
         'GET', '/v1/accounts/{address}/token_balance/{token_address}', accounts.get_account_token_balance
     )
     app.router.add_route('GET', '/v1/accounts/{address}/token_balances', accounts.get_account_token_balances_multi)
@@ -87,7 +93,7 @@ async def make_app():
 
     app.router.add_route('POST', '/v1/verify_contract', contracts.verify_contract)
 
-    app.router.add_route('GET', '/v1/tokens/{address}/transfers', tokens.get_token_transfers)
+    app.router.add_route('GET', '/v1/tokens/{address}/transfers', tokens.get_token_transfers, name='token_transfers')
     app.router.add_route('GET', '/v1/tokens/{address}/holders', tokens.get_token_holders)
 
     app.router.add_route('GET', '/v1/proxy/gas_price', node_proxy.get_gas_price)

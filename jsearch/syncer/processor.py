@@ -162,7 +162,6 @@ class SyncProcessor:
                 contracts_set.add(acc['address'])
 
         transfers = logs_to_transfers(logs_data, block_data, decimals={})
-
         token_holders = get_token_holders_from_transfers(transfers)
 
         start_time = time.monotonic()
