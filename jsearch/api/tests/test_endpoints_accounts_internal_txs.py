@@ -1,5 +1,6 @@
 import logging
 from urllib.parse import urlencode
+import itertools
 
 import pytest
 import time
@@ -68,6 +69,18 @@ TIMESTAMP = int(time.time())
 @pytest.mark.parametrize(
     "url, txs_on_page, next_link, link",
     [
+        (
+                URL.format(params=''),
+                list(itertools.product(range(0, 5), [0, 1], [1, 2]))[::-1],
+                None,
+                URL.format(params=urlencode({
+                    'block_number': 4,
+                    'parent_transaction_index': 1,
+                    'transaction_index': 2,
+                    'limit': 20,
+                    'order': 'desc'
+                })),
+        ),
         (
                 URL.format(params=urlencode({'limit': 3})),
                 [(4, 1, 2), (4, 1, 1), (4, 0, 2)],
@@ -206,6 +219,7 @@ TIMESTAMP = int(time.time())
         ),
     ],
     ids=[
+        'no_params',
         URL.format(params=urlencode({'limit': 3})),
         URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 3, 'order': 'asc'})),
         URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
