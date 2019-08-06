@@ -4,10 +4,9 @@ import datetime
 from eth_utils import to_normalized_address, keccak
 from requests import Session
 from sqlalchemy import create_engine, inspect
+from sqlalchemy.ext.declarative import as_declarative
 from sqlalchemy.orm import scoped_session, sessionmaker
 from uuid import uuid4
-from sqlalchemy.ext.declarative import as_declarative
-
 
 main_db_dsn = os.environ['JSEARCH_MAIN_DB']
 main_db_engine = create_engine(main_db_dsn)

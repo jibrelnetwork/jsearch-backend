@@ -1,0 +1,34 @@
+from marshmallow import fields, validates_schema, ValidationError
+from marshmallow.validate import Range, Length
+
+from jsearch.api.database_queries.token_transfers import get_transfers_ordering
+from jsearch.api.ordering import Ordering
+from jsearch.api.serializers.common import BlockRelatedListSchema
+from jsearch.api.serializers.fields import StrLower
+from jsearch.typing import OrderScheme, OrderDirection
+
+
+class TokenTransfersSchema(BlockRelatedListSchema):
+    address = StrLower(validate=Length(min=1, max=100), location='match_info')
+
+    log_index = fields.Integer(validate=Range(min=0))
+    transaction_index = fields.Integer(validate=Range(min=0))
+
+    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+        return get_transfers_ordering(scheme, direction)
+
+    @validates_schema
+    def validate_filters(self, data, **kwargs):
+        timestamp = data.get('timestamp')
+        block_number = data.get("block_number")
+
+        there_is_not_pointer_to_block = timestamp is None and block_number is None
+
+        log_index = data.get("log_index")
+        transaction_index = data.get("transaction_index")
+
+        if there_is_not_pointer_to_block and transaction_index is not None:
+            raise ValidationError("Filter `transaction_index` requires `block_number` or `timestamp` value.")
+
+        if log_index is not None and transaction_index is None:
+            raise ValidationError("Filter `log_index` requires `transaction_index` value.")
