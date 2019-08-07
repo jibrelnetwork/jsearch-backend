@@ -120,28 +120,6 @@ async def test_account_get_mined_blocks(cli, main_db_data):
     assert len(res) == 0
 
 
-async def test_get_token_holders(cli, main_db_data):
-    resp = await cli.get(f'/v1/tokens/t1/holders')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'accountAddress': 'a3', 'decimals': 2, 'balance': 3000, 'contractAddress': 't1'},
-                   {'accountAddress': 'a2', 'decimals': 2, 'balance': 2000, 'contractAddress': 't1'},
-                   {'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'contractAddress': 't1'}]
-
-    resp = await cli.get(f'/v1/tokens/t1/holders?order=asc')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'contractAddress': 't1'},
-                   {'accountAddress': 'a2', 'decimals': 2, 'balance': 2000, 'contractAddress': 't1'},
-                   {'accountAddress': 'a3', 'decimals': 2, 'balance': 3000, 'contractAddress': 't1'}]
-
-    resp = await cli.get(f'/v1/tokens/t3/holders?order=asc&limit=2&offset=1')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'accountAddress': 'a3', 'decimals': 2, 'balance': 5000, 'contractAddress': 't3'},
-                   {'accountAddress': 'a4', 'decimals': 2, 'balance': 6000, 'contractAddress': 't3'}]
-
-
 async def test_get_account_token_balance(cli, main_db_data):
     resp = await cli.get(f'/v1/accounts/a1/token_balance/t1')
     assert resp.status == 200

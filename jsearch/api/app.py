@@ -94,7 +94,7 @@ async def make_app():
     app.router.add_route('POST', '/v1/verify_contract', contracts.verify_contract)
 
     app.router.add_route('GET', '/v1/tokens/{address}/transfers', tokens.get_token_transfers, name='token_transfers')
-    app.router.add_route('GET', '/v1/tokens/{address}/holders', tokens.get_token_holders)
+    app.router.add_route('GET', '/v1/tokens/{address}/holders', tokens.get_token_holders, name='token_holders')
 
     app.router.add_route('GET', '/v1/proxy/gas_price', node_proxy.get_gas_price)
     app.router.add_route('POST', '/v1/proxy/transaction_count', node_proxy.get_transaction_count)
