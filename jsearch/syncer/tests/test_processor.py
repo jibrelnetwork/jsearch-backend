@@ -437,10 +437,10 @@ async def test_sync_block_check_token_holders_in_assets_summary(db, raw_db_sampl
 
 @pytest.fixture
 def mock_get_decimals(mocker):
-    async def get_decimals(addresses: List[str], batch_size: int) -> Dict[str, int]:
+    async def get_decimals(addresses: List[str]) -> Dict[str, int]:
         return {address: 18 for address in addresses}
 
-    mocker.patch('jsearch.common.processing.decimals_cache.get_decimals', get_decimals)
+    mocker.patch('jsearch.common.processing.decimals_cache.decimals_cache.fetch_many', get_decimals)
 
 
 @pytest.mark.usefixtures('mock_get_decimals')
