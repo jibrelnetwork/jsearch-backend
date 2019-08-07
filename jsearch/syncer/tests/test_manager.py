@@ -77,6 +77,7 @@ async def test_chain_split_token_check_ether_summary(db, raw_db_split_sample, ra
     await call_system_under_test(db_dsn, raw_db_dsn, start=8020425, end=8020427)
 
     # then
+
     forked_blocks = db.execute(blocks_t.select().where(blocks_t.c.is_forked == true())).fetchall()
     assert {x.hash for x in forked_blocks} == {forked_block_hash}
 
