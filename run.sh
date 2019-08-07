@@ -30,9 +30,6 @@ if [[ "$1" = "jsearch-syncer" ]]; then
 elif [[ "$1" = "jsearch-syncer-pending" ]]; then
     wait_raw_db_ready
     wait_main_db_ready
-elif [[ "$1" = "jsearch-notable-accounts-worker" ]]; then
-    wait_kafka_ready
-    wait_main_db_ready
 elif [[ "$1" = "app" ]]; then
     wait_main_db_ready
 fi
