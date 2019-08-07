@@ -69,34 +69,23 @@ def get_paginated_query_by_block_number(
         log_index: Optional[int] = None,
         transaction_index: Optional[int] = None,
 ) -> Query:
-    if transaction_index is None and log_index is None:
-        q = ordering.operator_or_equal(token_transfers_t.c.block_number, block_number)
-    elif log_index is None:
-        q = ordering.operator_or_equal(
-            tuple_(
-                token_transfers_t.c.block_number,
-                token_transfers_t.c.transaction_index,
-            ),
-            (
-                block_number,
-                transaction_index,
-            )
-        )
-    else:
-        q = ordering.operator_or_equal(
-            tuple_(
-                token_transfers_t.c.block_number,
-                token_transfers_t.c.transaction_index,
-                token_transfers_t.c.log_index
-            ),
-            (
-                block_number,
-                transaction_index,
-                log_index
-            )
-        ).self_group()
 
-    return query.where(q).limit(limit)
+    columns = []
+    params = []
+    if block_number is not None:
+        columns.append(token_transfers_t.c.block_number)
+        params.append(block_number)
+    if transaction_index is not None:
+        columns.append(token_transfers_t.c.transaction_index)
+        params.append(transaction_index)
+    if log_index is not None:
+        columns.append(token_transfers_t.c.log_index)
+        params.append(log_index)
+    if columns:
+        q = ordering.operator_or_equal(tuple_(*columns), tuple_(*params))
+        return query.where(q).limit(limit)
+    else:
+        return query.limit(limit)
 
 
 def get_token_transfers_by_account_and_block_number(

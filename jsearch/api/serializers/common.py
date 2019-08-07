@@ -100,10 +100,10 @@ class BlockRelatedListSchema(ListSchema):
     timestamp = PositiveIntOrTagField(tags={Tag.LATEST})
 
     default_values = {
-        'block_number': Tag.LATEST
+        'block_number': None
     }
 
     @validates_schema
     def validate_numbers(self, data, **kwargs):
-        if data.get("block_number") and data.get("timestamp"):
+        if data.get("block_number") is not None and data.get("timestamp") is not None:
             raise ValidationError("Filtration should be either by number or by timestamp")

@@ -17,6 +17,7 @@ from jsearch.api.database_queries.blocks import (
     get_block_number_by_timestamp_query,
     get_blocks_by_number_query,
     get_blocks_by_timestamp_query,
+    get_blocks_query,
     get_last_block_query,
     ORDER_SCHEME_BY_NUMBER,
     ORDER_SCHEME_BY_TIMESTAMP,
@@ -274,14 +275,16 @@ class Storage:
             number: Optional[int] = None,
             timestamp: Optional[int] = None,
     ) -> Tuple[List[models.Block], Optional[LastAffectedBlock]]:
-        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-            query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
-
-        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_blocks_by_number_query(limit, number=number, order=order)
-
+        if number is None:
+            query = get_blocks_query(limit=limit, order=order)
         else:
-            raise ValueError('Invalid scheme: {scheme}')
+            if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+                query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
+
+            elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+                query = get_blocks_by_number_query(limit, number=number, order=order)
+            else:
+                raise ValueError('Invalid scheme: {scheme}')
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
@@ -316,12 +319,15 @@ class Storage:
             timestamp: Optional[int],
             number: Optional[int],
     ) -> Tuple[List[models.Block], Optional[LastAffectedBlock]]:
-        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-            query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order, miner=address)
-        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_blocks_by_number_query(limit=limit, number=number, order=order, miner=address)
+        if number is None:
+            query = get_blocks_query(limit=limit, order=order, miner=address)
         else:
-            raise ValueError('Invalid scheme: {scheme}')
+            if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+                query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order, miner=address)
+            elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+                query = get_blocks_by_number_query(limit=limit, number=number, order=order, miner=address)
+            else:
+                raise ValueError('Invalid scheme: {scheme}')
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
