@@ -440,7 +440,7 @@ def mock_get_decimals(mocker):
     async def get_decimals(addresses: List[str]) -> Dict[str, int]:
         return {address: 18 for address in addresses}
 
-    mocker.patch('jsearch.common.processing.decimals_cache.decimals_cache.fetch_many', get_decimals)
+    mocker.patch('jsearch.common.processing.decimals_cache.decimals_cache.get_many', get_decimals)
 
 
 @pytest.mark.usefixtures('mock_get_decimals')
