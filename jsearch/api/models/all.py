@@ -382,6 +382,7 @@ class TokenHolder(Model):
         'balance': 'balance',
         'decimals': 'decimals'
     }
+    int_to_str = {"balance"}
 
 
 class TokenHolderWithId(Model):

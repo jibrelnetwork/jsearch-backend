@@ -124,12 +124,12 @@ async def test_get_account_token_balance(cli, main_db_data):
     resp = await cli.get(f'/v1/accounts/a1/token_balance/t1')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == {'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'contractAddress': 't1'}
+    assert res == {'accountAddress': 'a1', 'decimals': 2, 'balance': '1000', 'contractAddress': 't1'}
 
     resp = await cli.get(f'/v1/accounts/a3/token_balance/t3')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == {'accountAddress': 'a3', 'decimals': 2, 'balance': 5000, 'contractAddress': 't3'}
+    assert res == {'accountAddress': 'a3', 'decimals': 2, 'balance': '5000', 'contractAddress': 't3'}
 
     resp = await cli.get(f'/v1/accounts/a3/token_balance/tX')
     await assert_not_404_response(resp)
@@ -292,11 +292,11 @@ async def test_get_account_token_balances_multi_ok(cli, token_holder_factory):
     resp_json = await resp.json()
     assert len(resp_json['data']) == 2
     assert resp_json['data'] == [{'accountAddress': '0x1111111111111111111111111111111111111111',
-                                  'balance': 2000,
+                                  'balance': '2000',
                                   'decimals': 1,
                                   'contractAddress': '0x1111111111111111111111111111111111111112'},
                                  {'accountAddress': '0x1111111111111111111111111111111111111111',
-                                  'balance': 30000,
+                                  'balance': '30000',
                                   'decimals': 3,
                                   'contractAddress': '0x1111111111111111111111111111111111111113'}]
     assert 'meta' not in resp_json

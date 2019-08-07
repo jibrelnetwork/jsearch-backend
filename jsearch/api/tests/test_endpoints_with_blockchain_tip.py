@@ -543,7 +543,7 @@ async def test_get_account_token_balance_with_tip(
     data = dict() if case.has_empty_data_response else {
         "accountAddress": "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0",
         "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
-        "balance": 1000000,
+        "balance": '1000000',
         "decimals": 18,
     }
 
