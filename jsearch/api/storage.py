@@ -33,6 +33,7 @@ from jsearch.api.database_queries.pending_transactions import (
     get_outcoming_pending_txs_count,
     get_pending_txs_ordering
 )
+from jsearch.api.database_queries.token_holders import get_token_holders_query
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_account_and_block_number,
     get_token_transfers_by_token_and_block_number
@@ -61,7 +62,7 @@ from jsearch.api.structs.wallets import WalletEvent
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, wallet_events_t, accounts_state_t, chain_events_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
-from jsearch.typing import LastAffectedBlock, OrderDirection
+from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress
 
 logger = logging.getLogger(__name__)
 
@@ -621,19 +622,26 @@ class Storage:
             row = await conn.fetchrow(query, address)
         return row['input']
 
-    async def get_tokens_holders(self, address: str, limit: int, offset: int, order: str) \
-            -> Tuple[List[models.TokenHolder], Optional[LastAffectedBlock]]:
-        assert order in {'asc', 'desc'}, 'Invalid order value: {}'.format(order)
-        query = f"""
-        SELECT account_address, token_address, balance, decimals, block_number
-        FROM token_holders
-        WHERE token_address=$1
-        ORDER BY balance {order} LIMIT $2 OFFSET $3;
-        """
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, address, limit, offset)
+    async def get_tokens_holders(
+            self,
+            limit: int,
+            ordering: Ordering,
+            token_address: TokenAddress,
+            balance: Optional[int],
+            _id: Optional[int] = None
+    ) -> Tuple[List[models.TokenHolderWithId], Optional[LastAffectedBlock]]:
 
-        holders = [models.TokenHolder(**r) for r in rows]
+        query = get_token_holders_query(
+            limit=limit,
+            ordering=ordering,
+            token_address=token_address,
+            balance=balance,
+            _id=_id
+        )
+        async with self.pool.acquire() as connection:
+            rows = await fetch(connection, query)
+
+        holders = [models.TokenHolderWithId(**r) for r in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return holders, last_affected_block

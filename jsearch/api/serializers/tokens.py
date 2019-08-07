@@ -1,9 +1,10 @@
 from marshmallow import fields, validates_schema, ValidationError
 from marshmallow.validate import Range, Length
 
+from jsearch.api.database_queries.token_holders import get_token_holders_ordering
 from jsearch.api.database_queries.token_transfers import get_transfers_ordering
 from jsearch.api.ordering import Ordering
-from jsearch.api.serializers.common import BlockRelatedListSchema
+from jsearch.api.serializers.common import BlockRelatedListSchema, ListSchema
 from jsearch.api.serializers.fields import StrLower
 from jsearch.typing import OrderScheme, OrderDirection
 
@@ -32,3 +33,19 @@ class TokenTransfersSchema(BlockRelatedListSchema):
 
         if log_index is not None and transaction_index is None:
             raise ValidationError("Filter `log_index` requires `transaction_index` value.")
+
+
+class TokenHoldersListSchema(ListSchema):
+    _id = fields.Integer(validate=Range(min=0), load_from='id')
+    balance = fields.Integer(validate=Range(min=0))
+
+    address = StrLower(validate=Length(min=1, max=100), location='match_info')
+
+    tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
+
+    mapping = {
+        'id': '_id'
+    }
+
+    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+        return get_token_holders_ordering(scheme, direction)

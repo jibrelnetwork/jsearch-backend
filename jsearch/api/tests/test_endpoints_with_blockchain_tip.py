@@ -828,6 +828,7 @@ async def test_get_token_holders_with_tip(
             "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
             "balance": 1000000,
             "decimals": 18,
+            "id": 0
         }
     ]
 

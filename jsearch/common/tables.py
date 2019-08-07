@@ -261,6 +261,7 @@ blocks_t = sa.Table(
 token_holders_t = sa.Table(
     'token_holders',
     metadata,
+    sa.Column('id', sa.BigInteger),
     sa.Column('account_address', sa.String, primary_key=True),
     sa.Column('token_address', sa.String, primary_key=True),
     sa.Column('balance', postgresql.NUMERIC(32, 0), index=True),
