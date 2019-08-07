@@ -103,16 +103,16 @@ TIMESTAMP = int(time.time())
         ),
         (
                 URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
-                [(4, 0, 0), (4, 0, 1), (4, 1, 0)],
+                [(0, 0, 0), (0, 0, 1), (0, 1, 0)],
                 URL.format(params=urlencode({
-                    'block_number': 4,
+                    'block_number': 0,
                     'transaction_index': 1,
                     'log_index': 1,
                     'limit': 3,
                     'order': 'asc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 4,
+                    'block_number': 0,
                     'transaction_index': 0,
                     'log_index': 0,
                     'limit': 3,
@@ -340,7 +340,7 @@ async def test_get_token_transfers_errors(
     assert resp_json['status']['errors'] == errors
 
 
-async def test_get_token_transfers(cli, block_factory, transaction_factory, log_factory, transfer_factory):
+async def test_get_token_transfers_noparams(cli, block_factory, transaction_factory, log_factory, transfer_factory):
     token = generate_address()
     block = block_factory.create()
     tx = transaction_factory.create_for_block(block)[0]

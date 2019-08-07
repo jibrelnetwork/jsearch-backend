@@ -94,10 +94,11 @@ def get_internal_txs_by_address_and_block_query(
     if tx_index is not None:
         columns.append(internal_transactions_t.c.transaction_index)
         params.append(tx_index)
-
-    q = ordering.operator_or_equal(tuple_(*columns), tuple_(*params))
-    query = query.where(q).limit(limit)
-    return query
+    if columns:
+        q = ordering.operator_or_equal(tuple_(*columns), tuple_(*params))
+        return query.where(q).limit(limit)
+    else:
+        return query.limit(limit)
 
 
 def get_internal_txs_by_address_and_timestamp_query(

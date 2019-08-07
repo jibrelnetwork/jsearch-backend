@@ -57,35 +57,22 @@ def get_logs_by_address_and_block_query(
         log_index: Optional[int],
 ) -> Query:
     query = get_logs_by_address_query(address, ordering)
-
-    if transaction_index is None and log_index is None:
-        q = ordering.operator_or_equal(logs_t.c.block_number, block_number)
-    elif log_index is None:
-        q = ordering.operator_or_equal(
-            tuple_(
-                logs_t.c.block_number,
-                logs_t.c.transaction_index,
-            ),
-            (
-                block_number,
-                transaction_index,
-            )
-        )
+    columns = []
+    params = []
+    if block_number is not None:
+        columns.append(logs_t.c.block_number)
+        params.append(block_number)
+    if transaction_index is not None:
+        columns.append(logs_t.c.transaction_index)
+        params.append(transaction_index)
+    if log_index is not None:
+        columns.append(logs_t.c.log_index)
+        params.append(log_index)
+    if columns:
+        q = ordering.operator_or_equal(tuple_(*columns), tuple_(*params))
+        return query.where(q).limit(limit)
     else:
-        q = ordering.operator_or_equal(
-            tuple_(
-                logs_t.c.block_number,
-                logs_t.c.transaction_index,
-                logs_t.c.log_index,
-            ),
-            (
-                block_number,
-                transaction_index,
-                log_index,
-            )
-        ).self_group()
-
-    return query.where(q).limit(limit)
+        return query.limit(limit)
 
 
 def get_logs_by_address_and_timestamp_query(

@@ -66,9 +66,9 @@ URL = '/v1/accounts/address/transactions?{params}'
         ),
         (
                 URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
-                [(4, 0), (4, 1)],
-                None,
-                URL.format(params=urlencode({'block_number': 4, 'transaction_index': 0, 'limit': 3, 'order': 'asc'})),
+                [(0, 0), (0, 1), (1, 0)],
+                URL.format(params=urlencode({'block_number': 1, 'transaction_index': 1, 'limit': 3, 'order': 'asc'})),
+                URL.format(params=urlencode({'block_number': 0, 'transaction_index': 0, 'limit': 3, 'order': 'asc'})),
         ),
         (
                 URL.format(params=urlencode({'block_number': 3, 'limit': 3})),

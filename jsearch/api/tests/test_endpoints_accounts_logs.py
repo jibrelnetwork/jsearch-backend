@@ -114,16 +114,16 @@ TIMESTAMP = int(time.time())
         ),
         (
                 URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
-                [(4, 0, 1), (4, 0, 2), (4, 1, 1)],
+                [(0, 0, 1), (0, 0, 2), (0, 1, 1)],
                 URL.format(params=urlencode({
-                    'block_number': 4,
+                    'block_number': 0,
                     'transaction_index': 1,
                     'log_index': 2,
                     'limit': 3,
                     'order': 'asc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 4,
+                    'block_number': 0,
                     'transaction_index': 0,
                     'log_index': 1,
                     'limit': 3,
@@ -233,13 +233,13 @@ TIMESTAMP = int(time.time())
         URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
     ]
 )
-async def test_get_account_internal_transactions(cli,
-                                                 account_factory,
-                                                 create_account_logs,
-                                                 url: str,
-                                                 logs_on_page: List[int],
-                                                 next_link: str,
-                                                 link: str) -> None:
+async def test_get_account_logs_pagination(cli,
+                                           account_factory,
+                                           create_account_logs,
+                                           url: str,
+                                           logs_on_page: List[int],
+                                           next_link: str,
+                                           link: str) -> None:
     # given
     account = account_factory.create()
     await create_account_logs(account.address)
@@ -345,7 +345,7 @@ async def test_get_account_internal_transactions_errors(
     assert resp_json['status']['errors'] == errors
 
 
-async def test_get_account_logs(cli, db, main_db_data):
+async def test_get_account_logs_single(cli, db, main_db_data):
     from jsearch.api import models
 
     address = "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a"
