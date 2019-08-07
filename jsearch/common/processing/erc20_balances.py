@@ -8,7 +8,7 @@ from eth_abi import encode_abi as eth_abi_encode_abi
 from eth_abi.exceptions import EncodingError
 from eth_utils import to_hex
 from hexbytes import HexBytes
-from typing import Any, Tuple, List, Union, Optional
+from typing import Any, Tuple, List, Union, Optional, Dict
 from web3 import Web3
 from web3.utils.abi import map_abi_data, get_abi_input_types
 from web3.utils.normalizers import abi_bytes_to_bytes, abi_address_to_hex, abi_string_to_text
@@ -199,14 +199,14 @@ async def get_balances(
     return balances
 
 
-async def get_decimals(addresses, batch_size):
+async def get_decimals(addresses: List[str], batch_size: int) -> Dict[str, int]:
     calls = []
     gt = time.monotonic()
     for i, addr in enumerate(addresses):
         call = get_decimals_rpc_call(addr, i)
         calls.append(call)
-        calls_chunks = chunks(calls, batch_size)
-        # TODO: Think about better implementation
+
+    calls_chunks = chunks(calls, batch_size)
 
     coros = [eth_call_batch(calls=c) for c in calls_chunks]
     calls_results_list = await asyncio.gather(*coros)

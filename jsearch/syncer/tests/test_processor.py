@@ -1,7 +1,8 @@
 import decimal
-import datetime
 
+import datetime
 import pytest
+from typing import Dict, List
 
 from jsearch.common import contracts
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
@@ -14,7 +15,9 @@ from jsearch.common.tables import (
     accounts_base_t,
     wallet_events_t,
     internal_transactions_t,
-    assets_summary_t, token_transfers_t)
+    assets_summary_t,
+    token_transfers_t,
+    token_holders_t)
 from jsearch.common.wallet_events import WalletEventType
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.processor import SyncProcessor, dict_keys_case_convert
@@ -388,7 +391,7 @@ async def test_sync_block_check_assets_summary(db, raw_db_sample, raw_db_dsn, db
         assert int(summary['value']) == int(account_state['balance'])
 
 
-async def test_sync_block_check_token_holders(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
+async def test_sync_block_check_token_holders_in_assets_summary(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
     """
     We test on 6000001 block.
     We can calculate ether balances for test blocks.
@@ -430,3 +433,35 @@ async def test_sync_block_check_token_holders(db, raw_db_sample, raw_db_dsn, db_
         token, owner = token_owner
         assert summary['asset_address'] == token
         assert summary['address'] == owner
+
+
+@pytest.fixture
+def mock_get_decimals(mocker):
+    async def get_decimals(addresses: List[str], batch_size: int) -> Dict[str, int]:
+        return {address: 18 for address in addresses}
+
+    mocker.patch('jsearch.common.processing.decimals_cache.get_decimals', get_decimals)
+
+
+@pytest.mark.usefixtures('mock_get_decimals')
+async def test_sync_block_check_decimals_in_token_holders(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
+    """
+    We test on 6000001 block.
+    We can calculate ether balances for test blocks.
+
+    But we don't process token balance update for 0x0000000000000000000000000000000000000000 address.
+    And totally we have only:
+        - 36 token holder balances
+
+    It is historical data and we can freeze it.
+    """
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    token_holders = db.execute(
+        token_holders_t.select()
+    ).fetchall()
+
+    for token_holder in token_holders:
+        assert token_holder.decimals == 18
