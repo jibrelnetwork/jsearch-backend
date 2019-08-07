@@ -11,7 +11,6 @@ as Web3 API proxy.
 - **Blocks Syncer** — grabs blockchain data from RawDB and puts it into MainDB.
 - **Pending TXs Syncer** — grabs TX pool data from RawDB and puts it into
 MainDB.
-- **Notable Accounts Workers** — writes accounts from Kafka topic to the MainDB.
 
 ## Dependencies
 
@@ -63,7 +62,6 @@ or from within the shell:
 docker-compose run --rm tests_shell app
 docker-compose run --rm tests_shell jsearch-syncer
 docker-compose run --rm tests_shell jsearch-syncer-pending
-docker-compose run --rm tests_shell jsearch-notable-accounts-worker
 ```
 
 ### Migrations

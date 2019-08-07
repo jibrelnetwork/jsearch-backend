@@ -29,7 +29,7 @@ class AccountsPendingTxsSchema(ListSchema):
 
 
 class AccountsTxsSchema(BlockRelatedListSchema):
-    address = fields.Str(validate=Length(min=1, max=100), location='match_info')
+    address = StrLower(validate=Length(min=1, max=100), location='match_info')
     transaction_index = fields.Int(validate=Range(min=0))
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
@@ -64,7 +64,7 @@ class AccountsTransfersSchema(BlockRelatedListSchema):
 
 class AccountsInternalTxsSchema(BlockRelatedListSchema):
     tip_hash = StrLower(load_from='blockchain_tip')
-    address = fields.Str(validate=Length(min=1, max=100), location='match_info')
+    address = StrLower(validate=Length(min=1, max=100), location='match_info')
     transaction_index = fields.Int(validate=Range(min=1))
     parent_transaction_index = fields.Int(validate=Range(min=0), load_from='parent_transaction_index')
 
@@ -94,7 +94,7 @@ class AccountsInternalTxsSchema(BlockRelatedListSchema):
 
 class AccountLogsSchema(BlockRelatedListSchema):
     tip_hash = StrLower(load_from='blockchain_tip')
-    address = fields.Str(validate=Length(min=1, max=100), location='match_info')
+    address = StrLower(validate=Length(min=1, max=100), location='match_info')
     transaction_index = fields.Int(validate=Range(min=0))
     log_index = fields.Int(validate=Range(min=0))
 
@@ -120,7 +120,7 @@ class AccountLogsSchema(BlockRelatedListSchema):
 
 class AccountMinedBlocksSchema(BlockRelatedListSchema):
     tip_hash = StrLower(load_from='blockchain_tip')
-    address = fields.Str(validate=Length(min=1, max=100), location='match_info')
+    address = StrLower(validate=Length(min=1, max=100), location='match_info')
 
     mapping = {
         'number': 'block_number'

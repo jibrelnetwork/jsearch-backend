@@ -8,6 +8,5 @@ def disable_metrics_setup(mocker: MockFixture) -> None:
     # singleton. If same metric is contributed twice, `ValueError` is raised.
 
     mocker.patch('jsearch.common.stats.setup_api_metrics')
-    mocker.patch('jsearch.common.stats.setup_notable_accounts_worker_metrics')
     mocker.patch('jsearch.common.stats.setup_syncer_metrics')
     mocker.patch('jsearch.common.stats.setup_pending_syncer_metrics')

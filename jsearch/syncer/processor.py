@@ -7,6 +7,7 @@ from typing import NamedTuple, Dict, Any, List, Tuple, Optional
 
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
+from jsearch.common.processing.decimals_cache import decimals_cache
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
 from jsearch.syncer.database import RawDB, MainDB
@@ -161,7 +162,8 @@ class SyncProcessor:
             if acc['code'] != '':
                 contracts_set.add(acc['address'])
 
-        transfers = logs_to_transfers(logs_data, block_data, decimals={})
+        decimals = await decimals_cache.get_many({l['address'] for l in logs_data})
+        transfers = logs_to_transfers(logs_data, block_data, decimals)
         token_holders = get_token_holders_from_transfers(transfers)
 
         start_time = time.monotonic()

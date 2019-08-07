@@ -13,8 +13,6 @@ services:
         ENVIRONMENT: development
     image: jsearch/tests
     container_name: jsearch_tests
-    entrypoint: /bin/sh
-    command: -c "flake8 && pytest"
     environment:
       JSEARCH_MAIN_DB: postgres://postgres:postgres@test_main_db/jsearch-main
       JSEARCH_RAW_DB: postgres://postgres:postgres@test_raw_db/jsearch-raw

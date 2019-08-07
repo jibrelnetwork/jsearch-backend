@@ -14,8 +14,6 @@ JSEARCH_RAW_DB = os.environ['JSEARCH_RAW_DB']
 LOG_LEVEL = os.environ['LOG_LEVEL']
 NO_JSON_FORMATTER = bool(int(os.environ['NO_JSON_FORMATTER']))
 
-NOTABLE_ACCOUNT_UPDATE_IF_EXISTS = bool(int(os.environ['NOTABLE_ACCOUNT_UPDATE_IF_EXISTS']))
-
 # can get list of connection.
 # examples:
 # kafka-1:19092, kafka-2:192092
@@ -51,13 +49,11 @@ HEALTH_LOOP_TASKS_COUNT_THRESHOLD = 10000
 
 SYNCER_API_PORT = int(os.environ['SYNCER_API_PORT'])
 SYNCER_PENDING_API_PORT = int(os.environ['SYNCER_PENDING_API_PORT'])
-NOTABLES_WORKER_API_PORT = int(os.environ['NOTABLES_WORKER_API_PORT'])
 
 SYNCER_BACKOFF_MAX_TRIES = int(os.environ['SYNCER_BACKOFF_MAX_TRIES'])
 PENDING_SYNCER_BACKOFF_MAX_TRIES = int(os.environ['PENDING_SYNCER_BACKOFF_MAX_TRIES'])
 
 
 METRIC_API_LOOP_TASKS_TOTAL = 'jsearch_api_loop_tasks_total'
-METRIC_NOTABLE_ACCOUNTS_WORKER_LOOP_TASKS_TOTAL = 'jsearch_notable_accounts_worker_loop_tasks_total'
 METRIC_SYNCER_LOOP_TASKS_TOTAL = 'jsearch_syncer_loop_tasks_total'
 METRIC_SYNCER_PENDING_LOOP_TASKS_TOTAL = 'jsearch_syncer_pending_loop_tasks_total'
