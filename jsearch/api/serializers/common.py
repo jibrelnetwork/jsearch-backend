@@ -100,7 +100,7 @@ class BlockRelatedListSchema(ListSchema):
     timestamp = PositiveIntOrTagField(tags={Tag.LATEST})
 
     default_values = {
-        'block_number': Tag.LATEST
+        'block_number': None
     }
 
     @validates_schema

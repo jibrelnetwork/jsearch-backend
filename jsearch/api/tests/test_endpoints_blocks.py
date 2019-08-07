@@ -30,9 +30,9 @@ def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
         (
                 "/v1/blocks?limit=3&order=asc",
                 10,
-                [9],
-                None,
-                "/v1/blocks?limit=3&block_number=9&order=asc",
+                [0, 1, 2],
+                "/v1/blocks?limit=3&block_number=3&order=asc",
+                "/v1/blocks?limit=3&block_number=0&order=asc",
         ),
         (
                 "/v1/blocks?limit=3&block_number=5",

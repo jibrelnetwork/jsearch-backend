@@ -119,16 +119,16 @@ TIMESTAMP = int(time.time())
         ),
         (
                 URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
-                [(4, 0, 1), (4, 0, 2), (4, 1, 1)],
+                [(0, 0, 1), (0, 0, 2), (0, 1, 1)],
                 URL.format(params=urlencode({
-                    'block_number': 4,
+                    'block_number': 0,
                     'parent_transaction_index': 1,
                     'transaction_index': 2,
                     'limit': 3,
                     'order': 'asc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 4,
+                    'block_number': 0,
                     'parent_transaction_index': 0,
                     'transaction_index': 1,
                     'limit': 3,

@@ -28,9 +28,9 @@ def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
         (
             "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&order=asc",
             10,
-            [9],
-            None,
-            "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&block_number=9&order=asc",
+            [0, 1, 2],
+            "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&block_number=3&order=asc",
+            "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&block_number=0&order=asc",
         ),
         (
             "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&block_number=5",
