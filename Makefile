@@ -7,10 +7,10 @@ build:
 	docker-compose build tests
 
 lint:
-	docker-compose run --rm tests flake8
+	docker-compose run --rm tests flake8 .
 
 test:
-	docker-compose run --rm tests
+	docker-compose run --rm tests pytest
 
 validate:
 	make build

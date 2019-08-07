@@ -68,10 +68,6 @@ def setup_api_metrics() -> None:
     _setup_loop_tasks_total_metric(settings.METRIC_API_LOOP_TASKS_TOTAL)
 
 
-def setup_notable_accounts_worker_metrics() -> None:
-    _setup_loop_tasks_total_metric(settings.METRIC_NOTABLE_ACCOUNTS_WORKER_LOOP_TASKS_TOTAL)
-
-
 def setup_syncer_metrics() -> None:
     _setup_loop_tasks_total_metric(settings.METRIC_SYNCER_LOOP_TASKS_TOTAL)
 
