@@ -8,7 +8,6 @@ from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.common.tables import (
     assets_transfers_t,
-    assets_summary_t
 )
 from jsearch.tests.entities import BlockFromDumpWrapper
 
@@ -54,9 +53,9 @@ async def test_get_block_by_number(cli, db, link_txs_with_block, block_factory, 
         'timestamp': block.timestamp,
         'transactions': [from_tx.hash, to_tx.hash],
         'transactionsRoot': block.transactions_root,
-        'staticReward': str(hex(int(block.static_reward))),
-        'txFees': str(hex(int(block.tx_fees))),
-        'uncleInclusionReward': str(hex(int(block.uncle_inclusion_reward))),
+        'staticReward': str(int(block.static_reward)),
+        'txFees': str(int(block.tx_fees)),
+        'uncleInclusionReward': str(int(block.uncle_inclusion_reward)),
         'uncles': []
     }
 
@@ -152,9 +151,9 @@ async def test_get_block_by_hash(cli, main_db_data):
         'timestamp': b['timestamp'],
         'transactions': [],
         'transactionsRoot': b['transactions_root'],
-        'staticReward': hex(b['static_reward']),
-        'txFees': hex(b['tx_fees']),
-        'uncleInclusionReward': hex(b['uncle_inclusion_reward']),
+        'staticReward': str(b['static_reward']),
+        'txFees': str(b['tx_fees']),
+        'uncleInclusionReward': str(b['uncle_inclusion_reward']),
         'uncles': []
     }
 
@@ -181,9 +180,9 @@ async def test_get_block_latest(cli, main_db_data):
         'timestamp': b['timestamp'],
         'transactions': [main_db_data['transactions'][-1]['hash']],
         'transactionsRoot': b['transactions_root'],
-        'staticReward': hex(b['static_reward']),
-        'txFees': hex(b['tx_fees']),
-        'uncleInclusionReward': hex(b['uncle_inclusion_reward']),
+        'staticReward': str(b['static_reward']),
+        'txFees': str(b['tx_fees']),
+        'uncleInclusionReward': str(b['uncle_inclusion_reward']),
         'uncles': []
     }
 
@@ -200,7 +199,6 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
 
     # then
     res = (await resp.json())['data']
-    assert len(res) == 1
     assert res == [
         {
             'blockHash': tx.block_hash,
@@ -219,18 +217,18 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
             'transactionIndex': tx.transaction_index,
             'v': tx.v,
             'value': tx.value,
-        }
+        },
     ]
 
 
 async def test_get_block_transactions_forked(cli, db):
     # given
-    db.execute('INSERT INTO transactions (block_number, block_hash, hash, is_forked, transaction_index)'
-               'values (%s, %s, %s, %s, %s)', [
-                   (1, 'aa', 'tx1', False, 1),
-                   (2, 'ab', 'tx2', False, 1),
-                   (2, 'ax', 'tx3', True, 1),
-                   (3, 'ac', 'tx3', False, 1),
+    db.execute('INSERT INTO transactions (block_number, block_hash, timestamp, hash, is_forked, transaction_index)'
+               'values (%s, %s, %s, %s, %s, %s)', [
+                   (1, 'aa', 1550000000, 'tx1', False, 1),
+                   (2, 'ab', 1550000000, 'tx2', False, 1),
+                   (2, 'ax', 1550000000, 'tx3', True, 1),
+                   (3, 'ac', 1550000000, 'tx3', False, 1),
                ])
     # then
     resp = await cli.get('/v1/blocks/2/transactions')
@@ -307,7 +305,7 @@ async def test_get_block_uncles(cli, main_db_data):
             'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
             'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
             'timestamp': 1438270332,
-            'reward': hex(3750000000000000000),
+            'reward': str(3750000000000000000),
             'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
         }
     ]
@@ -436,7 +434,7 @@ async def test_get_blocks_check_uncles_hashes_list(cli, main_db_data, block_hash
 
 @pytest.mark.usefixtures('uncles')
 async def test_get_uncles(cli, main_db_data):
-    resp = await cli.get('/v1/uncles')
+    resp = await cli.get('/v1/uncles?timestamp=1550000000')
     assert resp.status == 200
     assert (await resp.json())['data'] == [
         {'blockNumber': main_db_data['blocks'][2]['number'],
@@ -455,7 +453,7 @@ async def test_get_uncles(cli, main_db_data):
          'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
          'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
          'timestamp': 1438270505,
-         'reward': hex(3750000000000000000),
+         'reward': str(3750000000000000000),
          'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'},
         {'blockNumber': main_db_data['blocks'][1]['number'],
          'difficulty': "17578564779",
@@ -473,27 +471,9 @@ async def test_get_uncles(cli, main_db_data):
          'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
          'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
          'timestamp': 1438270332,
-         'reward': hex(3750000000000000000),
+         'reward': str(3750000000000000000),
          'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'}
     ]
-
-
-@pytest.mark.usefixtures('uncles')
-async def test_get_uncles_asc(cli):
-    resp = await cli.get('/v1/uncles?order=asc')
-    assert resp.status == 200
-    uncles = (await resp.json())['data']
-    assert uncles[0]['number'] == 61
-    assert uncles[1]['number'] == 62
-
-
-@pytest.mark.usefixtures('uncles')
-async def test_get_uncles_offset_limit(cli):
-    resp = await cli.get('/v1/uncles?offset=1&limit=1')
-    assert resp.status == 200
-    uncles = (await resp.json())['data']
-    assert len(uncles) == 1
-    assert uncles[0]['number'] == 61
 
 
 @pytest.mark.usefixtures('uncles')
@@ -526,7 +506,7 @@ async def test_get_uncle_by_hash(cli, main_db_data):
         'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
         'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
         'timestamp': 1438270505,
-        'reward': hex(3750000000000000000),
+        'reward': str(3750000000000000000),
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
     }
 
@@ -552,7 +532,7 @@ async def test_get_uncle_by_number(cli, main_db_data):
         'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
         'stateRoot': '0x901a42ee6ef09d68712df93609a8adbce98b314118d69a3dd07497615aa7b37b',
         'timestamp': 1438270505,
-        'reward': hex(3750000000000000000),
+        'reward': str(3750000000000000000),
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
     }
 
@@ -607,57 +587,11 @@ async def test_verify_contract_ok(db, cli, main_db_data, here, fuck_token):
     )
 
 
-_token_1_transfers = [
-    {
-        'from': 'a1',
-        'timestamp': 1529159847,
-        'to': 'a3',
-        'contractAddress': 'c1',
-        'decimals': 2,
-        'amount': '300',
-        'transactionHash': 't1'
-    },
-    {
-        'from': 'a2',
-        'timestamp': 1529159847,
-        'to': 'a1',
-        'contractAddress': 'c1',
-        'decimals': 2,
-        'amount': '100',
-        'transactionHash': 't1'
-    }
-]
-
-
-async def test_get_token_transfers(cli, main_db_data):
-    resp = await cli.get(f'/v1/tokens/c1/transfers')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _token_1_transfers[:]
-
-
-async def test_get_token_transfers_asc(cli, main_db_data):
-    resp = await cli.get(f'/v1/tokens/c1/transfers?order=asc')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _token_1_transfers[::-1]
-
-
-async def test_get_token_transfers_limit(cli, main_db_data):
-    resp = await cli.get(f'/v1/tokens/c1/transfers?limit=1')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _token_1_transfers[:1]
-
-
-async def test_get_token_transfers_offset(cli, main_db_data):
-    resp = await cli.get(f'/v1/tokens/c1/transfers?offset=1')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _token_1_transfers[1:]
-
-
 async def test_get_blockchain_tip(cli, block_factory):
     block_factory.create()
     last_block = block_factory.create()
 
-    response = await cli.get(f'/v1/wallet/blockchain_tip?tip=aa')
+    response = await cli.get(f'/v1/blockchain_tip?tip=aa')
     response_json = await response.json()
 
     assert response_json == {
@@ -776,64 +710,6 @@ async def test_get_wallet_transfers(cli, db):
                    ]
 
 
-async def test_get_wallet_assets_summary(cli, db):
-    assets = [
-        {
-            'address': 'a1',
-            'asset_address': 'c1',
-            'value': 100,
-            'decimals': 0,
-            'tx_number': 1,
-            'nonce': 10,
-        },
-        {
-            'address': 'a1',
-            'asset_address': 'c2',
-            'value': 20000,
-            'decimals': 2,
-            'tx_number': 2,
-            'nonce': 10,
-        },
-        {
-            'address': 'a1',
-            'asset_address': '',
-            'value': 300,
-            'decimals': 0,
-            'tx_number': 3,
-            'nonce': 10,
-        },
-        {
-            'address': 'a2',
-            'asset_address': 'c1',
-            'value': 1000,
-            'decimals': 1,
-            'tx_number': 1,
-            'nonce': 5,
-        },
-    ]
-    for a in assets:
-        db.execute(assets_summary_t.insert().values(**a))
-    resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1,a2')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'address': 'a1',
-                    'assetsSummary': [{'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 3},
-                                      {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 1},
-                                      {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 2}],
-                    'outgoingTransactionsNumber': "10"},
-                   {'address': 'a2',
-                    'assetsSummary': [{'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 1}],
-                    'outgoingTransactionsNumber': "5"}]
-
-    resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1&assets=c2')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'address': 'a1',
-                    'assetsSummary': [{'address': 'c2', 'balance': "20000", "decimals": "2", 'transfersNumber': 2}],
-                    'outgoingTransactionsNumber': "10"},
-                   ]
-
-
 async def test_get_accounts_balances_does_not_complain_on_addresses_count_less_than_limit(cli):
     addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH)]
     addresses_str = ','.join(addresses)
@@ -860,23 +736,11 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
     ]
 
 
-async def test_get_account_logs(cli, db, main_db_data):
-    from jsearch.api import models
-
-    address = "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a"
-    logs = [models.Log(**item).to_dict() for item in main_db_data['logs'] if item['address'] == address]
-
-    resp = await cli.get(f'/v1/accounts/{address}/logs?order=asc')
-    resp_json = await resp.json()
-
-    assert resp_json['data'] == logs
-    assert resp_json == {'data': logs, 'status': {'errors': [], 'success': True}}
-
-
 async def test_get_internal_transactions(cli, internal_transaction_factory):
     internal_transaction_data = {
         'block_number': 42,
         'block_hash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+        'timestamp': 1550000000,
         'parent_tx_hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
         'op': 'suicide',
         'call_depth': 3,
@@ -923,6 +787,7 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
             {
                 'blockNumber': 42,
                 'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'timestamp': 1550000000,
                 'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
                 'parentTxIndex': 1,
                 'op': 'suicide',
@@ -938,6 +803,7 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
             {
                 'blockNumber': 42,
                 'blockHash': '0xa47a6185aa22e64647207caedd0ce8b2b1ae419added75fc3b7843c72b6386bd',
+                'timestamp': 1550000000,
                 'parentTxHash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
                 'parentTxIndex': 1,
                 'op': 'suicide',

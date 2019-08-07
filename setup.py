@@ -20,7 +20,6 @@ setup(
             'jsearch-syncer = jsearch.syncer.main:run',
             'jsearch-syncer-pending = jsearch.pending_syncer.main:run',
             'jsearch-monitor-balance = jsearch.monitor_balance.__main__:main',
-            'jsearch-notable-accounts-worker = jsearch.notable_accounts_worker.__main__:main',
         ]
     }
 )

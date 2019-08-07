@@ -8,7 +8,6 @@ from jsearch.api.storage import Storage
 from jsearch.api.structs import BlockchainTip, BlockInfo
 from jsearch.tests.plugins.databases.factories.accounts import AccountStateFactory, AccountFactory
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
-from jsearch.tests.plugins.databases.factories.chain_splits import ChainSplitFactory
 from jsearch.tests.plugins.databases.factories.internal_transactions import InternalTransactionFactory
 from jsearch.tests.plugins.databases.factories.logs import LogFactory
 from jsearch.tests.plugins.databases.factories.reorgs import ReorgFactory
@@ -95,7 +94,7 @@ cases = [
 def _get_tip(
         storage: Storage,
         block_factory: BlockFactory,
-        chain_split_factory: ChainSplitFactory,
+        chain_events_factory,
         reorg_factory: ReorgFactory,
 ) -> Callable[[bool], Awaitable[BlockchainTip]]:
     async def inner(is_forked: bool) -> BlockchainTip:
@@ -110,9 +109,9 @@ def _get_tip(
             number=100,
         )
 
-        chain_splits = chain_split_factory.create(
-            common_block_hash=common_block.hash,
-            common_block_number=common_block.number,
+        chain_splits = chain_events_factory.create(
+            block_hash=common_block.hash,
+            block_number=common_block.number,
         )
         reorg_factory.create(
             block_hash=forked_block.hash,
@@ -151,7 +150,7 @@ async def test_get_accounts_balances_with_tip(
 
     data = [] if case.has_empty_data_response else [
         {
-            "balance": hex(256391824440000),
+            "balance": str(256391824440000),
             "address": "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
         },
     ]
@@ -198,7 +197,7 @@ async def test_get_account_with_tip(
         "nonce": 976,
         "code": "0x",
         "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
-        "balance": hex(1029436321514224),
+        "balance": str(1029436321514224),
     }
 
     assert response_json == {
@@ -283,6 +282,7 @@ async def test_get_account_internal_transactions_with_tip(
     internal_tx = internal_transaction_factory.create(
         block_number=target_block_number,
         block_hash='0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad',
+        timestamp=1550000000,
         parent_tx_hash='0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5',
         parent_tx_index=1,
         op='suicide',
@@ -307,6 +307,7 @@ async def test_get_account_internal_transactions_with_tip(
         {
             "blockNumber": target_block_number,
             "blockHash": "0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad",
+            "timestamp": 1550000000,
             "parentTxHash": "0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5",
             "parentTxIndex": 1,
             "op": "suicide",
@@ -385,9 +386,9 @@ async def test_get_account_mined_blocks_with_tip(
             "transactions": None,
             "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "uncles": None,
-            "staticReward": hex(411095732236680000),
-            "uncleInclusionReward": hex(0),
-            "txFees": hex(411095732236680000),
+            "staticReward": str(411095732236680000),
+            "uncleInclusionReward": str(0),
+            "txFees": str(411095732236680000),
         }
     ]
 
@@ -453,7 +454,7 @@ async def test_get_account_mined_uncles_with_tip(
             "timestamp": 1453686776,
             "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "blockNumber": target_block_number,
-            "reward": hex(411095732236680000),
+            "reward": str(411095732236680000),
         }
     ]
 
@@ -468,38 +469,42 @@ async def test_get_account_mined_uncles_with_tip(
 async def test_get_account_token_transfers_with_tip(
         cli: TestClient,
         transfer_factory: TokenTransferFactory,
+        block_factory: BlockFactory,
+        transaction_factory: TransactionFactory,
+        log_factory: LogFactory,
         case: BlockchainTipCase,
         _get_tip: TipGetter,
 ) -> None:
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
-    token_transfer = transfer_factory.create(
-        from_address='0xf73c3c65bde10bf26c2e1763104e609a41702efe',
-        to_address='0x355941cf7ac065310fd4023e1b913209f076a48a',
-        address='0xf73c3c65bde10bf26c2e1763104e609a41702efe',
-        transaction_hash='0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c',
-        block_number=target_block_number,
-        token_address='0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
-        token_value='1664600000000000000000',
-        token_decimals='18',
-        timestamp='1548229016',
-    )
+    block = block_factory.create(number=target_block_number)
+    tx = transaction_factory.create_for_block(block)[0]
+    log = log_factory.create_for_tx(tx)
+    transfer = transfer_factory.create_for_log(block, tx, log)[0]
 
-    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
-    response = await cli.get(f'/v1/accounts/{token_transfer.address}/token_transfers?{query_params}')
+    query_params = urlencode({
+        'block_number': target_block_number,
+        'blockchain_tip': tip.tip_hash,
+        'limit': 1,
+    })
+
+    response = await cli.get(f'/v1/accounts/{transfer.address}/token_transfers?{query_params}')
     response_json = await response.json()
     response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
-            "timestamp": 1548229016,
-            "transactionHash": "0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c",
-            "from": "0xf73c3c65bde10bf26c2e1763104e609a41702efe",
-            "to": "0x355941cf7ac065310fd4023e1b913209f076a48a",
-            "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
-            "amount": "1664600000000000000000",
-            "decimals": 18,
+            'amount': f'{int(transfer.token_value)}',
+            'blockNumber': transfer.block_number,
+            'contractAddress': transfer.token_address,
+            'decimals': transfer.token_decimals,
+            'from': transfer.from_address,
+            'timestamp': transfer.timestamp,
+            'to': transfer.to_address,
+            'transactionHash': transfer.transaction_hash,
+            'transactionIndex': transfer.transaction_index,
+            'logIndex': transfer.log_index,
         }
     ]
 
@@ -663,9 +668,9 @@ async def test_get_blocks_with_tip(
             "transactions": None,
             "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "uncles": None,
-            "staticReward": hex(411095732236680000),
-            "uncleInclusionReward": hex(0),
-            "txFees": hex(411095732236680000),
+            "staticReward": str(411095732236680000),
+            "uncleInclusionReward": str(0),
+            "txFees": str(411095732236680000),
         }
     ]
 
@@ -686,10 +691,11 @@ async def test_get_uncles_with_tip(
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
+    uncle_number = target_block_number - 1
     uncle_factory.create(
         hash='0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413',
         parent_hash='0x9e4f201db6e56a43980881cd09855b99b2f2aeefc84ffb2ad0ccf3f42de6fba2',
-        number=tip.tip_number,
+        number=uncle_number,
         block_number=target_block_number,
         difficulty='10694243015446',
         gas_used='0',
@@ -708,7 +714,7 @@ async def test_get_uncles_with_tip(
         transactions_root='0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
     )
 
-    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    query_params = f'uncle_number={uncle_number}&limit=1&blockchain_tip={tip.tip_hash}'
     response = await cli.get(f'/v1/uncles?{query_params}')
     response_json = await response.json()
     response_json.pop('paging', None)
@@ -724,7 +730,7 @@ async def test_get_uncles_with_tip(
             "miner": "0xf8b483dba2c3b7176a3da549ad41a48bb3121069",
             "mixHash": "0x02a775f306082912b617e858fef268597a277de056dbe924ee6aabfa35a33c44",
             "nonce": "496358969209982823",
-            "number": tip.tip_number,
+            "number": uncle_number,
             "parentHash": "0x9e4f201db6e56a43980881cd09855b99b2f2aeefc84ffb2ad0ccf3f42de6fba2",
             "receiptsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "sha3Uncles": "0x2843dd2134eb02067b585e76ce6a7fc89d22d3eae1d38827b1eb15a3b5153347",
@@ -732,7 +738,7 @@ async def test_get_uncles_with_tip(
             "timestamp": 1453686776,
             "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "blockNumber": target_block_number,
-            "reward": hex(411095732236680000),
+            "reward": str(411095732236680000),
         }
     ]
 
@@ -746,6 +752,9 @@ async def test_get_uncles_with_tip(
 @pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
 async def test_get_token_transfers_with_tip(
         cli: TestClient,
+        block_factory: BlockFactory,
+        transaction_factory: TransactionFactory,
+        log_factory: LogFactory,
         transfer_factory: TokenTransferFactory,
         case: BlockchainTipCase,
         _get_tip: TipGetter,
@@ -753,31 +762,33 @@ async def test_get_token_transfers_with_tip(
     tip = await _get_tip(case.is_tip_forked)
 
     target_block_number = tip.tip_number + 5 if case.is_data_recent else tip.tip_number - 5
-    token_transfer = transfer_factory.create(
-        block_number=target_block_number,
-        from_address='0xf73c3c65bde10bf26c2e1763104e609a41702efe',
-        to_address='0x355941cf7ac065310fd4023e1b913209f076a48a',
-        token_address='0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
-        transaction_hash='0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c',
-        token_value='1664600000000000000000',
-        token_decimals='18',
-        timestamp='1548229016',
-    )
 
-    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
-    response = await cli.get(f'/v1/tokens/{token_transfer.token_address}/transfers?{query_params}')
+    block = block_factory.create(number=target_block_number)
+    tx = transaction_factory.create_for_block(block)[0]
+    log = log_factory.create_for_tx(tx)
+    transfer = transfer_factory.create_for_log(block, tx, log)[0]
+
+    query_params = urlencode({
+        'block_number': target_block_number,
+        'blockchain_tip': tip.tip_hash,
+        'limit': 1,
+    })
+    response = await cli.get(f'/v1/tokens/{transfer.token_address}/transfers?{query_params}')
     response_json = await response.json()
     response_json.pop('paging', None)
 
     data = [] if case.has_empty_data_response else [
         {
-            "timestamp": 1548229016,
-            "transactionHash": "0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c",
-            "from": "0xf73c3c65bde10bf26c2e1763104e609a41702efe",
-            "to": "0x355941cf7ac065310fd4023e1b913209f076a48a",
-            "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
-            "amount": "1664600000000000000000",
-            "decimals": 18,
+            'amount': f'{int(transfer.token_value)}',
+            'blockNumber': transfer.block_number,
+            'contractAddress': transfer.token_address,
+            'decimals': transfer.token_decimals,
+            'from': transfer.from_address,
+            'timestamp': transfer.timestamp,
+            'to': transfer.to_address,
+            'transactionHash': transfer.transaction_hash,
+            'transactionIndex': transfer.transaction_index,
+            'logIndex': transfer.log_index,
         }
     ]
 
@@ -817,6 +828,7 @@ async def test_get_token_holders_with_tip(
             "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
             "balance": 1000000,
             "decimals": 18,
+            "id": 0
         }
     ]
 
@@ -844,7 +856,7 @@ async def test_get_wallet_events_with_tip(
     tx, _ = transaction_factory.create_for_block(block=block)
     event = wallet_events_factory.create_token_transfer(tx=tx, block=block)
 
-    url = 'v1/wallet/get_events?{query_params}'.format(
+    url = 'v1/wallet/events?{query_params}'.format(
         query_params=urlencode({
             'blockchain_address': event.address,
             'blockchain_tip': tip.tip_hash,

@@ -1,8 +1,8 @@
-import time
 from random import randint
 
 import factory
 import pytest
+import time
 
 from jsearch.common.tables import token_transfers_t
 from jsearch.tests.plugins.databases.factories.common import generate_address
@@ -14,8 +14,10 @@ class TokenTransferModel(Base):
     __mapper_args__ = {
         'primary_key': [
             token_transfers_t.c.address,
+            token_transfers_t.c.block_hash,
             token_transfers_t.c.transaction_hash,
-            token_transfers_t.c.transaction_index
+            token_transfers_t.c.transaction_index,
+            token_transfers_t.c.log_index
         ]
     }
 
@@ -46,6 +48,28 @@ class TokenTransferFactory(factory.alchemy.SQLAlchemyModelFactory):
         model = TokenTransferModel
         sqlalchemy_session = session
         sqlalchemy_session_persistence = 'flush'
+
+    @classmethod
+    def create_for_log(cls, block, tx, log, **kwargs):
+        data = factory.build(dict, FACTORY_CLASS=TokenTransferFactory)
+        data.update({
+            **kwargs,
+            **{
+                'block_number': block.number,
+                'block_hash': block.hash,
+                'timestamp': block.timestamp,
+                'address': getattr(tx, "from"),
+                'from_address': getattr(tx, "from"),
+                'to_address': getattr(tx, "to"),
+                'transaction_hash': tx.hash,
+                'transaction_index': tx.transaction_index,
+                'log_index': log.log_index,
+            }
+        })
+        return [
+            cls.create(**{**data, 'address': data['from_address']}),
+            cls.create(**{**data, 'address': data['to_address']}),
+        ]
 
 
 @pytest.fixture()

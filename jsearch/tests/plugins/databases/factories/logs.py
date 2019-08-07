@@ -45,6 +45,22 @@ class LogFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = session
         sqlalchemy_session_persistence = 'flush'
 
+    @classmethod
+    def create_for_tx(cls, tx, **kwargs):
+        return cls.create(
+            **{
+                **{
+                    'block_number': tx.block_number,
+                    'block_hash': tx.block_hash,
+                    'timestamp': tx.timestamp,
+                    'address': getattr(tx, 'from'),
+                    'transaction_hash': tx.hash,
+                    'transaction_index': tx.transaction_index
+                },
+                **kwargs,
+            }
+        )
+
 
 @pytest.fixture()
 def log_factory():

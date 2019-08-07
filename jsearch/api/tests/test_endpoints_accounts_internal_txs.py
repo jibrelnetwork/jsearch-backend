@@ -1,21 +1,17 @@
 import logging
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import urlencode
+import itertools
 
 import pytest
 import time
-from typing import List, Dict, Any, Tuple, Callable
+from typing import List, Dict, Any, Callable
 
+from jsearch.api.tests.utils import parse_url
 from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
-
-def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
-    if url:
-        path, params = url.split("?")
-        return path, parse_qs(params)
 
 
 @pytest.fixture()
@@ -74,6 +70,18 @@ TIMESTAMP = int(time.time())
     "url, txs_on_page, next_link, link",
     [
         (
+                URL.format(params=''),
+                list(itertools.product(range(0, 5), [0, 1], [1, 2]))[::-1],
+                None,
+                URL.format(params=urlencode({
+                    'block_number': 4,
+                    'parent_transaction_index': 1,
+                    'transaction_index': 2,
+                    'limit': 20,
+                    'order': 'desc'
+                })),
+        ),
+        (
                 URL.format(params=urlencode({'limit': 3})),
                 [(4, 1, 2), (4, 1, 1), (4, 0, 2)],
                 URL.format(params=urlencode({
@@ -111,16 +119,16 @@ TIMESTAMP = int(time.time())
         ),
         (
                 URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
-                [(4, 0, 1), (4, 0, 2), (4, 1, 1)],
+                [(0, 0, 1), (0, 0, 2), (0, 1, 1)],
                 URL.format(params=urlencode({
-                    'block_number': 4,
+                    'block_number': 0,
                     'parent_transaction_index': 1,
                     'transaction_index': 2,
                     'limit': 3,
                     'order': 'asc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 4,
+                    'block_number': 0,
                     'parent_transaction_index': 0,
                     'transaction_index': 1,
                     'limit': 3,
@@ -211,6 +219,7 @@ TIMESTAMP = int(time.time())
         ),
     ],
     ids=[
+        'no_params',
         URL.format(params=urlencode({'limit': 3})),
         URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 3, 'order': 'asc'})),
         URL.format(params=urlencode({'order': 'asc', 'limit': 3})),

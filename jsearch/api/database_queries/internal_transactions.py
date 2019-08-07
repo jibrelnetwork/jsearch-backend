@@ -1,6 +1,6 @@
 from sqlalchemy import select, Column, and_, false, tuple_
 from sqlalchemy.orm import Query
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 from jsearch.api.helpers import get_order
 from jsearch.api.ordering import ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, get_ordering, Ordering
@@ -28,7 +28,7 @@ def get_default_fields() -> List[Column]:
 
 
 def get_internal_txs_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-    columns: Dict[OrderScheme, Columns] = {
+    columns: Columns = {
         ORDER_SCHEME_BY_NUMBER: [
             internal_transactions_t.c.block_number,
             internal_transactions_t.c.parent_tx_index,
@@ -39,7 +39,7 @@ def get_internal_txs_ordering(scheme: OrderScheme, direction: OrderDirection) ->
             internal_transactions_t.c.parent_tx_index,
             internal_transactions_t.c.transaction_index
         ]
-    }
+    }[scheme]
     return get_ordering(columns, scheme, direction)
 
 
@@ -83,36 +83,22 @@ def get_internal_txs_by_address_and_block_query(
         parent_tx_index: Optional[int] = None,
 ) -> Query:
     query = get_internal_txs_by_address_query(address, ordering)
-
-    if parent_tx_index is None and tx_index is None:
-        q = ordering.operator_or_equal(internal_transactions_t.c.block_number, block_number)
-    elif tx_index is None:
-        q = ordering.operator_or_equal(
-            tuple_(
-                internal_transactions_t.c.block_number,
-                internal_transactions_t.c.parent_tx_index,
-            ),
-            (
-                block_number,
-                parent_tx_index,
-            )
-        )
+    columns = []
+    params = []
+    if block_number is not None and block_number != 'latest':
+        columns.append(internal_transactions_t.c.block_number)
+        params.append(block_number)
+    if parent_tx_index is not None:
+        columns.append(internal_transactions_t.c.parent_tx_index)
+        params.append(parent_tx_index)
+    if tx_index is not None:
+        columns.append(internal_transactions_t.c.transaction_index)
+        params.append(tx_index)
+    if columns:
+        q = ordering.operator_or_equal(tuple_(*columns), tuple_(*params))
+        return query.where(q).limit(limit)
     else:
-        q = ordering.operator_or_equal(
-            tuple_(
-                internal_transactions_t.c.block_number,
-                internal_transactions_t.c.parent_tx_index,
-                internal_transactions_t.c.transaction_index
-            ),
-            (
-                block_number,
-                parent_tx_index,
-                tx_index
-            )
-        ).self_group()
-
-    query = query.where(q).limit(limit)
-    return query
+        return query.limit(limit)
 
 
 def get_internal_txs_by_address_and_timestamp_query(

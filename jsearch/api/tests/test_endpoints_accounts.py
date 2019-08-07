@@ -4,49 +4,11 @@ import pytest
 
 from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
+from jsearch.common.wallet_events import WalletEventType
 
 logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
-_account_1_transfers = [
-    {
-        'from': 'a3',
-        'timestamp': 1529159847,
-        'to': 'a1',
-        'contractAddress': 'c2',
-        'decimals': 2,
-        'amount': '500',
-        'transactionHash': 't2'
-    },
-    {
-        'from': 'a1',
-        'timestamp': 1529159847,
-        'to': 'a3',
-        'contractAddress': 'c1',
-        'decimals': 2,
-        'amount': '300',
-        'transactionHash': 't1'
-    },
-    {
-        'from': 'a2',
-        'timestamp': 1529159847,
-        'to': 'a1',
-        'contractAddress': 'c2',
-        'decimals': 2,
-        'amount': '200',
-        'transactionHash': 't1'
-    },
-    {
-        'from': 'a2',
-        'timestamp': 1529159847,
-        'to': 'a1',
-        'contractAddress': 'c1',
-        'decimals': 2,
-        'amount': '100',
-        'transactionHash': 't1'
-    }
-]
 
 
 async def test_get_account_404(cli):
@@ -61,7 +23,7 @@ async def test_get_account(cli, main_db_data):
     account_base = main_db_data['accounts_base'][0]
     rdata = await resp.json()
     assert rdata['data'] == {'address': account_state['address'],
-                             'balance': hex(account_state['balance']),
+                             'balance': str(account_state['balance']),
                              'blockHash': account_state['block_hash'],
                              'blockNumber': account_state['block_number'],
                              'code': '0x' + account_base['code'],
@@ -79,7 +41,7 @@ async def test_get_account_block_number(cli, main_db_data):
     account_base = main_db_data['accounts_base'][0]
     rdata = await resp.json()
     assert rdata['data'] == {'address': account_state['address'],
-                             'balance': hex(account_state['balance']),
+                             'balance': str(account_state['balance']),
                              'blockHash': account_state['block_hash'],
                              'blockNumber': account_state['block_number'],
                              'code': '0x' + account_base['code'],
@@ -97,7 +59,7 @@ async def test_get_account_block_hash(cli, main_db_data):
     account_base = main_db_data['accounts_base'][0]
     rdata = await resp.json()
     assert rdata['data'] == {'address': account_state['address'],
-                             'balance': hex(account_state['balance']),
+                             'balance': str(account_state['balance']),
                              'blockHash': account_state['block_hash'],
                              'blockNumber': account_state['block_number'],
                              'code': '0x' + account_base['code'],
@@ -112,9 +74,9 @@ async def test_get_account_balances(cli, main_db_data):
     assert resp.status == 200
     res = (await resp.json())['data']
     assert res == [{'address': a1['address'],
-                    'balance': hex(main_db_data['accounts_state'][10]['balance'])},
+                    'balance': str(main_db_data['accounts_state'][10]['balance'])},
                    {'address': a2['address'],
-                    'balance': hex(main_db_data['accounts_state'][6]['balance'])}]
+                    'balance': str(main_db_data['accounts_state'][6]['balance'])}]
 
 
 async def test_get_account_balances_invalid_addresses_all(cli):
@@ -139,50 +101,7 @@ async def test_get_account_balances_invalid_addresses(cli: object, main_db_data:
     assert resp.status == 200
     res = (await resp.json())['data']
     assert res == [{'address': a1['address'],
-                    'balance': hex(main_db_data['accounts_state'][10]['balance'])}]
-
-
-async def test_get_account_token_transfers(cli, main_db_data):
-    resp = await cli.get(f'/v1/accounts/a1/token_transfers')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _account_1_transfers[:]
-
-
-async def test_get_account_token_transfers_asc(cli, main_db_data):
-    resp = await cli.get(f'/v1/accounts/a1/token_transfers?order=asc')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _account_1_transfers[::-1]
-
-
-async def test_get_account_token_transfers_limit(cli, main_db_data):
-    resp = await cli.get(f'/v1/accounts/a1/token_transfers?limit=1')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _account_1_transfers[:1]
-
-
-async def test_get_account_token_transfers_offset(cli, main_db_data):
-    resp = await cli.get(f'/v1/accounts/a1/token_transfers?offset=1')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == _account_1_transfers[1:]
-
-
-async def test_get_account_token_transfers_a2(cli, main_db_data):
-    resp = await cli.get(f'/v1/accounts/a2/token_transfers')
-    assert resp.status == 200
-    assert (await resp.json())['data'] == [{'from': 'a2',
-                                            'timestamp': 1529159847,
-                                            'to': 'a1',
-                                            'contractAddress': 'c2',
-                                            'decimals': 2,
-                                            'amount': '200',
-                                            'transactionHash': 't1'},
-                                           {'from': 'a2',
-                                            'timestamp': 1529159847,
-                                            'to': 'a1',
-                                            'contractAddress': 'c1',
-                                            'decimals': 2,
-                                            'amount': '100',
-                                            'transactionHash': 't1'}]
+                    'balance': str(main_db_data['accounts_state'][10]['balance'])}]
 
 
 async def test_account_get_mined_blocks(cli, main_db_data):
@@ -199,28 +118,6 @@ async def test_account_get_mined_blocks(cli, main_db_data):
     res = (await resp.json())['data']
 
     assert len(res) == 0
-
-
-async def test_get_token_holders(cli, main_db_data):
-    resp = await cli.get(f'/v1/tokens/t1/holders')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'accountAddress': 'a3', 'decimals': 2, 'balance': 3000, 'contractAddress': 't1'},
-                   {'accountAddress': 'a2', 'decimals': 2, 'balance': 2000, 'contractAddress': 't1'},
-                   {'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'contractAddress': 't1'}]
-
-    resp = await cli.get(f'/v1/tokens/t1/holders?order=asc')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'accountAddress': 'a1', 'decimals': 2, 'balance': 1000, 'contractAddress': 't1'},
-                   {'accountAddress': 'a2', 'decimals': 2, 'balance': 2000, 'contractAddress': 't1'},
-                   {'accountAddress': 'a3', 'decimals': 2, 'balance': 3000, 'contractAddress': 't1'}]
-
-    resp = await cli.get(f'/v1/tokens/t3/holders?order=asc&limit=2&offset=1')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'accountAddress': 'a3', 'decimals': 2, 'balance': 5000, 'contractAddress': 't3'},
-                   {'accountAddress': 'a4', 'decimals': 2, 'balance': 6000, 'contractAddress': 't3'}]
 
 
 async def test_get_account_token_balance(cli, main_db_data):
@@ -267,76 +164,100 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
     ]
 
 
-async def test_get_account_logs(cli, db, main_db_data):
-    from jsearch.api import models
+async def test_get_account_internal_transactions(cli, block_factory, transaction_factory, internal_transaction_factory):
+    block = block_factory.create(timestamp=1550000000)
 
-    address = "0xbb4af59aeaf2e83684567982af5ca21e9ac8419a"
-    logs = [models.Log(**item).to_dict() for item in main_db_data['logs'] if item['address'] == address]
+    tx = transaction_factory.create_for_block(
+        block=block,
+        **{
+            'hash': '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e',
+            'address': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+            'from_': '0x3e20a5fe4eb128156c51e310f0391799beccf0c1',
+            'to': '0x70137010922f2fc2964b3792907f79fbb75febe8',
+        }
+    )[0]
 
-    resp = await cli.get(f'/v1/accounts/{address}/logs?order=asc')
-    resp_json = await resp.json()
+    internal_transaction_data = {
+        'op': 'suicide',
+        'call_depth': NotImplemented,
+        'from_': NotImplemented,
+        'to': NotImplemented,
+        'value': 1000,
+        'gas_limit': 2000,
+        'payload': '0x',
+        'status': 'success',
+        'transaction_index': NotImplemented,
+    }
 
-    assert resp_json['data'] == logs
-    assert resp_json == {'data': logs, 'status': {'errors': [], 'success': True}}
-
-
-@pytest.mark.parametrize(
-    "from_,to",
-    [
-        (
-                '0x1111111111111111111111111111111111111111',
-                '0x2222222222222222222222222222222222222222',
-        ),
-        (
-                '0x2222222222222222222222222222222222222222',
-                '0x1111111111111111111111111111111111111111',
-        ),
-    ],
-)
-async def test_get_account_pending_transactions(cli, from_, to, pending_transaction_factory):
-    pending_transaction_factory.create(
-        hash='0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
-        status='',
-        removed=False,
-        r='0x11',
-        s='0x22',
-        v='0x33',
-        to=to,
-        from_=from_,
-        gas=2100,
-        gas_price=10000000000,
-        input='0x0',
-        nonce=42,
-        value='1111111111111111111111111111111111111111',
+    internal_transaction_factory.create_for_tx(
+        tx=tx,
+        **{
+            **internal_transaction_data,
+            **{
+                'call_depth': 1,
+                'from_': '0x1111111111111111111111111111111111111111',
+                'to': '0x2222222222222222222222222222222222222222',
+                'transaction_index': 7,
+            }
+        }
+    )
+    internal_transaction_factory.create_for_tx(
+        tx=tx,
+        **{
+            **internal_transaction_data,
+            **{
+                'call_depth': 2,
+                'from_': '0x2222222222222222222222222222222222222222',
+                'to': '0x3333333333333333333333333333333333333333',
+                'transaction_index': 8,
+            }
+        }
     )
 
-    resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/pending_transactions')
+    resp = await cli.get(
+        f'v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/'
+        f'internal_transactions?timestamp=1550000000')
     resp_json = await resp.json()
 
     assert resp.status == 200
-    assert resp_json == {
-        'status': {
-            'success': True,
-            'errors': [],
-        },
-        'data': [
-            {
-                'hash': '0xdf0237a2edf8f0a5bcdee4d806c7c3c899188d7b8a65dd9d3a4d39af1451a9bc',
-                'status': '',
-                'removed': False,
-                'r': '0x11',
-                's': '0x22',
-                'v': '0x33',
-                'to': to,
-                'from': from_,
-                'gas': '2100',
-                'gasPrice': '10000000000',
-                'input': '0x0',
-                'nonce': '42',
-                'value': '1111111111111111111111111111111111111111',
-            },
-        ]
+    assert resp_json['status'] == {
+        'success': True,
+        'errors': [],
     }
+    assert resp_json['data'] == [
+        {
+            'blockNumber': tx.block_number,
+            'blockHash': tx.block_hash,
+            'timestamp': tx.timestamp,
+            'parentTxHash': tx.hash,
+            'parentTxIndex': tx.transaction_index,
+            'op': 'suicide',
+            'callDepth': 2,
+            'from': '0x2222222222222222222222222222222222222222',
+            'to': '0x3333333333333333333333333333333333333333',
+            'value': '1000',
+            'gasLimit': '2000',
+            'input': '0x',
+            'status': 'success',
+            'transactionIndex': 8,
+        },
+        {
+            'blockNumber': tx.block_number,
+            'blockHash': tx.block_hash,
+            'timestamp': tx.timestamp,
+            'parentTxHash': tx.hash,
+            'parentTxIndex': tx.transaction_index,
+            'op': 'suicide',
+            'callDepth': 1,
+            'from': '0x1111111111111111111111111111111111111111',
+            'to': '0x2222222222222222222222222222222222222222',
+            'value': '1000',
+            'gasLimit': '2000',
+            'input': '0x',
+            'status': 'success',
+            'transactionIndex': 7,
+        }
+    ]
 
 
 async def test_get_account_token_balances_multi_ok(cli, token_holder_factory):
@@ -446,10 +367,172 @@ async def test_get_account_transaction_count_w_pending(cli, account_state_factor
     pending_transaction_factory.create(
         from_='0x1111111111111111111111111111111111111111',
         removed=False,
-        last_synced_id=123
+        last_synced_id=123,
     )
 
     resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/transaction_count')
     assert resp.status == 200
     resp_json = await resp.json()
     assert resp_json['data'] == 7
+
+
+async def test_get_account_eth_transfers_ok(cli, wallet_events_factory):
+    address = '0x1111111111111111111111111111111111111111'
+    t1 = wallet_events_factory.create(
+        address=address,
+        type=WalletEventType.ETH_TRANSFER,
+        is_forked=False,
+        event_data={'amount': '1000', 'sender': address, 'recepient': '0xa1'},
+        timestamp=100,
+    )
+    wallet_events_factory.create(
+        address='0xbb',
+        type=WalletEventType.ETH_TRANSFER,
+        is_forked=False,
+        event_data={'amount': '2000', 'sender': '0xbb', 'recepient': '0xa1'},
+        timestamp=101,
+    )
+    t3 = wallet_events_factory.create(
+        address=address,
+        type=WalletEventType.ETH_TRANSFER,
+        is_forked=False,
+        event_data={'amount': '3000', 'sender': '0xaaa', 'recepient': address},
+        timestamp=102,
+    )
+    resp = await cli.get(f'v1/accounts/{address}/eth_transfers')
+    assert resp.status == 200
+    resp_json = await resp.json()
+    assert resp_json['data'] == [
+        {'amount': '3000',
+         'from': '0xaaa',
+         'timestamp': 102,
+         'to': '0x1111111111111111111111111111111111111111',
+         'transactionHash': t3.tx_hash},
+        {'amount': '1000',
+         'from': '0x1111111111111111111111111111111111111111',
+         'timestamp': 100,
+         'to': '0xa1',
+         'transactionHash': t1.tx_hash},
+    ]
+    assert resp_json['paging'] == {
+        'link': f'/v1/accounts/{address}/eth_transfers?block_number=2&event_index=2&order=desc&limit=20',
+        'next': None
+    }
+
+    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?limit=1')
+    resp_json = await resp.json()
+    assert resp_json['data'] == [
+        {'amount': '3000',
+         'from': '0xaaa',
+         'timestamp': 102,
+         'to': '0x1111111111111111111111111111111111111111',
+         'transactionHash': t3.tx_hash},
+    ]
+    assert resp_json['paging'] == {
+        'link': f'/v1/accounts/{address}/eth_transfers?block_number=2&event_index=2&order=desc&limit=1',
+        'next': f'/v1/accounts/{address}/eth_transfers?block_number=0&event_index=0&order=desc&limit=1'
+    }
+
+    resp = await cli.get(resp_json['paging']['next'])
+    resp_json = await resp.json()
+    assert resp_json['data'] == [
+        {'amount': '1000',
+         'from': '0x1111111111111111111111111111111111111111',
+         'timestamp': 100,
+         'to': '0xa1',
+         'transactionHash': t1.tx_hash},
+    ]
+
+
+async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
+    address = '0x1111111111111111111111111111111111111111'
+    wallet_events_factory.create(
+        block_number=10,
+        event_index=1000,
+        address=address,
+        type=WalletEventType.ETH_TRANSFER,
+        is_forked=False,
+        event_data={'amount': '1000', 'sender': address, 'recepient': '0xa1'},
+        timestamp=100,
+    )
+    wallet_events_factory.create(
+        block_number=10,
+        event_index=1001,
+        address=address,
+        type=WalletEventType.ETH_TRANSFER,
+        is_forked=False,
+        event_data={'amount': '2000', 'sender': '0xbb', 'recepient': '0xa1'},
+        timestamp=100,
+    )
+    t3 = wallet_events_factory.create(
+        block_number=12,
+        event_index=1200,
+        address=address,
+        type=WalletEventType.ETH_TRANSFER,
+        is_forked=False,
+        event_data={'amount': '3000', 'sender': '0xaaa', 'recepient': address},
+        timestamp=102,
+    )
+    t4 = wallet_events_factory.create(
+        block_number=12,
+        event_index=1201,
+        address=address,
+        type=WalletEventType.ETH_TRANSFER,
+        is_forked=False,
+        event_data={'amount': '4000', 'sender': '0xaaa', 'recepient': address},
+        timestamp=102,
+    )
+    wallet_events_factory.create(
+        block_number=13,
+        event_index=1300,
+        address=address,
+        type=WalletEventType.ETH_TRANSFER,
+        is_forked=False,
+        event_data={'amount': '5000', 'sender': '0xaaa', 'recepient': address},
+        timestamp=103,
+    )
+    wallet_events_factory.create(
+        block_number=13,
+        event_index=1301,
+        address=address,
+        type=WalletEventType.ETH_TRANSFER,
+        is_forked=False,
+        event_data={'amount': '6000', 'sender': '0xaaa', 'recepient': address},
+        timestamp=103,
+    )
+    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&event_index=1201&limit=2')
+    assert resp.status == 200
+    resp_json = await resp.json()
+    assert resp_json['data'] == [{'amount': '4000',
+                                  'from': '0xaaa',
+                                  'timestamp': 102,
+                                  'to': '0x1111111111111111111111111111111111111111',
+                                  'transactionHash': t4.tx_hash},
+                                 {'amount': '3000',
+                                  'from': '0xaaa',
+                                  'timestamp': 102,
+                                  'to': '0x1111111111111111111111111111111111111111',
+                                  'transactionHash': t3.tx_hash}
+                                 ]
+    assert resp_json['paging'] == {
+        'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=1201&order=desc&limit=2',
+        'next': f'/v1/accounts/{address}/eth_transfers?block_number=10&event_index=1001&order=desc&limit=2'}
+
+    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&event_index=1200&order=asc&limit=2')
+    assert resp.status == 200
+    resp_json = await resp.json()
+    assert resp_json['data'] == [
+        {'amount': '3000',
+         'from': '0xaaa',
+         'timestamp': 102,
+         'to': '0x1111111111111111111111111111111111111111',
+         'transactionHash': t3.tx_hash},
+        {'amount': '4000',
+         'from': '0xaaa',
+         'timestamp': 102,
+         'to': '0x1111111111111111111111111111111111111111',
+         'transactionHash': t4.tx_hash},
+    ]
+    assert resp_json['paging'] == {
+        'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=1200&order=asc&limit=2',
+        'next': f'/v1/accounts/{address}/eth_transfers?block_number=13&event_index=1300&order=asc&limit=2'}

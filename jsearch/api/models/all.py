@@ -1,4 +1,6 @@
-from typing import List
+import json
+
+from typing import List, Dict, Any
 
 from jsearch.api.models.base_model_ import Model
 
@@ -52,7 +54,7 @@ class Account(Model):
         'balance': 'balance',
     }
 
-    int_to_hex = {'balance'}
+    int_to_str = {'balance'}
 
 
 class Transaction(Model):
@@ -104,6 +106,7 @@ class InternalTransaction(Model):
     swagger_types = {
         'block_number': int,
         'block_hash': str,
+        'timestamp': int,
         'parent_tx_hash': str,
         'parent_tx_index': int,
         'op': str,
@@ -120,6 +123,7 @@ class InternalTransaction(Model):
     attribute_map = {
         'block_number': 'blockNumber',
         'block_hash': 'blockHash',
+        'timestamp': 'timestamp',
         'parent_tx_hash': 'parentTxHash',
         'parent_tx_index': 'parentTxIndex',
         'op': 'op',
@@ -221,8 +225,8 @@ class Block(Model):
         'tx_fees': 'txFees',
     }
 
-    int_to_hex = {'staticReward', 'uncleInclusionReward', 'txFees'}
-    int_to_str = {'difficulty', 'gasLimit', 'gasUsed'}
+    int_to_str = {'staticReward', 'uncleInclusionReward', 'txFees',
+                  'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Uncle(Model):
@@ -268,8 +272,7 @@ class Uncle(Model):
         'reward': 'reward',
     }
 
-    int_to_hex = {'reward'}
-    int_to_str = {'difficulty', 'gasLimit', 'gasUsed'}
+    int_to_str = {'reward', 'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Receipt(Model):
@@ -318,7 +321,7 @@ class Reward(Model):
         'amount': 'amount',
     }
 
-    int_to_hex = {'amount'}
+    int_to_str = {'amount'}
 
 
 class Balance(Model):
@@ -332,7 +335,7 @@ class Balance(Model):
         'address': 'address',
     }
 
-    int_to_hex = {'balance'}
+    int_to_str = {'balance'}
 
 
 class TokenTransfer(Model):
@@ -344,11 +347,17 @@ class TokenTransfer(Model):
         "token_address": str,
         "token_value": int,
         "token_decimals": int,
+        "block_number": str,
+        "log_index": str,
+        "transaction_index": str,
     }
 
     attribute_map = {
         "transaction_hash": "transactionHash",
         "timestamp": "timestamp",
+        "block_number": "blockNumber",
+        "transaction_index": "transactionIndex",
+        "log_index": "logIndex",
         "from_address": "from",
         "to_address": "to",
         "token_address": "contractAddress",
@@ -375,6 +384,24 @@ class TokenHolder(Model):
     }
 
 
+class TokenHolderWithId(Model):
+    swagger_types = {
+        'id': int,
+        'account_address': str,
+        'token_address': str,
+        'balance': float,
+        'decimals': int
+    }
+
+    attribute_map = {
+        'id': 'id',
+        'account_address': 'accountAddress',
+        'token_address': 'contractAddress',
+        'balance': 'balance',
+        'decimals': 'decimals'
+    }
+
+
 class AssetTransfer(Model):
     swagger_types = {
         'type': str,
@@ -391,4 +418,49 @@ class AssetTransfer(Model):
         'asset_address': 'assetAddress',
         'amount': 'amount',
         'tx_data': 'txData',
+    }
+
+
+class WalletEvent(Model):
+    swagger_types = {
+        "type": str,
+        "event_index": int,
+        "event_data": Dict[str, Any],
+    }
+    attribute_map = {
+        'type': 'eventType',
+        'event_index': 'eventIndex',
+        'event_data': 'eventData'
+    }
+
+    def to_dict(self):
+        data = super(WalletEvent, self).to_dict()
+
+        event_data = getattr(self, 'event_data', {})
+        if isinstance(event_data, str):
+            event_data = json.loads(event_data)
+
+        data['eventData'] = [{'fieldName': name, 'fieldValue': value} for name, value in event_data.items()]
+
+        return data
+
+
+class EthTransfer(Model):
+    swagger_types = {
+        'timestamp': int,
+        'tx_hash': str,
+        'to': str,
+        'from': str,
+        'amount': str,
+        'block_number': int,
+        'event_index': int,
+    }
+    attribute_map = {
+        'tx_hash': 'transactionHash',
+        'timestamp': 'timestamp',
+        'to': 'to',
+        'from': 'from',
+        'amount': 'amount',
+        'block_number': 'block_number',
+        'event_index': 'event_index',
     }

@@ -1,8 +1,10 @@
-from sqlalchemy import Column, select, and_, false
+from sqlalchemy import Column, select, and_, false, tuple_
 from sqlalchemy.orm import Query
-from typing import List
+from typing import List, Optional
 
+from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, get_ordering
 from jsearch.common.tables import token_transfers_t
+from jsearch.typing import OrderScheme, OrderDirection, Columns
 
 
 def get_default_fields() -> List[Column]:
@@ -23,40 +25,102 @@ def get_default_fields() -> List[Column]:
     ]
 
 
-def get_token_transfers_by_token(address: str, order: str, columns: List[Column] = None) -> Query:
-    query = select(
-        columns=columns or get_default_fields(),
-        whereclause=and_(
-            token_transfers_t.c.token_address == address,
-            token_transfers_t.c.is_forked == false(),
-        )
-    )
+def get_transfers_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
+    columns: Columns = {
+        ORDER_SCHEME_BY_NUMBER: [
+            token_transfers_t.c.block_number,
+            token_transfers_t.c.transaction_index,
+            token_transfers_t.c.log_index,
+        ],
+        ORDER_SCHEME_BY_TIMESTAMP: [
+            token_transfers_t.c.timestamp,
+            token_transfers_t.c.transaction_index,
+            token_transfers_t.c.log_index,
+        ]
+    }[scheme]
+    return get_ordering(columns, scheme, direction)
 
-    return order_token_transfers_query(query, order)
 
-
-def get_token_transfers_by_account(address: str, order: str, columns: List[Column] = None) -> Query:
-    query = select(
-        columns=columns or get_default_fields(),
+def get_transfers_by_address_query(address: str, ordering: Ordering) -> Query:
+    return select(
+        columns=get_default_fields(),
         whereclause=and_(
             token_transfers_t.c.address == address,
             token_transfers_t.c.is_forked == false(),
         )
+    ).order_by(*ordering.columns)
+
+
+def get_transfers_by_token_query(address: str, ordering: Ordering) -> Query:
+    return select(
+        columns=get_default_fields(),
+        whereclause=and_(
+            token_transfers_t.c.token_address == address,
+            token_transfers_t.c.is_forked == false(),
+        )
+    ).order_by(*ordering.columns)
+
+
+def get_paginated_query_by_block_number(
+        query: Query,
+        limit: int,
+        block_number: int,
+        ordering: Ordering,
+        log_index: Optional[int] = None,
+        transaction_index: Optional[int] = None,
+) -> Query:
+
+    columns = []
+    params = []
+    if block_number is not None:
+        columns.append(token_transfers_t.c.block_number)
+        params.append(block_number)
+    if transaction_index is not None:
+        columns.append(token_transfers_t.c.transaction_index)
+        params.append(transaction_index)
+    if log_index is not None:
+        columns.append(token_transfers_t.c.log_index)
+        params.append(log_index)
+    if columns:
+        q = ordering.operator_or_equal(tuple_(*columns), tuple_(*params))
+        return query.where(q).limit(limit)
+    else:
+        return query.limit(limit)
+
+
+def get_token_transfers_by_account_and_block_number(
+        address: str,
+        limit: int,
+        block_number: int,
+        ordering: Ordering,
+        transaction_index: Optional[int] = None,
+        log_index: Optional[int] = None,
+) -> Query:
+    query = get_transfers_by_address_query(address, ordering)
+    return get_paginated_query_by_block_number(
+        query=query,
+        limit=limit,
+        block_number=block_number,
+        ordering=ordering,
+        transaction_index=transaction_index,
+        log_index=log_index
     )
 
-    return order_token_transfers_query(query, order)
 
-
-def order_token_transfers_query(query: Query, direction: str) -> Query:
-    if direction == 'asc':
-        return query.order_by(
-            token_transfers_t.c.block_number.asc(),
-            token_transfers_t.c.transaction_index.asc(),
-            token_transfers_t.c.log_index.asc(),
-        )
-
-    return query.order_by(
-        token_transfers_t.c.block_number.desc(),
-        token_transfers_t.c.transaction_index.desc(),
-        token_transfers_t.c.log_index.desc(),
+def get_token_transfers_by_token_and_block_number(
+        address: str,
+        limit: int,
+        block_number: int,
+        ordering: Ordering,
+        transaction_index: Optional[int] = None,
+        log_index: Optional[int] = None,
+) -> Query:
+    query = get_transfers_by_token_query(address, ordering)
+    return get_paginated_query_by_block_number(
+        query=query,
+        limit=limit,
+        block_number=block_number,
+        ordering=ordering,
+        transaction_index=transaction_index,
+        log_index=log_index
     )

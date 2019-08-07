@@ -7,6 +7,7 @@ from typing import Callable, Tuple, List, Dict, Any
 
 from jsearch.api.tests.utils import parse_url
 from jsearch.common.wallet_events import make_event_index
+from jsearch.common.tables import assets_summary_t
 from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
@@ -55,7 +56,7 @@ def create_wallet_events(
     return create_env
 
 
-URL = '/v1/wallet/get_events?{params}'
+URL = '/v1/wallet/events?{params}'
 
 
 @pytest.mark.parametrize(
@@ -280,7 +281,7 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
     tx, _ = transaction_factory.create_for_block(block=block,)
     event = wallet_events_factory.create_token_transfer(tx=tx, block=block)
 
-    url = 'v1/wallet/get_events?{params}'.format(
+    url = 'v1/wallet/events?{params}'.format(
         params=urlencode({
             'blockchain_address': event.address,
             'blockchain_tip': block.hash,
@@ -312,7 +313,7 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
         },
         'paging': {
             'link': (
-                f'/v1/wallet/get_events?'
+                f'/v1/wallet/events?'
                 f'block_number={block.number}&'
                 f'event_index={event.event_index}'
                 f'&order=desc&'
@@ -443,3 +444,61 @@ async def test_get_wallet_events_pending_txs_limit(cli,
     # then
 
     assert len(response_json['data']['pendingEvents']) == 100
+
+
+async def test_get_wallet_assets_summary(cli, db):
+    assets = [
+        {
+            'address': 'a1',
+            'asset_address': 'c1',
+            'value': 100,
+            'decimals': 0,
+            'tx_number': 1,
+            'nonce': 10,
+        },
+        {
+            'address': 'a1',
+            'asset_address': 'c2',
+            'value': 20000,
+            'decimals': 2,
+            'tx_number': 2,
+            'nonce': 10,
+        },
+        {
+            'address': 'a1',
+            'asset_address': '',
+            'value': 300,
+            'decimals': 0,
+            'tx_number': 3,
+            'nonce': 10,
+        },
+        {
+            'address': 'a2',
+            'asset_address': 'c1',
+            'value': 1000,
+            'decimals': 1,
+            'tx_number': 1,
+            'nonce': 5,
+        },
+    ]
+    for a in assets:
+        db.execute(assets_summary_t.insert().values(**a))
+    resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1,a2')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == [{'address': 'a1',
+                    'assetsSummary': [{'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 3},
+                                      {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 1},
+                                      {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 2}],
+                    'outgoingTransactionsNumber': "10"},
+                   {'address': 'a2',
+                    'assetsSummary': [{'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 1}],
+                    'outgoingTransactionsNumber': "5"}]
+
+    resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1&assets=c2')
+    assert resp.status == 200
+    res = (await resp.json())['data']
+    assert res == [{'address': 'a1',
+                    'assetsSummary': [{'address': 'c2', 'balance': "20000", "decimals": "2", 'transfersNumber': 2}],
+                    'outgoingTransactionsNumber': "10"},
+                   ]

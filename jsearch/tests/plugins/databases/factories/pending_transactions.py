@@ -15,6 +15,7 @@ class PendingTransactionModel(Base):
 
 class PendingTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     last_synced_id = factory.Faker('pyint')  # 0..9999
+    id = factory.Sequence(lambda n: n)  # 0..9999
     hash = factory.LazyFunction(generate_address)
     status = ''
     timestamp = factory.LazyFunction(generate_psql_timestamp)

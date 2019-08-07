@@ -19,6 +19,8 @@ class TokenHolderFactory(factory.alchemy.SQLAlchemyModelFactory):
     decimals = factory.LazyFunction(lambda: randint(10, 18))
     block_number = factory.Sequence(lambda n: n)
 
+    id = factory.Sequence(lambda n: n)
+
     class Meta:
         model = TokenHolderModel
         sqlalchemy_session = session
@@ -27,4 +29,5 @@ class TokenHolderFactory(factory.alchemy.SQLAlchemyModelFactory):
 
 @pytest.fixture
 def token_holder_factory():
-    return TokenHolderFactory
+    yield TokenHolderFactory
+    TokenHolderFactory.reset_sequence()

@@ -110,6 +110,7 @@ internal_transactions_t = sa.Table(
 pending_transactions_t = sa.Table(
     'pending_transactions',
     metadata,
+    sa.Column('id', sa.BigInteger),
     sa.Column('last_synced_id', sa.BigInteger, index=True),
     sa.Column('hash', sa.String(70), primary_key=True),
     sa.Column('status', sa.String),
@@ -219,14 +220,6 @@ accounts_base_t = sa.Table(
     sa.Column('root', sa.String),
 )
 
-notable_accounts_t = sa.Table(
-    'notable_accounts',
-    metadata,
-    sa.Column('address', sa.String, primary_key=True),
-    sa.Column('name', sa.String),
-    sa.Column('labels', postgresql.ARRAY(sa.String)),
-)
-
 blocks_t = sa.Table(
     'blocks',
     metadata,
@@ -260,6 +253,7 @@ blocks_t = sa.Table(
 token_holders_t = sa.Table(
     'token_holders',
     metadata,
+    sa.Column('id', sa.BigInteger),
     sa.Column('account_address', sa.String, primary_key=True),
     sa.Column('token_address', sa.String, primary_key=True),
     sa.Column('balance', postgresql.NUMERIC(32, 0), index=True),
@@ -354,6 +348,7 @@ wallet_events_t = sa.Table(
     sa.Column('is_forked', sa.Boolean, default=False),
     sa.Column('tx_data', postgresql.JSONB),
     sa.Column('event_data', postgresql.JSONB),
+    sa.Column('timestamp', sa.Integer),
 )
 
 chain_events_t = sa.Table(
@@ -391,7 +386,6 @@ TABLES = (
     logs_t,
     accounts_state_t,
     accounts_base_t,
-    notable_accounts_t,
     token_holders_t,
     internal_transactions_t,
     pending_transactions_t,

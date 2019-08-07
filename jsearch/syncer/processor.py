@@ -7,6 +7,7 @@ from typing import NamedTuple, Dict, Any, List, Tuple, Optional
 
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
+from jsearch.common.processing.decimals_cache import decimals_cache
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
 from jsearch.syncer.database import RawDB, MainDB
@@ -154,15 +155,15 @@ class SyncProcessor:
             is_forked=is_forked
         )
         accounts_data = self.process_accounts(accounts, block_number, block_hash, is_forked)
-        internal_txs_data = self.process_internal_txs(internal_transactions, is_forked)
+        internal_txs_data = self.process_internal_txs(internal_transactions, transactions_data, is_forked)
 
         contracts_set = set()
         for acc in accounts_data:
             if acc['code'] != '':
                 contracts_set.add(acc['address'])
 
-        transfers = logs_to_transfers(logs_data, block_data, decimals={})
-
+        decimals = await decimals_cache.get_many({l['address'] for l in logs_data})
+        transfers = logs_to_transfers(logs_data, block_data, decimals)
         token_holders = get_token_holders_from_transfers(transfers)
 
         start_time = time.monotonic()
@@ -381,8 +382,12 @@ class SyncProcessor:
             items.append(data)
         return items
 
-    def process_internal_txs(self, internal_txs: List[Dict[str, Any]], is_forked: bool) -> List[Dict[str, Any]]:
+    def process_internal_txs(self,
+                             internal_txs: List[Dict[str, Any]],
+                             transactions: List[Dict[str, Any]],
+                             is_forked: bool) -> List[Dict[str, Any]]:
         items = []
+        tx_index_map = {t['hash']: t['transaction_index'] for t in transactions}
         for tx in internal_txs:
             data = dict_keys_case_convert(tx['fields'])
             data['timestamp'] = data.pop('time_stamp')
@@ -390,6 +395,7 @@ class SyncProcessor:
             del data['operation']
             data['op'] = tx['type']
             data['is_forked'] = is_forked
+            data['parent_tx_index'] = tx_index_map[tx['parent_tx_hash']]
             items.append(data)
         return items
 

@@ -5,8 +5,11 @@ from typing import Optional
 
 from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.handlers.common import get_last_block_number_and_timestamp, get_tip_block_number_and_timestamp, \
+from jsearch.api.handlers.common import (
+    get_last_block_number_and_timestamp,
+    get_tip_block_number_and_timestamp,
     get_block_number_or_tag_from_timestamp
+)
 from jsearch.api.helpers import ApiError
 from jsearch.api.helpers import (
     validate_params,
@@ -14,7 +17,7 @@ from jsearch.api.helpers import (
     api_error_response,
     get_from_joined_string,
 )
-from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_BY_NUMBER
+from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.wallets import WalletEventsSchema
 from jsearch.api.structs.wallets import wallet_events_to_json
@@ -87,8 +90,7 @@ async def get_wallet_events(
     pending_events = []
     if include_pending_txs:
         pending_events = await storage.get_account_pending_events(
-            address,
-            order=ORDER_DESC,
+            account=address,
             limit=PENDING_EVENTS_DEFAULT_LIMIT
         )
 
@@ -120,20 +122,20 @@ async def get_blockchain_tip(request):
 
 
 async def get_assets_summary(request):
-    params = validate_params(request)
     addresses = get_from_joined_string(request.query.get('addresses'))
     assets = get_from_joined_string(request.query.get('assets'))
     storage = request.app['storage']
+    tip_hash = request.query.get('blockchain_tip')
     if addresses:
-        summary = await storage.get_wallet_assets_summary(
+        summary, last_affected_block = await storage.get_wallet_assets_summary(
             addresses,
-            limit=params['limit'],
-            offset=params['offset'],
             assets=assets
         )
     else:
         summary = []
-    return api_success([item.to_dict() for item in summary])
+        last_affected_block = None
+    data, tip_meta = await maybe_apply_tip(storage, tip_hash, summary, last_affected_block, empty=[])
+    return api_success([item.to_dict() for item in data], meta=tip_meta)
 
 
 async def get_wallet_transfers(request):

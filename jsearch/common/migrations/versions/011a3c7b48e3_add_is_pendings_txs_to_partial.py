@@ -18,7 +18,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_pending_transactions_to_partial ON pe
 """
 
 DOWN_SQL = """
-DROP INDEX CONCURRENTLY ix_pending_transactions_to_partial; 
+DROP INDEX CONCURRENTLY IF EXISTS ix_pending_transactions_to_partial; 
 """
 
 
