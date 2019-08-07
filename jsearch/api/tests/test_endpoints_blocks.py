@@ -116,13 +116,29 @@ async def test_get_blocks(cli,
                 "code": "INVALID_ORDER_VALUE"
             }
         ]),
+        ('/v1/blocks?block_number=10&timestamp=0', [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number or by timestamp",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        ('/v1/blocks?block_number=0&timestamp=100', [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number or by timestamp",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
     ],
     ids=[
         "invalid_tag",
         "invalid_timestamp",
         "either_number_or_timestamp",
         "invalid_limit",
-        "invalid_order"
+        "invalid_order",
+        "either_number_or_timestamp_zero",
+        "either_number_zero_or_timestamp",
     ]
 )
 async def test_get_blocks_errors(cli, block_factory, url, errors):
