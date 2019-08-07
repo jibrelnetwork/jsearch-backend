@@ -202,7 +202,6 @@ def get_order(columns: List[Column], direction: Optional[str]) -> List[Column]:
 
 async def fetch(connection: Connection, query: Query) -> List[Dict[str, Any]]:
     query, params = asyncpgsa.compile_query(query)
-    print('QUERY N PARAMS', query, params)
     result = await connection.fetch(query, *params)
     return [dict(item) for item in result]
 
