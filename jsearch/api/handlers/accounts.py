@@ -348,13 +348,13 @@ async def get_account_token_balance(request):
 async def get_account_token_balances_multi(request):
     storage = request.app['storage']
     account_address = request.match_info['address'].lower()
-    tokens_addresses = get_from_joined_string(request.query.get('tokens_addresses'))
+    tokens_addresses = get_from_joined_string(request.query.get('contract_addresses'))
     tip_hash = request.query.get('blockchain_tip') or None
 
     if len(tokens_addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
         return api_error_response_400(errors=[
             {
-                'field': 'tokens_addresses',
+                'field': 'contract_addresses',
                 'error_code': ErrorCode.TOO_MANY_ITEMS,
                 'error_message': 'Too many addresses requested'
             }

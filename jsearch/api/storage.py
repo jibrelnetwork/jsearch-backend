@@ -1071,7 +1071,7 @@ class Storage:
                 'tx_hash': r['tx_hash'],
                 'amount': event_data['amount'],
                 'from': event_data['sender'],
-                'to': event_data['recepient'],
+                'to': event_data['recipient'],
                 'block_number': r['block_number'],
                 'event_index': r['event_index'],
             })

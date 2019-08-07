@@ -286,7 +286,7 @@ async def test_get_account_token_balances_multi_ok(cli, token_holder_factory):
         decimals=3
     )
 
-    params = f'tokens_addresses=0x1111111111111111111111111111111111111112,0x1111111111111111111111111111111111111113'
+    params = f'contract_addresses=0x1111111111111111111111111111111111111112,0x1111111111111111111111111111111111111113'
     resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/token_balances?{params}')
     assert resp.status == 200
     resp_json = await resp.json()
@@ -334,14 +334,14 @@ async def test_get_account_token_balances_multi_too_many_addresses(cli, token_ho
     )
 
     addresses = ','.join(['0x11111111111111111111111111111111111111{}'.format(n) for n in range(12, 38)])
-    params = f'tokens_addresses={addresses}'
+    params = f'contract_addresses={addresses}'
     resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/token_balances?{params}')
     assert resp.status == 400
     resp_json = await resp.json()
     assert resp_json == {'data': None,
                          'status': {'errors': [{'error_code': 'TOO_MANY_ITEMS',
                                                 'error_message': 'Too many addresses requested',
-                                                'field': 'tokens_addresses'}],
+                                                'field': 'contract_addresses'}],
                                     'success': False}}
 
 
@@ -382,21 +382,21 @@ async def test_get_account_eth_transfers_ok(cli, wallet_events_factory):
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
-        event_data={'amount': '1000', 'sender': address, 'recepient': '0xa1'},
+        event_data={'amount': '1000', 'sender': address, 'recipient': '0xa1'},
         timestamp=100,
     )
     wallet_events_factory.create(
         address='0xbb',
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
-        event_data={'amount': '2000', 'sender': '0xbb', 'recepient': '0xa1'},
+        event_data={'amount': '2000', 'sender': '0xbb', 'recipient': '0xa1'},
         timestamp=101,
     )
     t3 = wallet_events_factory.create(
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
-        event_data={'amount': '3000', 'sender': '0xaaa', 'recepient': address},
+        event_data={'amount': '3000', 'sender': '0xaaa', 'recipient': address},
         timestamp=102,
     )
     resp = await cli.get(f'v1/accounts/{address}/eth_transfers')
@@ -452,7 +452,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
-        event_data={'amount': '1000', 'sender': address, 'recepient': '0xa1'},
+        event_data={'amount': '1000', 'sender': address, 'recipient': '0xa1'},
         timestamp=100,
     )
     wallet_events_factory.create(
@@ -461,7 +461,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
-        event_data={'amount': '2000', 'sender': '0xbb', 'recepient': '0xa1'},
+        event_data={'amount': '2000', 'sender': '0xbb', 'recipient': '0xa1'},
         timestamp=100,
     )
     t3 = wallet_events_factory.create(
@@ -470,7 +470,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
-        event_data={'amount': '3000', 'sender': '0xaaa', 'recepient': address},
+        event_data={'amount': '3000', 'sender': '0xaaa', 'recipient': address},
         timestamp=102,
     )
     t4 = wallet_events_factory.create(
@@ -479,7 +479,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
-        event_data={'amount': '4000', 'sender': '0xaaa', 'recepient': address},
+        event_data={'amount': '4000', 'sender': '0xaaa', 'recipient': address},
         timestamp=102,
     )
     wallet_events_factory.create(
@@ -488,7 +488,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
-        event_data={'amount': '5000', 'sender': '0xaaa', 'recepient': address},
+        event_data={'amount': '5000', 'sender': '0xaaa', 'recipient': address},
         timestamp=103,
     )
     wallet_events_factory.create(
@@ -497,7 +497,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
-        event_data={'amount': '6000', 'sender': '0xaaa', 'recepient': address},
+        event_data={'amount': '6000', 'sender': '0xaaa', 'recipient': address},
         timestamp=103,
     )
     resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&event_index=1201&limit=2')
