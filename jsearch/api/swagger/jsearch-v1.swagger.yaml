@@ -1,6 +1,6 @@
 swagger: '2.0'
 info:
-  version: "1.0.4"
+  version: "1.0.5"
   title: Jsearch API
   description: |
     Jsearch - Ethereum Blockchain Explorer API
@@ -87,12 +87,10 @@ info:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
 
-# # tags are used for organizing operations
-# tags:
-# - name: admins
-#   description: Secured Admin-only calls
-# - name: developers
-#   description: Operations available to regular developers
+tags:
+  - name: common
+  - name: proxy
+  - name: wallet
 
 parameters:
   address:
@@ -140,7 +138,7 @@ parameters:
     schema:
       example: "0x5a0b54d5dc17e0aadc383d2db43b0a0dbe029c4c,0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5"
   contract_addresses:
-    name: contract addresses
+    name: contract_addresses
     in: query
     required: true
     description: Comma-separated list of contract addresses. Separate addresses by comma, up to a maxium of 20 accounts in a single batch
@@ -214,16 +212,15 @@ parameters:
     name: timestamp
     in: query
     required: false
-    description: "Instead of block-number you may use a Unix timestamp value that points to the start of the range of time-based data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    description: "Instead of block-number you may use a Unix timestamp value that points to the start of the range of time-based data. Filtration can be either by number or by timestamp only. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
     type: integer
-    default: 0
   transaction_index:
     name: transaction_index
     in: query
     required: false
     description: "A transaction index that points to the start of the range data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
     type: integer
-    default: 0
+    default: 1
   parent_transaction_index:
     name: parent_transaction_index
     in: query
@@ -267,6 +264,8 @@ paths:
       description: |
         You can use this endoint to receive `Ether Balance` of single or multiple accounts on the specified block hash or on the latest known block in a single call.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getBalancesForMultiAddresses
       produces:
       - application/json
@@ -297,6 +296,8 @@ paths:
       description: |
         You can use this endpoint to receive `Account State` data on the specified block number or hash or on the latest known block by address.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccount
       produces:
       - application/json
@@ -332,6 +333,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `Contract Logs` on the specified block hash or on the latest known block by address.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getLogs
       produces:
       - application/json
@@ -371,6 +374,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `Normal` Transactions on the specified block hash or on the latest known block by address.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccountTransactions
       produces:
       - application/json
@@ -408,6 +413,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `Internal` Transactions on the specified block hash or on the latest known block by address.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccountInternalTransactions
       produces:
       - application/json
@@ -445,6 +452,8 @@ paths:
       summary: Get a list of `Pending` Transactions by Account address
       description: |
         You can use this endpoint to receive a list of `Pending` Transactions by address.
+      tags:
+        - common
       operationId: getAccountPendingTransactions
       produces:
       - application/json
@@ -478,6 +487,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `Blocks Mined` on the specified block hash or on the latest known block by Account address.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccountMinedBlocks
       produces:
       - application/json
@@ -514,6 +525,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `Uncles Mined` on the specified block hash or on the latest known block by Account address.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccountMinedUncles
       produces:
       - application/json
@@ -549,6 +562,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `Token Balances` for single or multiple contract addresses on the specified block hash or on the latest known block and account address in a single call.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getTokenBalancesForMultiContracts
       produces:
       - application/json
@@ -580,6 +595,8 @@ paths:
       description: |
         You can use this endpoint to receive `Token Balance` for specific token by Account address.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getTokenHolderBalance
       produces:
         - application/json
@@ -613,6 +630,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `ERC20 Token Transfers` on the specified block hash or on the latest known block by Account address.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccountTokenTransfers
       produces:
       - application/json
@@ -650,10 +669,13 @@ paths:
       summary: Returns the number of transactions sent from an address.
       description: |
         You can use this endpoint to get the number of transactions sent from an address.
+      tags:
+        - common
       operationId: getAccountTransactionCount
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/address'
       - $ref: '#/parameters/include_pending_txs'
       responses:
         200:
@@ -677,6 +699,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `ETH Transfers` on the specified block hash or on the latest known block by Account address.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccountEthTransfers
       produces:
       - application/json
@@ -714,6 +738,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `Blocks` on the specified block hash or on the latest known block.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getBlockList
       produces:
       - application/json
@@ -748,6 +774,8 @@ paths:
       summary: Get block by hash or number or keyword
       description: |
         You can use this endpoint to receive `Block` data by block hash or number or keyword
+      tags:
+        - common
       operationId: getBlock
       produces:
       - application/json
@@ -779,6 +807,8 @@ paths:
       summary: Get a list of `Normal Transactions` by specific Block
       description: |
         You can use this endpoint to receive a list of `Normal Transactions` by block hash or number or keyword
+      tags:
+        - common
       operationId: getBlockTransactions
       produces:
       - application/json
@@ -814,12 +844,13 @@ paths:
       summary: Get a list of `Internal Transactions` by specific Block
       description: |
         You can use this endpoint to receive a list of `Internal Transactions` by block hash or number or keyword
+      tags:
+        - common
       operationId: getBlockInternalTransactions
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/tag'
-      - $ref: '#/parameters/order'
       responses:
         200:
           description: transactions from specific block
@@ -849,6 +880,8 @@ paths:
       summary: Get a list of Uncles by specific Block
       description: |
         You can use this endpoint to receive a list of `Uncles` by block hash or number or keyword
+      tags:
+        - common
       operationId: getBlockUncles
       produces:
       - application/json
@@ -876,6 +909,8 @@ paths:
       summary: Get Transaction by hash
       description: |
         You can use this endpoint to receive `Transaction` data by hash
+      tags:
+        - common
       operationId: getTransaction
       produces:
       - application/json
@@ -906,6 +941,8 @@ paths:
       summary: Get a list of `Internal` Transactions by transaction hash
       description: |
         You can use this endpoint to receive a list of `Internal Transactions` by transaction hash
+      tags:
+        - common
       operationId: getInternalTransaction
       produces:
       - application/json
@@ -941,6 +978,8 @@ paths:
       summary: Get Receipt by transaction hash
       description: |
         You can use this endpoint to receive `Receipt` data by transaction hash
+      tags:
+        - common
       operationId: getReceipt
       produces:
       - application/json
@@ -972,6 +1011,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `Uncles` on the specified block hash or on the latest known block.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getUnclesList
       produces:
       - application/json
@@ -1007,6 +1048,8 @@ paths:
       summary: Get Uncle by hash or number or keyword
       description: |
         You can use this endpoint to receive `Uncle` data by uncle hash or number or keyword
+      tags:
+        - common
       operationId: getUncle
       produces:
       - application/json
@@ -1037,6 +1080,8 @@ paths:
       summary: Get a list of `Verified Contracts`
       description: |
         You can use this endpoint to receive a list of `Verified Contracts`
+      tags:
+        - common
       operationId: getVerifiedContractsList
       produces:
       - application/json
@@ -1068,6 +1113,8 @@ paths:
       summary: Get Verified Contract info.
       description: |
         You can use this endpoint to receive `Verified Contract` info
+      tags:
+        - common
       operationId: getVerifiedContract
       produces:
       - application/json
@@ -1095,6 +1142,8 @@ paths:
       summary: Get ERC20 tokens list
       description: |
         You can use this endpoint to receive a list of `ERC20 tokens`
+      tags:
+        - common
       operationId: getTokensList
       produces:
       - application/json
@@ -1126,6 +1175,8 @@ paths:
       summary: Get token info
       description: |
         You can use this endpoint to receive `ERC20 Token` info
+      tags:
+        - common
       operationId: getToken
       produces:
       - application/json
@@ -1156,6 +1207,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `Token Transfers` on the specified block hash or on the latest known block by token address.
          If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getTokenTransfers
       produces:
       - application/json
@@ -1195,6 +1248,8 @@ paths:
       description: |
         You can use this endpoint to receive a list of `Token Holders` on the specified block hash or on the latest known block by token address.
         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getTokenHolders
       produces:
       - application/json
@@ -1230,6 +1285,8 @@ paths:
       summary: Returns the current price per gas in wei.
       description: |
         You can use this endpoint to get the current gas price.
+      tags:
+        - proxy
       responses:
         200:
           description: get gas price
@@ -1253,6 +1310,8 @@ paths:
 
         1. DATA, 20 Bytes - address.
         2. QUANTITY|TAG - integer block number, or the string "latest", "earliest" or "pending"
+      tags:
+        - proxy
       parameters:
         - name: body
           in: body
@@ -1292,6 +1351,8 @@ paths:
         data -DATA - (optional, DATA) Hash of the method signature and encoded parameters. For details see Ethereum Contract ABI
 
         2. QUANTITY|TAG - integer block number, or the string "latest", "earliest" or "pending", see the default block parameter
+      tags:
+        - proxy
       parameters:
         - name: body
           in: body
@@ -1329,6 +1390,8 @@ paths:
         data -DATA - (optional, DATA) Hash of the method signature and encoded parameters. For details see Ethereum Contract ABI
 
         2. QUANTITY|TAG - integer block number, or the string "latest", "earliest" or "pending", see the default block parameter
+      tags:
+        - proxy
       parameters:
         - name: body
           in: body
@@ -1358,6 +1421,8 @@ paths:
         Parameters
 
         1. DATA, The signed transaction data.
+      tags:
+        - proxy
       parameters:
         - name: body
           in: body
@@ -1384,6 +1449,8 @@ paths:
     get:
       summary: Get blockchain tip wich included last block hash and number.
       description: "Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/952434891/Blockchain+Tip\">link</a> for details."
+      tags:
+        - common
       responses:
         200:
           schema:
@@ -1396,6 +1463,8 @@ paths:
   /v1/wallet/assets_summary:
     get:
       summary: Get token holder and either balances for blockchain address.
+      tags:
+        - wallet
       parameters:
         - $ref: '#/parameters/addresses'
         - $ref: '#/parameters/blockchain_tip'
@@ -1415,6 +1484,8 @@ paths:
     get:
       summary: Get blockchain events (contract call, erc20 transfer, either transfer, transactions cancelation) for address.
       description: "Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint\">link</a> for details"
+      tags:
+        - wallet
       parameters:
         - $ref: '#/parameters/include_pending_txs'
         - $ref: '#/parameters/blockchain_address'
