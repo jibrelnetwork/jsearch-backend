@@ -9,6 +9,7 @@ class BlockInfo:
     hash: str
     number: int
     timestamp: int = 0
+    is_forked: bool = False
 
 
 class BlockchainTip(NamedTuple):
