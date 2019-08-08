@@ -64,6 +64,7 @@ def event_from_tx(address: str, tx_data: Transaction, is_receiver_contract=False
             'block_number': tx_data['block_number'],
             'block_hash': tx_data['block_hash'],
             'tx_hash': tx_data['hash'],
+            'timestamp': tx_data['timestamp'],
             'event_index': make_event_index_for_tx(tx_data['block_number'], tx_data['transaction_index']),
             'tx_data': tx_data,
             'event_data': {
@@ -106,6 +107,7 @@ def event_from_token_transfer(address: str, transfer_data: Transfer, tx_data: Tr
             transfer_data['log_index']
         ),
         'tx_data': tx_data,
+        'timestamp': tx_data['timestamp'],
         'event_data': {
             'sender': transfer_data['from_address'],
             'recipient': transfer_data['to_address'],
@@ -148,6 +150,7 @@ def event_from_internal_tx(address: str,
         'block_number': tx_data['block_number'],
         'block_hash': tx_data['block_hash'],
         'tx_hash': tx_data['hash'],
+        'timestamp': tx_data['timestamp'],
         'event_index': make_event_index_for_internal_tx(
             tx_data['block_number'],
             tx_data['transaction_index'],

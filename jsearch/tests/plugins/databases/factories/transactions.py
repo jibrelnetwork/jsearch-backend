@@ -1,3 +1,5 @@
+import time
+
 import factory
 import pytest
 
@@ -31,6 +33,7 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     block_number = factory.Sequence(lambda n: n)
     block_hash = factory.LazyFunction(generate_address)
+    timestamp = factory.LazyFunction(time.time)
 
     gas = '0xabc'
     gas_price = '0x123'
