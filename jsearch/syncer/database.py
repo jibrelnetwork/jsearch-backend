@@ -727,7 +727,7 @@ class MainDB(DBWrapper):
 
                 for block in affected_chain:
                     block_hash = block['hash']
-                    reinserted = block_hash in old_block_hashes and block_hash in new_chain_fragment
+                    reinserted = block_hash in new_chain_fragment
                     query = insert_reorg(
                         block_hash=block['hash'],
                         block_number=block['number'],
