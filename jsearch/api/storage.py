@@ -757,8 +757,6 @@ class Storage:
                 ).limit(1)
             ).order_by(chain_events_t.c.block_number)
 
-            print(split_query.compile(compile_kwargs={"literal_binds": True}))
-
             async with self.pool.acquire() as conn:
                 chain_split = await fetch_row(conn, query=split_query)
 
