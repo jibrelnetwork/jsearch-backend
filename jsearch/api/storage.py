@@ -679,8 +679,8 @@ class Storage:
         else:
             last_affected_block = max([r['block_number'] for r in rows], default=None)
 
-        holders = [models.TokenHolder(**row) for row in rows]
-        return holders, last_affected_block
+        balances = [models.TokenBalance(**row) for row in rows]
+        return balances, last_affected_block
 
     async def get_latest_block_info(self) -> Optional[BlockInfo]:
         last_block_query = get_last_block_query()
