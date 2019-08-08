@@ -133,7 +133,13 @@ def get_last_block_query(columns: List[Column] = None) -> Query:
 
 
 def get_block_number_by_hash_query(block_hash: str) -> Query:
-    return select([blocks_t.c.number, blocks_t.c.timestamp]).where(blocks_t.c.hash == block_hash)
+    return select(
+        [
+            blocks_t.c.number,
+            blocks_t.c.timestamp,
+            blocks_t.c.is_forked
+        ]
+    ).where(blocks_t.c.hash == block_hash)
 
 
 def get_block_number_by_timestamp_query(timestamp: int, order_direction: OrderDirection) -> Query:

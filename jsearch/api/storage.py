@@ -4,7 +4,7 @@ from collections import defaultdict
 
 import asyncpgsa
 from itertools import groupby
-from sqlalchemy import select, func, and_, false, desc
+from sqlalchemy import select, func, and_, false, desc, true
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
@@ -60,7 +60,7 @@ from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent
 from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import reorgs_t, wallet_events_t, accounts_state_t, chain_events_t
+from jsearch.common.tables import reorgs_t, wallet_events_t, accounts_state_t, chain_events_t, blocks_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress
 
@@ -679,8 +679,8 @@ class Storage:
         else:
             last_affected_block = max([r['block_number'] for r in rows], default=None)
 
-        holders = [models.TokenHolder(**row) for row in rows]
-        return holders, last_affected_block
+        balances = [models.TokenBalance(**row) for row in rows]
+        return balances, last_affected_block
 
     async def get_latest_block_info(self) -> Optional[BlockInfo]:
         last_block_query = get_last_block_query()
@@ -703,7 +703,8 @@ class Storage:
             return BlockInfo(
                 hash=block_hash,
                 number=block['number'],
-                timestamp=block['timestamp']
+                timestamp=block['timestamp'],
+                is_forked=block['is_forked']
             )
 
     async def get_block_by_timestamp(self, timestamp: int, order_direction: OrderDirection) -> Optional[BlockInfo]:
@@ -730,22 +731,45 @@ class Storage:
         last_unchanged = None
         if tip_block:
             split_query = select(
-                [chain_events_t.c.block_number]
+                [
+                    chain_events_t.c.block_number
+                ]
             ).where(
                 chain_events_t.c.id == select(
-                    [reorgs_t.c.split_id]
+                    [
+                        reorgs_t.c.split_id
+                    ]
                 ).where(
-                    reorgs_t.c.block_hash == tip_block.hash
-                ).order_by(desc(reorgs_t.c.split_id)).limit(1)
+                    reorgs_t.c.block_hash == select(
+                        [
+                            blocks_t.c.hash,
+                        ]
+                    ).where(
+                        and_(
+                            blocks_t.c.hash == tip_block.hash,
+                            blocks_t.c.is_forked == true()
+                        )
+                    ).order_by(
+                        desc(blocks_t.c.number)
+                    ).limit(1)
+                ).order_by(
+                    desc(reorgs_t.c.split_id)
+                ).limit(1)
             ).order_by(chain_events_t.c.block_number)
 
             async with self.pool.acquire() as conn:
                 chain_split = await fetch_row(conn, query=split_query)
 
-            is_in_fork = chain_split is not None
-            common_block_number = chain_split and chain_split['block_number']
-            if is_in_fork and common_block_number is not None:
-                last_unchanged = common_block_number
+            is_in_fork = tip_block.is_forked or chain_split is not None
+            if is_in_fork:
+
+                # Notes:
+                # If we don't have reorg record and tip block is in fork state
+                # we return previous block before tip as last unchanged
+                if chain_split:
+                    last_unchanged = chain_split and chain_split['block_number']
+                else:
+                    last_unchanged = tip_block.number - 1 if tip_block.number > 1 else 0
 
         return BlockchainTip(
             tip_hash=tip_block and tip_block.hash,
@@ -1071,7 +1095,7 @@ class Storage:
                 'tx_hash': r['tx_hash'],
                 'amount': event_data['amount'],
                 'from': event_data['sender'],
-                'to': event_data['recepient'],
+                'to': event_data['recipient'],
                 'block_number': r['block_number'],
                 'event_index': r['event_index'],
             })

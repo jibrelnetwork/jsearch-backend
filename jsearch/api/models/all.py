@@ -382,6 +382,7 @@ class TokenHolder(Model):
         'balance': 'balance',
         'decimals': 'decimals'
     }
+    int_to_str = {"balance"}
 
 
 class TokenHolderWithId(Model):
@@ -464,3 +465,18 @@ class EthTransfer(Model):
         'block_number': 'block_number',
         'event_index': 'event_index',
     }
+
+
+class TokenBalance(Model):
+    swagger_types = {
+        'token_address': str,
+        'balance': float,
+        'decimals': int
+    }
+
+    attribute_map = {
+        'token_address': 'contractAddress',
+        'balance': 'balance',
+        'decimals': 'decimals'
+    }
+    int_to_str = {"balance"}

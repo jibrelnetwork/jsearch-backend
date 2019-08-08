@@ -33,11 +33,15 @@ async def test_get_tip_or_raise_api_error_finds_tip_not_forked(
            \
             -[16]-- Forked branch
 
+    Reorgs records:
+      - [ 16 ]
+      - [ 16 ]
+
     """
     common_block = block_factory.create(number=15, hash='0x111')
 
     canonical_block = block_factory.create(parent_hash=common_block.hash, number=16, hash='0x222a')
-    forked_block = block_factory.create(parent_hash=common_block.hash, number=16, hash='0x222b')
+    forked_block = block_factory.create(parent_hash=common_block.hash, number=16, hash='0x222b', is_forked=True)
 
     chain_splits = chain_events_factory.create(
         block_hash=common_block.hash,
@@ -53,20 +57,72 @@ async def test_get_tip_or_raise_api_error_finds_tip_not_forked(
     tip = await get_tip_or_raise_api_error(storage, tip_block.hash)
 
     assert {
-        'tip_hash': tip_block.hash,
-        'tip_number': tip_block.number,
-        'last_hash': '0x222a',
-        'last_number': 16,
-        'is_in_fork': is_tip_forked,
-        'last_unchanged_block': 15 if is_tip_forked else None,
-    } == {
-        'tip_hash': tip.tip_hash,
-        'tip_number': tip.tip_number,
-        'last_hash': tip.last_hash,
-        'last_number': tip.last_number,
-        'is_in_fork': tip.is_in_fork,
-        'last_unchanged_block': tip.last_unchanged_block,
-    }
+               'tip_hash': tip_block.hash,
+               'tip_number': tip_block.number,
+               'last_hash': '0x222a',
+               'last_number': 16,
+               'is_in_fork': is_tip_forked,
+               'last_unchanged_block': 15 if is_tip_forked else None,
+           } == {
+               'tip_hash': tip.tip_hash,
+               'tip_number': tip.tip_number,
+               'last_hash': tip.last_hash,
+               'last_number': tip.last_number,
+               'is_in_fork': tip.is_in_fork,
+               'last_unchanged_block': tip.last_unchanged_block,
+           }
+
+
+@pytest.mark.parametrize('is_block_forked', (True, False))
+async def test_get_tip_or_raise_api_error_reorgs_does_not_exists(
+        is_block_forked,
+        storage,
+        block_factory,
+        chain_events_factory,
+        reorg_factory
+) -> None:
+    """
+
+    --[15]---[16]-- Canonical branch
+          \
+           \
+            -[16]-- Forked branch
+
+    Reorgs records are empty
+    """
+    # given
+    common_block = block_factory.create(number=15, hash='0x111')
+    canonical = block_factory.create(parent_hash=common_block.hash, number=16, hash='0x222a')
+    tip_hash = canonical.hash
+
+    if is_block_forked:
+        forked_block = block_factory.create(
+            parent_hash=common_block.hash,
+            number=16,
+            hash='0x222b',
+            is_forked=is_block_forked
+        )
+        tip_hash = forked_block.hash
+
+    # when
+    tip = await get_tip_or_raise_api_error(storage, tip_hash)
+
+    # then
+    assert {
+               'tip_hash': tip_hash,
+               'tip_number': 16,
+               'last_hash': canonical.hash,
+               'last_number': canonical.number,
+               'is_in_fork': is_block_forked,
+               'last_unchanged_block': 15 if is_block_forked else None,
+           } == {
+               'tip_hash': tip.tip_hash,
+               'tip_number': tip.tip_number,
+               'last_hash': tip.last_hash,
+               'last_number': tip.last_number,
+               'is_in_fork': tip.is_in_fork,
+               'last_unchanged_block': tip.last_unchanged_block,
+           }
 
 
 async def test_get_tip_or_raise_api_error_finds_tip_last_block_provided(
@@ -105,44 +161,44 @@ async def test_get_tip_or_raise_api_error_finds_tip_last_block_provided(
     )
 
     assert {
-        'tip_hash': '0x222a',
-        'tip_number': 16,
-        'last_hash': '0xLASTBLOCK',
-        'last_number': 42,
-        'is_in_fork': False,
-        'last_unchanged_block': None,
-    } == {
-        'tip_hash': tip.tip_hash,
-        'tip_number': tip.tip_number,
-        'last_hash': tip.last_hash,
-        'last_number': tip.last_number,
-        'is_in_fork': tip.is_in_fork,
-        'last_unchanged_block': tip.last_unchanged_block,
-    }
+               'tip_hash': '0x222a',
+               'tip_number': 16,
+               'last_hash': '0xLASTBLOCK',
+               'last_number': 42,
+               'is_in_fork': False,
+               'last_unchanged_block': None,
+           } == {
+               'tip_hash': tip.tip_hash,
+               'tip_number': tip.tip_number,
+               'last_hash': tip.last_hash,
+               'last_number': tip.last_number,
+               'is_in_fork': tip.is_in_fork,
+               'last_unchanged_block': tip.last_unchanged_block,
+           }
 
 
 @pytest.mark.parametrize(
     "is_in_fork, is_historical_data, is_stale",
     [
         (
-            False,
-            False,
-            False,
+                False,
+                False,
+                False,
         ),
         (
-            False,
-            True,
-            False,
+                False,
+                True,
+                False,
         ),
         (
-            True,
-            True,
-            False,
+                True,
+                True,
+                False,
         ),
         (
-            True,
-            False,
-            True,
+                True,
+                False,
+                True,
         ),
     ],
     ids=[
