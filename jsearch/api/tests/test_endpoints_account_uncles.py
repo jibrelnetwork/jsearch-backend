@@ -203,7 +203,7 @@ async def test_get_uncles_errors(cli, block_factory, uncle_factory, url, errors)
         "limit=21   --- error is returned",
     ],
 )
-async def test_get_uncles_limits(
+async def test_get_account_uncles_limits(
         cli: TestClient,
         block_factory: BlockFactory,
         uncle_factory: UncleFactory,
