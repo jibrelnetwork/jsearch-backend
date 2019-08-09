@@ -37,7 +37,7 @@ class Model(object):
 
         for attr, _ in six.iteritems(self.swagger_types):
             nattr = self.attribute_map[attr]
-            value = getattr(self, attr)
+            value = getattr(self, attr, None)
             if isinstance(value, list):
                 result[nattr] = list(map(
                     lambda x: x.to_dict() if hasattr(x, "to_dict") else x,
