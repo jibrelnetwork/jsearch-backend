@@ -127,7 +127,7 @@ parameters:
     description: "Determines whether pending transactions are included in the response"
     type: boolean
     format: block_hash
-    default: true
+    default: false
   addresses:
     name: addresses
     in: query
@@ -270,8 +270,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/addresses'
+      - $ref: '#/parameters/blockchain_tip'
       responses:
         200:
           description: List of Ether Balances
@@ -303,9 +303,9 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
+        description: Account address
       - $ref: '#/parameters/tagOptional'
       - $ref: '#/parameters/blockchain_tip'
-        description: Account address
       responses:
         200:
           description: Account object
@@ -339,8 +339,8 @@ paths:
       produces:
       - application/json
       parameters:
-        - $ref: '#/parameters/blockchain_tip'
         - $ref: '#/parameters/address'
+        - $ref: '#/parameters/blockchain_tip'
         - $ref: '#/parameters/order'
         - $ref: '#/parameters/block_number'
         - $ref: '#/parameters/timestamp'
@@ -380,8 +380,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
@@ -419,8 +419,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
@@ -493,8 +493,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
@@ -531,8 +531,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
@@ -568,9 +568,9 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
       - $ref: '#/parameters/contract_addresses'
+      - $ref: '#/parameters/blockchain_tip'
       responses:
         200:
           description: List of Token balances
@@ -601,9 +601,9 @@ paths:
       produces:
         - application/json
       parameters:
-        - $ref: '#/parameters/blockchain_tip'
         - $ref: '#/parameters/address'
         - $ref: '#/parameters/contract_address'
+        - $ref: '#/parameters/blockchain_tip'
       responses:
         200:
           description: token holders balance
@@ -636,8 +636,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
@@ -705,8 +705,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/address'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
@@ -744,8 +744,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
       - $ref: '#/parameters/limit'
@@ -814,7 +814,6 @@ paths:
       - application/json
       parameters:
       - $ref: '#/parameters/tag'
-      - $ref: '#/parameters/order'
       responses:
         200:
           description: transactions from specific block
@@ -948,7 +947,6 @@ paths:
       - application/json
       parameters:
         - $ref: '#/parameters/txhash'
-        - $ref: '#/parameters/order'
       responses:
         200:
           description: transaction
@@ -1170,7 +1168,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "limit", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/tokens/{address}:
+  /v1/tokens/{contract_address}:
     get:
       summary: Get token info
       description: |
@@ -1201,7 +1199,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
 
-  /v1/tokens/{address}/transfers:
+  /v1/tokens/{contract_address}/transfers:
     get:
       summary: Get a list of `Token Transfers` for specific token (contract) address
       description: |
@@ -1213,8 +1211,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/contract_address'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/block_number'
       - $ref: '#/parameters/timestamp'
@@ -1242,7 +1240,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "offset", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/tokens/{address}/holders:
+  /v1/tokens/{contract_address}/holders:
     get:
       summary: Get a list of `Token Holders` for specific token
       description: |
@@ -1254,8 +1252,8 @@ paths:
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/contract_address'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
       - $ref: '#/parameters/id'
       - $ref: '#/parameters/limit'
@@ -1468,8 +1466,8 @@ paths:
         - wallet
       parameters:
         - $ref: '#/parameters/addresses'
-        - $ref: '#/parameters/blockchain_tip'
         - $ref: '#/parameters/assets'
+        - $ref: '#/parameters/blockchain_tip'
       responses:
         200:
           description: Assets summary
