@@ -250,7 +250,7 @@ async def test_get_accounts_pending_txs_limits(
 ):
     # given
     account = account_factory.create()
-    await create_account_pending_txs(account.address, count=25)
+    await create_account_pending_txs(account.address, count=25)  # ...therefore more than 20 TXs created.
 
     # when
     reqv_params = 'id=1'
