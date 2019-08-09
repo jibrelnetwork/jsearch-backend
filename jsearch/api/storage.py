@@ -39,7 +39,6 @@ from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_token_and_block_number
 )
 from jsearch.api.database_queries.transactions import (
-    get_txs_for_events_query,
     get_tx_by_hash,
     get_tx_by_address_and_block_query,
     get_tx_by_address_and_timestamp_query
@@ -60,7 +59,7 @@ from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent
 from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import reorgs_t, wallet_events_t, accounts_state_t, chain_events_t, blocks_t
+from jsearch.common.tables import reorgs_t, accounts_state_t, chain_events_t, blocks_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress
 
@@ -823,89 +822,6 @@ class Storage:
 
         last_affected_block = max([event['blockNumber'] for event in wallet_events], default=None)
         return wallet_events, last_affected_block
-
-    async def get_wallet_assets_transfers(self, addresses: List[str], limit: int, offset: int,
-                                          assets: Optional[List[str]] = None) -> List:
-
-        if assets:
-            assets_filter = " AND asset_address = ANY($2::varchar[]) "
-            limit_stmt = "LIMIT $3 OFFSET $4 "
-        else:
-            assets_filter = ""
-            limit_stmt = "LIMIT $2 OFFSET $3 "
-
-        query = f"""SELECT * FROM assets_transfers
-                        WHERE address = ANY($1::varchar[]) {assets_filter} AND is_forked=false
-                        ORDER BY ordering DESC
-                        {limit_stmt}"""
-        async with self.pool.acquire() as conn:
-            if assets:
-                rows = await conn.fetch(query, addresses, assets, limit, offset)
-            else:
-                rows = await conn.fetch(query, addresses, limit, offset)
-
-            items = []
-            for row in rows:
-                t = dict(row)
-                t['tx_data'] = json.loads(t['tx_data'])
-                t['amount'] = str(t['value'] / 10 ** t['decimals'])
-                items.append(t)
-            return [models.AssetTransfer(**t) for t in items]
-
-    async def get_wallet_events_transactions(self,
-                                             address: str,
-                                             from_block: int,
-                                             until_block: int,
-                                             limit: int,
-                                             order: str,
-                                             offset: int) -> List[Dict[str, Any]]:
-
-        events_query = get_wallet_events_query(
-            address=address,
-            from_block=from_block,
-            until_block=until_block,
-            limit=limit,
-            offset=offset,
-            order=order,
-            columns=[wallet_events_t.c.tx_hash]
-        )
-        query = get_txs_for_events_query(events_query, order)
-
-        async with self.pool.acquire() as conn:
-            rows = await fetch(conn, query)
-            distinct_set = set()
-            transactions = []
-            for row in rows:
-                row = dict(row)
-                distinct_key = tuple(row.values())
-                if distinct_key in distinct_set:
-                    continue
-
-                distinct_set.add(distinct_key)
-                transactions.append(models.Transaction(**row).to_dict())
-        return transactions
-
-    async def get_wallet_transactions(self, address: str, limit: int, offset: int) -> List:
-        offset *= 2
-        limit *= 2
-        query = """SELECT * FROM transactions
-                        WHERE address = $1
-                        ORDER BY block_number, transaction_index DESC
-                        LIMIT $2 OFFSET $3 """
-
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, address, limit, offset)
-            distinct_set = set()
-            transactions = []
-            for row in rows:
-                row = dict(row)
-                row.pop('address')
-                distinct_key = tuple(row.values())
-                if distinct_key in distinct_set:
-                    continue
-                distinct_set.add(distinct_key)
-                transactions.append(models.Transaction(**row))
-        return transactions
 
     async def get_wallet_assets_summary(self,
                                         addresses: List[str],
