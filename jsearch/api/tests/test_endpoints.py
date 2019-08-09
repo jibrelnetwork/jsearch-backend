@@ -6,9 +6,6 @@ from asynctest import CoroutineMock
 
 from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
-from jsearch.common.tables import (
-    assets_transfers_t,
-)
 from jsearch.tests.entities import BlockFromDumpWrapper
 
 logger = logging.getLogger(__name__)
@@ -604,110 +601,6 @@ async def test_get_blockchain_tip(cli, block_factory):
             'blockNumber': last_block.number
         }
     }
-
-
-async def test_get_wallet_transfers_no_addresses(cli, db):
-    resp = await cli.get(f'/v1/wallet/transfers')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == []
-
-
-async def test_get_wallet_transfers(cli, db):
-    transfers = [
-        {
-            'address': 'a1',
-            'type': 'erc20-transfer',
-            'from': 'a1',
-            'to': 'a2',
-            'asset_address': 'ca1',
-            'value': 1000,
-            'decimals': 1,
-            'tx_data': {'hash': 'f1'},
-            'is_forked': False,
-            'block_number': 100,
-            'block_hash': 'b1',
-            'ordering': 2
-        },
-        {
-            'address': 'a1',
-            'type': 'eth-transfer',
-            'from': 'a3',
-            'to': 'a1',
-            'asset_address': '',
-            'value': 200,
-            'decimals': 0,
-            'tx_data': {'hash': 'f2'},
-            'is_forked': False,
-            'block_number': 101,
-            'block_hash': 'b1',
-            'ordering': 1
-        },
-        {
-            'address': 'a2',
-            'type': 'erc20-transfer',
-            'from': 'a1',
-            'to': 'a2',
-            'asset_address': 'ca1',
-            'value': 1000,
-            'decimals': 1,
-            'tx_data': {'hash': 'f1'},
-            'is_forked': False,
-            'block_number': 100,
-            'block_hash': 'b1',
-            'ordering': 1
-        },
-        {
-            'address': 'a2',
-            'type': 'eth-transfer',
-            'from': 'a3',
-            'to': 'a1',
-            'asset_address': '',
-            'value': 100,
-            'decimals': 0,
-            'tx_data': {'hash': 'f2'},
-            'is_forked': True,
-            'block_number': 100,
-            'block_hash': 'b1',
-            'ordering': 1
-        },
-
-    ]
-    for t in transfers:
-        db.execute(assets_transfers_t.insert().values(**t))
-
-    resp = await cli.get(f'/v1/wallet/transfers?addresses=a1,a2')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'amount': '100',
-                    'assetAddress': 'ca1',
-                    'from': 'a1',
-                    'to': 'a2',
-                    'txData': {"hash": "f1"},
-                    'type': 'erc20-transfer'},
-                   {'amount': '200',
-                    'assetAddress': '',
-                    'from': 'a3',
-                    'to': 'a1',
-                    'txData': {"hash": "f2"},
-                    'type': 'eth-transfer'},
-                   {'amount': '100',
-                    'assetAddress': 'ca1',
-                    'from': 'a1',
-                    'to': 'a2',
-                    'txData': {"hash": "f1"},
-                    'type': 'erc20-transfer'}]
-
-    resp = await cli.get(f'/v1/wallet/transfers?addresses=a1&assets=ca1')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'amount': '100',
-                    'assetAddress': 'ca1',
-                    'from': 'a1',
-                    'to': 'a2',
-                    'txData': {"hash": "f1"},
-                    'type': 'erc20-transfer'}
-                   ]
 
 
 async def test_get_accounts_balances_does_not_complain_on_addresses_count_less_than_limit(cli):
