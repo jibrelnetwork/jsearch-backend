@@ -101,7 +101,7 @@ def _get_tip(
         common_block = block_factory.create(number=10)
 
         canonical_block = block_factory.create(parent_hash=common_block.hash, hash='0xcanonical', number=11)
-        forked_block = block_factory.create(parent_hash=common_block.hash, hash='0xforked', number=11)
+        forked_block = block_factory.create(parent_hash=common_block.hash, hash='0xforked', number=11, is_forked=True)
 
         # WTF: Making last block for consistent `currentBlockchainTip`.
         block_factory.create(
