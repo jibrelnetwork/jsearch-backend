@@ -1,6 +1,6 @@
 import logging
 
-from marshmallow import fields, validates_schema
+from marshmallow import fields
 from marshmallow.validate import Range, Length
 
 from jsearch.api.database_queries.wallet_events import get_events_ordering
@@ -35,12 +35,3 @@ class WalletEventsSchema(BlockRelatedListSchema):
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         return get_events_ordering(scheme, direction)
-
-    @validates_schema
-    def validate_default_values(self, data, **kwargs) -> None:
-        timestamp = data.get('timestamp')
-        block_number = data.get("block_number")
-
-        there_is_not_pointer_to_block = timestamp is None and block_number is None
-        if there_is_not_pointer_to_block:
-            data['block_number'] = Tag.LATEST
