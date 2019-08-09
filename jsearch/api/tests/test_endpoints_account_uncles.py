@@ -195,7 +195,13 @@ async def test_get_uncles_errors(cli, block_factory, uncle_factory, url, errors)
                 "code": "INVALID_LIMIT_VALUE",
             }
         ]),
-    )
+    ),
+    ids=[
+        "limit=None --- 20 rows returned",
+        "limit=19   --- 19 rows returned",
+        "limit=20   --- 20 rows returned",
+        "limit=21   --- error is returned",
+    ],
 )
 async def test_get_uncles_limits(
         cli: TestClient,
