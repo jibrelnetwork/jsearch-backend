@@ -163,7 +163,6 @@ async def test_get_uncles(cli,
         "invalid_tag",
         "invalid_timestamp",
         "either_number_or_timestamp",
-        "invalid_limit",
         "invalid_order"
     ]
 )
