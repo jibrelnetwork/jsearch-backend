@@ -22,8 +22,6 @@ services:
   tests_shell:
     <<: *tests
     image: jsearch/tests
-    entrypoint: /bin/bash
-    command: ""
     volumes:
       - ./:/app
 

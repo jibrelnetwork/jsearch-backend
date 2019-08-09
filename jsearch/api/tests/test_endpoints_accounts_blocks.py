@@ -153,7 +153,7 @@ async def test_get_accounts_blocks_errors(cli, block_factory, url, errors):
         "limit=21   --- error is returned",
     ],
 )
-async def test_get_blocks_limits(
+async def test_get_accounts_blocks_limits(
         cli: TestClient,
         block_factory: BlockFactory,
         target_limit: Optional[int],
