@@ -2,7 +2,6 @@ from sqlalchemy import select, Column, and_, false, tuple_
 from sqlalchemy.orm import Query
 from typing import List, Optional
 
-from jsearch.api.helpers import get_order
 from jsearch.api.ordering import ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, get_ordering, Ordering
 from jsearch.common.tables import internal_transactions_t
 from jsearch.typing import OrderScheme, OrderDirection, Columns
