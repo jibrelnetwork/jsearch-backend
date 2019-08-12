@@ -96,11 +96,6 @@ class Transaction(Model):
         'status': 'status'
     }
 
-    def to_dict(self):
-        data = super(Transaction, self).to_dict()
-        data['status'] = bool(data['status'])
-        return data
-
 
 class InternalTransaction(Model):
     swagger_types = {

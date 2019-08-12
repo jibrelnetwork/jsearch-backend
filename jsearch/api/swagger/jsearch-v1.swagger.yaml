@@ -1661,6 +1661,11 @@ definitions:
         type: string
         format: dec
         example: "2808270086200000000"
+      status:
+        description: QUANTITY either 1 (success) or 0 (failure)
+        type: integer
+        example: 1
+
 
   InternalTransaction:
     properties:

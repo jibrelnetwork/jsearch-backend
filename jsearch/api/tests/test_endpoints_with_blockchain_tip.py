@@ -245,7 +245,7 @@ async def test_get_account_transactions_with_tip(
         {
             "blockHash": "0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad",
             "blockNumber": target_block_number,
-            "status": True,
+            "status": 1,
             "from": "0x3a844524342f0",
             "gas": "25000",
             "gasPrice": "50000000000",
