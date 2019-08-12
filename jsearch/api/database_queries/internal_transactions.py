@@ -43,23 +43,12 @@ def get_internal_txs_ordering(scheme: OrderScheme, direction: OrderDirection) ->
     return get_ordering(columns, scheme, direction)
 
 
-def get_internal_txs_by_parent(parent_tx_hash: str, order: str, columns: List[Column] = None) -> Query:
-    query = select(
+def get_internal_txs_by_parent(parent_tx_hash: str, columns: List[Column] = None) -> Query:
+    return select(
         columns=columns or get_default_fields(),
         whereclause=and_(
             internal_transactions_t.c.parent_tx_hash == parent_tx_hash,
             internal_transactions_t.c.is_forked == false(),
-        )
-    )
-
-    return query.order_by(
-        *get_order(
-            [
-                internal_transactions_t.c.block_hash,
-                internal_transactions_t.c.parent_tx_hash,
-                internal_transactions_t.c.transaction_index,
-            ],
-            order
         )
     )
 

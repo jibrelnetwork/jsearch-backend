@@ -1,7 +1,6 @@
 import logging
 
 from jsearch.api.helpers import (
-    validate_params,
     api_success,
     api_error_response_404,
 )
@@ -15,14 +14,8 @@ async def get_internal_transactions(request):
     """
     storage = request.app['storage']
     tx_hash = request.match_info.get('txhash').lower()
-    params = validate_params(request)
 
-    internal_txs = await storage.get_internal_transactions(
-        tx_hash,
-        limit=params['limit'],
-        offset=params['offset'],
-        order=params['order'],
-    )
+    internal_txs = await storage.get_internal_transactions(tx_hash)
 
     response_data = [it.to_dict() for it in internal_txs]
     response = api_success(response_data)
