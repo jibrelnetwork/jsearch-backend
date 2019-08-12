@@ -31,7 +31,7 @@ def get_last_balances_query(addresses: List[str]) -> Query:
         accounts_state_t.c.address
     ).alias('latest_blocks')
 
-    join_query = join(
+    return join(
         accounts_state_t,
         sub_query,
         and_(
@@ -40,9 +40,6 @@ def get_last_balances_query(addresses: List[str]) -> Query:
         )
     ).select().with_only_columns([
         accounts_state_t.c.address,
-        accounts_state_t.c.balance
+        accounts_state_t.c.balance,
+        accounts_state_t.c.block_number
     ])
-
-    from sqlalchemy.dialects import postgresql
-    print(join_query.compile(dialect=postgresql.dialect()))
-    return join_query

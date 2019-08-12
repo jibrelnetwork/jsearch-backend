@@ -528,6 +528,7 @@ class Storage:
 
         logs = [models.Log(**r) for r in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
+        return logs, last_affected_block
 
     async def get_accounts_balances(self, addresses) -> Tuple[List[models.Balance], Optional[LastAffectedBlock]]:
         query = get_last_balances_query(addresses)
@@ -545,15 +546,6 @@ class Storage:
                 )
                 balances.append(balance)
         last_affected_block = max((r['block_number'] for r in rows), default=None)
-
-        return balances, last_affected_block
-
-        balances = [
-            models.Balance(balance=int(addr_map[a]['balance']), address=addr_map[a]['address'])
-            for a in addresses if a in addr_map
-        ]
-        last_affected_block = max((r['block_number'] for r in rows), default=None)
-
         return balances, last_affected_block
 
     async def get_tokens_transfers(
