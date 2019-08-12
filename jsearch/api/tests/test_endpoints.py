@@ -749,8 +749,8 @@ async def test_get_internal_transactions_does_not_care_about_limit_and_offset(
 @pytest.mark.parametrize(
     'order, expected_indexes',
     (
-        ('asc', ['0', '1', '2', '3', '4']),
-        ('desc', ['4', '3', '2', '1', '0']),
+        ('asc', [0, 1, 2, 3, 4]),
+        ('desc', [4, 3, 2, 1, 0]),
     ),
     ids=['asc', 'desc']
 )
