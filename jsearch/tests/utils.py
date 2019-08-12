@@ -52,7 +52,7 @@ def pprint_returned_value(func):
     def _wrapper(*args, **kwargs):
         from pprint import pprint
         result = func(*args, **kwargs)
-        pprint(result)
+        pprint(result)  # NOQA: T003
         return result
 
     return _wrapper
