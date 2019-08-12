@@ -49,7 +49,7 @@ def create_account_txs(block_factory, transaction_factory) -> Callable[[str], An
             account_address = account
 
         else:
-            print(f'Skip txs creation for {account}')
+            logger.info(f'Skip txs creation for {account}')
 
     return create_env
 

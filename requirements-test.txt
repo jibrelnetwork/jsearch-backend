@@ -1,6 +1,7 @@
 asynctest==0.12.2
 factory-boy==2.11.1
 flake8==3.6.0
+flake8-print==3.1.0
 flake8_formatter_junit_xml==0.0.6
 mypy==0.641
 ptpython==2.0.3
