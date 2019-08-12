@@ -1,5 +1,7 @@
 import os
+import sys
 import re
+import yaml
 
 FILE_TPL = """
 from typing import List, Dict, Any
@@ -79,7 +81,7 @@ def generate(swagger_scheme):
         cls = CLASS_TPL.format(name=name, swagger_types=types_str, attribute_map=attrs_str)
         classes[name] = cls
     classes_defs = [c[1] for c in sorted(classes.items(), key=lambda n: weights.get(n[0], 0), reverse=True)]
-    print(weights, classes)
+    sys.stdout.write(weights, classes)
     return FILE_TPL.format(classes=''.join(classes_defs))
 
 
@@ -89,15 +91,12 @@ def cc_to_underscore(name):
 
 
 if __name__ == '__main__':
-    import yaml
-    import sys
-
     swagger_file = open(sys.argv[1], 'r')
-    print('Processing Swagger file', swagger_file)
+    sys.stdout.write('Processing Swagger file', swagger_file)
 
     code = generate(yaml.load(swagger_file))
     dir_ = os.path.dirname(__file__)
     with open(os.path.join(dir_, 'all.py'), 'w') as f:
         f.write(code)
-    print(code)
-    print('Done')
+    sys.stdout.write(code)
+    sys.stdout.write('Done')

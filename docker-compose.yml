@@ -18,6 +18,8 @@ services:
       JSEARCH_RAW_DB: postgres://postgres:postgres@test_raw_db/jsearch-raw
     env_file:
       - config/dev.env
+    volumes:
+      - ./:/app
 
   tests_shell:
     <<: *tests
