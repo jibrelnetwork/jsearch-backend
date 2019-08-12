@@ -770,3 +770,26 @@ async def test_get_internal_transactions_with_ordering(
     resp_json = await resp.json()
 
     assert [x['transactionIndex'] for x in resp_json['data']] == expected_indexes
+
+
+async def test_get_internal_transactions_with_invalid_ordering_complains_about_queryparam(
+        cli: TestClient,
+        internal_transaction_factory: InternalTransactionFactory,
+) -> None:
+
+    tx_hash = '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e'
+    internal_transaction_factory.create(parent_tx_hash=tx_hash)
+
+    resp = await cli.get(f'v1/transactions/{tx_hash}/internal_transactions?order=ascending')
+    resp_json = await resp.json()
+
+    assert (resp.status, resp_json['status']['errors']) == (
+        400,
+        [
+            {
+                "field": "order",
+                "message": 'Ordering can be either "asc" or "desc".',
+                "code": "INVALID_ORDER_VALUE"
+            }
+        ],
+    )
