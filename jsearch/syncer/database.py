@@ -35,6 +35,7 @@ from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.accounts import get_accounts_state_for_blocks_query
 from jsearch.syncer.database_queries.assets_summary import delete_assets_summary_query, upsert_assets_summary_query
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
+from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.syncer.utils.balances import (
     get_last_ether_states_for_addresses_in_blocks,
     get_token_holders,
@@ -677,7 +678,10 @@ class MainDB(DBWrapper):
             last_block: int,
     ) -> None:
         affected_chain = [*old_chain_fragment, *new_chain_fragment]
-        affected_blocks = list({b['hash'] for b in affected_chain})
+
+        old_block_hashes = [block['hash'] for block in old_chain_fragment]
+        new_block_hashes = [block['hash'] for block in new_chain_fragment]
+        affected_blocks = list(set(old_block_hashes) | set(new_block_hashes))
 
         async with self.engine.acquire() as conn:
             async with conn.begin():
@@ -720,6 +724,18 @@ class MainDB(DBWrapper):
                 # write chain event
                 q = chain_events_t.insert().values(**chain_event)
                 await conn.execute(q)
+
+                for block in affected_chain:
+                    block_hash = block['hash']
+                    reinserted = block_hash in new_chain_fragment
+                    query = insert_reorg(
+                        block_hash=block['hash'],
+                        block_number=block['number'],
+                        node_id=chain_event['node_id'],
+                        split_id=chain_event['id'],
+                        reinserted=reinserted
+                    )
+                    await conn.execute(query)
 
     async def update_fork_status(self, block_hashes, is_forked, conn):
         update_block_q = blocks_t.update() \

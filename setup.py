@@ -19,11 +19,7 @@ setup(
         'console_scripts': [
             'jsearch-syncer = jsearch.syncer.main:run',
             'jsearch-syncer-pending = jsearch.pending_syncer.main:run',
-            'jsearch-post-processing = jsearch.post_processing.__main__:main',
             'jsearch-monitor-balance = jsearch.monitor_balance.__main__:main',
-            'jsearch-worker = jsearch.worker.__main__:main',
-            'jsearch-wallet-worker = jsearch.wallet_worker.__main__:main',
-            'jsearch-notable-accounts-worker = jsearch.notable_accounts_worker.__main__:main',
         ]
     }
 )

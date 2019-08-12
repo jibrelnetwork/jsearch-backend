@@ -7,6 +7,7 @@ from typing import NamedTuple, Dict, Any, List, Tuple, Optional
 
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
+from jsearch.common.processing.decimals_cache import decimals_cache
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
 from jsearch.syncer.database import RawDB, MainDB
@@ -136,30 +137,33 @@ class SyncProcessor:
         """
         uncles: List[Dict[str, Any]] = body['fields']['Uncles'] or []
         transactions: List[Dict[str, Any]] = body['fields']['Transactions'] or []
+
         block_number: int = header['block_number']
         block_hash: str = header['block_hash']
+        timestamp: int = int(header['fields']['timestamp'], 16)
 
         block_reward, uncles_rewards = self.process_rewards(reward, block_number)
         uncles_data = self.process_uncles(uncles, uncles_rewards, block_number, block_hash, is_forked)
-        transactions_data = self.process_transactions(transactions, block_number, block_hash, is_forked)
+        transactions_data = self.process_transactions(transactions, block_number, block_hash, timestamp, is_forked)
         block_data = self.process_header(header, block_reward, transactions, uncles, is_forked)
         receipts_data, logs_data = self.process_receipts(
             receipts=receipts,
             transactions=transactions_data,
             block_number=block_number,
             block_hash=block_hash,
+            timestamp=timestamp,
             is_forked=is_forked
         )
         accounts_data = self.process_accounts(accounts, block_number, block_hash, is_forked)
-        internal_txs_data = self.process_internal_txs(internal_transactions, is_forked)
+        internal_txs_data = self.process_internal_txs(internal_transactions, transactions_data, is_forked)
 
         contracts_set = set()
         for acc in accounts_data:
             if acc['code'] != '':
                 contracts_set.add(acc['address'])
 
-        transfers = logs_to_transfers(logs_data, block_data, decimals={})
-
+        decimals = await decimals_cache.get_many({l['address'] for l in logs_data})
+        transfers = logs_to_transfers(logs_data, block_data, decimals)
         token_holders = get_token_holders_from_transfers(transfers)
 
         start_time = time.monotonic()
@@ -283,6 +287,7 @@ class SyncProcessor:
                              transactions: List[Dict[str, Any]],
                              block_number: int,
                              block_hash: str,
+                             timestamp: int,
                              is_forked: bool) -> List[Dict[str, Any]]:
         items = []
         for i, tx in enumerate(transactions):
@@ -291,6 +296,7 @@ class SyncProcessor:
             tx_data['block_hash'] = block_hash
             tx_data['block_number'] = block_number
             tx_data['is_forked'] = is_forked
+            tx_data['timestamp'] = timestamp
 
             if tx['to'] is None:
                 tx_data['to'] = contracts.NULL_ADDRESS
@@ -310,6 +316,7 @@ class SyncProcessor:
                          transactions: List[Dict[str, Any]],
                          block_number: int,
                          block_hash: str,
+                         timestamp: int,
                          is_forked: bool) -> Tuple[List[Dict[str, Any]], Logs]:
         rdata: List[Dict[str, Any]] = receipts['fields']['Receipts'] or []
         recpt_items = []
@@ -338,11 +345,11 @@ class SyncProcessor:
             recpt_items.append(recpt_data)
             tx['status'] = recpt_data['status']
             transactions[i * 2 + 1]['status'] = recpt_data['status']
-            logs = self.process_logs(logs, status=recpt_data['status'], is_forked=is_forked)
+            logs = self.process_logs(logs, status=recpt_data['status'], is_forked=is_forked, timestamp=timestamp)
             logs_items.extend(logs)
         return recpt_items, logs_items
 
-    def process_logs(self, logs: Logs, status: bool, is_forked: bool) -> Logs:
+    def process_logs(self, logs: Logs, status: bool, is_forked: bool, timestamp: int) -> Logs:
         items = []
         for log_record in logs:
             data = dict_keys_case_convert(log_record)
@@ -355,6 +362,7 @@ class SyncProcessor:
             data['event_args'] = None
             data['status'] = status
             data['is_forked'] = is_forked
+            data['timestamp'] = timestamp
             data = process_log_event(data)
             items.append(data)
         return items
@@ -374,8 +382,12 @@ class SyncProcessor:
             items.append(data)
         return items
 
-    def process_internal_txs(self, internal_txs: List[Dict[str, Any]], is_forked: bool) -> List[Dict[str, Any]]:
+    def process_internal_txs(self,
+                             internal_txs: List[Dict[str, Any]],
+                             transactions: List[Dict[str, Any]],
+                             is_forked: bool) -> List[Dict[str, Any]]:
         items = []
+        tx_index_map = {t['hash']: t['transaction_index'] for t in transactions}
         for tx in internal_txs:
             data = dict_keys_case_convert(tx['fields'])
             data['timestamp'] = data.pop('time_stamp')
@@ -383,6 +395,7 @@ class SyncProcessor:
             del data['operation']
             data['op'] = tx['type']
             data['is_forked'] = is_forked
+            data['parent_tx_index'] = tx_index_map[tx['parent_tx_hash']]
             items.append(data)
         return items
 

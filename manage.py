@@ -29,7 +29,7 @@ class Manage(object):
 
         args = parser.parse_args(sys.argv[1:2])
         if not hasattr(self, args.command):
-            print('Unrecognized command')
+            sys.stderr.write('Unrecognized command')
             parser.print_help()
             exit(1)
         getattr(self, args.command)()
@@ -46,7 +46,7 @@ class Manage(object):
         parser.add_argument('directory', help=argparse.SUPPRESS)
 
         args = parser.parse_args(sys.argv[2:])
-        print('Running alembic init {}'.format(args.directory))
+        sys.stdout.write('Running alembic init {}'.format(args.directory))
         alembic.init(args.directory)
 
     def revision(self):
@@ -65,8 +65,8 @@ class Manage(object):
         parser.add_argument('-m', action='store', help=argparse.SUPPRESS)
 
         args = parser.parse_args(sys.argv[2:])
-        print(f'Running alembic revision --autogenerate -m "{args.m}"')
-        alembic.revision(args.db or os.getenv('JSEARCH_MAIN_DB'), args.m, True)
+        sys.stdout.write(f'Running alembic revision --autogenerate -m "{args.m}"')
+        alembic.revision(args.db or os.environ['JSEARCH_MAIN_DB'], args.m, True)
 
     def upgrade(self):
         parser = argparse.ArgumentParser(
@@ -82,8 +82,8 @@ class Manage(object):
         parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
 
         args = parser.parse_args(sys.argv[2:])
-        print(f'Running alembic upgrade {args.revision}')
-        alembic.upgrade(args.db or os.getenv('JSEARCH_MAIN_DB'), args.revision)
+        sys.stdout.write(f'Running alembic upgrade {args.revision}')
+        alembic.upgrade(args.db or os.environ['JSEARCH_MAIN_DB'], args.revision)
 
     def downgrade(self):
         parser = argparse.ArgumentParser(
@@ -99,8 +99,8 @@ class Manage(object):
         parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
 
         args = parser.parse_args(sys.argv[2:])
-        print(f'Running alembic downgrade {args.revision}.')
-        alembic.downgrade(args.db or os.getenv('JSEARCH_MAIN_DB'), args.revision)
+        sys.stdout.write(f'Running alembic downgrade {args.revision}.')
+        alembic.downgrade(args.db or os.environ['JSEARCH_MAIN_DB'], args.revision)
 
     def json_dump(self):
         parser = argparse.ArgumentParser(usage=f"usage {self.script_name} [-h]")
@@ -108,8 +108,8 @@ class Manage(object):
         parser.add_argument('-out', action='store', default=None, help=argparse.SUPPRESS)
 
         args = parser.parse_args(sys.argv[2:])
-        print('Running json_dump')
-        alembic.json_dump(args.db or os.getenv('JSEARCH_MAIN_DB'), args.out)
+        sys.stdout.write('Running json_dump')
+        alembic.json_dump(args.db or os.environ['JSEARCH_MAIN_DB'], args.out)
 
     def add_test_contract(self):
         from jsearch.tests.utils import add_test_contract
@@ -120,7 +120,7 @@ class Manage(object):
         parser.add_argument('-address', action='store', help=argparse.SUPPRESS)
 
         args = parser.parse_args(sys.argv[2:])
-        print('Running add_test_contract')
+        sys.stdout.write('Running add_test_contract')
 
         add_test_contract(args.db, args.address, FuckTokenSource.load())
 

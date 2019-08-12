@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from marshmallow import fields
 from typing import Set
 
@@ -37,3 +39,25 @@ class PositiveIntOrTagField(fields.Field):
             return value.lower()
 
         self.fail('invalid')
+
+
+class StrLower(fields.String):
+
+    def _deserialize(self, value, attr, data):
+        value = super(StrLower, self)._deserialize(value, attr, data)
+        if value:
+            return value.lower()
+
+
+class Timestamp(fields.Integer):
+    default_error_messages = {
+        'invalid': 'Not a valid timestamp.'
+    }
+
+    def _deserialize(self, value, attr, data):
+        value = super(Timestamp, self)._deserialize(value, attr, data)
+        if value:
+            try:
+                return datetime.fromtimestamp(value)
+            except ValueError:
+                self.fail('invalid')

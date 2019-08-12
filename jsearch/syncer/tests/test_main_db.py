@@ -70,8 +70,8 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
 
     txs = []
     for tx in transactions:
-        rt1 = {'address': tx['from'], **tx}
-        rt2 = {'address': tx['to'], **tx}
+        rt1 = {'address': tx['from'], 'timestamp': block['timestamp'], **tx}
+        rt2 = {'address': tx['to'], 'timestamp': block['timestamp'], **tx}
 
         txs.append(rt1)
         txs.append(rt2)

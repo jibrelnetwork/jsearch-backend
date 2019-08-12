@@ -11,16 +11,17 @@ pytest_plugins = (
     "jsearch.tests.plugins.databases.factories.assets_summary",
     "jsearch.tests.plugins.databases.factories.assets_transfers",
     "jsearch.tests.plugins.databases.factories.blocks",
-    "jsearch.tests.plugins.databases.factories.chain_splits",
+    "jsearch.tests.plugins.databases.factories.chain_events",
     "jsearch.tests.plugins.databases.factories.common",
     "jsearch.tests.plugins.databases.factories.contracts",
     "jsearch.tests.plugins.databases.factories.internal_transactions",
-    "jsearch.tests.plugins.databases.factories.notable_accounts",
+    "jsearch.tests.plugins.databases.factories.logs",
     "jsearch.tests.plugins.databases.factories.pending_transactions",
     "jsearch.tests.plugins.databases.factories.reorgs",
     "jsearch.tests.plugins.databases.factories.token_holder",
     "jsearch.tests.plugins.databases.factories.token_transfers",
     "jsearch.tests.plugins.databases.factories.transactions",
+    "jsearch.tests.plugins.databases.factories.uncles",
     "jsearch.tests.plugins.databases.factories.wallet_events",
     "jsearch.tests.plugins.databases.main_db",
     "jsearch.tests.plugins.databases.raw_db",
@@ -28,7 +29,6 @@ pytest_plugins = (
     "jsearch.tests.plugins.geth.web3",
     "jsearch.tests.plugins.geth_scenarios.transfer_on_fuck_token_contract",
     "jsearch.tests.plugins.metrics",
-    "jsearch.tests.plugins.notable_accounts_worker",
     "jsearch.tests.plugins.service_bus",
     "jsearch.tests.plugins.settings",
     "jsearch.tests.plugins.tokens.fuck_token",
@@ -52,7 +52,7 @@ def loop(event_loop):
 
 @pytest.fixture
 @pytest.mark.asyncio
-async def cli(event_loop, mock_db_dsn, db_dsn, aiohttp_client):
+async def cli(event_loop, db_dsn, aiohttp_client):
     app = await make_app()
     return await aiohttp_client(app)
 

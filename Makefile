@@ -1,16 +1,16 @@
 PROJECT_NAME=jsearch
 
 shell:
-	docker-compose run --rm tests_shell
+	docker-compose run --rm tests_shell bash
 
 build:
 	docker-compose build tests
 
 lint:
-	docker-compose run --rm tests flake8
+	docker-compose run --rm tests flake8 .
 
 test:
-	docker-compose run --rm tests
+	docker-compose run --rm tests pytest
 
 validate:
 	make build

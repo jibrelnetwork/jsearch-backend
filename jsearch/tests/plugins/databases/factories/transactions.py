@@ -1,3 +1,5 @@
+import time
+
 import factory
 import pytest
 
@@ -13,6 +15,7 @@ class TransactionModel(Base):
             transactions_t.c.hash,
             transactions_t.c.block_hash,
             transactions_t.c.address,
+            transactions_t.c.transaction_index,
         ]
     }
 
@@ -26,10 +29,11 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     address = factory.LazyFunction(generate_address)
 
     hash = factory.LazyFunction(generate_address)
-    transaction_index = factory.Sequence(lambda n: n)
+    transaction_index = factory.Sequence(lambda n: n % 200)
 
     block_number = factory.Sequence(lambda n: n)
     block_hash = factory.LazyFunction(generate_address)
+    timestamp = factory.LazyFunction(time.time)
 
     gas = '0xabc'
     gas_price = '0x123'
@@ -52,15 +56,28 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     @classmethod
     def create_for_block(cls, block, **kwargs):
-        data = cls.stub(block_number=block.number, block_hash=block.hash, **kwargs).__dict__
+        data = factory.build(dict, FACTORY_CLASS=TransactionFactory)
+        data.update({
+            **{
+                'block_number': block.number,
+                'block_hash': block.hash,
+                'timestamp': block.timestamp,
+                'from_': generate_address(),
+                'to': generate_address()
+            },
+            **kwargs
+        })
         data.pop('address', None)
-        data['from_'] = data.pop('from', None)
 
-        results = list()
-        results.append(cls.create(address=data['from_'], **data))
-        results.append(cls.create(address=data['to'], **data))
+        if 'from' in data:
+            data.pop('from', None)
+        else:
+            data['from_'] = data.pop('from', None)
 
-        return results
+        return [
+            cls.create(address=data['from_'], **data),
+            cls.create(address=data['to'], **data),
+        ]
 
 
 @pytest.fixture()

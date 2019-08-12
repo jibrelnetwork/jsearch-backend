@@ -1,22 +1,96 @@
 swagger: '2.0'
 info:
-  description: jSearch - Ethereum blockexplorer API
-  version: 1.0.0
-  title: jSearch API
-  # put the contact info for your development or API team
+  version: "1.0.5"
+  title: Jsearch API
+  description: |
+    Jsearch - Ethereum Blockchain Explorer API
+
+    **Common information**
+
+    **Requests and Responses**
+
+    Response body of any call can be is an empty string or JSON object, like:
+
+    Successful case
+    ```
+    {
+      'status': {
+        'success': true,
+        'errors': [],
+      }
+      "data": [...],
+      "meta": {...},
+      "paging": {...}
+    }
+    ```
+    Error case
+    ```
+    {
+        'status': {
+            'success': false,
+            'errors': [
+                ...
+            ],
+        }
+    }
+    ```
+    **note**: `paging` and `meta` objects are optional and can be omitted in response.
+
+    **API errors**
+
+    - All 400 series errors will be returned with a JSON object including an array of errors in the body and a application/json content type.
+    ```
+    {
+        'status': {
+            'success': false,
+            'errors': [
+                {
+                  'field': 'SOME_FIELD_NAME',
+                  'code': 'SOME_ERR_TEXT_CODE',
+                  'message': 'some err text'
+                }
+            ],
+        }
+    }
+    ```
+    - 500 series error codes do not return JSON bodies.
+
+
+    **Traversing Paged Results**
+
+    When making an API request, you usually don't receive all of the results of that request in a single response. This is because some responses could contain thousands of objects so most responses are paginated by default.
+
+    This API implements Cursor-based pagination is the most efficient method of paging.
+
+    When reading a response, you see the following JSON response:
+    ```
+    {
+      "status": {...},
+      "data": [...],
+      "meta": {...},
+      "paging": {
+        "link": "/v1/...",
+        "next": "/v1/..."
+      }
+    }
+    ```
+
+    **next** : The API endpoint that will return the next page of data. If not included or is null, this is the last page of data.
+    **current** : The API endpoint that will return the current page of data.
+
+
   contact:
+    # put the contact info for your development or API team
     email: dev@jibrel.network
 
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
 
-# # tags are used for organizing operations
-# tags:
-# - name: admins
-#   description: Secured Admin-only calls
-# - name: developers
-#   description: Operations available to regular developers
+tags:
+  - name: common
+  - name: proxy
+  - name: wallet
 
 parameters:
   address:
@@ -26,6 +100,8 @@ parameters:
     description: Account address
     type: string
     format: address
+    schema:
+      example: "0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5"
   blockchain_address:
     name: blockchain_address
     in: query
@@ -33,20 +109,43 @@ parameters:
     description: Blockchain account address
     type: string
     format: address
+    schema:
+      example: "0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5"
   blockchain_tip:
     name: blockchain_tip
     in: query
-    required: true
-    description: Blockchain tip ( as block hash from /v1/wallet/blockchain_tip)
+    required: false
+    description: "<a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/952434891/Blockchain+Tip\">Blockchain tip</a> (as block hash from /v1/blockchain_tip)"
     type: string
-    format: address
+    format: block_hash
+    schema:
+      example: ""
+  include_pending_txs:
+    name: include_pending_txs
+    in: query
+    required: false
+    description: "Determines whether pending transactions are included in the response"
+    type: boolean
+    format: block_hash
+    default: false
   addresses:
     name: addresses
     in: query
     required: true
-    description: Comma separated account addresses
+    description: Comma-separated list of addresses. Separate addresses by comma, up to a maxium of 20 accounts in a single batch
     type: string
-    format: address
+    format: addresses
+    schema:
+      example: "0x5a0b54d5dc17e0aadc383d2db43b0a0dbe029c4c,0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5"
+  contract_addresses:
+    name: contract_addresses
+    in: query
+    required: true
+    description: Comma-separated list of contract addresses. Separate addresses by comma, up to a maxium of 20 accounts in a single batch
+    type: string
+    format: addresses
+    schema:
+      example: "0x5a0b54d5dc17e0aadc383d2db43b0a0dbe029c4c,0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5"
   assets:
     name: assets
     in: query
@@ -61,94 +160,121 @@ parameters:
     description: Contract address
     type: string
     format: address
-  tagRequired:
+    schema:
+      example: "0xB8c77482e45F1F44dE1745F52C74426C631bDD52"
+  tag:
     name: tag
     in: path
     required: true
     description: block hash, block number or "latest" keyword
     type: string
+    schema:
+      example: "latest"
   tagOptional:
     name: tag
-    in: path
+    in: query
     description: block hash, block number or "latest" keyword
     type: string
+    schema:
+      example: "latest"
   txhash:
     name: txhash
     in: path
     required: true
     description: transaction hash
     type: string
-  limit:
-    name: limit
-    in: query
-    description: Number of items returned in response
-    type: integer
-    default: 20
-  offset:
-    name: offset
-    in: query
-    description: Query offset
-    type: integer
-    default: 0
+    schema:
+      example: "0x6d97e82f6e2086969f9bebbc43bae95af22c1baf765e86f2676bd0ccdb92ef18"
   order:
     name: order
     in: query
-    description: Items ordering direction
+    description: Items ordering direction (asc, desc)
     schema:
       type: string
       enum: [asc, desc]
     default: asc
-  block_range_start:
-    name: block_range_start
+  #pagination parameters
+  block_number:
+    name: block_number
     in: query
-    required: true
-    description: Filter by block number
-    schema:
-      oneOf:
-        - type: integer
-          example: 1000
-        - type: string
-          enum: [latest, tip]
-          example:
-            - "latest"
-            - "tip"
-    default: "tip"
-  block_range_end:
-    name: block_range_end
-    in: query
-    description: Filter by block number
-    schema:
-      oneOf:
-        - type: integer
-          example: 1000
-        - type: string
-          enum: [latest, tip]
-          example:
-            - "latest"
-            - "tip"
+    required: false
+    description: "A block number value that points to the start of the range of block-number-based data. Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
     type: integer
-  block_range_count:
-    name: block_range_count
+    default: 0
+  uncle_number:
+    name: uncle_number
     in: query
-    description: Filter by blocks count
+    required: false
+    description: "An uncle number value that points to the start of the range of uncle-number-based data. Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
     type: integer
+    default: 0
+  timestamp:
+    name: timestamp
+    in: query
+    required: false
+    description: "Instead of block-number you may use a Unix timestamp value that points to the start of the range of time-based data. Filtration can be either by number or by timestamp only. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+  transaction_index:
+    name: transaction_index
+    in: query
+    required: false
+    description: "A transaction index that points to the start of the range data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 1
+  parent_transaction_index:
+    name: parent_transaction_index
+    in: query
+    required: false
+    description: "A parent transaction index that points to the start of the requested data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 0
+  id:
+    name: id
+    in: query
+    required: false
+    description: "A last synced row id that points to the start of the requested data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 0
+  log_index:
+    name: log_index
+    in: query
+    required: false
+    description: "A log index that points to the start of the requested data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 0
+  event_index:
+    name: event_index
+    in: query
+    required: false
+    description: "A event index that points to the start of the requested data. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
+    type: integer
+    default: 0
+  limit:
+    name: limit
+    in: query
+    required: false
+    type: integer
+    default: 20
+    description: "Limit the number of records returned based on a limit value. Please se the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:\">link</a> for details."
 
 paths:
-
   /v1/accounts/balances:
     get:
-      summary: Get balances for multiple addresses in single call.
+      summary: Get Ether Balance of multiple accounts in a single call.
+      description: |
+        You can use this endoint to receive `Ether Balance` of single or multiple accounts on the specified block hash or on the latest known block in a single call.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getBalancesForMultiAddresses
       produces:
       - application/json
       parameters:
-      - in: query
-        name: addresses
-        type: string
-        description: Comma separated list of addresses
+      - $ref: '#/parameters/addresses'
+      - $ref: '#/parameters/blockchain_tip'
       responses:
         200:
-          description: List of balances
+          description: List of Ether Balances
           schema:
             properties:
               status:
@@ -157,6 +283,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Balance'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -164,7 +292,12 @@ paths:
 
   /v1/accounts/{address}:
     get:
-      summary: Get account state by address.
+      summary: Get Account State by address
+      description: |
+        You can use this endpoint to receive `Account State` data on the specified block number or hash or on the latest known block by address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccount
       produces:
       - application/json
@@ -172,6 +305,7 @@ paths:
       - $ref: '#/parameters/address'
         description: Account address
       - $ref: '#/parameters/tagOptional'
+      - $ref: '#/parameters/blockchain_tip'
       responses:
         200:
           description: Account object
@@ -181,6 +315,8 @@ paths:
                 $ref: '#/definitions/Status'
               data:
                 $ref: '#/definitions/Account'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -193,15 +329,24 @@ paths:
 
   /v1/accounts/{address}/logs:
     get:
-      summary: Get contract logs.
+      summary: Get a list of `Contract Logs` by address
+      description: |
+        You can use this endpoint to receive a list of `Contract Logs` on the specified block hash or on the latest known block by address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getLogs
       produces:
       - application/json
       parameters:
         - $ref: '#/parameters/address'
-        - $ref: '#/parameters/limit'
-        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/blockchain_tip'
         - $ref: '#/parameters/order'
+        - $ref: '#/parameters/block_number'
+        - $ref: '#/parameters/timestamp'
+        - $ref: '#/parameters/transaction_index'
+        - $ref: '#/parameters/log_index'
+        - $ref: '#/parameters/limit'
       responses:
         200:
           description: logs
@@ -214,6 +359,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Log'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -221,15 +370,23 @@ paths:
 
   /v1/accounts/{address}/transactions:
     get:
-      summary: Get account transactions.
+      summary: Get a list of `Normal` Transactions by Account address
+      description: |
+        You can use this endpoint to receive a list of `Normal` Transactions on the specified block hash or on the latest known block by address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccountTransactions
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/transaction_index'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: transactions for specific address
@@ -241,6 +398,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Transaction'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -248,15 +409,24 @@ paths:
 
   /v1/accounts/{address}/internal_transactions:
     get:
-      summary: Get account internal transactions
+      summary: Get a list of `Internal` Transactions by Account address
+      description: |
+        You can use this endpoint to receive a list of `Internal` Transactions on the specified block hash or on the latest known block by address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccountInternalTransactions
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/tagOptional'
+      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/transaction_index'
+      - $ref: '#/parameters/parent_transaction_index'
       - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       responses:
         200:
           description: internal transactions for specific address
@@ -268,6 +438,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/InternalTransaction'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -275,15 +449,20 @@ paths:
 
   /v1/accounts/{address}/pending_transactions:
     get:
-      summary: Get account pending transactions
+      summary: Get a list of `Pending` Transactions by Account address
+      description: |
+        You can use this endpoint to receive a list of `Pending` Transactions by address.
+      tags:
+        - common
       operationId: getAccountPendingTransactions
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/tagOptional'
+      - $ref: '#/parameters/order'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/id'
       - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       responses:
         200:
           description: pending transactions for specific address
@@ -295,6 +474,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/PendingTransaction'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -302,15 +483,22 @@ paths:
 
   /v1/accounts/{address}/mined_blocks:
     get:
-      summary: Get blocks mined by address
+      summary: Get list of `Blocks Mined` by Account address
+      description: |
+        You can use this endpoint to receive a list of `Blocks Mined` on the specified block hash or on the latest known block by Account address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccountMinedBlocks
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: blocks mined by specific address
@@ -322,6 +510,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Block'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -329,15 +521,22 @@ paths:
 
   /v1/accounts/{address}/mined_uncles:
     get:
-      summary: Get uncles mined by address
+      summary: Get list of `Uncles Mined` by Account address
+      description: |
+        You can use this endpoint to receive a list of `Uncles Mined` on the specified block hash or on the latest known block by Account address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccountMinedUncles
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: uncles mined by specific address
@@ -348,20 +547,63 @@ paths:
               type: array
               items:
                 $ref: '#/definitions/Uncle'
+            meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+            paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
             example: {"success": false, "errors": [{"field": "address", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
+  /v1/accounts/{address}/token_balances:
+    get:
+      summary: Get Token Balance for multiple contract addresses for specific Account address in a single call.
+      description: |
+        You can use this endpoint to receive a list of `Token Balances` for single or multiple contract addresses on the specified block hash or on the latest known block and account address in a single call.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
+      operationId: getTokenBalancesForMultiContracts
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/contract_addresses'
+      - $ref: '#/parameters/blockchain_tip'
+      responses:
+        200:
+          description: List of Token balances
+          schema:
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/TokenBalance'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+        400:
+          description: bad input parameter
+          schema:
+            example: {"success": false, "errors": [{"field": "addresses", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
   /v1/accounts/{address}/token_balance/{contract_address}:
     get:
-      summary: Get token holder balance for specific token
+      summary: Get Token Balance for specific token by Account address
+      description: |
+        You can use this endpoint to receive `Token Balance` for specific token by Account address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getTokenHolderBalance
       produces:
         - application/json
       parameters:
         - $ref: '#/parameters/address'
         - $ref: '#/parameters/contract_address'
+        - $ref: '#/parameters/blockchain_tip'
       responses:
         200:
           description: token holders balance
@@ -371,6 +613,8 @@ paths:
                 $ref: '#/definitions/Status'
               data:
                 $ref: '#/definitions/TokenHolder'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
         400:
           description: bad input parameter
           schema:
@@ -382,15 +626,24 @@ paths:
 
   /v1/accounts/{address}/token_transfers:
     get:
-      summary: Get tokens transfered to or from this address
+      summary: Get a list of `ERC20 Token Transfers` by Account address
+      description: |
+        You can use this endpoint to receive a list of `ERC20 Token Transfers` on the specified block hash or on the latest known block by Account address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getAccountTokenTransfers
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/transaction_index'
+      - $ref: '#/parameters/log_index'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: tokens transfered to or from specific address
@@ -402,6 +655,78 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/TokenTransfer'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+              paging:
+                $ref: '#/definitions/paging'
+        400:
+          description: bad input parameter
+          schema:
+            example: {"success": false, "errors": [{"field": "limit", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
+  /v1/accounts/{address}/transaction_count:
+    get:
+      summary: Returns the number of transactions sent from an address.
+      description: |
+        You can use this endpoint to get the number of transactions sent from an address.
+      tags:
+        - common
+      operationId: getAccountTransactionCount
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/include_pending_txs'
+      responses:
+        200:
+          description: nonce
+          schema:
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              data:
+                type: string
+                format: dec
+                example: "1"
+        400:
+          description: bad input parameter
+          schema:
+            example: {"success": false, "errors": [{"field": "include_pending_txs", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
+  /v1/accounts/{address}/eth_transfers:
+    get:
+      summary: Get a list of `ETH Transfers` by Account address
+      description: |
+        You can use this endpoint to receive a list of `ETH Transfers` on the specified block hash or on the latest known block by Account address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
+      operationId: getAccountEthTransfers
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/address'
+      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/event_index'
+      - $ref: '#/parameters/limit'
+      responses:
+        200:
+          description: Eth transfered to or from specific address
+          schema:
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/EthTransfer'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -409,13 +734,21 @@ paths:
 
   /v1/blocks:
     get:
-      summary: Get blocks list
+      summary: Get a list of `Blocks`
+      description: |
+        You can use this endpoint to receive a list of `Blocks` on the specified block hash or on the latest known block.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getBlockList
       produces:
       - application/json
       parameters:
+      - $ref: '#/parameters/order'
+      - $ref: '#/parameters/blockchain_tip'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
       - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       responses:
         200:
           description: blocks list
@@ -427,6 +760,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Block'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -434,12 +771,16 @@ paths:
 
   /v1/blocks/{tag}:
     get:
-      summary: Get block by hash or number
+      summary: Get block by hash or number or keyword
+      description: |
+        You can use this endpoint to receive `Block` data by block hash or number or keyword
+      tags:
+        - common
       operationId: getBlock
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/tagRequired'
+      - $ref: '#/parameters/tag'
       required: true
       responses:
         200:
@@ -463,12 +804,16 @@ paths:
 
   /v1/blocks/{tag}/transactions:
     get:
-      summary: Get all transactions in block
+      summary: Get a list of `Normal Transactions` by specific Block
+      description: |
+        You can use this endpoint to receive a list of `Normal Transactions` by block hash or number or keyword
+      tags:
+        - common
       operationId: getBlockTransactions
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/tagRequired'
+      - $ref: '#/parameters/tag'
       responses:
         200:
           description: transactions from specific block
@@ -481,6 +826,44 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Transaction'
+              paging:
+                $ref: '#/definitions/paging'
+        400:
+          description: bad input parameter
+          schema:
+            example: {"success": false, "errors": [{"field": "tag", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
+
+        404:
+          description: not found
+          schema:
+            example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
+
+  /v1/blocks/{tag}/internal_transactions:
+    get:
+      summary: Get a list of `Internal Transactions` by specific Block
+      description: |
+        You can use this endpoint to receive a list of `Internal Transactions` by block hash or number or keyword
+      tags:
+        - common
+      operationId: getBlockInternalTransactions
+      produces:
+      - application/json
+      parameters:
+      - $ref: '#/parameters/tag'
+      responses:
+        200:
+          description: transactions from specific block
+          schema:
+            type: object
+            properties:
+              status:
+                $ref: '#/definitions/Status'
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/InternalTransaction'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -493,12 +876,16 @@ paths:
 
   /v1/blocks/{tag}/uncles:
     get:
-      summary: Get all uncle blocks for specific block
+      summary: Get a list of Uncles by specific Block
+      description: |
+        You can use this endpoint to receive a list of `Uncles` by block hash or number or keyword
+      tags:
+        - common
       operationId: getBlockUncles
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/tagRequired'
+      - $ref: '#/parameters/tag'
       responses:
         200:
           description: uncles for specific block
@@ -519,6 +906,10 @@ paths:
   /v1/transactions/{txhash}:
     get:
       summary: Get Transaction by hash
+      description: |
+        You can use this endpoint to receive `Transaction` data by hash
+      tags:
+        - common
       operationId: getTransaction
       produces:
       - application/json
@@ -544,9 +935,13 @@ paths:
           schema:
             example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
 
-  /v1/transactions/internal/{txhash}:
+  /v1/transactions/{txhash}/internal_transactions:
     get:
-      summary: Get Internal transactions by transaction hash
+      summary: Get a list of `Internal` Transactions by transaction hash
+      description: |
+        You can use this endpoint to receive a list of `Internal Transactions` by transaction hash
+      tags:
+        - common
       operationId: getInternalTransaction
       produces:
       - application/json
@@ -564,6 +959,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/InternalTransaction'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -577,6 +974,10 @@ paths:
   /v1/receipts/{txhash}:
     get:
       summary: Get Receipt by transaction hash
+      description: |
+        You can use this endpoint to receive `Receipt` data by transaction hash
+      tags:
+        - common
       operationId: getReceipt
       produces:
       - application/json
@@ -604,14 +1005,21 @@ paths:
 
   /v1/uncles:
     get:
-      summary: Get uncles list
+      summary: Get a list of Uncles
+      description: |
+        You can use this endpoint to receive a list of `Uncles` on the specified block hash or on the latest known block.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getUnclesList
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/uncle_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: uncles list
@@ -624,6 +1032,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Uncle'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -631,12 +1043,16 @@ paths:
 
   /v1/uncles/{tag}:
     get:
-      summary: Get uncle by hash or number
+      summary: Get Uncle by hash or number or keyword
+      description: |
+        You can use this endpoint to receive `Uncle` data by uncle hash or number or keyword
+      tags:
+        - common
       operationId: getUncle
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/tagRequired'
+      - $ref: '#/parameters/tag'
       responses:
         200:
           description: uncle
@@ -659,14 +1075,18 @@ paths:
 
   /v1/verified_contracts:
     get:
-      summary: Get list of verified contracts
+      summary: Get a list of `Verified Contracts`
+      description: |
+        You can use this endpoint to receive a list of `Verified Contracts`
+      tags:
+        - common
       operationId: getVerifiedContractsList
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/id'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: Contract
@@ -679,6 +1099,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Contract'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -686,7 +1108,11 @@ paths:
 
   /v1/verified_contracts/{address}:
     get:
-      summary: Get verified contract info.
+      summary: Get Verified Contract info.
+      description: |
+        You can use this endpoint to receive `Verified Contract` info
+      tags:
+        - common
       operationId: getVerifiedContract
       produces:
       - application/json
@@ -712,13 +1138,17 @@ paths:
   /v1/tokens:
     get:
       summary: Get ERC20 tokens list
+      description: |
+        You can use this endpoint to receive a list of `ERC20 tokens`
+      tags:
+        - common
       operationId: getTokensList
       produces:
       - application/json
       parameters:
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/id'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: Token
@@ -731,14 +1161,20 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Token'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
             example: {"success": false, "errors": [{"field": "limit", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/tokens/{address}:
+  /v1/tokens/{contract_address}:
     get:
       summary: Get token info
+      description: |
+        You can use this endpoint to receive `ERC20 Token` info
+      tags:
+        - common
       operationId: getToken
       produces:
       - application/json
@@ -763,17 +1199,26 @@ paths:
           schema:
             example: {"success": false, "errors": [{"code": "NOT_FOUND", "message": "Resource not found"}]}
 
-  /v1/tokens/{address}/transfers:
+  /v1/tokens/{contract_address}/transfers:
     get:
-      summary: Get token transfers for specific token
+      summary: Get a list of `Token Transfers` for specific token (contract) address
+      description: |
+        You can use this endpoint to receive a list of `Token Transfers` on the specified block hash or on the latest known block by token address.
+         If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getTokenTransfers
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/contract_address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/block_number'
+      - $ref: '#/parameters/timestamp'
+      - $ref: '#/parameters/transaction_index'
+      - $ref: '#/parameters/log_index'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: token transfers
@@ -786,22 +1231,32 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/TokenTransfer'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
             example: {"success": false, "errors": [{"field": "offset", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/tokens/{address}/holders:
+  /v1/tokens/{contract_address}/holders:
     get:
-      summary: Get token holders list for specific token
+      summary: Get a list of `Token Holders` for specific token
+      description: |
+        You can use this endpoint to receive a list of `Token Holders` on the specified block hash or on the latest known block by token address.
+        If `blockchain_tip` is set then response includes a meta object containing currentBlockchainTip and blockchainTipStatus info.
+      tags:
+        - common
       operationId: getTokenHolders
       produces:
       - application/json
       parameters:
       - $ref: '#/parameters/contract_address'
-      - $ref: '#/parameters/limit'
-      - $ref: '#/parameters/offset'
+      - $ref: '#/parameters/blockchain_tip'
       - $ref: '#/parameters/order'
+      - $ref: '#/parameters/id'
+      - $ref: '#/parameters/limit'
       responses:
         200:
           description: token holders list
@@ -814,14 +1269,22 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/TokenHolder'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
             example: {"success": false, "errors": [{"field": "address", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/gas_price:
+  /v1/proxy/gas_price:
     get:
       summary: Returns the current price per gas in wei.
+      description: |
+        You can use this endpoint to get the current gas price.
+      tags:
+        - proxy
       responses:
         200:
           description: get gas price
@@ -835,9 +1298,18 @@ paths:
                 format: dec
                 example: "10000000000000"
 
-  /v1/transaction_count:
+  /v1/proxy/transaction_count:
     post:
       summary: Returns the number of transactions sent from an address.
+      description: |
+        You can use this endpoint to get the number of transactions sent from an address.
+
+        Parameters
+
+        1. DATA, 20 Bytes - address.
+        2. QUANTITY|TAG - integer block number, or the string "latest", "earliest" or "pending"
+      tags:
+        - proxy
       parameters:
         - name: body
           in: body
@@ -859,9 +1331,26 @@ paths:
                 format: dec
                 example: "1"
 
-  /v1/estimate_gas:
+  /v1/proxy/estimate_gas:
     post:
       summary: Generates and returns an estimate of how much gas is necessary to allow the transaction to complete.
+
+      description: |
+        You can use this endpoint to get an estimate of how much gas is necessary to allow the transaction to complete.
+
+        Parameters
+
+        1. Object - The transaction call object
+        from - (optional, DATA, 20 Bytes) The address the transaction is sent from.
+        to - (DATA, 20 Bytes) The address the transaction is directed to.
+        gas - (optional, QUANTITY) Integer of the gas provided for the transaction execution. eth_call consumes zero gas, but this parameter may be needed by some executions.
+        gasPrice - (optional, QUANTITY) Integer of the gasPrice used for each paid gas
+        value - (optional, QUANTITY) Integer of the value sent with this transaction
+        data -DATA - (optional, DATA) Hash of the method signature and encoded parameters. For details see Ethereum Contract ABI
+
+        2. QUANTITY|TAG - integer block number, or the string "latest", "earliest" or "pending", see the default block parameter
+      tags:
+        - proxy
       parameters:
         - name: body
           in: body
@@ -872,6 +1361,7 @@ paths:
               $ref: '#/definitions/Call'
       responses:
         200:
+          description: "QUANTITY - the amount of gas used."
           schema:
             properties:
               status:
@@ -881,9 +1371,25 @@ paths:
                 format: dec
                 example: "21000"
 
-  /v1/call_contract:
+  /v1/proxy/call_contract:
     post:
       summary: Executes a new message call immediately without creating a transaction on the block chain.
+      description: |
+        You can use this endpoint to execute a new message call immediately without creating a transaction on the block chain.
+
+        Parameters
+
+        1. Object - The transaction call object
+        from - (optional, DATA, 20 Bytes) The address the transaction is sent from.
+        to - (DATA, 20 Bytes) The address the transaction is directed to.
+        gas - (optional, QUANTITY) Integer of the gas provided for the transaction execution. eth_call consumes zero gas, but this parameter may be needed by some executions.
+        gasPrice - (optional, QUANTITY) Integer of the gasPrice used for each paid gas
+        value - (optional, QUANTITY) Integer of the value sent with this transaction
+        data -DATA - (optional, DATA) Hash of the method signature and encoded parameters. For details see Ethereum Contract ABI
+
+        2. QUANTITY|TAG - integer block number, or the string "latest", "earliest" or "pending", see the default block parameter
+      tags:
+        - proxy
       parameters:
         - name: body
           in: body
@@ -894,6 +1400,7 @@ paths:
               $ref: '#/definitions/Call'
       responses:
         200:
+          description: "DATA - the return value of executed contract"
           schema:
             properties:
               status:
@@ -903,9 +1410,17 @@ paths:
                 format: hex
                 example: "0x0"
 
-  /v1/send_raw_transaction:
+  /v1/proxy/send_raw_transaction:
     post:
       summary: Creates new message call transaction or a contract creation for signed transactions.
+      description: |
+        You can use this endpoint to reate a new message call transaction or a contract creation for signed transactions.
+
+        Parameters
+
+        1. DATA, The signed transaction data.
+      tags:
+        - proxy
       parameters:
         - name: body
           in: body
@@ -918,6 +1433,7 @@ paths:
             example: ["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"]
       responses:
         200:
+          description: "DATA, 32 Bytes - the transaction hash, or the zero hash if the transaction is not yet available."
           schema:
             properties:
               status:
@@ -927,9 +1443,12 @@ paths:
                 format: hex
                 example: "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331"
 
-  /v1/wallet/blockchain_tip:
+  /v1/blockchain_tip:
     get:
       summary: Get blockchain tip wich included last block hash and number.
+      description: "Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/952434891/Blockchain+Tip\">link</a> for details."
+      tags:
+        - common
       responses:
         200:
           schema:
@@ -942,41 +1461,49 @@ paths:
   /v1/wallet/assets_summary:
     get:
       summary: Get token holder and either balances for blockchain address.
+      description: "Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892330/Wallet+assets+summary\">link</a> for details"
+      tags:
+        - wallet
       parameters:
         - $ref: '#/parameters/addresses'
         - $ref: '#/parameters/assets'
-        - $ref: '#/parameters/limit'
-        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/blockchain_tip'
       responses:
         200:
+          description: Assets summary
           schema:
             properties:
               status:
                 $ref: '#/definitions/Status'
               data:
                 $ref: '#/definitions/AddressSummary'
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
 
-  /v1/wallet/get_events:
+  /v1/wallet/events:
     get:
       summary: Get blockchain events (contract call, erc20 transfer, either transfer, transactions cancelation) for address.
+      description: "Please see the following <a href=\"https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954957872/Wallet+events+endpoint\">link</a> for details"
+      tags:
+        - wallet
       parameters:
+        - $ref: '#/parameters/include_pending_txs'
         - $ref: '#/parameters/blockchain_address'
         - $ref: '#/parameters/blockchain_tip'
-        - $ref: '#/parameters/block_range_start'
-        - $ref: '#/parameters/block_range_end'
-        - $ref: '#/parameters/block_range_count'
+        - $ref: '#/parameters/order'
+        - $ref: '#/parameters/block_number'
+        - $ref: '#/parameters/timestamp'
+        - $ref: '#/parameters/event_index'
         - $ref: '#/parameters/limit'
-        - $ref: '#/parameters/offset'
       responses:
         200:
+          description: List of the blockchain events
           schema:
             properties:
               status:
                 $ref: '#/definitions/Status'
               data:
                 properties:
-                  blockchainTip:
-                    $ref: '#/definitions/BlockchainTipInfo'
                   events:
                     type: array
                     items:
@@ -985,7 +1512,10 @@ paths:
                     type: array
                     items:
                       $ref: '#/definitions/PendingTransactionInfo'
-
+              meta:
+                $ref: '#/definitions/BlockchainTipInfo'
+              paging:
+                $ref: '#/definitions/paging'
         400:
           description: Validation errors
           schema:
@@ -1026,28 +1556,35 @@ definitions:
     properties:
       blockNumber:
         type: integer
+        description: QUANTITY - block number.
         example: 4087355
       blockHash:
+        description: DATA, 32 Bytes - hash of the block.
         type: string
         format: hash
         example: "0x0e851d527ca5b1a8356a29d198c920f20da9af51edc084acaa0de481324d8f5d"
       address:
+        description: DATA, 20 Bytes - the address of the account.
         type: string
         format: address
         example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
       nonce:
+        description: QUANTITY - the number of transactions made by the account
         type: string
         format: dec
         example: "976"
       code:
+        description: DATA - the code from the given address.
         type: string
         format: hash
         example: "0x"
       codeHash:
+        description: DATA, 32 Bytes - hash of the code of the account.
         type: string
         format: hash
         example: "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
       balance:
+        description: QUANTITY - the balance of the account.
         type: string
         format: dec
         example: "1029436321514224"
@@ -1055,56 +1592,74 @@ definitions:
   Transaction:
     properties:
       blockHash:
+        description: DATA, 32 Bytes - hash of the block where this transaction was in.
         type: string
         format: hash
         example: "0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad"
       blockNumber:
+        description: QUANTITY - block number where this transaction was in.
         type: integer
         example: 119416
+      timestamp:
+        description: QUANTITY - the unix timestamp for when the block was collated.
+        type: integer
+        example: 1453686776
       from:
+        description: DATA, 20 Bytes - address of the sender.
         type: string
         format: address
         example: "0x3a844524342f0"
       gas:
+        description: QUANTITY - gas provided by the sender.
         type: string
         format: dec
         example: "25000"
       gasPrice:
+        description: QUANTITY - gas price provided by the sender in Wei.
         type: string
         format: dec
         example: "50000000000"
       hash:
+        description: DATA, 32 Bytes - hash of the transaction.
         type: string
         format: hash
         example: "0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5"
       input:
+        description: DATA - the data send along with the transaction.
         type: string
         format: hex
         example: "0x"
       nonce:
+        description: QUANTITY - the number of transactions made by the sender prior to this one.
         type: string
         format: dec
         example: "543"
       r:
+        description: QUANTITY - ECDSA signature r.
         type: string
         format: hex
         example: "0x23e819fa3f631c042d20b70f28f8f08ef1a2733061b92c59b43ea0997b6cf834"
       s:
+        description: QUANTITY - ECDSA signature s
         type: string
         format: hash
         example: "0x1ad76eadafc639103f6ba7bc0b9f839757086669b973e601ab69efda745948e3"
       to:
+        description: DATA, 20 Bytes - address of the receiver. null when its a contract creation transaction.
         type: string
         format: address
         example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
       transactionIndex:
+        description: QUANTITY - integer of the transaction's index position in the block.
         type: integer
         example: 84
       v:
+        description: QUANTITY - ECDSA recovery id
         type: string
         format: hex
         example: "0x1c"
       value:
+        description: QUANTITY - value transferred in Wei.
         type: string
         format: dec
         example: "2808270086200000000"
@@ -1112,90 +1667,121 @@ definitions:
   InternalTransaction:
     properties:
       blockNumber:
+        description: QUANTITY - block number where this transaction was in.
         type: integer
         example: 119416
+      timestamp:
+        description: QUANTITY - the unix timestamp for when the block was collated.
+        type: integer
+        example: 1453686776
       blockHash:
+        description: DATA, 32 Bytes - hash of the block where this transaction was in.
         type: string
         format: hash
         example: "0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad"
       parentTxHash:
+        description: DATA, 32 Bytes - hash of the parent transaction.
         type: string
         format: hash
         example: "0xf096ab24c5bd8abd9298cd627f5eef1ee948776d8d11127d8c47da2f0897f2c5"
+      parentTxIndex:
+        description: QUANTITY - the parent tarnsaction index.
+        type: integer
+        example: 3
       op:
+        description: The operation type ("create", "suicide", "call")
         type: string
         example: "suicide"
       callDepth:
+        description: The call depth
         type: integer
         example: 2
       from:
+        description: DATA, 20 Bytes - address of the sender.
         type: string
         format: address
         example: "0xab515c53f5dc7d22cdff536309c24ad87a9fe6af"
       to:
+        description: DATA, 20 Bytes - address of the receiver.
         type: string
         format: address
         example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
       value:
+        description: QUANTITY - value transferred in Wei.
         type: string
         format: dec
         example: "41000000000"
       gasLimit:
+        description: QUANTITY - the maximum gas allowed in this tx.
         type: string
         format: dec
         example: "2300"
       input:
+        description: DATA - the data send along with the transaction.
         type: string
         example: "0x"
       status:
+        description: The status of internal transaction ("success", "failed")
         type: string
         example: "success"
       transactionIndex:
+        description: QUANTITY - integer of the transaction's index position in the parent transaction.
         type: integer
         example: 84
 
   PendingTransaction:
     properties:
       r:
+        description: QUANTITY - ECDSA signature r.
         type: string
         format: hex
         example: "0x25651b1208a9606f9807ea4a140788ed8ea4f51f2aa414ceeab3d82af3dabe96"
       s:
+        description: QUANTITY - ECDSA signature s.
         type: string
         format: hex
         example: "0x8f7b9d5fe2d7962771724533f72a125ffc8451a30dff1d22f0479851687d69e"
       v:
+        description: QUANTITY - ECDSA recovery id
         type: string
         format: hex
         example: "0x25"
       to:
+        description: DATA, 20 Bytes - address of the receiver. null when its a contract creation transaction.
         type: string
         format: address
         example: "0x802356d446f156dd02f82991cd94b8c15586f658"
       from:
+        description: DATA, 20 Bytes - address of the sender.
         type: string
         format: address
         example: "0x612dba2d683e60767b8c32f35e4c08aaddb4bc41"
       gas:
+        description: QUANTITY - gas provided by the sender.
         type: string
         format: dec
         example: "41000000000"
       gasPrice:
+        description: QUANTITY - gas price provided by the sender in Wei.
         type: string
         format: dec
         example: "41000000000"
       hash:
+        description: DATA, 32 Bytes - hash of the transaction.
         type: string
         format: hash
         example: "0x82622cf424795645e3714021867c4197ab2543b34fe61d22aeeff05c5c3cf67f"
       input:
+        description: DATA - the data send along with the transaction.
         type: string
         example: "0xa9059cbb000000000000000000000000b443e84a3a213a0f0471fa6ee378fb4228a661100000000000000000000000000000000000000000000000000000012309ce5400"
       nonce:
+        description: QUANTITY - the number of transactions made by the sender prior to this one.
         type: string
         format: dec
         example: "11"
       value:
+        description: QUANTITY - value transferred in Wei.
         type: string
         format: dec
         example: "0"
@@ -1203,86 +1789,106 @@ definitions:
   Block:
     properties:
       difficulty:
-       type: string
-       format: dec
-       example: "10694243015446"
+        description: QUANTITY - integer of the difficulty for this block.
+        type: string
+        format: dec
+        example: "10694243015446"
       extraData:
-       type: string
-       format: hex
-       example: "0xd983010302844765746887676f312e342e328777696e646f7773"
+        description: DATA - the "extra data" field of this block.
+        type: string
+        format: hex
+        example: "0xd983010302844765746887676f312e342e328777696e646f7773"
       gasLimit:
-       type: string
-       format: dec
-       example: "3141592"
+        description: QUANTITY - the maximum gas allowed in this block.
+        type: string
+        format: dec
+        example: "3141592"
       gasUsed:
-       type: string
-       format: dec
-       example: "0"
+        description: QUANTITY - the total used gas by all transactions in this block.
+        type: string
+        format: dec
+        example: "0"
       hash:
-       type: string
-       format: hex
-       example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
+        description: DATA, 32 Bytes - hash of the block.
+        type: string
+        format: hex
+        example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
       logsBloom:
-       type: string
-       format: hex
-       example: "0x00000000000000000000000000000000000000000000000000000000001"
+        description: DATA, 256 Bytes - the bloom filter for the logs of the block. null when its pending block.
+        type: string
+        format: hex
+        example: "0x00000000000000000000000000000000000000000000000000000000001"
       miner:
-       type: string
-       format: hex
-       example: "0xf8b483dba2c3b7176a3da549ad41a48bb3121069"
+        description: DATA, 20 Bytes - the address of the beneficiary to whom the mining rewards were given.
+        type: string
+        format: hex
+        example: "0xf8b483dba2c3b7176a3da549ad41a48bb3121069"
       mixHash:
-       type: string
-       format: hex
-       example: "0x02a775f306082912b617e858fef268597a277de056dbe924ee6aabfa35a33c44"
+        type: string
+        format: hex
+        example: "0x02a775f306082912b617e858fef268597a277de056dbe924ee6aabfa35a33c44"
       nonce:
-       type: string
-       format: dec
-       example: "496358969209982823"
+        description: DATA, 8 Bytes - hash of the generated proof-of-work.
+        type: string
+        format: dec
+        example: "496358969209982823"
       number:
-       type: integer
-       example: 900056
+        description: QUANTITY - the block number.
+        type: integer
+        example: 900056
       parentHash:
-       type: string
-       format: hex
-       example: "0x9e4f201db6e56a43980881cd09855b99b2f2aeefc84ffb2ad0ccf3f42de6fba2"
+        description: DATA, 32 Bytes - hash of the parent block.
+        type: string
+        format: hex
+        example: "0x9e4f201db6e56a43980881cd09855b99b2f2aeefc84ffb2ad0ccf3f42de6fba2"
       receiptsRoot:
-       type: string
-       format: hex
-       example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+        description: DATA, 32 Bytes - the root of the receipts trie of the block.
+        type: string
+        format: hex
+        example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
       sha3Uncles:
-       type: string
-       format: hex
-       example: "0x2843dd2134eb02067b585e76ce6a7fc89d22d3eae1d38827b1eb15a3b5153347"
+        description: DATA, 32 Bytes - SHA3 of the uncles data in the block.
+        type: string
+        format: hex
+        example: "0x2843dd2134eb02067b585e76ce6a7fc89d22d3eae1d38827b1eb15a3b5153347"
       stateRoot:
-       type: string
-       format: hex
-       example: "0xc27aca6363fdceaed835753083b4db0bc37fab441e1414b9f051047d37dd025f"
+        description: DATA, 32 Bytes - the root of the final state trie of the block.
+        type: string
+        format: hex
+        example: "0xc27aca6363fdceaed835753083b4db0bc37fab441e1414b9f051047d37dd025f"
       timestamp:
-       type: integer
-       example: 1453686776
+        description: QUANTITY - the unix timestamp for when the block was collated.
+        type: integer
+        example: 1453686776
       transactions:
-       type: array
-       items:
-        type: string
-       example: ["0xc9b1ad2422ac745f91f815f14572cae74c8dd31183430c297ec2c7a902eb52db"]
+        description: Array - Array of transaction objects, or 32 Bytes transaction hashes
+        type: array
+        items:
+          type: string
+        example: ["0xc9b1ad2422ac745f91f815f14572cae74c8dd31183430c297ec2c7a902eb52db"]
       transactionsRoot:
-       type: string
-       format: hex
-       example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
-      uncles:
-       type: array
-       items:
+        description: DATA, 32 Bytes - the root of the transaction trie of the block.
         type: string
-       example: ["0xe0591f521db8d59f0362ad7bb946ecf98fd2d5eaf0a24b6fce378a00db6389d7"]
+        format: hex
+        example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+      uncles:
+        description: Array - Array of uncle hashes.
+        type: array
+        items:
+          type: string
+        example: ["0xe0591f521db8d59f0362ad7bb946ecf98fd2d5eaf0a24b6fce378a00db6389d7"]
       staticReward:
+        description: The static reward
         type: string
         format: dec
         example: "411095732236680000"
       uncleInclusionReward:
+        description: The reward for the uncle inclusion
         type: string
         format: dec
         example: "0"
       txFees:
+        description: The sum of transactions fees
         type: string
         format: dec
         example: "411095732236680000"
@@ -1290,104 +1896,129 @@ definitions:
   Uncle:
     properties:
       difficulty:
-       type: string
-       format: dec
-       example: "10694243015446"
+        description: QUANTITY - integer of the difficulty for this uncle.
+        type: string
+        format: dec
+        example: "10694243015446"
       extraData:
-       type: string
-       format: hex
-       example: "0xd983010302844765746887676f312e342e328777696e646f7773"
-      gasLimit:
-       type: string
-       format: dec
-       example: "3141592"
-      gasUsed:
-       type: string
-       format: dec
-       example: "0"
-      hash:
-       type: string
-       format: hex
-       example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
-      logsBloom:
-       type: string
-       format: hex
-       example: "0x00000000000000000000000000000000000000000000000000000000001"
-      miner:
-       type: string
-       format: hex
-       example: "0xf8b483dba2c3b7176a3da549ad41a48bb3121069"
-      mixHash:
-       type: string
-       format: hex
-       example: "0x02a775f306082912b617e858fef268597a277de056dbe924ee6aabfa35a33c44"
-      nonce:
-       type: string
-       format: dec
-       example: "496358969209982823"
-      number:
-       type: integer
-       example: 900056
-      parentHash:
-       type: string
-       format: hex
-       example: "0x9e4f201db6e56a43980881cd09855b99b2f2aeefc84ffb2ad0ccf3f42de6fba2"
-      receiptsRoot:
-       type: string
-       format: hex
-       example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
-      sha3Uncles:
-       type: string
-       format: hex
-       example: "0x2843dd2134eb02067b585e76ce6a7fc89d22d3eae1d38827b1eb15a3b5153347"
-      size:
-       type: integer
-       example: 1081
-      stateRoot:
-       type: string
-       format: hex
-       example: "0xc27aca6363fdceaed835753083b4db0bc37fab441e1414b9f051047d37dd025f"
-      timestamp:
-       type: integer
-       example: 1453686776
-      totalDifficulty:
-       type: string
-       format: dec
-       example: "6028818335021882784"
-      transactionsRoot:
-       type: string
-       format: hex
-       example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
-      blockNumber:
-       type: integer
-       example: 19190
-      reward:
+        description: DATA - the "extra data" field of this uncle.
         type: string
         format: hex
-        example: 0x2563918244f40000
+        example: "0xd983010302844765746887676f312e342e328777696e646f7773"
+      gasLimit:
+        description: QUANTITY - the maximum gas allowed in this uncle.
+        type: string
+        format: dec
+        example: "3141592"
+      gasUsed:
+        description: QUANTITY - the total used gas by all transactions in this uncle.
+        type: string
+        format: dec
+        example: "0"
+      hash:
+        description: DATA, 32 Bytes - hash of the uncle.
+        type: string
+        format: hex
+        example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
+      logsBloom:
+        description: DATA, 256 Bytes - the bloom filter for the logs of the block. null when its pending block.
+        type: string
+        format: hex
+        example: "0x00000000000000000000000000000000000000000000000000000000001"
+      miner:
+        description: DATA, 20 Bytes - the address of the beneficiary to whom the mining rewards were given.
+        type: string
+        format: hex
+        example: "0xf8b483dba2c3b7176a3da549ad41a48bb3121069"
+      mixHash:
+        type: string
+        format: hex
+        example: "0x02a775f306082912b617e858fef268597a277de056dbe924ee6aabfa35a33c44"
+      nonce:
+        description: DATA, 8 Bytes - hash of the generated proof-of-work.
+        type: string
+        format: dec
+        example: "496358969209982823"
+      number:
+        description: QUANTITY - the uncle number.
+        type: integer
+        example: 900056
+      parentHash:
+        description: DATA, 32 Bytes - hash of the parent block
+        type: string
+        format: hex
+        example: "0x9e4f201db6e56a43980881cd09855b99b2f2aeefc84ffb2ad0ccf3f42de6fba2"
+      receiptsRoot:
+        description: DATA, 32 Bytes - the root of the receipts trie of the block.
+        type: string
+        format: hex
+        example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+      sha3Uncles:
+        description: DATA, 32 Bytes - SHA3 of the uncles data in the block.
+        type: string
+        format: hex
+        example: "0x2843dd2134eb02067b585e76ce6a7fc89d22d3eae1d38827b1eb15a3b5153347"
+      size:
+        description: QUANTITY - integer the size of this block in bytes.
+        type: integer
+        example: 1081
+      stateRoot:
+        description: DATA, 32 Bytes - the root of the final state trie of the block.
+        type: string
+        format: hex
+        example: "0xc27aca6363fdceaed835753083b4db0bc37fab441e1414b9f051047d37dd025f"
+      timestamp:
+        description: QUANTITY - the unix timestamp for when the block was collated.
+        type: integer
+        example: 1453686776
+      totalDifficulty:
+        description: QUANTITY - integer of the total difficulty of the chain until this block.
+        type: string
+        format: dec
+        example: "6028818335021882784"
+      transactionsRoot:
+        description: DATA, 32 Bytes - the root of the transaction trie of the block.
+        type: string
+        format: hex
+        example: "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+      blockNumber:
+        description: QUANTITY - the block number.
+        type: integer
+        example: 19190
+      reward:
+        description: Uncle reward.
+        type: string
+        format: dec
+        example: "411095732236680000"
 
   Receipt:
     properties:
       blockHash:
+        description: DATA, 32 Bytes - hash of the block where this transaction was in.
         type: string
         format: hex
         example: "0xf65ef0910daed64f5bf0effa14c40908395b3df16b64b48a703bb9c7aa61e80f"
       blockNumber:
+        description: QUANTITY - block number where this transaction was in.
         type: integer
         example: 900005
       contractAddress:
+        description: DATA, 20 Bytes - The contract address created, if the transaction was a contract creation, otherwise null.
         type: string
         format: hex
         example: null
       cumulativeGasUsed:
+        description: QUANTITY - The total amount of gas used when this transaction was executed in the block.
         type: string
         format: dec
         example: "21000"
       from:
+        description: DATA, 20 Bytes - address of the sender.
         type: string
         format: hex
         example: "0x2a65aca4d5fc5b5c859090a6c34d164135398226"
       gasUsed:
+        description: QUANTITY - The amount of gas used by this specific transaction alone.
         type: string
         format: dec
         example: "21000"
@@ -1396,72 +2027,111 @@ definitions:
         items:
           $ref: '#/definitions/Log'
       logsBloom:
+        description: DATA, 256 Bytes - Bloom filter for light clients to quickly retrieve related logs.
         type: string
         format: hex
         example: "0x000000000000000110000000000"
       root:
+        description: DATA 32 bytes of post-transaction stateroot (pre Byzantium)
         type: string
         format: hex
         example: "0x5b96718cdfdda40c371eee661a8467d2edcbee0fa03aa5b5cb6a84479db3c177"
       to:
+        description: DATA, 20 Bytes - address of the receiver. null when it's a contract creation transaction.
         type: string
         format: hex
         example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
       transactionHash:
+        description: DATA, 32 Bytes - hash of the transaction.
         type: string
         format: hex
         example: "0x6825feb84a806d5eb4321250b050d9aa7848d32ea052bb8c7b21d41d33f94ea9"
       transactionIndex:
+        description: QUANTITY - integer of the transaction's index position in the block.
         type: integer
         example: 0
       status:
+        description: QUANTITY either 1 (success) or 0 (failure)
         type: integer
         example: 1
 
   Log:
     properties:
       address:
+        description: DATA, 20 Bytes - address from which this log originated.
         type: string
         format: address
         example: "0x47071214d1ef76eeb26e9ac3ec6cc965ab8eb75b"
       blockHash:
+        description: DATA, 32 Bytes - hash of the block where this log was in. null when its pending.
         type: string
         format: hex
         example: "0x4c285ba67d33a3cd670f5c4decfb10a41b929e7c4139766abfd60a24ee1fa148"
       blockNumber:
+        description: QUANTITY - the block number where this log was in.
         type: integer
         example: 112887
       data:
+        description: DATA - contains the non-indexed arguments of the log.
         type: string
         format: hex
         example: "0x00000000000000000000000013f26856cbacaaba9c4488a31c72e605fae029fc"
       logIndex:
+        description: QUANTITY - integer of the log index position in the block. null when its pending log.
         type: integer
         example: 0
       removed:
+        description: TAG - true when the log was removed, due to a chain reorganization. false if its a valid log
         type: string
-        format: hex
+        format: boolean
         example: false
       topics:
+        description: Array of DATA - Array of 0 to 4 32 Bytes DATA of indexed log arguments. (The first topic is the hash of the signature of the event (e.g. Deposit(address,bytes32,uint256)), except you declared the event with the anonymous specifier.)
         type: array
         items:
           type: string
         example: ["0x16cdf1707799c6655baac6e210f52b94b7cec08adcaf9ede7dfe8649da926146"]
       transactionHash:
+        description: DATA, 32 Bytes - hash of the transactions this log was created from. null when its pending log.
         type: string
         format: hex
         example: "0xcb63b762d9522bbd712b0d8df2208c8a8dbdaeef5d7fdca3cc2dad0f34646790"
       transactionIndex:
+        description: QUANTITY - integer of the transactions index position log was created from.
         type: integer
         example: 2
+      timestamp:
+        description: The unix timestamp
+        type: integer
+        example: 1548229016
+
+  TokenBalance:
+    properties:
+      contractAddress:
+        description: Token address
+        type: string
+        format: address
+        example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
+      balance:
+        description: The balance
+        type: string
+        format: dec
+        example: "1000000"
+      decimals:
+        description: Token decimals
+        type: string
+        format: dec
+        example: "18"
 
   Balance:
     properties:
       balance:
+        description: The balance
         type: string
         format: dec
         example: "256391824440000"
       address:
+        description: Holder address
         type: string
         format: address
         example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
@@ -1490,7 +2160,7 @@ definitions:
         type: array
         items:
           type: string
-      verified_at:
+      verifiedAt:
         type: string
       token:
         type: string
@@ -1498,63 +2168,112 @@ definitions:
   Token:
     properties:
       contractAddress:
+        description: Token address
         type: string
         format: address
+        example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
       name:
+        description: Token name
         type: string
+        example: "Jibrel Network Token"
       symbol:
+        description: Token symbol
         type: string
+        example: "JNT"
       decimals:
+        description: Token decimals
         type: string
         format: dec
+        example: "18"
       totalSupply:
+        description: Total supply
         type: string
         format: dec
+        example: "200000000000000000000000"
 
-  TokenTransfer:
+  EthTransfer:
     properties:
       timestamp:
+        description: The unix timestamp
         type: integer
         example: 1548229016
       transactionHash:
+        description: Transaction hash
         type: string
         format: hex
         example: "0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c"
       from:
+        description: Transfer sender
         type: string
         format: address
         example: "0xf73c3c65bde10bf26c2e1763104e609a41702efe"
       to:
+        description: Transfer recipient
         type: string
         format: address
         example: "0x355941cf7ac065310fd4023e1b913209f076a48a"
-      tokenName:
-        type: string
-        example: "Jibrel Network Token"
-      tokenAddress:
-        type: string
-        format: address
-        example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
       amount:
+        description: Transfer amount
         type: string
         format: dec
         example: "1664600000000000000000"
 
+  TokenTransfer:
+    properties:
+      timestamp:
+        description: The unix timestamp
+        type: integer
+        example: 1548229016
+      transactionHash:
+        description: Transaction hash
+        type: string
+        format: hex
+        example: "0x3b749628d5c22d5f372d3c40a760eadd153b27a503e57688e66678d32123fb8c"
+      from:
+        description: Transfer sender
+        type: string
+        format: address
+        example: "0xf73c3c65bde10bf26c2e1763104e609a41702efe"
+      to:
+        description: Transfer recipient
+        type: string
+        format: address
+        example: "0x355941cf7ac065310fd4023e1b913209f076a48a"
+      contractAddress:
+        description: Token address
+        type: string
+        format: address
+        example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
+      amount:
+        description: Transfer amount
+        type: string
+        format: dec
+        example: "1664600000000000000000"
+      decimals:
+        description: Token decimals
+        type: string
+        format: dec
+        example: "18"
+
   TokenHolder:
     properties:
       accountAddress:
+        description: Token holder address
         type: string
         format: address
         example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
-      tokenAddress:
+      contractAddress:
+        description: Token address
         type: string
         format: address
         example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
       balance:
+        description: Token balance
         type: string
         format: dec
         example: "1000000"
       decimals:
+        description: Token decimals
         type: string
         format: dec
         example: "18"
@@ -1562,18 +2281,22 @@ definitions:
   AssetSummary:
     properties:
       address:
+        description: Token address
         type: string
         format: address
         example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
       balance:
+        description: Token balance
         type: string
         format: dec
         example: "1000"
       decimals:
+        description: Token decimals
         type: string
         format: dec
         example: "18"
       transfersNumber:
+        description: The number of transfers
         type: string
         format: dec
         example: "1"
@@ -1581,10 +2304,12 @@ definitions:
   AddressSummary:
     properties:
       address:
+        description: An account address
         type: string
         format: address
         example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
       outgoingTransactionNumber:
+        description: The number of outgoing transactions
         type: string
         format: dec
         example: "1"
@@ -1610,12 +2335,12 @@ definitions:
   BlockchainTip:
     properties:
       blockHash:
-        summary: Last block hash as blockchain tip.
+        description: The latest block hash as blockchain tip.
         type: string
         format: hex
         example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
       blockNumber:
-        summary: Last block number in network.
+        description: The latest block number in network.
         type: integer
         example: 900056
 
@@ -1627,42 +2352,45 @@ definitions:
         type: object
         properties:
           blockHash:
-            summary: Block hash from request query.
+            description: The block hash from request query.
             type: string
             format: hex
             example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
           blockNumber:
-            summary: Block number from request query.
-            type:
+            description: The block number from request query.
+            type: integer
             example: 900056
           isOrphaned:
-            summary: If positive - then tip is in a fork block.
+            description: If value is positive - then tip is in a fork block.
             type: boolean
             example: False
           lastUnchangedBlock:
-            summary: Latest block in a canonical chain. Client should invalidate cache since this block number.
+            description: The latest block in a canonical chain. Client should invalidate cache since this block number.
             type: integer
             example: 0
 
   WalletEvent:
     properties:
-      type:
+      eventType:
+        description: The event type ("eth-transfer", "contract-call", "erc20-transfer", "tx-cancellation")
         type: string
-      event_index:
+        example: "eth-transfer"
+      eventIndex:
+        description: This is the index of an events used for distinguishing different events within one TX
         type: integer
-      event_data:
+        example: 0
+      eventData:
         type: array
         items:
           properties:
             fieldName:
+              description: Name of field
               type: string
-              summary: Name of field
               example: 'asset'
             fieldValue:
+              description: Value of field
               type: string
-              summary: Value of field
               example: '0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413'
-
 
   TransactionInfo:
     properties:
@@ -1711,40 +2439,55 @@ definitions:
   Call:
     properties:
       from:
-              type: string
-              required: false
-              description: The address the transaction is sent from.
-              example: "0x8aff0a12f3e8d55cc718d36f84e002c335df2f4a"
+        description: The address the transaction is sent from.
+        type: string
+        required: false
+        example: "0x8aff0a12f3e8d55cc718d36f84e002c335df2f4a"
       to:
-              type: string
-              required: false
-              description: The address the transaction is directed to.
-              example: "0x5c7687810ce3eae6cda44d0e6c896245cd4f97c6"
+        description: The address the transaction is directed to.
+        type: string
+        required: false
+        example: "0x5c7687810ce3eae6cda44d0e6c896245cd4f97c6"
       gas:
-              type: string
-              format: dec
-              required: false
-              description: Integer of the gas provided for the transaction execution.
-              example: "0"
+        description: Integer of the gas provided for the transaction execution.
+        type: string
+        format: dec
+        required: false
+        example: "0"
       gasPrice:
-              type: string
-              format: dec
-              required: false
-              description: Integer of the gas provided for the transaction execution.
-              example: "1"
+        description: Integer of the gas provided for the transaction execution.
+        type: string
+        format: dec
+        required: false
+        example: "1"
       value:
-              type: string
-              format: dec
-              required: false
-              description: Integer of the value sent with this transaction.
-              example: "0"
+        description: Integer of the value sent with this transaction.
+        type: string
+        format: dec
+        required: false
+        example: "0"
       data:
-              type: string
-              description: Hash of the method signature and encoded parameters.
-              example: "0x6740d36c0000000000000000000000000000000000000000000000000000000000000005"
+        description: Hash of the method signature and encoded parameters.
+        type: string
+        example: "0x6740d36c0000000000000000000000000000000000000000000000000000000000000005"
+
+  paging:
+    description: The paging object that’s a sibling of the paginated data
+    properties:
+      link:
+        description: The current page of data (relative url).
+        type: string
+        format: url
+        example: "/v1/..."
+      next:
+        description: The next page of data (relative url). The server MUST determine whether a next page exists, and return null as the next link if not.
+        type: string
+        format: url
+        example: "/v1/..."
 
 schemes:
  - http
+ - https
 
 
 basePath: /

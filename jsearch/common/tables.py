@@ -86,10 +86,14 @@ uncles_t = sa.Table(
 internal_transactions_t = sa.Table(
     'internal_transactions',
     metadata,
+    # denormalization for `internal_transaction.transaction.from`
+    sa.Column('tx_origin', sa.String),
+
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, primary_key=True),
     sa.Column('parent_tx_hash', sa.String, primary_key=True),
-    sa.Column('tx_origin', sa.String),
+    # denormalization for `internal_transactions.transaction.transaction_index`
+    sa.Column('parent_tx_index', sa.String, primary_key=True),
     sa.Column('op', sa.String),
     sa.Column('call_depth', HexInteger),
     sa.Column('timestamp', HexInteger),
@@ -106,6 +110,7 @@ internal_transactions_t = sa.Table(
 pending_transactions_t = sa.Table(
     'pending_transactions',
     metadata,
+    sa.Column('id', sa.BigInteger),
     sa.Column('last_synced_id', sa.BigInteger, index=True),
     sa.Column('hash', sa.String(70), primary_key=True),
     sa.Column('status', sa.String),
@@ -131,6 +136,7 @@ transactions_t = sa.Table(
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, index=True, primary_key=True),
     sa.Column('transaction_index', HexInteger, primary_key=True),
+    sa.Column('timestamp', HexInteger),
     sa.Column('from', sa.String, index=True),
     sa.Column('to', sa.String, index=True),
     sa.Column('gas', sa.String),
@@ -170,6 +176,7 @@ logs_t = sa.Table(
     metadata,
     sa.Column('block_number', HexInteger, index=True),
     sa.Column('block_hash', sa.String, index=True, primary_key=True),
+    sa.Column('timestamp', HexInteger),
     sa.Column('log_index', HexInteger, primary_key=True),
     sa.Column('address', sa.String),
     sa.Column('data', sa.String),
@@ -213,14 +220,6 @@ accounts_base_t = sa.Table(
     sa.Column('root', sa.String),
 )
 
-notable_accounts_t = sa.Table(
-    'notable_accounts',
-    metadata,
-    sa.Column('address', sa.String, primary_key=True),
-    sa.Column('name', sa.String),
-    sa.Column('labels', postgresql.ARRAY(sa.String)),
-)
-
 blocks_t = sa.Table(
     'blocks',
     metadata,
@@ -254,6 +253,7 @@ blocks_t = sa.Table(
 token_holders_t = sa.Table(
     'token_holders',
     metadata,
+    sa.Column('id', sa.BigInteger),
     sa.Column('account_address', sa.String, primary_key=True),
     sa.Column('token_address', sa.String, primary_key=True),
     sa.Column('balance', postgresql.NUMERIC(32, 0), index=True),
@@ -348,6 +348,7 @@ wallet_events_t = sa.Table(
     sa.Column('is_forked', sa.Boolean, default=False),
     sa.Column('tx_data', postgresql.JSONB),
     sa.Column('event_data', postgresql.JSONB),
+    sa.Column('timestamp', sa.Integer),
 )
 
 chain_events_t = sa.Table(
@@ -385,7 +386,6 @@ TABLES = (
     logs_t,
     accounts_state_t,
     accounts_base_t,
-    notable_accounts_t,
     token_holders_t,
     internal_transactions_t,
     pending_transactions_t,

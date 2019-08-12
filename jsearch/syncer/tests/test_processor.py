@@ -1,7 +1,8 @@
 import decimal
-import datetime
 
+import datetime
 import pytest
+from typing import Dict, List
 
 from jsearch.common import contracts
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
@@ -14,7 +15,9 @@ from jsearch.common.tables import (
     accounts_base_t,
     wallet_events_t,
     internal_transactions_t,
-    assets_summary_t, token_transfers_t)
+    assets_summary_t,
+    token_transfers_t,
+    token_holders_t)
 from jsearch.common.wallet_events import WalletEventType
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.processor import SyncProcessor, dict_keys_case_convert
@@ -41,6 +44,11 @@ def block_hash(raw_db_sample):
 @pytest.fixture
 def fixture_bodies(raw_db_sample, block_hash):
     return raw_db_sample['bodies']
+
+
+@pytest.fixture
+def fixture_headers(raw_db_sample, block_hash):
+    return raw_db_sample['headers']
 
 
 @pytest.fixture
@@ -112,6 +120,13 @@ def fixture_accounts(raw_db_sample):
             **dict_keys_case_convert(fields)
         })
     return accounts
+
+
+@pytest.fixture
+def block_header(fixture_headers, block_hash):
+    for item in fixture_headers:
+        if item['block_hash'] == block_hash:
+            return item
 
 
 @pytest.fixture
@@ -221,7 +236,7 @@ async def test_sync_block_check_receipts(db, raw_db_sample, raw_db_dsn, db_dsn, 
         assert receipts[i].is_forked is False
 
 
-async def test_sync_block_check_logs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_tx_logs):
+async def test_sync_block_check_logs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_header, block_tx_logs):
     # when
     await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
 
@@ -231,6 +246,7 @@ async def test_sync_block_check_logs(db, raw_db_sample, raw_db_dsn, db_dsn, bloc
     ).fetchall()
 
     for i, origin in enumerate(block_tx_logs):
+        assert logs[i].timestamp == int(block_header['fields']['timestamp'], 16)
         assert logs[i].transaction_hash == origin['transactionHash']
         assert logs[i].block_hash == origin['blockHash']
         assert logs[i].block_number == origin['block_number']
@@ -316,6 +332,10 @@ async def test_sync_block_check_internal_txs(db, raw_db_sample, raw_db_dsn, db_d
     internal_txs = db.execute(internal_transactions_t.select()).fetchall()
     internal_txs = [dict(tx) for tx in internal_txs]
 
+    txs = db.execute(transactions_t.select()).fetchall()
+
+    index_map = {t.hash: t.transaction_index for t in txs}
+
     internal_txs = sorted(internal_txs, key=lambda x: (x['parent_tx_hash'], x['transaction_index']))
     block_internal_txs = sorted(block_internal_txs, key=lambda x: (x['parent_tx_hash'], x['index']))
 
@@ -324,6 +344,7 @@ async def test_sync_block_check_internal_txs(db, raw_db_sample, raw_db_dsn, db_d
             'block_number': origin['block_number'],
             'block_hash': origin['block_hash'],
             'parent_tx_hash': origin['parent_tx_hash'],
+            'parent_tx_index': index_map[origin['parent_tx_hash']],
             'tx_origin': origin['fields']['TxOrigin'],
             'op': origin['fields']['Operation'],
             'call_depth': origin['fields']['CallDepth'],
@@ -370,7 +391,7 @@ async def test_sync_block_check_assets_summary(db, raw_db_sample, raw_db_dsn, db
         assert int(summary['value']) == int(account_state['balance'])
 
 
-async def test_sync_block_check_token_holders(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
+async def test_sync_block_check_token_holders_in_assets_summary(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
     """
     We test on 6000001 block.
     We can calculate ether balances for test blocks.
@@ -412,3 +433,35 @@ async def test_sync_block_check_token_holders(db, raw_db_sample, raw_db_dsn, db_
         token, owner = token_owner
         assert summary['asset_address'] == token
         assert summary['address'] == owner
+
+
+@pytest.fixture
+def mock_get_decimals(mocker):
+    async def get_decimals(addresses: List[str]) -> Dict[str, int]:
+        return {address: 18 for address in addresses}
+
+    mocker.patch('jsearch.common.processing.decimals_cache.decimals_cache.get_many', get_decimals)
+
+
+@pytest.mark.usefixtures('mock_get_decimals')
+async def test_sync_block_check_decimals_in_token_holders(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
+    """
+    We test on 6000001 block.
+    We can calculate ether balances for test blocks.
+
+    But we don't process token balance update for 0x0000000000000000000000000000000000000000 address.
+    And totally we have only:
+        - 36 token holder balances
+
+    It is historical data and we can freeze it.
+    """
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    token_holders = db.execute(
+        token_holders_t.select()
+    ).fetchall()
+
+    for token_holder in token_holders:
+        assert token_holder.decimals == 18

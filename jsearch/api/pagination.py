@@ -1,6 +1,7 @@
-from typing import NamedTuple, List, Dict, Any
+from typing import NamedTuple, List, Dict, Any, Optional
+from yarl import URL
 
-from jsearch.api.structs import Ordering
+from jsearch.api.ordering import Ordering
 
 
 class Page(NamedTuple):
@@ -18,19 +19,27 @@ class Page(NamedTuple):
         }
 
 
-def get_link(url, fields: List[str], item: Dict[str, Any], mapping: Dict[str, str], params: Dict[str, Any]) -> str:
-    query = {mapping.get(key) or key: item[key] for key in fields}
+def get_link(
+        url: URL,
+        fields: List[str],
+        item: Dict[str, Any],
+        params: Dict[str, Any],
+        mapping: Optional[Dict[str, str]] = None,
+) -> str:
+    query = {mapping and mapping.get(key) or key: str(item[key]) for key in fields}
     absolute_url = url.with_query({**query, **params})
     if absolute_url:
         return str(absolute_url)
 
 
 def get_page(
-        url,
+        url: URL,
+        limit: int,
         ordering: Ordering,
         items: List[Dict[str, Any]],
-        mapping: Dict[str, str],
-        limit: int,
+        key_set_fields: Optional[List[str]] = None,
+        mapping: Optional[Dict[str, str]] = None,
+        url_params: Optional[Dict[str, Any]] = None
 ) -> Page:
     """
     If there we have (limit + 1) items - we can
@@ -41,17 +50,19 @@ def get_page(
         'order': ordering.direction,
         'limit': limit,
     }
+    if url_params:
+        params.update(url_params)
 
     if len(items) > limit:
         next_chunk_item = items[-1]
-        next_link = get_link(url, ordering.fields, next_chunk_item, mapping=mapping, params=params)
+        next_link = get_link(url, key_set_fields or ordering.fields, next_chunk_item, mapping=mapping, params=params)
 
         items = items[:-1]
     else:
         next_link = None
 
     if items:
-        link = get_link(url, ordering.fields, items[0], mapping=mapping, params=params)
+        link = get_link(url, key_set_fields or ordering.fields, items[0], mapping=mapping, params=params)
     else:
         link = None
 

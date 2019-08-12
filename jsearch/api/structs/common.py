@@ -1,21 +1,15 @@
 from attr import dataclass
 from typing import NamedTuple, Optional, List
 
-from jsearch.typing import Columns, OrderDirection, OrderScheme
-
-
-class Ordering(NamedTuple):
-    columns: Columns
-    fields: List[str]
-    scheme: OrderScheme
-    direction: OrderDirection
+from jsearch.typing import BlockchainTipAsDict
 
 
 @dataclass
 class BlockInfo:
     hash: str
     number: int
-    timestamp: Optional[int] = None
+    timestamp: int = 0
+    is_forked: bool = False
 
 
 class BlockchainTip(NamedTuple):
@@ -31,7 +25,7 @@ class BlockchainTip(NamedTuple):
     is_in_fork: bool
     last_unchanged_block: Optional[int]
 
-    def to_dict(self):
+    def to_dict(self) -> BlockchainTipAsDict:
         return {
             'currentBlockchainTip': {
                 'blockHash': self.last_hash,
