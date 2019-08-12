@@ -4,9 +4,11 @@ import itertools
 
 import pytest
 import time
-from typing import List, Dict, Any, Callable
+from aiohttp.test_utils import TestClient
+from typing import List, Dict, Any, Callable, Optional
 
 from jsearch.api.tests.utils import parse_url
+from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
@@ -291,13 +293,6 @@ async def test_get_account_internal_transactions(cli,
                 "code": "VALIDATION_ERROR"
             }
         ]),
-        (URL.format(params=urlencode({'limit': 100})), [
-            {
-                "field": "limit",
-                "message": "Must be between 1 and 20.",
-                "code": "INVALID_LIMIT_VALUE"
-            }
-        ]),
         (URL.format(params=urlencode({'order': 'ascending'})), [
             {
                 "field": "order",
@@ -324,7 +319,6 @@ async def test_get_account_internal_transactions(cli,
         "invalid_tag",
         "invalid_timestamp",
         "either_number_or_timestamp",
-        "invalid_limit",
         "invalid_order",
         "transaction_index_requires_parent_transaction_index",
         "parent_transaction_index_requires_block_number",
@@ -349,3 +343,52 @@ async def test_get_account_internal_transactions_errors(
     assert resp.status == 400
     assert not resp_json['status']['success']
     assert resp_json['status']['errors'] == errors
+
+
+@pytest.mark.parametrize(
+    "target_limit, expected_items_count, expected_errors",
+    (
+        (None, 20, []),
+        (19, 19, []),
+        (20, 20, []),
+        (21, 0, [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE",
+            }
+        ]),
+    ),
+    ids=[
+        "limit=None --- 20 rows returned",
+        "limit=19   --- 19 rows returned",
+        "limit=20   --- 20 rows returned",
+        "limit=21   --- error is returned",
+    ],
+)
+async def test_get_accounts_internal_txs_limits(
+        cli: TestClient,
+        account_factory: AccountFactory,
+        create_account_internal_txs,
+        target_limit: Optional[int],
+        expected_items_count: int,
+        expected_errors: List[Dict[str, str]],
+):
+    # given
+    account = account_factory.create()
+    await create_account_internal_txs(account.address, internal_tx_in_block=3)  # ...therefore more than 20 TXs created.
+
+    # when
+    reqv_params = {'block_number': 'latest'}
+
+    if target_limit is not None:
+        reqv_params['limit'] = target_limit
+
+    resp = await cli.get(URL.replace('/address/', f'/{account.address}/').format(params=urlencode(reqv_params)))
+    resp_json = await resp.json()
+
+    # then
+    observed_errors = resp_json['status']['errors']
+    observed_items_count = len(resp_json['data'])
+
+    assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)

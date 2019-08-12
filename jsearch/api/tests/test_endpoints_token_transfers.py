@@ -3,9 +3,11 @@ from urllib.parse import urlencode
 
 import pytest
 import time
-from typing import List, Dict, Any, Callable
+from aiohttp.test_utils import TestClient
+from typing import List, Dict, Any, Callable, Optional
 
 from jsearch.api.tests.utils import parse_url
+from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.typing import AnyCoroutine
 
@@ -366,3 +368,52 @@ async def test_get_token_transfers_noparams(cli, block_factory, transaction_fact
             'logIndex': transfer.log_index,
         }
     ]
+
+
+@pytest.mark.parametrize(
+    "target_limit, expected_items_count, expected_errors",
+    (
+        (None, 20, []),
+        (19, 19, []),
+        (20, 20, []),
+        (21, 0, [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE",
+            }
+        ]),
+    ),
+    ids=[
+        "limit=None --- 20 rows returned",
+        "limit=19   --- 19 rows returned",
+        "limit=20   --- 20 rows returned",
+        "limit=21   --- error is returned",
+    ],
+)
+async def test_get_token_transfers_limits(
+        cli: TestClient,
+        account_factory: AccountFactory,
+        create_account_transfers,
+        target_limit: Optional[int],
+        expected_items_count: int,
+        expected_errors: List[Dict[str, str]],
+):
+    # given
+    account = account_factory.create()
+    await create_account_transfers(account.address)
+
+    # when
+    reqv_params = 'block_number=latest'
+
+    if target_limit is not None:
+        reqv_params += f'&limit={target_limit}'
+
+    resp = await cli.get(f'/v1/tokens/{account.address}/transfers?{reqv_params}')
+    resp_json = await resp.json()
+
+    # then
+    observed_errors = resp_json['status']['errors']
+    observed_items_count = len(resp_json['data'])
+
+    assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)

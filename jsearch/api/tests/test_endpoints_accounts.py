@@ -1,10 +1,14 @@
 import logging
+from typing import Optional, List, Dict
 
 import pytest
+from aiohttp.test_utils import TestClient
 
 from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.common.wallet_events import WalletEventType
+from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
+from jsearch.tests.plugins.databases.factories.wallet_events import WalletEventsFactory
 
 logger = logging.getLogger(__name__)
 
@@ -534,3 +538,60 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
     assert resp_json['paging'] == {
         'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=1200&order=asc&limit=2',
         'next': f'/v1/accounts/{address}/eth_transfers?block_number=13&event_index=1300&order=asc&limit=2'}
+
+
+@pytest.mark.parametrize(
+    "target_limit, expected_items_count, expected_errors",
+    (
+        (None, 20, []),
+        (19, 19, []),
+        (20, 20, []),
+        (21, 0, [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE",
+            }
+        ]),
+    ),
+    ids=[
+        "limit=None --- 20 rows returned",
+        "limit=19   --- 19 rows returned",
+        "limit=20   --- 20 rows returned",
+        "limit=21   --- error is returned",
+    ],
+)
+async def test_get_accounts_eth_transfers(
+        cli: TestClient,
+        block_factory: BlockFactory,
+        wallet_events_factory: WalletEventsFactory,
+        target_limit: Optional[int],
+        expected_items_count: int,
+        expected_errors: List[Dict[str, str]],
+):
+    # given
+    address = '0xcd424c53f5dc7d22cdff536309c24ad87a97e6af'
+
+    block_factory.create(number=1)
+    wallet_events_factory.create_batch(
+        25,
+        block_number=1,
+        address=address,
+        type=WalletEventType.ETH_TRANSFER,
+        event_data={'amount': '6000', 'sender': '0xaaa', 'recipient': address},
+    )
+
+    # when
+    reqv_params = 'block_number=latest'
+
+    if target_limit is not None:
+        reqv_params += f'&limit={target_limit}'
+
+    resp = await cli.get(f'/v1/accounts/{address}/eth_transfers?{reqv_params}')
+    resp_json = await resp.json()
+
+    # then
+    observed_errors = resp_json['status']['errors']
+    observed_items_count = len(resp_json['data'])
+
+    assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)

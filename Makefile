@@ -1,7 +1,7 @@
 PROJECT_NAME=jsearch
 
 shell:
-	docker-compose run --rm tests_shell
+	docker-compose run --rm tests_shell bash
 
 build:
 	docker-compose build tests

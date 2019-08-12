@@ -3,10 +3,12 @@ from urllib.parse import urlencode
 import pytest
 import pytz
 import time
+from aiohttp.test_utils import TestClient
 from datetime import datetime
-from typing import List, Dict, Any, Tuple, Callable
+from typing import List, Dict, Any, Tuple, Callable, Optional
 
 from jsearch.api.tests.utils import parse_url
+from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.typing import AnyCoroutine
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
@@ -215,3 +217,52 @@ async def test_get_account_pending_txs_paging(
 
     assert parse_url(resp_json['paging']['next']) == parse_url(next_link)
     assert parse_url(resp_json['paging']['link']) == parse_url(link)
+
+
+@pytest.mark.parametrize(
+    "target_limit, expected_items_count, expected_errors",
+    (
+        (None, 20, []),
+        (19, 19, []),
+        (20, 20, []),
+        (21, 0, [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE",
+            }
+        ]),
+    ),
+    ids=[
+        "limit=None --- 20 rows returned",
+        "limit=19   --- 19 rows returned",
+        "limit=20   --- 20 rows returned",
+        "limit=21   --- error is returned",
+    ],
+)
+async def test_get_accounts_pending_txs_limits(
+        cli: TestClient,
+        account_factory: AccountFactory,
+        create_account_pending_txs,
+        target_limit: Optional[int],
+        expected_items_count: int,
+        expected_errors: List[Dict[str, str]],
+):
+    # given
+    account = account_factory.create()
+    await create_account_pending_txs(account.address, count=25)  # ...therefore more than 20 TXs created.
+
+    # when
+    reqv_params = 'id=1'
+
+    if target_limit is not None:
+        reqv_params += f'&limit={target_limit}'
+
+    resp = await cli.get(f'/v1/accounts/{account.address}/pending_transactions?{reqv_params}')
+    resp_json = await resp.json()
+
+    # then
+    observed_errors = resp_json['status']['errors']
+    observed_items_count = len(resp_json['data'])
+
+    assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)
