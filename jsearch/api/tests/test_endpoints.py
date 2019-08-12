@@ -325,7 +325,7 @@ async def test_get_transaction(cli, main_db_data):
         'r': tx['r'],
         's': tx['s'],
         'to': tx['to'],
-        'status': False,
+        'status': 0,
         'transactionIndex': tx['transaction_index'],
         'v': tx['v'],
         'value': tx['value'],
