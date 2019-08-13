@@ -36,7 +36,7 @@ async def test_invalid_json_for_proxy_endpoints_should_return_bad_request(
                     }
                 ]
             },
-            'data': None,
+            'data': {},
         }
     )
 
