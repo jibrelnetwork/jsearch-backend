@@ -877,15 +877,8 @@ class Storage:
                 return row['nonce']
             return 0
 
-    async def get_internal_transactions(self,
-                                        parent_tx_hash: str,
-                                        limit: int,
-                                        offset: int,
-                                        order: str):
-
+    async def get_internal_transactions(self, parent_tx_hash: str, order: str):
         query = get_internal_txs_by_parent(parent_tx_hash, order)
-        query = query.limit(limit)
-        query = query.offset(offset)
 
         rows = await fetch(self.pool, query)
         internal_txs = [models.InternalTransaction(**r) for r in rows]
