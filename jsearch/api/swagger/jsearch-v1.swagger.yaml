@@ -959,8 +959,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/InternalTransaction'
-              paging:
-                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -1397,7 +1395,9 @@ paths:
           schema:
             type: array
             items:
-              $ref: '#/definitions/Call'
+              oneOf:
+                - $ref: '#/definitions/Call'
+                - $ref: '#/definitions/BlockParameter'
       responses:
         200:
           description: "DATA - the return value of executed contract"
@@ -2456,25 +2456,33 @@ definitions:
       gas:
         description: Integer of the gas provided for the transaction execution.
         type: string
-        format: dec
+        format: hex
         required: false
-        example: "0"
+        example: "0x10000"
       gasPrice:
         description: Integer of the gas provided for the transaction execution.
         type: string
-        format: dec
+        format: hex
         required: false
-        example: "1"
+        example: "0x1"
       value:
         description: Integer of the value sent with this transaction.
         type: string
-        format: dec
+        format: hex
         required: false
-        example: "0"
+        example: "0x0"
       data:
         description: Hash of the method signature and encoded parameters.
         type: string
         example: "0x6740d36c0000000000000000000000000000000000000000000000000000000000000005"
+
+  BlockParameter:
+    description: An integer block number, or the string "latest", "earliest" or "pending"
+    required: true
+    oneOf:
+      - type: string
+      - type: integer
+    example: "latest"
 
   paging:
     description: The paging object that’s a sibling of the paginated data
