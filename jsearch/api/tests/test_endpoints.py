@@ -9,6 +9,7 @@ from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.tests.entities import BlockFromDumpWrapper
 from jsearch.tests.plugins.databases.factories.internal_transactions import InternalTransactionFactory
+from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 
 logger = logging.getLogger(__name__)
 
@@ -756,15 +757,17 @@ async def test_get_internal_transactions_does_not_care_about_limit_and_offset(
 )
 async def test_get_internal_transactions_with_ordering(
         cli: TestClient,
+        transaction_factory: TransactionFactory,
         internal_transaction_factory: InternalTransactionFactory,
         order: str,
         expected_indexes: str
 ) -> None:
 
     tx_hash = '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e'
+    tx = transaction_factory.create(hash=tx_hash)
 
     for index in [0, 1, 2, 3, 4]:
-        internal_transaction_factory.create(parent_tx_hash=tx_hash, transaction_index=index)
+        internal_transaction_factory.create_for_tx(tx, transaction_index=index)
 
     resp = await cli.get(f'v1/transactions/{tx_hash}/internal_transactions?order={order}')
     resp_json = await resp.json()
