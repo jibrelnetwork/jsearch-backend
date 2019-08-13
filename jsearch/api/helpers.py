@@ -6,7 +6,7 @@ from asyncpg import Connection
 from functools import partial
 from sqlalchemy import asc, desc, Column
 from sqlalchemy.orm import Query
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.ordering import DEFAULT_ORDER, ORDER_ASC, ORDER_DESC
@@ -275,3 +275,20 @@ class ApiError(Exception):
                 return api_error_response(status=exc.status, errors=exc.errors, data={})
 
         return _wrapper
+
+
+Json = TypeVar('Json')
+
+
+async def load_json_or_raise_api_error(request: web.Request) -> Json:
+    try:
+        return await request.json()
+    except ValueError:
+        raise ApiError(
+            {
+                'field': 'non_field_error',
+                'error_code': ErrorCode.INVALID_BODY,
+                'error_message': 'The provided body is not a valid JSON.'
+            },
+            status=400,
+        )
