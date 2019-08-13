@@ -3,7 +3,7 @@ import logging
 from marshmallow import Schema, fields, post_load, validates_schema, ValidationError
 from marshmallow.marshalling import SCHEMA
 from marshmallow.validate import Range, OneOf, Length
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.helpers import (
@@ -42,6 +42,19 @@ def get_flatten_error_messages(messages: Dict[str, List[str]]) -> List[Dict[str,
             message = {'field': get_field(field), 'message': msg, 'code': get_error_code(field)}
             flatten_messages.append(message)
     return flatten_messages
+
+
+def convert_to_api_error_and_raise(exc: ValidationError, field_mapping: Optional[Dict[str, str]] = None):
+    """
+    Notes:
+        don't forget to wrap handler to ApiError.catch
+    """
+    field_mapping = field_mapping or dict()
+
+    messages = {field_mapping and field_mapping.get(key) or key: value for key, value in exc.messages.items()}
+    messages = get_flatten_error_messages(messages)
+
+    raise ApiError(messages)
 
 
 class ListSchema(Schema):
@@ -85,9 +98,7 @@ class ListSchema(Schema):
         Notes:
             don't forget to wrap handler to ApiError.catch
         """
-        messages = {self.mapping and self.mapping.get(key) or key: value for key, value in exc.messages.items()}
-        messages = get_flatten_error_messages(messages)
-        raise ApiError(messages)
+        convert_to_api_error_and_raise(exc, self.mapping)
 
 
 class BlockRelatedListSchema(ListSchema):
