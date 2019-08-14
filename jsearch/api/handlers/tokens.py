@@ -75,6 +75,6 @@ async def get_token_holders(
     holders, tip_meta = await maybe_apply_tip(storage, tip_hash, holders, last_affected_block, empty=[])
 
     url = request.app.router['token_holders'].url_for(address=address)
-    page = get_page(url=url, items=holders, limit=limit, ordering=order)
+    page = get_page(url=url, items=holders, limit=limit, ordering=order, decimals_to_ints=True)
 
     return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
