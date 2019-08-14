@@ -1,9 +1,12 @@
 from asyncio import AbstractEventLoop
 from typing import Any, Callable
+import logging
 
 import mode
 from aiohttp import web
 
+
+logger = logging.getLogger(__name__)
 AppMaker = Callable[[AbstractEventLoop], web.Application]
 
 
@@ -18,6 +21,7 @@ class ApiService(mode.Service):
 
     async def on_start(self) -> None:
         await self.runner.setup()
+        logger.info("Starting Syncer API at port %s", self.port)
         await web.TCPSite(self.runner, '0.0.0.0', self.port).start()
 
     async def on_stop(self) -> None:
