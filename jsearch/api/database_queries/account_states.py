@@ -1,4 +1,4 @@
-from sqlalchemy import select, and_, join
+from sqlalchemy import select, and_, false, tuple_
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
 from sqlalchemy.sql.functions import max
@@ -8,38 +8,33 @@ from jsearch.common.tables import accounts_state_t
 
 
 def get_last_balances_query(addresses: List[str]) -> Query:
-    """
-    Original query:
-
-    SELECT a.address, a.balance
-    FROM accounts_state a
-    INNER JOIN (
-        SELECT address, max(block_number) bn FROM accounts_state
-        WHERE address = any($1::text[]) GROUP BY address
-    ) gn
-    ON a.address=gn.address AND a.block_number=gn.bn
-
-    """
     sub_query = select(
         [
             accounts_state_t.c.address,
-            max(accounts_state_t.c.block_number).label('latest_block'),
+            max(accounts_state_t.c.block_number)
         ]
     ).where(
-        Any(accounts_state_t.c.address, array(tuple(addresses)))
+        and_(
+            Any(accounts_state_t.c.address, array(tuple(addresses))),
+            accounts_state_t.c.is_forked == false()
+        )
     ).group_by(
         accounts_state_t.c.address
     ).alias('latest_blocks')
 
-    return join(
-        accounts_state_t,
-        sub_query,
-        and_(
-            sub_query.c.address == accounts_state_t.c.address,
-            sub_query.c.latest_block == accounts_state_t.c.block_number
-        )
-    ).select().with_only_columns([
+    return select([
         accounts_state_t.c.address,
         accounts_state_t.c.balance,
-        accounts_state_t.c.block_number
-    ])
+        accounts_state_t.c.block_number,
+        accounts_state_t.c.nonce
+    ]).where(
+        and_(
+            tuple_(
+                accounts_state_t.c.address,
+                accounts_state_t.c.block_number
+            ).in_(
+                sub_query
+            ),
+            accounts_state_t.c.is_forked == false()
+        )
+    )

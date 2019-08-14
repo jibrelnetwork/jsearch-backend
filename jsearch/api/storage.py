@@ -531,9 +531,12 @@ class Storage:
         return logs, last_affected_block
 
     async def get_accounts_balances(self, addresses) -> Tuple[List[models.Balance], Optional[LastAffectedBlock]]:
-        query = get_last_balances_query(addresses)
-        async with self.pool.acquire() as conn:
-            rows = await fetch(conn, query)
+        if addresses:
+            query = get_last_balances_query(addresses)
+            async with self.pool.acquire() as conn:
+                rows = await fetch(conn, query)
+        else:
+            rows = []
 
         addr_map = {r['address']: r for r in rows}
 
