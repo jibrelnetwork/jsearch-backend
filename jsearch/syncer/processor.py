@@ -390,6 +390,7 @@ class SyncProcessor:
                              transactions: List[Dict[str, Any]],
                              is_forked: bool) -> List[Dict[str, Any]]:
         items = []
+        tx_index_map = {t['hash']: t['transaction_index'] for t in transactions}
         for tx in internal_txs:
             data = dict_keys_case_convert(tx['fields'])
             if data['tx_origin'] == EXCLUDE_TX_ORIGIN:
@@ -399,6 +400,7 @@ class SyncProcessor:
             del data['operation']
             data['op'] = tx['type']
             data['is_forked'] = is_forked
+            data['parent_tx_index'] = tx_index_map[tx['parent_tx_hash']]
             items.append(data)
         return items
 
