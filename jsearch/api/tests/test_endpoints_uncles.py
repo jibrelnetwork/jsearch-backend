@@ -2,8 +2,11 @@ import logging
 from urllib.parse import parse_qs
 
 import pytest
-from typing import List, Dict, Any, Tuple
+from aiohttp.test_utils import TestClient
+from typing import List, Dict, Any, Tuple, Optional
 
+from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
+from jsearch.tests.plugins.databases.factories.uncles import UncleFactory
 
 logger = logging.getLogger(__name__)
 
@@ -139,3 +142,52 @@ async def test_get_uncles_errors(cli, block_factory, uncle_factory, url, errors)
     assert resp.status == 400
     assert not resp_json['status']['success']
     assert resp_json['status']['errors'] == errors
+
+
+@pytest.mark.parametrize(
+    "target_limit, expected_items_count, expected_errors",
+    (
+        (None, 20, []),
+        (19, 19, []),
+        (20, 20, []),
+        (21, 0, [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE",
+            }
+        ]),
+    ),
+    ids=[
+        "limit=None --- 20 rows returned",
+        "limit=19   --- 19 rows returned",
+        "limit=20   --- 20 rows returned",
+        "limit=21   --- error is returned",
+    ],
+)
+async def test_get_uncles_limits(
+        cli: TestClient,
+        block_factory: BlockFactory,
+        uncle_factory: UncleFactory,
+        target_limit: Optional[int],
+        expected_items_count: int,
+        expected_errors: List[Dict[str, str]],
+):
+    # given
+    block_factory.create_batch(25)
+    uncle_factory.create_batch(25)
+
+    # when
+    reqv_params = 'uncle_number=latest'
+
+    if target_limit is not None:
+        reqv_params += f'&limit={target_limit}'
+
+    resp = await cli.get(f'/v1/uncles?{reqv_params}')
+    resp_json = await resp.json()
+
+    # then
+    observed_errors = resp_json['status']['errors']
+    observed_items_count = len(resp_json['data'])
+
+    assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)

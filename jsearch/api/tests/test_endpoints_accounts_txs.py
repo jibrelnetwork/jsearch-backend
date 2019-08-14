@@ -3,8 +3,10 @@ from urllib.parse import parse_qs, urlencode
 
 import pytest
 import time
-from typing import List, Dict, Any, Tuple, Callable
+from aiohttp.test_utils import TestClient
+from typing import List, Dict, Any, Tuple, Callable, Optional
 
+from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
@@ -47,7 +49,7 @@ def create_account_txs(block_factory, transaction_factory) -> Callable[[str], An
             account_address = account
 
         else:
-            print(f'Skip txs creation for {account}')
+            logger.info(f'Skip txs creation for {account}')
 
     return create_env
 
@@ -166,13 +168,6 @@ async def test_account_transactions(cli,
                 "code": "VALIDATION_ERROR"
             }
         ]),
-        (URL.format(params=urlencode({'limit': 100})), [
-            {
-                "field": "limit",
-                "message": "Must be between 1 and 20.",
-                "code": "INVALID_LIMIT_VALUE"
-            }
-        ]),
         (URL.format(params=urlencode({'order': 'ascending'})), [
             {
                 "field": "order",
@@ -185,7 +180,6 @@ async def test_account_transactions(cli,
         "invalid_tag",
         "invalid_timestamp",
         "either_number_or_timestamp",
-        "invalid_limit",
         "invalid_order"
     ]
 )
@@ -202,3 +196,52 @@ async def test_account_transactions_errors(cli, account_factory, create_account_
     assert resp.status == 400
     assert not resp_json['status']['success']
     assert resp_json['status']['errors'] == errors
+
+
+@pytest.mark.parametrize(
+    "target_limit, expected_items_count, expected_errors",
+    (
+        (None, 20, []),
+        (19, 19, []),
+        (20, 20, []),
+        (21, 0, [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE",
+            }
+        ]),
+    ),
+    ids=[
+        "limit=None --- 20 rows returned",
+        "limit=19   --- 19 rows returned",
+        "limit=20   --- 20 rows returned",
+        "limit=21   --- error is returned",
+    ],
+)
+async def test_get_accounts_transactions_limits(
+        cli: TestClient,
+        account_factory: AccountFactory,
+        create_account_txs,
+        target_limit: Optional[int],
+        expected_items_count: int,
+        expected_errors: List[Dict[str, str]],
+):
+    # given
+    account = account_factory.create()
+    await create_account_txs(account.address, tx_in_block=5)  # ...therefore more than 20 TXs created.
+
+    # when
+    reqv_params = 'block_number=latest'
+
+    if target_limit is not None:
+        reqv_params += f'&limit={target_limit}'
+
+    resp = await cli.get(f'/v1/accounts/{account.address}/transactions?{reqv_params}')
+    resp_json = await resp.json()
+
+    # then
+    observed_errors = resp_json['status']['errors']
+    observed_items_count = len(resp_json['data'])
+
+    assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)

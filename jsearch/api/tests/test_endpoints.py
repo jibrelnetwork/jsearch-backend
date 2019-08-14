@@ -2,14 +2,14 @@ import logging
 from unittest import mock
 
 import pytest
+from aiohttp.test_utils import TestClient
 from asynctest import CoroutineMock
 
 from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
-from jsearch.common.tables import (
-    assets_transfers_t,
-)
 from jsearch.tests.entities import BlockFromDumpWrapper
+from jsearch.tests.plugins.databases.factories.internal_transactions import InternalTransactionFactory
+from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 
 logger = logging.getLogger(__name__)
 
@@ -328,7 +328,7 @@ async def test_get_transaction(cli, main_db_data):
         'r': tx['r'],
         's': tx['s'],
         'to': tx['to'],
-        'status': False,
+        'status': 0,
         'transactionIndex': tx['transaction_index'],
         'v': tx['v'],
         'value': tx['value'],
@@ -606,110 +606,6 @@ async def test_get_blockchain_tip(cli, block_factory):
     }
 
 
-async def test_get_wallet_transfers_no_addresses(cli, db):
-    resp = await cli.get(f'/v1/wallet/transfers')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == []
-
-
-async def test_get_wallet_transfers(cli, db):
-    transfers = [
-        {
-            'address': 'a1',
-            'type': 'erc20-transfer',
-            'from': 'a1',
-            'to': 'a2',
-            'asset_address': 'ca1',
-            'value': 1000,
-            'decimals': 1,
-            'tx_data': {'hash': 'f1'},
-            'is_forked': False,
-            'block_number': 100,
-            'block_hash': 'b1',
-            'ordering': 2
-        },
-        {
-            'address': 'a1',
-            'type': 'eth-transfer',
-            'from': 'a3',
-            'to': 'a1',
-            'asset_address': '',
-            'value': 200,
-            'decimals': 0,
-            'tx_data': {'hash': 'f2'},
-            'is_forked': False,
-            'block_number': 101,
-            'block_hash': 'b1',
-            'ordering': 1
-        },
-        {
-            'address': 'a2',
-            'type': 'erc20-transfer',
-            'from': 'a1',
-            'to': 'a2',
-            'asset_address': 'ca1',
-            'value': 1000,
-            'decimals': 1,
-            'tx_data': {'hash': 'f1'},
-            'is_forked': False,
-            'block_number': 100,
-            'block_hash': 'b1',
-            'ordering': 1
-        },
-        {
-            'address': 'a2',
-            'type': 'eth-transfer',
-            'from': 'a3',
-            'to': 'a1',
-            'asset_address': '',
-            'value': 100,
-            'decimals': 0,
-            'tx_data': {'hash': 'f2'},
-            'is_forked': True,
-            'block_number': 100,
-            'block_hash': 'b1',
-            'ordering': 1
-        },
-
-    ]
-    for t in transfers:
-        db.execute(assets_transfers_t.insert().values(**t))
-
-    resp = await cli.get(f'/v1/wallet/transfers?addresses=a1,a2')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'amount': '100',
-                    'assetAddress': 'ca1',
-                    'from': 'a1',
-                    'to': 'a2',
-                    'txData': {"hash": "f1"},
-                    'type': 'erc20-transfer'},
-                   {'amount': '200',
-                    'assetAddress': '',
-                    'from': 'a3',
-                    'to': 'a1',
-                    'txData': {"hash": "f2"},
-                    'type': 'eth-transfer'},
-                   {'amount': '100',
-                    'assetAddress': 'ca1',
-                    'from': 'a1',
-                    'to': 'a2',
-                    'txData': {"hash": "f1"},
-                    'type': 'erc20-transfer'}]
-
-    resp = await cli.get(f'/v1/wallet/transfers?addresses=a1&assets=ca1')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'amount': '100',
-                    'assetAddress': 'ca1',
-                    'from': 'a1',
-                    'to': 'a2',
-                    'txData': {"hash": "f1"},
-                    'type': 'erc20-transfer'}
-                   ]
-
-
 async def test_get_accounts_balances_does_not_complain_on_addresses_count_less_than_limit(cli):
     addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH)]
     addresses_str = ','.join(addresses)
@@ -818,3 +714,85 @@ async def test_get_internal_transactions(cli, internal_transaction_factory):
             }
         ]
     }
+
+
+@pytest.mark.parametrize(
+    'limit, offset',
+    (
+        ('10', '0'),
+        ('0', '10'),
+        ('10', '10'),
+        ('aaa', 'bbb'),
+    ),
+    ids=[
+        'with limit without offset',
+        'without limit with offset',
+        'with limit and offset',
+        'invalid limit and offset',
+    ]
+)
+async def test_get_internal_transactions_does_not_care_about_limit_and_offset(
+        cli: TestClient,
+        internal_transaction_factory: InternalTransactionFactory,
+        limit: str,
+        offset: str
+) -> None:
+
+    tx_hash = '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e'
+    internal_transaction_factory.create_batch(21, parent_tx_hash=tx_hash)
+
+    resp = await cli.get(f'v1/transactions/{tx_hash}/internal_transactions?limit={limit}&offset={offset}')
+    resp_json = await resp.json()
+
+    assert len(resp_json['data']) == 21
+
+
+@pytest.mark.parametrize(
+    'order, expected_indexes',
+    (
+        ('asc', [0, 1, 2, 3, 4]),
+        ('desc', [4, 3, 2, 1, 0]),
+    ),
+    ids=['asc', 'desc']
+)
+async def test_get_internal_transactions_with_ordering(
+        cli: TestClient,
+        transaction_factory: TransactionFactory,
+        internal_transaction_factory: InternalTransactionFactory,
+        order: str,
+        expected_indexes: str
+) -> None:
+
+    tx_hash = '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e'
+    tx = transaction_factory.create(hash=tx_hash)
+
+    for index in [0, 1, 2, 3, 4]:
+        internal_transaction_factory.create_for_tx(tx, transaction_index=index)
+
+    resp = await cli.get(f'v1/transactions/{tx_hash}/internal_transactions?order={order}')
+    resp_json = await resp.json()
+
+    assert [x['transactionIndex'] for x in resp_json['data']] == expected_indexes
+
+
+async def test_get_internal_transactions_with_invalid_ordering_complains_about_queryparam(
+        cli: TestClient,
+        internal_transaction_factory: InternalTransactionFactory,
+) -> None:
+
+    tx_hash = '0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e'
+    internal_transaction_factory.create(parent_tx_hash=tx_hash)
+
+    resp = await cli.get(f'v1/transactions/{tx_hash}/internal_transactions?order=ascending')
+    resp_json = await resp.json()
+
+    assert (resp.status, resp_json['status']['errors']) == (
+        400,
+        [
+            {
+                "field": "order",
+                "message": 'Ordering can be either "asc" or "desc".',
+                "code": "INVALID_ORDER_VALUE"
+            }
+        ],
+    )

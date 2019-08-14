@@ -2,7 +2,8 @@ import logging
 from urllib.parse import urlencode
 
 import pytest
-from typing import List, Callable, Tuple
+from aiohttp.test_utils import TestClient
+from typing import List, Callable, Tuple, Optional, Dict
 
 from jsearch.api.tests.utils import parse_url
 from jsearch.tests.plugins.databases.factories.common import generate_address
@@ -124,3 +125,51 @@ async def test_get_token_holders(cli, token_holder_factory):
             'id': transfer.id
         },
     ]
+
+
+@pytest.mark.parametrize(
+    "target_limit, expected_items_count, expected_errors",
+    (
+        (None, 20, []),
+        (19, 19, []),
+        (20, 20, []),
+        (21, 0, [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE",
+            }
+        ]),
+    ),
+    ids=[
+        "limit=None --- 20 rows returned",
+        "limit=19   --- 19 rows returned",
+        "limit=20   --- 20 rows returned",
+        "limit=21   --- error is returned",
+    ],
+)
+async def test_get_token_holders_limits(
+        cli: TestClient,
+        create_token_holders,
+        target_limit: Optional[int],
+        expected_items_count: int,
+        expected_errors: List[Dict[str, str]],
+):
+    # given
+    token_address = generate_address()
+    create_token_holders(token_address, holders_per_balance=7)  # ...therefore there are more than 20 holders.
+
+    # when
+    reqv_params = 'block_number=latest'
+
+    if target_limit is not None:
+        reqv_params += f'&limit={target_limit}'
+
+    resp = await cli.get(f'/v1/tokens/{token_address}/holders?{reqv_params}')
+    resp_json = await resp.json()
+
+    # then
+    observed_errors = resp_json['status']['errors']
+    observed_items_count = len(resp_json['data'])
+
+    assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)

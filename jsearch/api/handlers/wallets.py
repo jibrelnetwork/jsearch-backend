@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from typing import Optional
@@ -12,7 +11,6 @@ from jsearch.api.handlers.common import (
 )
 from jsearch.api.helpers import ApiError
 from jsearch.api.helpers import (
-    validate_params,
     api_success,
     api_error_response,
     get_from_joined_string,
@@ -136,38 +134,3 @@ async def get_assets_summary(request):
         last_affected_block = None
     data, tip_meta = await maybe_apply_tip(storage, tip_hash, summary, last_affected_block, empty=[])
     return api_success([item.to_dict() for item in data], meta=tip_meta)
-
-
-async def get_wallet_transfers(request):
-    params = validate_params(request)
-    addresses = get_from_joined_string(request.query.get('addresses'))
-    assets = get_from_joined_string(request.query.get('assets'))
-    storage = request.app['storage']
-    transfers = await storage.get_wallet_assets_transfers(
-        addresses,
-        limit=params['limit'],
-        offset=params['offset'],
-        assets=assets
-    )
-    return api_success([t.to_dict() for t in transfers])
-
-
-async def get_wallet_transactions(request):
-    params = validate_params(request)
-    address = request.query.get('address', '')
-    storage = request.app['storage']
-    txs_task = storage.get_wallet_transactions(
-        address,
-        limit=params['limit'],
-        offset=params['offset']
-    )
-    nonce_task = storage.get_nonce(address)
-    results = await asyncio.gather(txs_task, nonce_task)
-    txs = [t.to_dict() for t in results[0]]
-    nonce = results[1]
-    result = {
-        'transactions': txs,
-        'pendingTransactions': [],
-        'outgoingTransactionsNumber': nonce
-    }
-    return api_success(result)

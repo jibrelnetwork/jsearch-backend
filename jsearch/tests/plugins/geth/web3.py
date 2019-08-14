@@ -39,8 +39,8 @@ class Web3ClientWrapper:
             while block_on_start == self.last_block_number:
                 time.sleep(self.wait_interval)
                 logger.info('Still mining...', extra={'time_elapsed': time.time() - start_time})
-        except Exception as e:
-            print(e)
+        except Exception:
+            logger.exception('Exception occurred')
 
         logger.info('Stop mining')
         self.stop_miner()

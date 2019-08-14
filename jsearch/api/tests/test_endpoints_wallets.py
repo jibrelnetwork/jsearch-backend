@@ -3,11 +3,13 @@ from urllib.parse import urlencode
 
 import pytest
 import time
-from typing import Callable, Tuple, List, Dict, Any
+from aiohttp.test_utils import TestClient
+from typing import Callable, Tuple, List, Dict, Any, Optional
 
 from jsearch.api.tests.utils import parse_url
 from jsearch.common.wallet_events import make_event_index
 from jsearch.common.tables import assets_summary_t
+from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
@@ -100,16 +102,16 @@ URL = '/v1/wallet/events?{params}'
         ),
         (
                 URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
-                [(4, 0, 1), (4, 0, 2), (4, 1, 1)],
+                [(0, 0, 1), (0, 0, 2), (0, 1, 1)],
                 URL.format(params=urlencode({
-                    'block_number': 4,
-                    'event_index': make_event_index(4, 1, 2),
+                    'block_number': 0,
+                    'event_index': make_event_index(0, 1, 2),
                     'limit': 3,
                     'order': 'asc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 4,
-                    'event_index': make_event_index(4, 0, 1),
+                    'block_number': 0,
+                    'event_index': make_event_index(0, 0, 1),
                     'limit': 3,
                     'order': 'asc'
                 })),
@@ -273,6 +275,59 @@ async def test_get_wallet_events_errors(
     assert resp.status == 400
     assert not resp_json['status']['success']
     assert resp_json['status']['errors'] == errors
+
+
+@pytest.mark.parametrize(
+    "target_limit, expected_items_count, expected_errors",
+    (
+        (None, 20, []),
+        (19, 19, []),
+        (20, 20, []),
+        (21, 0, [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE",
+            }
+        ]),
+    ),
+    ids=[
+        "limit=None --- 20 rows returned",
+        "limit=19   --- 19 rows returned",
+        "limit=20   --- 20 rows returned",
+        "limit=21   --- error is returned",
+    ],
+)
+async def test_get_events_limits(
+        cli: TestClient,
+        account_factory: AccountFactory,
+        create_wallet_events,
+        target_limit: Optional[int],
+        expected_items_count: int,
+        expected_errors: List[Dict[str, str]],
+):
+    # given
+    account = account_factory.create()
+
+    # Making more than 20 events.
+    await create_wallet_events(account.address, tx_in_block=5, internal_tx_in_block=1)
+
+    # when
+    reqv_params = f'block_number=latest&blockchain_address={account.address}'
+
+    if target_limit is not None:
+        reqv_params += f'&limit={target_limit}'
+
+    resp = await cli.get(f'/v1/wallet/events?{reqv_params}')
+    resp_json = await resp.json()
+
+    # then
+    observed_errors = resp_json['status']['errors']
+
+    # If 400 is raised -> resp_json['data'] is empty.
+    observed_items_count = len(resp_json['data']['events']) if not observed_errors else 0
+
+    assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)
 
 
 async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_factory, transaction_factory):

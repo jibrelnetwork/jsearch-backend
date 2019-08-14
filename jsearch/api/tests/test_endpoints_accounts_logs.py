@@ -1,10 +1,12 @@
 import logging
 import time
-from typing import Tuple, Dict, Any, Callable, List
+from aiohttp.test_utils import TestClient
+from typing import Tuple, Dict, Any, Callable, List, Optional
 from urllib.parse import parse_qs, urlencode
 
 import pytest
 
+from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
 from jsearch.tests.plugins.databases.factories.logs import LogFactory
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
@@ -58,7 +60,7 @@ def create_account_logs(
             account_address = account
 
         else:
-            print(f'Skip txs creation for {account}')
+            logger.info(f'Skip txs creation for {account}')
 
     return create_env
 
@@ -285,13 +287,6 @@ async def test_get_account_logs_pagination(cli,
                 "code": "VALIDATION_ERROR"
             }
         ]),
-        (URL.format(params=urlencode({'limit': 100})), [
-            {
-                "field": "limit",
-                "message": "Must be between 1 and 20.",
-                "code": "INVALID_LIMIT_VALUE"
-            }
-        ]),
         (URL.format(params=urlencode({'order': 'ascending'})), [
             {
                 "field": "order",
@@ -318,7 +313,6 @@ async def test_get_account_logs_pagination(cli,
         "invalid_tag",
         "invalid_timestamp",
         "either_number_or_timestamp",
-        "invalid_limit",
         "invalid_order",
         "transaction_index_requires_parent_transaction_index",
         "parent_transaction_index_requires_block_number",
@@ -368,3 +362,52 @@ async def test_get_account_logs_single(cli, db, main_db_data):
             'next': None
         }
     }
+
+
+@pytest.mark.parametrize(
+    "target_limit, expected_items_count, expected_errors",
+    (
+        (None, 20, []),
+        (19, 19, []),
+        (20, 20, []),
+        (21, 0, [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE",
+            }
+        ]),
+    ),
+    ids=[
+        "limit=None --- 20 rows returned",
+        "limit=19   --- 19 rows returned",
+        "limit=20   --- 20 rows returned",
+        "limit=21   --- error is returned",
+    ],
+)
+async def test_get_accounts_logs_limits(
+        cli: TestClient,
+        account_factory: AccountFactory,
+        create_account_logs,
+        target_limit: Optional[int],
+        expected_items_count: int,
+        expected_errors: List[Dict[str, str]],
+):
+    # given
+    account = account_factory.create()
+    await create_account_logs(account.address, logs_in_block=3)  # ...therefore more than 20 TXs created.
+
+    # when
+    reqv_params = 'block_number=latest'
+
+    if target_limit is not None:
+        reqv_params += f'&limit={target_limit}'
+
+    resp = await cli.get(f'/v1/accounts/{account.address}/logs?{reqv_params}')
+    resp_json = await resp.json()
+
+    # then
+    observed_errors = resp_json['status']['errors']
+    observed_items_count = len(resp_json['data'])
+
+    assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)

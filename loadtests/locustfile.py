@@ -1,4 +1,5 @@
 import os
+import sys
 import random
 
 import psycopg2
@@ -11,7 +12,7 @@ class UserBehavior(TaskSet):
 
     def setup(self):
         conn = psycopg2.connect(os.environ['JSEARCH_MAIN_DB'])
-        print('Loading keys...')
+        sys.stdout.write('Loading keys...')
         cur = conn.cursor()
         cur.execute('SELECT number, hash from blocks ORDER BY number DESC LIMIT 10000')
         keys['blocks'] = cur.fetchall()
@@ -27,7 +28,7 @@ class UserBehavior(TaskSet):
         accounts = len(keys['accounts'])
         txs = len(keys['transactions'])
 
-        print(f'Keys loaded: B: {blocks}, A: {accounts}, Tx: {txs}')
+        sys.stdout.write(f'Keys loaded: B: {blocks}, A: {accounts}, Tx: {txs}')
 
     # app.router.add_route('GET', '/v1/accounts/balances', handlers.get_accounts_balances)
     @task(1)

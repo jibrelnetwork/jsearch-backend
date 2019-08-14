@@ -3,8 +3,11 @@ from urllib.parse import parse_qs
 from urllib.parse import urlencode
 
 import pytest
-from typing import List, Dict, Any, Tuple
+from aiohttp.test_utils import TestClient
+from typing import List, Dict, Any, Tuple, Optional
 
+from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
+from jsearch.tests.plugins.databases.factories.uncles import UncleFactory
 
 logger = logging.getLogger(__name__)
 
@@ -148,13 +151,6 @@ async def test_get_uncles(cli,
                 "code": "VALIDATION_ERROR"
             }
         ]),
-        (URL.format(params=urlencode({'limit': 100})), [
-            {
-                "field": "limit",
-                "message": "Must be between 1 and 20.",
-                "code": "INVALID_LIMIT_VALUE"
-            }
-        ]),
         (URL.format(params=urlencode({'order': 'ascending'})), [
             {
                 "field": "order",
@@ -167,7 +163,6 @@ async def test_get_uncles(cli,
         "invalid_tag",
         "invalid_timestamp",
         "either_number_or_timestamp",
-        "invalid_limit",
         "invalid_order"
     ]
 )
@@ -185,3 +180,53 @@ async def test_get_uncles_errors(cli, block_factory, uncle_factory, url, errors)
     assert resp.status == 400
     assert not resp_json['status']['success']
     assert resp_json['status']['errors'] == errors
+
+
+@pytest.mark.parametrize(
+    "target_limit, expected_items_count, expected_errors",
+    (
+        (None, 20, []),
+        (19, 19, []),
+        (20, 20, []),
+        (21, 0, [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE",
+            }
+        ]),
+    ),
+    ids=[
+        "limit=None --- 20 rows returned",
+        "limit=19   --- 19 rows returned",
+        "limit=20   --- 20 rows returned",
+        "limit=21   --- error is returned",
+    ],
+)
+async def test_get_account_uncles_limits(
+        cli: TestClient,
+        block_factory: BlockFactory,
+        uncle_factory: UncleFactory,
+        target_limit: Optional[int],
+        expected_items_count: int,
+        expected_errors: List[Dict[str, str]],
+):
+    # given
+    miner = '0x1111111111111111111111111111111111111111'
+    block_factory.create_batch(25)
+    uncle_factory.create_batch(25, miner=miner)
+
+    # when
+    reqv_params = {'uncle_number': 'latest'}
+
+    if target_limit is not None:
+        reqv_params['limit'] = target_limit
+
+    resp = await cli.get(URL.replace('/address/', f'/{miner}/').format(params=urlencode(reqv_params)))
+    resp_json = await resp.json()
+
+    # then
+    observed_errors = resp_json['status']['errors']
+    observed_items_count = len(resp_json['data'])
+
+    assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)
