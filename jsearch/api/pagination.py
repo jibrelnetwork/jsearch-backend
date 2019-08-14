@@ -1,3 +1,5 @@
+import decimal
+
 from typing import NamedTuple, List, Dict, Any, Optional
 from yarl import URL
 
@@ -24,9 +26,22 @@ def get_link(
         fields: List[str],
         item: Dict[str, Any],
         params: Dict[str, Any],
+        decimals_to_ints: bool,
         mapping: Optional[Dict[str, str]] = None,
 ) -> str:
-    query = {mapping and mapping.get(key) or key: str(item[key]) for key in fields}
+    query = dict()
+
+    for field in fields:
+        query_key = mapping and mapping.get(field) or field
+        value = item[field]
+
+        if decimals_to_ints and isinstance(value, decimal.Decimal):
+            # If a value is a big decimal, it will be converted to a scientific
+            # notation when casted to string (i.e. str(1..0.0) = '1e+18').
+            value = int(value)
+
+        query[query_key] = str(value)
+
     absolute_url = url.with_query({**query, **params})
     if absolute_url:
         return str(absolute_url)
@@ -39,7 +54,8 @@ def get_page(
         items: List[Dict[str, Any]],
         key_set_fields: Optional[List[str]] = None,
         mapping: Optional[Dict[str, str]] = None,
-        url_params: Optional[Dict[str, Any]] = None
+        url_params: Optional[Dict[str, Any]] = None,
+        decimals_to_ints: bool = False,
 ) -> Page:
     """
     If there we have (limit + 1) items - we can
@@ -55,14 +71,28 @@ def get_page(
 
     if len(items) > limit:
         next_chunk_item = items[-1]
-        next_link = get_link(url, key_set_fields or ordering.fields, next_chunk_item, mapping=mapping, params=params)
+        next_link = get_link(
+            url,
+            key_set_fields or ordering.fields,
+            next_chunk_item,
+            mapping=mapping,
+            params=params,
+            decimals_to_ints=decimals_to_ints,
+        )
 
         items = items[:-1]
     else:
         next_link = None
 
     if items:
-        link = get_link(url, key_set_fields or ordering.fields, items[0], mapping=mapping, params=params)
+        link = get_link(
+            url,
+            key_set_fields or ordering.fields,
+            items[0],
+            mapping=mapping,
+            params=params,
+            decimals_to_ints=decimals_to_ints,
+        )
     else:
         link = None
 
