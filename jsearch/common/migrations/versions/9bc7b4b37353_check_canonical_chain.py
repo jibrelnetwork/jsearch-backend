@@ -6,16 +6,12 @@ Create Date: 2019-08-13 13:17:51.348621
 
 """
 from alembic import op
-import sqlalchemy as sa
-from jsearch.common import tables
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '9bc7b4b37353'
 down_revision = '8057bd227b7c'
 branch_labels = None
 depends_on = None
-
 
 UP_SQL = """
 CREATE OR REPLACE FUNCTION check_canonical_chain(depth integer)
