@@ -100,6 +100,20 @@ async def test_get_token_holders_pagination(
     assert items == holders
 
 
+async def test_get_token_holders_pagination_large_balances_does_not_converted_to_e_notation(cli, create_token_holders):
+    # See: JSEARCH-499.
+    token_address = generate_address()
+    create_token_holders(token_address, balances=(1000000000000000000,))
+
+    resp = await cli.get(f'/v1/tokens/{token_address}/holders?limit=1')
+    resp_json = await resp.json()
+
+    assert resp_json['paging'] == {
+        'link': f'/v1/tokens/{token_address}/holders?balance=1000000000000000000&id=1&order=desc&limit=1',
+        'next': f'/v1/tokens/{token_address}/holders?balance=1000000000000000000&id=0&order=desc&limit=1',
+    }
+
+
 async def test_get_token_holders(cli, token_holder_factory):
     # given
     data = {

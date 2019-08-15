@@ -1,7 +1,17 @@
 #!/bin/bash -e
 
 echo "Starting Jsearch Backend service, mode '$1' version: `cat /app/version.txt` on node `hostname`"
+echo "Supported commands:
+  jsearch-syncer
+  jsearch-syncer-pending
+  app
+  migrate
+"
 
+RUNMODE="${1:-app}"
+
+echo "Run: ${RUNMODE}
+"
 
 wait_kafka_ready () {
     # Collect Kafka nodes and wait for them to be up.
@@ -24,20 +34,23 @@ wait_main_db_ready () {
 }
 
 
-if [[ "$1" = "jsearch-syncer" ]]; then
+if [[ "${RUNMODE}" = "jsearch-syncer" ]]; then
     wait_raw_db_ready
     wait_main_db_ready
-elif [[ "$1" = "jsearch-syncer-pending" ]]; then
+elif [[ "${RUNMODE}" = "jsearch-syncer-pending" ]]; then
     wait_raw_db_ready
     wait_main_db_ready
-elif [[ "$1" = "app" ]]; then
+elif [[ "${RUNMODE}" = "app" ]]; then
+    wait_main_db_ready
+elif [[ "${RUNMODE}" = "migrate" ]]; then
     wait_main_db_ready
 fi
 
 
 if [[ "$@" = "app" ]]; then
-    python manage.py upgrade head
     gunicorn -c gunicorn-conf.py jsearch.api.app:make_app
+elif [[ "$@" = "migrate" ]]; then
+    python manage.py upgrade head
 else
     exec "$@"
 fi

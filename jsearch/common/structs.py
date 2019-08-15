@@ -1,4 +1,4 @@
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, List
 
 
 class DbStats(NamedTuple):
@@ -24,3 +24,8 @@ class NodeStats(NamedTuple):
 class SyncRange(NamedTuple):
     start: int
     end: Optional[int]
+
+
+class ChainStats(NamedTuple):
+    is_healthy: bool
+    chain_holes: Optional[List]
