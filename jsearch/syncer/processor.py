@@ -22,6 +22,9 @@ from jsearch.typing import Logs
 logger = logging.getLogger(__name__)
 
 
+EXCLUDE_TX_ORIGIN = '0x8999999999999999999999999999999999999998'  # fake address used by fork to get token balances
+
+
 class BlockData(NamedTuple):
     block: Dict[str, Any]
     txs: List[Dict[str, Any]]
@@ -390,6 +393,8 @@ class SyncProcessor:
         tx_index_map = {t['hash']: t['transaction_index'] for t in transactions}
         for tx in internal_txs:
             data = dict_keys_case_convert(tx['fields'])
+            if data['tx_origin'] == EXCLUDE_TX_ORIGIN:
+                continue
             data['timestamp'] = data.pop('time_stamp')
             data['transaction_index'] = tx['index']
             del data['operation']
