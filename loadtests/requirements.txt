@@ -1,2 +1,0 @@
-locust
-psycopg2-binary
