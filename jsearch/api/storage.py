@@ -9,6 +9,7 @@ from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
 from jsearch.api import models
+from jsearch.api.database_queries.account_states import get_last_balances_query
 from jsearch.api.database_queries.assets_summary import get_assets_summary_query
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
@@ -22,10 +23,14 @@ from jsearch.api.database_queries.blocks import (
     ORDER_SCHEME_BY_NUMBER,
     ORDER_SCHEME_BY_TIMESTAMP,
 )
-from jsearch.api.database_queries.internal_transactions import get_internal_txs_by_parent, \
-    get_internal_txs_by_address_and_block_query, get_internal_txs_by_address_and_timestamp_query
+from jsearch.api.database_queries.internal_transactions import (
+    get_internal_txs_by_parent,
+    get_internal_txs_by_address_and_block_query,
+    get_internal_txs_by_address_and_timestamp_query
+)
 from jsearch.api.database_queries.logs import (
-    get_logs_by_address_and_block_query, get_logs_by_address_and_timestamp_query
+    get_logs_by_address_and_block_query,
+    get_logs_by_address_and_timestamp_query
 )
 from jsearch.api.database_queries.pending_transactions import (
     get_pending_txs_by_account,
@@ -523,24 +528,27 @@ class Storage:
 
         logs = [models.Log(**r) for r in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
-
         return logs, last_affected_block
 
     async def get_accounts_balances(self, addresses) -> Tuple[List[models.Balance], Optional[LastAffectedBlock]]:
-        query = """SELECT a.address, a.balance, a.block_number FROM accounts_state a
-                    INNER JOIN (SELECT address, max(block_number) bn FROM accounts_state
-                                 WHERE address = any($1::text[]) GROUP BY address) gn
-                    ON a.address=gn.address AND a.block_number=gn.bn;"""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, addresses)
-            addr_map = {r['address']: r for r in rows}
+        if addresses:
+            query = get_last_balances_query(addresses)
+            async with self.pool.acquire() as conn:
+                rows = await fetch(conn, query)
+        else:
+            rows = []
 
-        balances = [
-            models.Balance(balance=int(addr_map[a]['balance']), address=addr_map[a]['address'])
-            for a in addresses if a in addr_map
-        ]
+        addr_map = {r['address']: r for r in rows}
+
+        balances = []
+        for address in addresses:
+            if address in addr_map:
+                balance = models.Balance(
+                    balance=int(addr_map[address]['balance']),
+                    address=addr_map[address]['address']
+                )
+                balances.append(balance)
         last_affected_block = max((r['block_number'] for r in rows), default=None)
-
         return balances, last_affected_block
 
     async def get_tokens_transfers(

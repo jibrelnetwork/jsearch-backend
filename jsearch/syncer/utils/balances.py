@@ -4,15 +4,17 @@ from aiopg.sa import SAConnection
 from sqlalchemy.orm import Query
 from typing import List, Dict, Any, Tuple, Set
 
+from jsearch.api.database_queries.account_states import get_last_balances_query
 from jsearch.common import contracts
 from jsearch.common.processing.decimals_cache import decimals_cache
 from jsearch.common.processing.wallet import AssetBalanceUpdates, AssetBalanceUpdate
-from jsearch.syncer.database_queries.accounts import (
-    get_last_ether_balances_query
-)
+from jsearch.syncer.database_queries.accounts import get_accounts_state_for_blocks_query
 from jsearch.syncer.database_queries.balance_requests import get_balance_request_query
-from jsearch.syncer.database_queries.token_transfers import get_token_address_and_accounts_for_blocks_q, \
-    get_incomes_after_block_query, get_outcomes_after_block_query
+from jsearch.syncer.database_queries.token_transfers import (
+    get_token_address_and_accounts_for_blocks_q,
+    get_incomes_after_block_query,
+    get_outcomes_after_block_query
+)
 from jsearch.syncer.structs import TokenHolder, BalanceOnBlock
 from jsearch.typing import TokenAddresses, AccountAddresses, AccountAddress, TokenAddress
 
@@ -28,9 +30,20 @@ async def get_last_ether_states_for_addresses_in_blocks(
     Returns:
         last states for addresses affected by blocks
     """
-    query = get_last_ether_balances_query(blocks_hashes)
+    query = get_accounts_state_for_blocks_query(blocks_hashes)
     async with connection.execute(query) as cursor:
-        results = await cursor.fetchall()
+        addresses_results = await cursor.fetchall()
+
+    addresses = [item['address'] for item in addresses_results]
+
+    if addresses:
+
+        query = get_last_balances_query(addresses)
+        async with connection.execute(query) as cursor:
+            results = await cursor.fetchall()
+
+    else:
+        results = []
 
     return results
 
