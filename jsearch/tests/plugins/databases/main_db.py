@@ -1,7 +1,6 @@
 import logging
 import os
 from asyncio import AbstractEventLoop
-import warnings
 
 import aiopg
 import asyncpg
