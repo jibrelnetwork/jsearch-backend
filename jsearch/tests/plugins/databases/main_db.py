@@ -12,22 +12,16 @@ from functools import partial
 from sqlalchemy import create_engine
 
 from jsearch.api.storage import Storage
+from jsearch.common.alembic_utils import downgrade, upgrade
 
 logger = logging.getLogger(__name__)
 
 
 def setup_database(connection_string):
-    logging.getLogger('alembic').setLevel(logging.CRITICAL)
-    warnings.simplefilter("ignore")
-    from jsearch.common.alembic_utils import upgrade
     upgrade(connection_string, 'head')
 
 
 def teardown_database(connection_string):
-    logging.getLogger('alembic').setLevel(logging.CRITICAL)
-    warnings.simplefilter("ignore")
-    from jsearch.common.alembic_utils import downgrade
-
     parsed_dsn = dsnparse.parse(connection_string)
 
     engine = create_engine(connection_string)
