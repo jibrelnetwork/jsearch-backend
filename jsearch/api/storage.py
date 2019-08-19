@@ -4,7 +4,7 @@ from collections import defaultdict
 
 import asyncpgsa
 from itertools import groupby
-from sqlalchemy import select, func, and_, false, desc, true
+from sqlalchemy import select, and_, desc, true
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
@@ -64,7 +64,7 @@ from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent
 from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import reorgs_t, accounts_state_t, chain_events_t, blocks_t
+from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress
 
@@ -983,14 +983,6 @@ class Storage:
         return result
 
     async def get_account_transaction_count(self, account_address, include_pending_txs=True):
-        query = select([func.max(accounts_state_t.c.nonce)]).where(
-            and_(accounts_state_t.c.address == account_address,
-                 accounts_state_t.c.is_forked.is_(false())
-                 )
-        )
-
-        rows = await fetch(self.pool, query)
-        res = rows[0]['max_1']
         res = await self.get_nonce(account_address)
         if include_pending_txs:
             query = get_outcoming_pending_txs_count(account_address)
