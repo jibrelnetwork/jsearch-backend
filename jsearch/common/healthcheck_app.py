@@ -6,7 +6,7 @@ Common functionality for the CLI workers:
   * worker
   * wallet_worker
 """
-from asyncio import AbstractEventLoop
+import asyncio
 
 import aiokafka
 import asyncpg
@@ -19,8 +19,8 @@ from jsearch import settings
 from jsearch.common import stats
 
 
-def make_app(loop: AbstractEventLoop) -> web.Application:
-    application = web.Application(middlewares=[cors_middleware], loop=loop)
+def make_app() -> web.Application:
+    application = web.Application(middlewares=[cors_middleware])
     application.router.add_route('GET', '/healthcheck', healthcheck)
     application.router.add_route('GET', '/metrics', monitoring.metrics)
 
@@ -55,11 +55,10 @@ async def healthcheck(request: web.Request) -> web.Response:
 
 
 async def on_startup(app: web.Application) -> None:
+    loop = asyncio.get_event_loop()
+
     app['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB)
-    app['kafka_consumer'] = aiokafka.AIOKafkaConsumer(
-        loop=app.loop,
-        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-    )
+    app['kafka_consumer'] = aiokafka.AIOKafkaConsumer(loop=loop, bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
 
     await app['kafka_consumer'].start()
 
