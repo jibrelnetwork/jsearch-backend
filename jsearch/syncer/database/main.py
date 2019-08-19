@@ -1,18 +1,15 @@
 import json
 import logging
-from copy import copy
 
 import backoff
 import psycopg2
 from aiopg.sa import create_engine as async_create_engine, Engine
 from sqlalchemy import and_
-from sqlalchemy.dialects.postgresql import insert
 from typing import List, Dict, Any, Optional
 
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
 from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS, assets_from_accounts
 from jsearch.common.tables import (
-    accounts_base_t,
     accounts_state_t,
     blocks_t,
     internal_transactions_t,
@@ -20,15 +17,12 @@ from jsearch.common.tables import (
     receipts_t,
     transactions_t,
     uncles_t,
-    reorgs_t,
     token_transfers_t,
-    chain_splits_t,
     pending_transactions_t,
     assets_transfers_t,
     chain_events_t,
     wallet_events_t,
 )
-from jsearch.common.utils import as_dicts
 from jsearch.syncer.database_queries.accounts import get_accounts_state_for_blocks_query
 from jsearch.syncer.database_queries.assets_summary import delete_assets_summary_query, upsert_assets_summary_query
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
@@ -107,26 +101,6 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
         return row and row['max_number'] or 0
 
-    async def get_blockchain_heads(self, blocks_range):
-        """
-        Get blockchain head (or heads) - blocks with maximum number
-        """
-        if blocks_range[1] is None:
-            condition = 'number >= %s'
-            params = (blocks_range[0],)
-        else:
-            condition = 'number BETWEEN %s AND %s'
-            params = blocks_range
-
-        q = """
-            SELECT * FROM blocks WHERE number = (SELECT MAX(number)
-                FROM blocks
-                WHERE is_forked=false AND {cond}""".format(cond=condition)
-        async with self.engine.acquire() as conn:
-            res = await conn.execute(q, params)
-            rows = await res.fetchall()
-            return rows
-
     async def get_missed_blocks_numbers(self, limit: int):
         q = """SELECT l.number + 1 as start
                 FROM (SELECT "number" FROM blocks WHERE is_forked = false) as l
@@ -143,87 +117,6 @@ class MainDB(DBWrapper):
     async def get_accounts_addresses_for_blocks(self, blocks_hashes: List[str]) -> List[str]:
         query = get_accounts_state_for_blocks_query(blocks_hashes=blocks_hashes)
         return list({item['address'] for item in await self.fetch_all(query)})
-
-    async def apply_reorg(self, reorg):
-        reorg = dict(reorg)
-
-        update_block_q = blocks_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(blocks_t.c.hash == reorg['block_hash']) \
-            .returning(blocks_t.c.hash)
-
-        update_txs_q = transactions_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(transactions_t.c.block_hash == reorg['block_hash'])
-
-        update_receipts_q = receipts_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(receipts_t.c.block_hash == reorg['block_hash'])
-
-        update_logs_q = logs_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(logs_t.c.block_hash == reorg['block_hash'])
-
-        update_token_transfers_q = token_transfers_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(token_transfers_t.c.block_hash == reorg['block_hash'])
-
-        update_assets_transfers_q = assets_transfers_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(assets_transfers_t.c.block_hash == reorg['block_hash'])
-
-        update_internal_transactions_q = internal_transactions_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(internal_transactions_t.c.block_hash == reorg['block_hash'])
-
-        update_accounts_state_q = accounts_state_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(accounts_state_t.c.block_hash == reorg['block_hash'])
-
-        update_events_q = wallet_events_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(wallet_events_t.c.block_hash == reorg['block_hash'])
-
-        update_uncles_q = uncles_t.update() \
-            .values(is_forked=not reorg['reinserted']) \
-            .where(uncles_t.c.block_hash == reorg['block_hash'])
-
-        reorg.pop('header')
-        add_reorg_q = reorgs_t.insert().values(**reorg)
-        async with self.engine.acquire() as conn:
-            async with conn.begin() as tx:
-                res = await conn.execute(update_block_q)
-                rows = await res.fetchall()
-                if len(rows) == 0:
-                    # no updates, block is not synced - aborting reorg
-                    logger.debug(
-                        'Aborting reorg for a block',
-                        extra={
-                            'block_hash': reorg['block_hash'],
-                            'block_number': reorg['block_number'],
-                        },
-                    )
-                    await tx.rollback()
-                    return False
-                await conn.execute(update_txs_q)
-                await conn.execute(update_receipts_q)
-                await conn.execute(update_logs_q)
-                await conn.execute(update_internal_transactions_q)
-                await conn.execute(update_accounts_state_q)
-                await conn.execute(update_uncles_q)
-                await conn.execute(add_reorg_q)
-                await conn.execute(update_token_transfers_q)
-                await conn.execute(update_assets_transfers_q)
-                await conn.execute(update_events_q)
-
-                logger.debug(
-                    'Reord is applied for a block',
-                    extra={
-                        'block_hash': reorg['block_hash'],
-                        'block_number': reorg['block_number'],
-                    },
-                )
-                return True
 
     async def get_hash_map_from_block_range(self, from_block: int, to_block: int) -> Dict[str, Block]:
         query = blocks_t.select().where(and_(blocks_t.c.number > from_block, blocks_t.c.number <= to_block))
@@ -365,26 +258,6 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             return row is not None
 
-    async def is_canonical_block(self, block_hash):
-        q = blocks_t.select().where(blocks_t.c.hash == block_hash)
-        async with self.engine.acquire() as conn:
-            res = await conn.execute(q)
-            row = await res.fetchone()
-            return not row['is_forked']
-
-    async def get_last_chain_split(self) -> int:
-        q = """SELECT id FROM chain_splits ORDER BY id DESC LIMIT 1"""
-        async with self.engine.acquire() as conn:
-            res = await conn.execute(q)
-            row = await res.fetchone()
-            last_chain_split_num = row['id'] if row else 0
-            return last_chain_split_num
-
-    async def insert_chain_split(self, split):
-        q = chain_splits_t.insert().values(**split)
-        async with self.engine.acquire() as conn:
-            await conn.execute(q)
-
     async def get_last_chain_event(self, sync_range, node_id):
         if sync_range[1] is not None:
             cond = """block_number BETWEEN %s AND %s"""
@@ -451,99 +324,3 @@ class MainDB(DBWrapper):
                                        j(accounts_base_data), j(internal_txs_data), j(transfers),
                                        j(token_holders_updates), j(wallet_events), j(assets_summary_updates),
                                        j(chain_event)])
-
-    async def insert_block(self, block_data):
-        if block_data:
-            await self.execute(blocks_t.insert(), block_data)
-
-    async def insert_uncles(self, uncles_data):
-        if uncles_data:
-            await self.execute(uncles_t.insert(), *uncles_data)
-
-    async def insert_transactions(self, transactions_data):
-        if transactions_data:
-            transactions = []
-            for td in transactions_data:
-                tx1 = copy(td)
-                tx1['address'] = tx1['from']
-                tx2 = copy(td)
-                tx2['address'] = tx2['to']
-                transactions.append(tx1)
-                transactions.append(tx2)
-            await self.execute(transactions_t.insert(), *transactions)
-
-    async def insert_receipts(self, receipts_data):
-        if receipts_data:
-            await self.execute(receipts_t.insert(), *receipts_data)
-
-    async def insert_logs(self, logs_data):
-        if logs_data:
-            await self.execute(logs_t.insert(), *logs_data)
-
-    async def insert_accounts(self, accounts):
-        if not accounts:
-            return
-        base_items = []
-        state_items = []
-        address_set = set()
-        for acc in accounts:
-            if acc['address'] not in address_set:
-                address_set.add(acc['address'])
-                base_items.append({
-                    'address': acc['address'],
-                    'code': acc['code'],
-                    'code_hash': acc['code_hash'],
-                    'last_known_balance': acc['balance'],
-                    'root': acc['root'],
-                })
-            state_items.append({
-                'block_number': acc['block_number'],
-                'block_hash': acc['block_hash'],
-                'address': acc['address'],
-                'nonce': acc['nonce'],
-                'root': acc['root'],
-                'balance': acc['balance'],
-            })
-
-        base_insert = insert(accounts_base_t)
-        await self.execute(base_insert, *base_items)
-        await self.execute(accounts_state_t.insert(), *state_items)
-
-    async def insert_or_update_transfers(self, records: List[Dict[str, Any]]):
-        for i, record in enumerate(records):
-            insert_query = insert(token_transfers_t).values(record).on_conflict_do_update(
-                index_elements=[
-                    'transaction_hash',
-                    'log_index',
-                    'address',
-                ],
-                set_={
-                    'block_number': record['block_number'],
-                    'block_hash': record['block_hash'],
-                    'transaction_index': record['transaction_index'],
-                    'timestamp': record['timestamp'],
-                    'from_address': record['from_address'],
-                    'to_address': record['to_address'],
-                    'token_address': record['token_address'],
-                    'token_decimals': record['token_decimals'],
-                    'token_name': record['token_name'],
-                    'token_symbol': record['token_symbol'],
-                    'token_value': record['token_value'],
-                }
-            )
-            await self.execute(insert_query)
-
-    def update_log(self, tx_hash, block_hash, log_index, values: Dict[str, Any]):
-        query = logs_t.update(). \
-            where(and_(logs_t.c.transaction_hash == tx_hash,
-                       logs_t.c.block_hash == block_hash,
-                       logs_t.c.log_index == log_index)). \
-            values(**values)
-        self.execute(query)
-
-    @as_dicts
-    async def get_blocks(self, hashes):
-        query = blocks_t.select().where(blocks_t.c.hash.in_(hashes))
-        return await self.execute(query)
-
-
