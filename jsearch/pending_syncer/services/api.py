@@ -1,4 +1,3 @@
-from asyncio import AbstractEventLoop
 from typing import Any
 
 import asyncpg
@@ -20,8 +19,8 @@ class ApiService(services.ApiService):
         super(ApiService, self).__init__(*args, **kwargs)
 
 
-def make_app(loop: AbstractEventLoop) -> web.Application:
-    application = web.Application(middlewares=[cors_middleware], loop=loop)
+def make_app() -> web.Application:
+    application = web.Application(middlewares=[cors_middleware])
     application.router.add_route('GET', '/healthcheck', healthcheck)
     application.router.add_route('GET', '/metrics', monitoring.metrics)
 
