@@ -991,16 +991,17 @@ class Storage:
         return res
 
     async def get_account_eth_transfers(self, account_address, block_number=None,
-                                        event_index=None, timestamp=None, order='desc', limit=20):
+                                        event_index=None, order='desc', limit=20):
         query = get_eth_transfers_by_address_query(account_address, block_number=block_number,
-                                                   event_index=event_index, timestamp=timestamp,
+                                                   event_index=event_index,
                                                    order=order, limit=limit)
         rows = await fetch(self.pool, query)
         res = []
         for r in rows:
             event_data = json.loads(r['event_data'])
+            tx_data = json.loads(r['tx_data'])
             t = models.EthTransfer(**{
-                'timestamp': r['timestamp'],
+                'timestamp': tx_data['timestamp'],
                 'tx_hash': r['tx_hash'],
                 'amount': event_data['amount'],
                 'from': event_data['sender'],
