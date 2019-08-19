@@ -444,7 +444,7 @@ def mock_get_decimals(mocker):
 
 
 @pytest.mark.usefixtures('mock_get_decimals')
-async def test_sync_block_check_decimals_in_token_holders(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
+async def test_sync_block_check_holders(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
     """
     We test on 6000001 block.
     We can calculate ether balances for test blocks.
@@ -455,6 +455,9 @@ async def test_sync_block_check_decimals_in_token_holders(db, raw_db_sample, raw
 
     It is historical data and we can freeze it.
     """
+    # given
+    total_holder_balances = 36
+
     # when
     await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
 
@@ -465,3 +468,15 @@ async def test_sync_block_check_decimals_in_token_holders(db, raw_db_sample, raw
 
     for token_holder in token_holders:
         assert token_holder.decimals == 18
+
+    token_transfers = db.execute(token_transfers_t.select()).fetchall()
+
+    expected_token_holders = set()
+    for transfer in token_transfers:
+        if transfer.address != contracts.NULL_ADDRESS:
+            expected_token_holders.add((transfer.token_address, transfer.address))
+
+    gotten_holders = {(holder.token_address, holder.account_address) for holder in token_holders}
+    assert gotten_holders == expected_token_holders
+
+    assert len(gotten_holders) == total_holder_balances
