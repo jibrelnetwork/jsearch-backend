@@ -8,7 +8,7 @@ import prometheus_client
 from jsearch import settings
 from jsearch.common import utils
 from jsearch.api.node_proxy import NodeProxy
-from jsearch.common.structs import DbStats, LoopStats, KafkaStats, NodeStats
+from jsearch.common.structs import DbStats, LoopStats, KafkaStats, NodeStats, ChainStats
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +64,27 @@ async def get_loop_stats() -> LoopStats:
     )
 
 
+async def get_chain_stats(db_pool: asyncpg.pool.Pool) -> ChainStats:
+    is_healthy = False
+    try:
+        async with db_pool.acquire() as conn:
+            # stored function check_canonical_chain(depth) returns number, hash, parent_hash
+            # for each block N from canonical chain, if N.parent_hash != (N-1).hash
+            holes = await conn.fetch('SELECT number, hash, parent_hash FROM check_canonical_chain(1000);')
+            if not holes:
+                is_healthy = True
+            else:
+                logger.critical("Chain Health Error: Chain Holes", extra={"holes": str([dict(h) for h in holes])})
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.warning('Cannot check the database', extra={'exception': e})
+
+    return DbStats(is_healthy=is_healthy)
+
+
 def setup_api_metrics() -> None:
     _setup_loop_tasks_total_metric(settings.METRIC_API_LOOP_TASKS_TOTAL)
-
-
-def setup_notable_accounts_worker_metrics() -> None:
-    _setup_loop_tasks_total_metric(settings.METRIC_NOTABLE_ACCOUNTS_WORKER_LOOP_TASKS_TOTAL)
 
 
 def setup_syncer_metrics() -> None:

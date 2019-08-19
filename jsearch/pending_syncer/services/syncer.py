@@ -49,7 +49,7 @@ class PendingSyncerService(mode.Service):
                 await asyncio.sleep(settings.PENDING_TX_SLEEP_ON_NO_TXS)
 
     @metrics.with_metrics('pending_transactions')
-    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
+    @backoff.on_exception(backoff.expo, max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
     async def sync_pending_txs(self, pending_txs) -> int:
         """
         We load history of pending transactions
@@ -70,7 +70,7 @@ class PendingSyncerService(mode.Service):
 
         return len(pending_txs)
 
-    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
+    @backoff.on_exception(backoff.expo, max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
     async def get_pending_txs_to_sync(self, last_synced_id: Optional[int]) -> List[Dict[str, Any]]:
         last_synced_id = last_synced_id or await self.main_db.get_pending_tx_last_synced_id()
         logger.info("Fetched last pending tx synced ID", extra={'number': last_synced_id})
@@ -86,7 +86,7 @@ class PendingSyncerService(mode.Service):
             raw_db_start_id = await self.raw_db.get_first_pending_tx_id()
             start_id = max(self.sync_range.start, raw_db_start_id)
         else:
-            start_id = last_synced_id + 1
+            start_id = max(self.sync_range.start, last_synced_id + 1)
 
         end_id = start_id + settings.PENDING_TX_BATCH_SIZE - 1
         if self.sync_range.end:

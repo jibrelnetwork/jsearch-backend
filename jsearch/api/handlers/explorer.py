@@ -1,42 +1,34 @@
 import logging
 
+from aiohttp import web
+
 from jsearch.api.helpers import (
-    get_tag,
-    validate_params,
     api_success,
-    api_error_404,
-)
+    api_error_response_404,
+    ApiError)
+from jsearch.api.serializers.explorer import InternalTransactionsSchema
+from jsearch.api.utils import use_kwargs
 
 logger = logging.getLogger(__name__)
 
 
-async def get_internal_transactions(request):
+@ApiError.catch
+@use_kwargs(InternalTransactionsSchema())
+async def get_internal_transactions(
+        request: web.Request,
+        txhash: str,
+        order: str,
+) -> web.Response:
     """
     Get internal transactions by transaction hash
     """
     storage = request.app['storage']
-    tx_hash = request.match_info.get('txhash').lower()
-    params = validate_params(request)
-
-    internal_txs = await storage.get_internal_transactions(
-        tx_hash,
-        limit=params['limit'],
-        offset=params['offset'],
-        order=params['order'],
-    )
+    internal_txs = await storage.get_internal_transactions(txhash, order)
 
     response_data = [it.to_dict() for it in internal_txs]
     response = api_success(response_data)
 
     return response
-
-
-async def get_pending_transactions(request):
-    """
-    Get pending transactions by transaction hash
-    """
-    # todo: implement it
-    return api_success([])
 
 
 async def get_receipt(request):
@@ -45,30 +37,8 @@ async def get_receipt(request):
 
     receipt = await storage.get_receipt(txhash)
     if receipt is None:
-        return api_error_404()
+        return api_error_response_404()
     return api_success(receipt.to_dict())
-
-
-async def get_uncles(request):
-    """
-    Get uncles list
-    """
-    params = validate_params(request)
-    storage = request.app['storage']
-    uncles = await storage.get_uncles(params['limit'], params['offset'], params['order'])
-    return api_success([uncle.to_dict() for uncle in uncles])
-
-
-async def get_uncle(request):
-    """
-    Get uncle by hash or number
-    """
-    storage = request.app['storage']
-    tag = get_tag(request)
-    uncle = await storage.get_uncle(tag)
-    if uncle is None:
-        return api_error_404()
-    return api_success(uncle.to_dict())
 
 
 async def get_transaction(request):
@@ -77,5 +47,5 @@ async def get_transaction(request):
 
     transaction = await storage.get_transaction(txhash)
     if transaction is None:
-        return api_error_404()
+        return api_error_response_404()
     return api_success(transaction.to_dict())

@@ -1,5 +1,4 @@
 import asyncio
-import concurrent.futures
 import logging
 
 import backoff
@@ -13,8 +12,6 @@ from jsearch.syncer.processor import SyncProcessor
 logger = logging.getLogger(__name__)
 
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
-REORGS_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL / 2
-PENDING_TX_BATCH_SIZE = settings.JSEARCH_SYNC_PARALLEL * 2
 
 SYNCER_BALANCE_MODE_LATEST = 'latest'
 SYNCER_BALANCE_MODE_OFFSET = 'offset'
@@ -26,13 +23,12 @@ class ChainEvent:
     SPLIT = 'split'
 
 
-async def process_insert_block(raw_db: RawDB,
-                               main_db: MainDB,
-                               block_hash: str,
-                               block_num: int,
-                               chain_event: Dict[str, Any],
-                               last_block: int,
-                               use_offset: bool = False) -> None:
+async def process_insert_block_event(raw_db: RawDB,
+                                     main_db: MainDB,
+                                     block_hash: str,
+                                     block_num: int,
+                                     chain_event: Dict[str, Any],
+                                     last_block: int) -> None:
     parent_hash = await raw_db.get_parent_hash(block_hash)
     is_block_number_exists = await main_db.is_block_number_exists(block_num)
 
@@ -56,14 +52,12 @@ async def process_insert_block(raw_db: RawDB,
             is_forked=is_forked,
             chain_event=chain_event,
             last_block=last_block,
-            use_offset=use_offset
         )
 
 
-async def process_chain_split(main_db: MainDB,
-                              split_data: Dict[str, Any],
-                              last_block: int,
-                              use_offset: bool = False) -> None:
+async def process_chain_split_event(main_db: MainDB,
+                                    split_data: Dict[str, Any],
+                                    last_block: int) -> None:
     from_block = split_data['block_number']
     to_block = split_data['block_number'] + split_data['add_length']
 
@@ -88,7 +82,6 @@ async def process_chain_split(main_db: MainDB,
         old_chain_fragment=old_chain_fragment,
         last_block=last_block,
         chain_event=split_data,
-        use_offset=use_offset
     )
 
 
@@ -115,11 +108,8 @@ class Manager:
         self.raw_db = raw_db
         self.sync_range = sync_range
         self._running = False
-        self.chunk_size = settings.JSEARCH_SYNC_PARALLEL
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
         self.balance_mode = balance_mode
-
-        self.executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.JSEARCH_SYNC_PARALLEL)
 
         self.latest_available_block_num = None
         self.latest_synced_block_num = None
@@ -199,24 +189,21 @@ class Manager:
         })
 
         last_block = await self.raw_db.get_latest_available_block_number()
-        use_offset = self.balance_mode == SYNCER_BALANCE_MODE_OFFSET
-
         if event['type'] == ChainEvent.INSERT:
             block_hash = event['block_hash']
             block_number = event['block_number']
-            await process_insert_block(
+            await process_insert_block_event(
                 raw_db=self.raw_db,
                 main_db=self.main_db,
                 block_hash=block_hash,
                 block_num=block_number,
                 chain_event=event,
                 last_block=last_block,
-                use_offset=use_offset
             )
         elif event['type'] == ChainEvent.REINSERT:
             await self.main_db.insert_chain_event(event)
         elif event['type'] == ChainEvent.SPLIT:
-            await process_chain_split(self.main_db, split_data=event, last_block=last_block, use_offset=use_offset)
+            await process_chain_split_event(self.main_db, split_data=event, last_block=last_block)
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],
@@ -228,11 +215,10 @@ class Manager:
             'block_number': event['block_number'],
             'block_hash': event['block_hash'],
             'last_block': last_block,
-            'offset': use_offset and settings.ETH_BALANCE_BLOCK_OFFSET,
             'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
 
-    @backoff.on_exception(backoff.fibo, max_tries=5, exception=Exception)
+    @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
     async def get_and_process_chain_event(self):
         last_event = await self.main_db.get_last_chain_event(self.sync_range, self.node_id)
         if last_event is None:

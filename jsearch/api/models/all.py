@@ -10,6 +10,7 @@ class Log(Model):
         'address': str,
         'block_hash': str,
         'block_number': int,
+        'timestamp': int,
         'data': str,
         'log_index': int,
         'removed': str,
@@ -22,6 +23,7 @@ class Log(Model):
         'address': 'address',
         'block_hash': 'blockHash',
         'block_number': 'blockNumber',
+        'timestamp': 'timestamp',
         'data': 'data',
         'log_index': 'logIndex',
         'removed': 'removed',
@@ -52,13 +54,14 @@ class Account(Model):
         'balance': 'balance',
     }
 
-    int_to_hex = {'balance'}
+    int_to_str = {'balance'}
 
 
 class Transaction(Model):
     swagger_types = {
         'block_hash': str,
         'block_number': int,
+        'timestamp': int,
         'from': str,
         'gas': str,
         'gas_price': str,
@@ -77,6 +80,7 @@ class Transaction(Model):
     attribute_map = {
         'block_hash': 'blockHash',
         'block_number': 'blockNumber',
+        'timestamp': 'timestamp',
         'from': 'from',
         'gas': 'gas',
         'gas_price': 'gasPrice',
@@ -92,17 +96,14 @@ class Transaction(Model):
         'status': 'status'
     }
 
-    def to_dict(self):
-        data = super(Transaction, self).to_dict()
-        data['status'] = bool(data['status'])
-        return data
-
 
 class InternalTransaction(Model):
     swagger_types = {
         'block_number': int,
         'block_hash': str,
+        'timestamp': int,
         'parent_tx_hash': str,
+        'parent_tx_index': int,
         'op': str,
         'call_depth': int,
         'from': str,
@@ -117,7 +118,9 @@ class InternalTransaction(Model):
     attribute_map = {
         'block_number': 'blockNumber',
         'block_hash': 'blockHash',
+        'timestamp': 'timestamp',
         'parent_tx_hash': 'parentTxHash',
+        'parent_tx_index': 'parentTxIndex',
         'op': 'op',
         'call_depth': 'callDepth',
         'from': 'from',
@@ -217,8 +220,8 @@ class Block(Model):
         'tx_fees': 'txFees',
     }
 
-    int_to_hex = {'staticReward', 'uncleInclusionReward', 'txFees'}
-    int_to_str = {'difficulty', 'gasLimit', 'gasUsed'}
+    int_to_str = {'staticReward', 'uncleInclusionReward', 'txFees',
+                  'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Uncle(Model):
@@ -264,8 +267,7 @@ class Uncle(Model):
         'reward': 'reward',
     }
 
-    int_to_hex = {'reward'}
-    int_to_str = {'difficulty', 'gasLimit', 'gasUsed'}
+    int_to_str = {'reward', 'difficulty', 'gasLimit', 'gasUsed'}
 
 
 class Receipt(Model):
@@ -314,7 +316,7 @@ class Reward(Model):
         'amount': 'amount',
     }
 
-    int_to_hex = {'amount'}
+    int_to_str = {'amount'}
 
 
 class Balance(Model):
@@ -328,7 +330,7 @@ class Balance(Model):
         'address': 'address',
     }
 
-    int_to_hex = {'balance'}
+    int_to_str = {'balance'}
 
 
 class TokenTransfer(Model):
@@ -340,20 +342,22 @@ class TokenTransfer(Model):
         "token_address": str,
         "token_value": int,
         "token_decimals": int,
-        "token_name": str,
-        "token_symbol": str,
+        "block_number": str,
+        "log_index": str,
+        "transaction_index": str,
     }
 
     attribute_map = {
         "transaction_hash": "transactionHash",
         "timestamp": "timestamp",
+        "block_number": "blockNumber",
+        "transaction_index": "transactionIndex",
+        "log_index": "logIndex",
         "from_address": "from",
         "to_address": "to",
-        "token_address": "tokenAddress",
+        "token_address": "contractAddress",
         "token_value": "amount",
-        "token_decimals": "tokenDecimals",
-        "token_name": "tokenName",
-        "token_symbol": "tokenSymbol",
+        "token_decimals": "decimals",
     }
 
     int_to_str = {"amount"}
@@ -369,7 +373,26 @@ class TokenHolder(Model):
 
     attribute_map = {
         'account_address': 'accountAddress',
-        'token_address': 'tokenAddress',
+        'token_address': 'contractAddress',
+        'balance': 'balance',
+        'decimals': 'decimals'
+    }
+    int_to_str = {"balance"}
+
+
+class TokenHolderWithId(Model):
+    swagger_types = {
+        'id': int,
+        'account_address': str,
+        'token_address': str,
+        'balance': float,
+        'decimals': int
+    }
+
+    attribute_map = {
+        'id': 'id',
+        'account_address': 'accountAddress',
+        'token_address': 'contractAddress',
         'balance': 'balance',
         'decimals': 'decimals'
     }
@@ -416,3 +439,39 @@ class WalletEvent(Model):
         data['eventData'] = [{'fieldName': name, 'fieldValue': value} for name, value in event_data.items()]
 
         return data
+
+
+class EthTransfer(Model):
+    swagger_types = {
+        'timestamp': int,
+        'tx_hash': str,
+        'to': str,
+        'from': str,
+        'amount': str,
+        'block_number': int,
+        'event_index': int,
+    }
+    attribute_map = {
+        'tx_hash': 'transactionHash',
+        'timestamp': 'timestamp',
+        'to': 'to',
+        'from': 'from',
+        'amount': 'amount',
+        'block_number': 'block_number',
+        'event_index': 'event_index',
+    }
+
+
+class TokenBalance(Model):
+    swagger_types = {
+        'token_address': str,
+        'balance': float,
+        'decimals': int
+    }
+
+    attribute_map = {
+        'token_address': 'contractAddress',
+        'balance': 'balance',
+        'decimals': 'decimals'
+    }
+    int_to_str = {"balance"}

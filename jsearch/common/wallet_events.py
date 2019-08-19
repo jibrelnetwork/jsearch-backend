@@ -64,6 +64,7 @@ def event_from_tx(address: str, tx_data: Transaction, is_receiver_contract=False
             'block_number': tx_data['block_number'],
             'block_hash': tx_data['block_hash'],
             'tx_hash': tx_data['hash'],
+            'timestamp': tx_data['timestamp'],
             'event_index': make_event_index_for_tx(tx_data['block_number'], tx_data['transaction_index']),
             'tx_data': tx_data,
             'event_data': {
@@ -106,6 +107,7 @@ def event_from_token_transfer(address: str, transfer_data: Transfer, tx_data: Tr
             transfer_data['log_index']
         ),
         'tx_data': tx_data,
+        'timestamp': tx_data['timestamp'],
         'event_data': {
             'sender': transfer_data['from_address'],
             'recipient': transfer_data['to_address'],
@@ -148,6 +150,7 @@ def event_from_internal_tx(address: str,
         'block_number': tx_data['block_number'],
         'block_hash': tx_data['block_hash'],
         'tx_hash': tx_data['hash'],
+        'timestamp': tx_data['timestamp'],
         'event_index': make_event_index_for_internal_tx(
             tx_data['block_number'],
             tx_data['transaction_index'],
@@ -229,18 +232,18 @@ def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> E
 
 
 def make_event_index_for_tx(block_number: int, transaction_index: int) -> int:
-    return _make_event_index(block_number, transaction_index, item_index=0)
+    return make_event_index(block_number, transaction_index, item_index=0)
 
 
 def make_event_index_for_log(block_number: int, transaction_index: int, log_index: int) -> int:
-    return _make_event_index(block_number, transaction_index, item_index=5000 + log_index)
+    return make_event_index(block_number, transaction_index, item_index=5000 + log_index)
 
 
 def make_event_index_for_internal_tx(block_number: int, transaction_index: int, internal_tx_index: int) -> int:
-    return _make_event_index(block_number, transaction_index, item_index=internal_tx_index)
+    return make_event_index(block_number, transaction_index, item_index=internal_tx_index)
 
 
-def _make_event_index(
+def make_event_index(
         block_number: int,
         transaction_index: int,
         item_index: int,
@@ -254,11 +257,11 @@ def _make_event_index(
       * Item index (either a log or an internal TX index or zero for TX).
 
     Examples:
-        >>> _make_event_index(7800000, 230, 0)  # From TX.
+        >>> make_event_index(7800000, 230, 0)  # From TX.
         78000002300000
-        >>> _make_event_index(7800000, 230, 5012)  # From log.
+        >>> make_event_index(7800000, 230, 5012)  # From log.
         78000002305012
-        >>> _make_event_index(8500000, 187, 42)  # From internal TX.
+        >>> make_event_index(8500000, 187, 42)  # From internal TX.
         85000001870042
     """
     return block_number * 10000000 + transaction_index * 10000 + item_index

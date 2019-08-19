@@ -25,8 +25,8 @@ builder(
                         jUnitPath: '/junit-reports',
                         coveragePath: '/coverage-reports',
                         environment: [
-                                JSEARCH_MAIN_DB_TEST: 'postgres://app:pass@maindb/jsearch-maindb',
-                                JSEARCH_RAW_DB_TEST: 'postgres://app:pass@rawdb/jsearch-rawdb',
+                                JSEARCH_MAIN_DB: 'postgres://app:pass@maindb/jsearch-maindb',
+                                JSEARCH_RAW_DB: 'postgres://app:pass@rawdb/jsearch-rawdb',
                         ],
                         sidecars: [
                                 maindb: [

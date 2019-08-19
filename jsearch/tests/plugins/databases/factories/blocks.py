@@ -33,9 +33,11 @@ class BlockFactory(factory.alchemy.SQLAlchemyModelFactory):
     extra_data = ""
     logs_bloom = ""
     mix_hash = ""
+    nonce = ""
     sha3_uncles = ""
     size = None
     state_root = ""
+    receipts_root = ""
     total_difficulty = None
     transactions_root = ""
     is_sequence_sync = False

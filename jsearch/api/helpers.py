@@ -6,18 +6,17 @@ from asyncpg import Connection
 from functools import partial
 from sqlalchemy import asc, desc, Column
 from sqlalchemy.orm import Query
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 
 from jsearch.api.error_code import ErrorCode
+from jsearch.api.ordering import DEFAULT_ORDER, ORDER_ASC, ORDER_DESC
+from jsearch.api.pagination import Page
+from jsearch.typing import AnyCoroutine
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
 DEFAULT_OFFSET = 0
 MAX_OFFSET = 10000
-
-ORDER_ASC = 'asc'
-ORDER_DESC = 'desc'
-DEFAULT_ORDER = ORDER_DESC
 
 
 class Tag:
@@ -25,10 +24,11 @@ class Tag:
     Block tag, can be block number, block hash or 'latest' label
     """
     LATEST = 'latest'
+    TIP = 'tip'
     NUMBER = 'number'
     HASH = 'hash'
 
-    __types = [LATEST, NUMBER, HASH]
+    __types = [LATEST, NUMBER, HASH, TIP]
 
     def __init__(self, type_, value):
         assert type_ in self.__types, 'Invalid tag type: {}'.format(type_)
@@ -129,24 +129,40 @@ def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -
     return strings_list
 
 
-def api_success(data):
+def api_success(data, page: Optional[Page] = None, meta: Optional[Dict[str, Any]] = None):
     body = {
-        'status': {'success': True, 'errors': []},
+        'status': {
+            'success': True,
+            'errors': []
+        },
         'data': data
     }
+
+    if page:
+        body.update(page.to_dict())
+
+    if meta:
+        body['meta'] = meta
     return web.json_response(body)
 
 
-def api_error(status, errors, data=None):
-    body = {
-        'status': {'success': False, 'errors': errors},
+def api_error(errors, data=None):
+    return {
+        'status': {
+            'success': False,
+            'errors': errors
+        },
         'data': data
     }
+
+
+def api_error_response(status, errors, data=None):
+    body = api_error(errors, data)
     return web.json_response(body, status=status)
 
 
-api_error_400 = partial(api_error, status=400)
-api_error_404 = partial(api_error, status=404, errors=[
+api_error_response_400 = partial(api_error_response, status=400)
+api_error_response_404 = partial(api_error_response, status=404, errors=[
     {
         'code': ErrorCode.RESOURCE_NOT_FOUND,
         'message': 'Resource not found'
@@ -197,26 +213,82 @@ async def fetch_row(connection: Connection, query: Query) -> Optional[Dict[str, 
         return dict(result)
 
 
-class ApiError(Exception):
+def get_positive_number(
+        request: web.Request,
+        attr: str,
+        tags=Optional[Dict[str, int]],
+        is_required=False
+) -> Optional[Union[int, str]]:
+    value = request.query.get(attr, "").lower()
 
+    if value.isdigit():
+        number = int(value)
+        if number >= 0:
+            return number
+
+    elif value and tags and value in tags:
+        return tags[value]
+
+    elif value and tags and value not in tags:
+        msg_allowed_tags = tags and f" or tag ({', '.join(tags.keys())})" or ""
+        raise ApiError(
+            {
+                'field': attr,
+                'error_code': ErrorCode.VALIDATION_ERROR,
+                'error_message': f'Parameter `{attr}` must be either positive integer{msg_allowed_tags}.'
+            },
+            status=400
+        )
+
+    if is_required:
+        raise ApiError(
+            {
+                'field': attr,
+                'error_code': ErrorCode.VALIDATION_ERROR,
+                'error_message': f'Query param `{attr}` is required'
+            },
+            status=400
+        )
+
+
+class ApiError(Exception):
     """
     @ApiError.catch
     async def get_api(request):
         raise ApiError(status=404, error={'field': 'Not found'})
     """
 
-    def __init__(self, error: Dict[str, str], status: int = 400) -> None:
-        self.error = error
+    def __init__(self, errors: Union[List[Dict[str, str]], Dict[str, str]], status: int = 400) -> None:
+        if isinstance(errors, dict):
+            errors = [errors]
+
+        self.errors = errors
         self.status = status
 
     @classmethod
-    def catch(cls, func):
+    def catch(cls, func: Callable[..., AnyCoroutine]) -> Callable[..., AnyCoroutine]:
 
         async def _wrapper(*args, **kwargs):
             try:
                 return await func(*args, **kwargs)
             except ApiError as exc:
-
-                return api_error(status=exc.status, errors=[exc.error], data={})
+                return api_error_response(status=exc.status, errors=exc.errors, data={})
 
         return _wrapper
+
+
+Json = TypeVar('Json')
+
+
+async def load_json_or_raise_api_error(request: web.Request) -> Json:
+    try:
+        return await request.json()
+    except ValueError:
+        raise ApiError(
+            {
+                'field': 'non_field_error',
+                'error_code': ErrorCode.INVALID_BODY,
+                'error_message': 'The provided body is not a valid JSON.'
+            },
+            status=400,
+        )

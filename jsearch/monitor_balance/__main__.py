@@ -14,7 +14,7 @@ from jsearch.common.tables import token_holders_t
 from jsearch.syncer.database_queries.assets_summary import upsert_assets_summary_query
 from jsearch.syncer.database_queries.token_holders import upsert_token_holder_balance_q
 from jsearch.syncer.structs import TokenHolder
-from jsearch.syncer.utils import insert_balance_request
+from jsearch.syncer.utils.common import insert_balance_request
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ DEFAULT_OFFSET = 6
 
 
 def get_offset():
-    offset = os.getenv('MONITOR_OFFSET', DEFAULT_OFFSET)
+    offset = os.environ['MONITOR_OFFSET']
     logging.info('Set settings', extra={'offset': offset})
     return int(offset)
 

@@ -1,42 +1,11 @@
-import datetime
 from decimal import Decimal
+
+import datetime
 
 from jsearch.common import tables as t
 from jsearch.common.database import MainDBSync
 from jsearch.syncer.database import MainDB
-from jsearch.syncer.manager import process_chain_split
-
-
-async def test_main_db_get_last_synced_block_empty(db_dsn):
-    main_db = MainDB(db_dsn)
-    await main_db.connect()
-    res = await main_db.get_latest_synced_block_number([1, None])
-    assert res is None
-
-
-async def test_main_db_get_last_synced_block_no_miss(db, db_dsn):
-    db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
-        (1, 'aa'),
-        (2, 'ab'),
-        (3, 'ac'),
-        (4, 'ad'),
-    ])
-    main_db = MainDB(db_dsn)
-    await main_db.connect()
-    res = await main_db.get_latest_synced_block_number([1, None])
-    assert res == 4
-
-
-async def test_main_db_get_last_synced_block_has_miss(db, db_dsn):
-    db.execute('INSERT INTO blocks (number, hash) values (%s, %s)', [
-        (1, 'aa'),
-        (2, 'ab'),
-        (4, 'ad'),
-    ])
-    main_db = MainDB(db_dsn)
-    await main_db.connect()
-    res = await main_db.get_latest_synced_block_number([1, None])
-    assert res == 4
+from jsearch.syncer.manager import process_chain_split_event
 
 
 async def test_main_db_get_missed_blocks_empty(db, db_dsn):
@@ -101,8 +70,8 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
 
     txs = []
     for tx in transactions:
-        rt1 = {'address': tx['from'], **tx}
-        rt2 = {'address': tx['to'], **tx}
+        rt1 = {'address': tx['from'], 'timestamp': block['timestamp'], **tx}
+        rt2 = {'address': tx['to'], 'timestamp': block['timestamp'], **tx}
 
         txs.append(rt1)
         txs.append(rt2)
@@ -381,7 +350,7 @@ async def test_apply_chain_split(db, db_dsn):
         'parent_block_hash': None,
         'type': 'create'
     }
-    await process_chain_split(main_db, split_data, last_block=10)
+    await process_chain_split_event(main_db, split_data, last_block=10)
 
     # then
     blocks_forks = {b['hash']: b['is_forked'] for b in db.execute(t.blocks_t.select()).fetchall()}

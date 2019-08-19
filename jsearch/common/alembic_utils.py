@@ -1,3 +1,4 @@
+import sys
 from datetime import datetime
 from os.path import abspath, dirname
 
@@ -63,4 +64,4 @@ def json_dump(connection_string, out=None):
         with open(out, 'w') as destination:
             destination.write(dump)
     else:
-        print(dump)
+        sys.stdout.write(dump)
