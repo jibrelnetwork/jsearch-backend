@@ -63,13 +63,13 @@ def get_wallet_events_query(
 def get_wallet_events_ordering(scheme: OrderScheme, direction: OrderDirection):
     columns = {
         ORDER_SCHEME_BY_NUMBER: [wallet_events_t.c.block_number, wallet_events_t.c.event_index],
-        ORDER_SCHEME_BY_TIMESTAMP: [wallet_events_t.c.timestamp, wallet_events_t.c.event_index]
+        ORDER_SCHEME_BY_TIMESTAMP: [ wallet_events_t.c.event_index]
     }[scheme]
     return get_ordering(columns, scheme, direction)
 
 
 def get_eth_transfers_by_address_query(address: str, block_number: str,
-                                       event_index: int, timestamp: int, order: Ordering, limit: int):
+                                       event_index: int, order: Ordering, limit: int):
     from operator import ge, le
     page_filter_fields = []
     page_filter_values = []
@@ -88,9 +88,6 @@ def get_eth_transfers_by_address_query(address: str, block_number: str,
     if block_number is not None and block_number != 'latest':
         page_filter_fields.append(wallet_events_t.c.block_number)
         page_filter_values.append(block_number)
-    elif timestamp is not None:
-        page_filter_fields.append(wallet_events_t.c.timestamp)
-        page_filter_values.append(timestamp)
 
     if event_index is not None:
         page_filter_fields.append(wallet_events_t.c.event_index)
