@@ -119,7 +119,7 @@ async def get_account_transactions(
 
 @ApiError.catch
 @use_kwargs(AccountsInternalTxsSchema())
-async def get_account_internal_transactions(
+async def get_account_internal_txs(
         request: Request,
         address: str,
         limit: int,
@@ -154,7 +154,7 @@ async def get_account_internal_transactions(
 
 @ApiError.catch
 @use_kwargs(AccountsPendingTxsSchema())
-async def get_account_pending_transactions(
+async def get_account_pending_txs(
         request,
         limit: int,
         order: Ordering,
