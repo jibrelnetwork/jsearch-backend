@@ -1,4 +1,3 @@
-from asyncio import AbstractEventLoop
 from typing import Any, Callable
 import logging
 
@@ -7,7 +6,7 @@ from aiohttp import web
 
 
 logger = logging.getLogger(__name__)
-AppMaker = Callable[[AbstractEventLoop], web.Application]
+AppMaker = Callable[[], web.Application]
 
 
 class ApiService(mode.Service):
@@ -16,7 +15,7 @@ class ApiService(mode.Service):
 
         super(ApiService, self).__init__(*args, **kwargs)
 
-        self.app = app_maker(self.loop)
+        self.app = app_maker()
         self.runner = web.AppRunner(self.app)
 
     async def on_start(self) -> None:
