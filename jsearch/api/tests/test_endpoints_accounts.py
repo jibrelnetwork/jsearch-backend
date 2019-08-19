@@ -385,7 +385,7 @@ async def test_get_account_eth_transfers_ok(cli, wallet_events_factory):
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
         event_data={'amount': '1000', 'sender': address, 'recipient': '0xa1'},
-        tx_data={'timestamp':100},
+        tx_data={'timestamp': 100},
     )
     wallet_events_factory.create(
         address='0xbb',
