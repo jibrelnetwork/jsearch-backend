@@ -1,3 +1,4 @@
+from sqlalchemy import or_, null
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Query
 from typing import Optional
@@ -24,5 +25,8 @@ def upsert_token_holder_balance_q(token_address: TokenAddress,
             'balance': balance,
             'block_number': block_number
         },
-        where=token_holders_t.c.block_number <= insert_query.excluded.block_number
+        where=or_(
+            token_holders_t.c.block_number <= insert_query.excluded.block_number,
+            token_holders_t.c.block_number.is_(null())
+        )
     )
