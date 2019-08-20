@@ -1,4 +1,4 @@
-from sqlalchemy import delete, and_, or_
+from sqlalchemy import delete, and_, or_, null
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Query
 from typing import Optional, List
@@ -28,11 +28,16 @@ def upsert_assets_summary_query(
     summary_data = {key: value for key, value in summary_data.items() if value is not None}
     query = insert(assets_summary_t).values(tx_number=1, **summary_data)
 
-    q = assets_summary_t.c.block_number <= query.excluded.block_number
     if blocks_to_replace:
         q = or_(
-            q,
+            assets_summary_t.c.block_number <= query.excluded.block_number,
+            assets_summary_t.c.block_number.is_(null()),
             assets_summary_t.c.block_number.in_(blocks_to_replace)
+        )
+    else:
+        q = or_(
+            assets_summary_t.c.block_number <= query.excluded.block_number,
+            assets_summary_t.c.block_number.is_(null())
         )
 
     query = query.on_conflict_do_update(
@@ -45,6 +50,7 @@ def upsert_assets_summary_query(
         },
         where=q
     )
+
     return query
 
 
