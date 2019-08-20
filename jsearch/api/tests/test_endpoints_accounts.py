@@ -430,6 +430,19 @@ async def test_get_account_eth_transfers(cli, wallet_events_factory):
     ]
 
 
+async def test_get_account_eth_transfers_does_not_throws_500_if_there_s_no_timestamp_in_tx(cli, wallet_events_factory):
+    event = wallet_events_factory.create(
+        type=WalletEventType.ETH_TRANSFER,
+        tx_data={},
+        event_data={'amount': '', 'sender': '', 'recipient': ''}
+    )
+
+    resp = await cli.get(f'v1/accounts/{event.address}/eth_transfers')
+    resp_json = await resp.json()
+
+    assert len(resp_json['data']) == 1
+
+
 async def test_get_account_eth_transfers_ok(cli, wallet_events_factory):
     address = '0x1111111111111111111111111111111111111111'
     t1 = wallet_events_factory.create(
