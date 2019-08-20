@@ -105,4 +105,5 @@ class WalletEventsFactory(factory.alchemy.SQLAlchemyModelFactory):
 
 @pytest.fixture()
 def wallet_events_factory():
-    return WalletEventsFactory
+    yield WalletEventsFactory
+    WalletEventsFactory.reset_sequence()

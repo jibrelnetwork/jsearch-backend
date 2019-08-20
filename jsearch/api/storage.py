@@ -1006,7 +1006,10 @@ class Storage:
             event_data = json.loads(r['event_data'])
             tx_data = json.loads(r['tx_data'])
             t = models.EthTransfer(**{
-                'timestamp': tx_data['timestamp'],
+                # NOTE: As of now, older wallet events have no
+                # `tx_data['timestamp']` because it was added after the start of
+                # the sync (See #288).
+                'timestamp': tx_data.get('timestamp'),
                 'tx_hash': r['tx_hash'],
                 'amount': event_data['amount'],
                 'from': event_data['sender'],
