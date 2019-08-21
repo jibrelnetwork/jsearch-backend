@@ -17,7 +17,7 @@ from jsearch.api.helpers import (
     get_from_joined_string,
     ApiError,
 )
-from jsearch.api.ordering import Ordering
+from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, OrderScheme
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.accounts import (
     AccountsTxsSchema,
@@ -119,7 +119,7 @@ async def get_account_transactions(
 
 @ApiError.catch
 @use_kwargs(AccountsInternalTxsSchema())
-async def get_account_internal_transactions(
+async def get_account_internal_txs(
         request: Request,
         address: str,
         limit: int,
@@ -154,7 +154,7 @@ async def get_account_internal_transactions(
 
 @ApiError.catch
 @use_kwargs(AccountsPendingTxsSchema())
-async def get_account_pending_transactions(
+async def get_account_pending_txs(
         request,
         limit: int,
         order: Ordering,
@@ -375,6 +375,14 @@ async def get_account_transaction_count(request):
     return api_success(tx_count)
 
 
+def get_key_set_fields(scheme: OrderScheme):
+    if scheme == ORDER_SCHEME_BY_NUMBER:
+        key_set_fields = ['block_number', 'event_index']
+    else:
+        key_set_fields = ['timestamp', 'event_index']
+    return key_set_fields
+
+
 @ApiError.catch
 @use_kwargs(EthTransfersListSchema())
 async def get_account_eth_transfers(request,
@@ -386,15 +394,17 @@ async def get_account_eth_transfers(request,
                                     order=None,
                                     limit=None):
     storage = request.app['storage']
+    if timestamp:
+        block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
     transfers, last_affected_block = await storage.get_account_eth_transfers(address,
                                                                              block_number=block_number,
-                                                                             timestamp=timestamp,
                                                                              event_index=event_index,
                                                                              order=order,
                                                                              limit=limit + 1)
     transfers, tip_meta = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
     url = request.app.router['accounts_eth_transfers'].url_for(address=address)
-    page = get_page(url=url, items=transfers, limit=limit, ordering=order, mapping=EthTransfersListSchema.mapping)
+    page = get_page(url=url, items=transfers, key_set_fields=get_key_set_fields(order.scheme), limit=limit,
+                    ordering=order, mapping=EthTransfersListSchema.mapping)
     data = []
     for item in page.items:
         d = item.to_dict()

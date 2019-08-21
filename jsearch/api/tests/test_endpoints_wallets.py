@@ -505,6 +505,14 @@ async def test_get_wallet_assets_summary(cli, db):
     assets = [
         {
             'address': 'a1',
+            'asset_address': 'c100',
+            'value': 0,
+            'decimals': 0,
+            'tx_number': 1,
+            'nonce': 10,
+        },
+        {
+            'address': 'a1',
             'asset_address': 'c1',
             'value': 100,
             'decimals': 0,
