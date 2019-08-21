@@ -33,8 +33,6 @@ from jsearch.common import logs, stats
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
 swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
 
-sentry_sdk.init(settings.RAVEN_DSN)
-
 
 async def on_shutdown(app):
     await app['db_pool'].close()
