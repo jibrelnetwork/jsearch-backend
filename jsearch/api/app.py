@@ -2,7 +2,6 @@ import asyncio
 import os
 
 import asyncpg
-import sentry_sdk
 from aiohttp import web
 from aiohttp.web_app import Application
 from aiohttp_swagger import setup_swagger
