@@ -3,13 +3,12 @@ import sys
 
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from jsearch import settings
 
 sentry_sdk.init(
     settings.RAVEN_DSN,
-    integrations=[AioHttpIntegration(), SqlalchemyIntegration()],
+    integrations=[AioHttpIntegration()],
 )
 
 
