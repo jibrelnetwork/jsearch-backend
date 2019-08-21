@@ -4,7 +4,7 @@ from collections import defaultdict
 
 import asyncpgsa
 from itertools import groupby
-from sqlalchemy import select, func, and_, false, desc, true
+from sqlalchemy import select, and_, desc, true
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
@@ -64,7 +64,7 @@ from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent
 from jsearch.common.queries import in_app_distinct
-from jsearch.common.tables import reorgs_t, accounts_state_t, chain_events_t, blocks_t
+from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress
 
@@ -736,32 +736,37 @@ class Storage:
 
         is_in_fork = False
         last_unchanged = None
+
+        get_not_forked_block_query = select(
+            [
+                blocks_t.c.hash,
+            ]
+        ).where(
+            and_(
+                blocks_t.c.hash == tip_block.hash,
+                blocks_t.c.is_forked == true()
+            )
+        ).order_by(
+            desc(blocks_t.c.number)
+        ).limit(1)
+
+        get_chain_events_id_query = select(
+            [
+                reorgs_t.c.split_id
+            ]
+        ).where(
+            reorgs_t.c.block_hash == get_not_forked_block_query
+        ).order_by(
+            desc(reorgs_t.c.split_id)
+        ).limit(1)
+
         if tip_block:
             split_query = select(
                 [
                     chain_events_t.c.block_number
                 ]
             ).where(
-                chain_events_t.c.id == select(
-                    [
-                        reorgs_t.c.split_id
-                    ]
-                ).where(
-                    reorgs_t.c.block_hash == select(
-                        [
-                            blocks_t.c.hash,
-                        ]
-                    ).where(
-                        and_(
-                            blocks_t.c.hash == tip_block.hash,
-                            blocks_t.c.is_forked == true()
-                        )
-                    ).order_by(
-                        desc(blocks_t.c.number)
-                    ).limit(1)
-                ).order_by(
-                    desc(reorgs_t.c.split_id)
-                ).limit(1)
+                chain_events_t.c.id == get_chain_events_id_query
             ).order_by(chain_events_t.c.block_number)
 
             async with self.pool.acquire() as conn:
@@ -983,14 +988,6 @@ class Storage:
         return result
 
     async def get_account_transaction_count(self, account_address, include_pending_txs=True):
-        query = select([func.max(accounts_state_t.c.nonce)]).where(
-            and_(accounts_state_t.c.address == account_address,
-                 accounts_state_t.c.is_forked.is_(false())
-                 )
-        )
-
-        rows = await fetch(self.pool, query)
-        res = rows[0]['max_1']
         res = await self.get_nonce(account_address)
         if include_pending_txs:
             query = get_outcoming_pending_txs_count(account_address)
@@ -999,16 +996,20 @@ class Storage:
         return res
 
     async def get_account_eth_transfers(self, account_address, block_number=None,
-                                        event_index=None, timestamp=None, order='desc', limit=20):
+                                        event_index=None, order='desc', limit=20):
         query = get_eth_transfers_by_address_query(account_address, block_number=block_number,
-                                                   event_index=event_index, timestamp=timestamp,
+                                                   event_index=event_index,
                                                    order=order, limit=limit)
         rows = await fetch(self.pool, query)
         res = []
         for r in rows:
             event_data = json.loads(r['event_data'])
+            tx_data = json.loads(r['tx_data'])
             t = models.EthTransfer(**{
-                'timestamp': r['timestamp'],
+                # NOTE: As of now, older wallet events have no
+                # `tx_data['timestamp']` because it was added after the start of
+                # the sync (See #288).
+                'timestamp': tx_data.get('timestamp'),
                 'tx_hash': r['tx_hash'],
                 'amount': event_data['amount'],
                 'from': event_data['sender'],

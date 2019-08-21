@@ -1,4 +1,4 @@
-from sqlalchemy import Column, select
+from sqlalchemy import Column, select, and_
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
 from typing import Optional, List
@@ -22,7 +22,12 @@ def get_assets_summary_query(addresses: List[str],
                              assets: Optional[List[str]],
                              columns: Optional[List[Column]] = None) -> Query:
     columns = columns or get_default_fields()
-    query = select(columns).where(Any(assets_summary_t.c.address, array(tuple(addresses))))
+    query = select(columns).where(
+        and_(
+            Any(assets_summary_t.c.address, array(tuple(addresses))),
+            assets_summary_t.c.value > 0
+        )
+    )
 
     if assets:
         query = query.where(Any(assets_summary_t.c.asset_address, array(tuple(assets))))
