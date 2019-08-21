@@ -1,9 +1,6 @@
 import json
 import logging
 
-import backoff
-import psycopg2
-from aiopg.sa import create_engine as async_create_engine, Engine
 from sqlalchemy import and_
 from typing import List, Dict, Any, Optional
 
@@ -34,9 +31,8 @@ from jsearch.syncer.utils.balances import (
     get_token_balance_updates
 )
 from jsearch.typing import Blocks, Block
-from .common import DBWrapper
+from .wrapper import DBWrapper
 
-TIMEOUT = 60 * 2
 MAIN_DB_POOL_SIZE = 2
 
 logger = logging.getLogger(__name__)
@@ -46,46 +42,7 @@ class MainDB(DBWrapper):
     """
     jSearch Main db wrapper
     """
-
-    engine: Engine
-
-    async def __aenter__(self):
-        await self.connect()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.disconnect()
-        if exc_type:
-            return False
-
-    async def connect(self):
-        self.engine = await async_create_engine(
-            self.connection_string,
-            minsize=1,
-            maxsize=MAIN_DB_POOL_SIZE,
-            timeout=TIMEOUT
-        )
-
-    async def disconnect(self):
-        self.engine.close()
-        await self.engine.wait_closed()
-
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
-    async def execute(self, query, *params):
-        async with self.engine.acquire() as connection:
-            return await connection.execute(query, params)
-
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
-    async def fetch_all(self, query, *params):
-        async with self.engine.acquire() as connection:
-            cursor = await connection.execute(query, params)
-            return await cursor.fetchall()
-
-    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
-    async def fetch_one(self, query, *params):
-        async with self.engine.acquire() as connection:
-            cursor = await connection.execute(query, params)
-            return await cursor.fetchone()
+    pool_size = MAIN_DB_POOL_SIZE
 
     async def get_latest_synced_block_number(self) -> int:
         """
