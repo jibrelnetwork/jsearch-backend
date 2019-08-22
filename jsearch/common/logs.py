@@ -2,10 +2,14 @@ import logging.config
 import sys
 
 import sentry_sdk
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
 from jsearch import settings
 
-sentry_sdk.init(settings.RAVEN_DSN)
+sentry_sdk.init(
+    settings.RAVEN_DSN,
+    integrations=[AioHttpIntegration()],
+)
 
 
 def select_formatter_class(no_json_formatter: bool) -> str:
