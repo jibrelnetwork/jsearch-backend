@@ -378,6 +378,71 @@ async def test_get_account_transaction_count_w_pending(cli, account_state_factor
     assert resp_json['data'] == 7
 
 
+async def test_get_account_eth_transfers(cli, wallet_events_factory):
+    address = '0x9cef2704a5ec2073bbba030906e24235ff2fde2f'
+    wallet_events_factory.create(
+        address=address,
+        type="eth-transfer",
+        tx_hash='0xa682d04025637c3b249586be9a7578e68af6d7b3060941ccd91202186251ba76',
+        block_hash='0x9c6eba83e130251df94da89b87758d074a04a6859d9403d8dd8358bfb436aefe',
+        block_number=8345641,
+        event_index='83456410000000',
+        is_forked=False,
+        tx_data={
+            "r": "0xf19b497d0ec5d040f72e8fb1b3705a1540386416b5bdc0cb555d35884bcd4e3",
+            "s": "0x4a9aacab1dbe461e569b3826d8a64d124c96839613d0a3d6436d542f900caa1e",
+            "v": "0x1b",
+            "to": "0x3c2f261fc6d26c27c49a9574defe469b53c09d0d",
+            "gas": "0x5208",
+            "from": "0x9cef2704a5ec2073bbba030906e24235ff2fde2f",
+            "hash": "0xa682d04025637c3b249586be9a7578e68af6d7b3060941ccd91202186251ba76",
+            "input": "0x",
+            "nonce": "0x27",
+            "value": "0x58c1821b6439000",
+            "gas_price": "0x1000000000",
+            "transaction_index": 0,
+            "block_hash": "0x9c6eba83e130251df94da89b87758d074a04a6859d9403d8dd8358bfb436aefe",
+            "block_number": 8345641,
+            "is_forked": False,
+            "timestamp": 1565745636,
+            "address": "0x9cef2704a5ec2073bbba030906e24235ff2fde2f",
+            "status": 1
+        },
+        event_data={
+            "sender": "0x9cef2704a5ec2073bbba030906e24235ff2fde2f",
+            "recipient": "0x3c2f261fc6d26c27c49a9574defe469b53c09d0d",
+            "amount": "399721000000000000",
+            "status": 1,
+        },
+    )
+
+    resp = await cli.get(f'v1/accounts/{address}/eth_transfers')
+    resp_json = await resp.json()
+
+    assert resp_json['data'] == [
+        {
+            'amount': '399721000000000000',
+            'from': '0x9cef2704a5ec2073bbba030906e24235ff2fde2f',
+            'timestamp': 1565745636,
+            'to': '0x3c2f261fc6d26c27c49a9574defe469b53c09d0d',
+            'transactionHash': '0xa682d04025637c3b249586be9a7578e68af6d7b3060941ccd91202186251ba76'
+        },
+    ]
+
+
+async def test_get_account_eth_transfers_does_not_throws_500_if_there_s_no_timestamp_in_tx(cli, wallet_events_factory):
+    event = wallet_events_factory.create(
+        type=WalletEventType.ETH_TRANSFER,
+        tx_data={},
+        event_data={'amount': '', 'sender': '', 'recipient': ''}
+    )
+
+    resp = await cli.get(f'v1/accounts/{event.address}/eth_transfers')
+    resp_json = await resp.json()
+
+    assert len(resp_json['data']) == 1
+
+
 async def test_get_account_eth_transfers_ok(cli, wallet_events_factory):
     address = '0x1111111111111111111111111111111111111111'
     t1 = wallet_events_factory.create(
@@ -385,21 +450,21 @@ async def test_get_account_eth_transfers_ok(cli, wallet_events_factory):
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
         event_data={'amount': '1000', 'sender': address, 'recipient': '0xa1'},
-        timestamp=100,
+        tx_data={'timestamp': 100},
     )
     wallet_events_factory.create(
         address='0xbb',
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
         event_data={'amount': '2000', 'sender': '0xbb', 'recipient': '0xa1'},
-        timestamp=101,
+        tx_data={'timestamp': 101},
     )
     t3 = wallet_events_factory.create(
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
         event_data={'amount': '3000', 'sender': '0xaaa', 'recipient': address},
-        timestamp=102,
+        tx_data={'timestamp': 102},
     )
     resp = await cli.get(f'v1/accounts/{address}/eth_transfers')
     assert resp.status == 200
@@ -446,8 +511,9 @@ async def test_get_account_eth_transfers_ok(cli, wallet_events_factory):
     ]
 
 
-async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
+async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block_factory):
     address = '0x1111111111111111111111111111111111111111'
+    block_factory.create(number=12, timestamp=102)
     wallet_events_factory.create(
         block_number=10,
         event_index=1000,
@@ -455,7 +521,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
         event_data={'amount': '1000', 'sender': address, 'recipient': '0xa1'},
-        timestamp=100,
+        tx_data={'timestamp': 100},
     )
     wallet_events_factory.create(
         block_number=10,
@@ -464,7 +530,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
         event_data={'amount': '2000', 'sender': '0xbb', 'recipient': '0xa1'},
-        timestamp=100,
+        tx_data={'timestamp': 100},
     )
     t3 = wallet_events_factory.create(
         block_number=12,
@@ -473,7 +539,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
         event_data={'amount': '3000', 'sender': '0xaaa', 'recipient': address},
-        timestamp=102,
+        tx_data={'timestamp': 102},
     )
     t4 = wallet_events_factory.create(
         block_number=12,
@@ -482,7 +548,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
         event_data={'amount': '4000', 'sender': '0xaaa', 'recipient': address},
-        timestamp=102,
+        tx_data={'timestamp': 102},
     )
     wallet_events_factory.create(
         block_number=13,
@@ -491,7 +557,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
         event_data={'amount': '5000', 'sender': '0xaaa', 'recipient': address},
-        timestamp=103,
+        tx_data={'timestamp': 103},
     )
     wallet_events_factory.create(
         block_number=13,
@@ -500,7 +566,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
         event_data={'amount': '6000', 'sender': '0xaaa', 'recipient': address},
-        timestamp=103,
+        tx_data={'timestamp': 103},
     )
     resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&event_index=1201&limit=2')
     assert resp.status == 200
@@ -538,6 +604,25 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory):
     assert resp_json['paging'] == {
         'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=1200&order=asc&limit=2',
         'next': f'/v1/accounts/{address}/eth_transfers?block_number=13&event_index=1300&order=asc&limit=2'}
+
+    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?timestamp=102&order=asc&limit=2')
+    assert resp.status == 200
+    resp_json = await resp.json()
+    assert resp_json['data'] == [
+        {'amount': '3000',
+         'from': '0xaaa',
+         'timestamp': 102,
+         'to': '0x1111111111111111111111111111111111111111',
+         'transactionHash': t3.tx_hash},
+        {'amount': '4000',
+         'from': '0xaaa',
+         'timestamp': 102,
+         'to': '0x1111111111111111111111111111111111111111',
+         'transactionHash': t4.tx_hash},
+    ]
+    assert resp_json['paging'] == {
+        'link': f'/v1/accounts/{address}/eth_transfers?timestamp=102&event_index=1200&order=asc&limit=2',
+        'next': f'/v1/accounts/{address}/eth_transfers?timestamp=103&event_index=1300&order=asc&limit=2'}
 
 
 @pytest.mark.parametrize(
@@ -579,6 +664,7 @@ async def test_get_accounts_eth_transfers(
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         event_data={'amount': '6000', 'sender': '0xaaa', 'recipient': address},
+        tx_data={'timestamp': 100}
     )
 
     # when

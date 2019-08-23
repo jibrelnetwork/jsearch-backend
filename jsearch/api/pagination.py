@@ -34,7 +34,6 @@ def get_link(
     for field in fields:
         query_key = mapping and mapping.get(field) or field
         value = item[field]
-
         if decimals_to_ints and isinstance(value, decimal.Decimal):
             # If a value is a big decimal, it will be converted to a scientific
             # notation when casted to string (i.e. str(1..0.0) = '1e+18').
