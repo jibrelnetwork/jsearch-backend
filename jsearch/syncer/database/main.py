@@ -273,6 +273,7 @@ class MainDB(DBWrapper):
 
         q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
         j = json.dumps
+        print(j(assets_summary_updates))
 
         async with self.engine.acquire() as conn:
             async with conn.begin():
