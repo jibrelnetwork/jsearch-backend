@@ -483,16 +483,15 @@ class Storage:
                 return None
             row = dict(row)
             del row['is_forked']
-            row['logs'] = await self.get_logs(row['transaction_hash'])
+            row['logs'] = await self.get_logs(conn, row['transaction_hash'])
             return models.Receipt(**row)
 
-    async def get_logs(self, tx_hash: str) -> List[models.Log]:
+    async def get_logs(self, conn, tx_hash: str) -> List[models.Log]:
         fields = models.Log.select_fields()
         query = f"SELECT {fields} FROM logs WHERE transaction_hash=$1 ORDER BY log_index"
 
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, tx_hash)
-            return [models.Log(**r) for r in rows]
+        rows = await conn.fetch(query, tx_hash)
+        return [models.Log(**r) for r in rows]
 
     async def get_account_logs(
             self,
