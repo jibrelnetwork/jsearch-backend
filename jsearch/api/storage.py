@@ -38,7 +38,7 @@ from jsearch.api.database_queries.pending_transactions import (
     get_outcoming_pending_txs_count,
     get_pending_txs_ordering
 )
-from jsearch.api.database_queries.token_holders import get_token_holders_query
+from jsearch.api.database_queries.token_holders import get_token_holders_query, get_last_token_holders_query
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_account_and_block_number,
     get_token_transfers_by_token_and_block_number
@@ -652,15 +652,18 @@ class Storage:
 
         return holders, last_affected_block
 
-    async def get_account_token_balance(self, account_address: str, token_address: str) \
-            -> Tuple[Optional[models.TokenHolder], Optional[LastAffectedBlock]]:
-        query = """
-        SELECT account_address, token_address, balance, decimals, block_number
-        FROM token_holders
-        WHERE account_address=$1 AND token_address=$2
-        """
+    async def get_account_token_balance(
+            self,
+            account_address: str,
+            token_address: str
+    ) -> Tuple[Optional[models.TokenHolder], Optional[LastAffectedBlock]]:
+        query = get_last_token_holders_query(
+            account_address=account_address,
+            token_addresses=[token_address]
+        )
+
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(query, account_address, token_address)
+            row = await fetch_row(conn, query)
 
         if not row:
             return None, None
@@ -670,22 +673,25 @@ class Storage:
 
         return holder, last_affected_block
 
-    async def get_account_tokens_balances(self, account_address: str, tokens_addresses: List[str]) \
-            -> Tuple[Optional[models.TokenHolder], Optional[LastAffectedBlock]]:
-        query = """
-        SELECT account_address, token_address, balance, decimals, block_number
-            FROM token_holders
-            WHERE account_address=$1 AND token_address=ANY($2::varchar[])
-        """
+    async def get_account_tokens_balances(
+            self,
+            account_address: str,
+            tokens_addresses: List[str]
+    ) -> Tuple[List[models.TokenBalance], Optional[LastAffectedBlock]]:
+        if not tokens_addresses:
+            return [], None
+
+        query = get_last_token_holders_query(
+            account_address=account_address,
+            token_addresses=tokens_addresses
+        )
+
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, account_address, tokens_addresses)
+            rows = await fetch(conn, query)
 
-        if not rows:
-            last_affected_block = None
-        else:
-            last_affected_block = max([r['block_number'] for r in rows], default=None)
-
+        last_affected_block = max([r['block_number'] for r in rows], default=None)
         balances = [models.TokenBalance(**row) for row in rows]
+
         return balances, last_affected_block
 
     async def get_latest_block_info(self) -> Optional[BlockInfo]:
