@@ -21,13 +21,14 @@ ALTER TABLE token_holders ALTER COLUMN is_forked SET DEFAULT false;
 DROP INDEX IF EXISTS idx_th_block_number;
 DROP INDEX IF EXISTS ix_token_holders_balance;
 DROP INDEX IF EXISTS ix_token_holders_token_balance_id;
-ALTER TABLE token_holders DROP CONSTRAINT token_holders_pkey;
+ALTER TABLE token_holders DROP CONSTRAINT IF EXISTS token_holders_pkey;
 CREATE UNIQUE INDEX token_holders_by_block_hash on token_holders(block_hash, token_address, account_address);
 """
 
 DOWN_SQL = """
 DROP INDEX IF EXISTS token_holders_by_block_hash;
 ALTER TABLE token_holders DROP COLUMN block_hash;
+ALTER TABLE token_holders DROP COLUMN is_forked;
 CREATE INDEX ix_token_holders_balance ON token_holders USING btree (balance);
 CREATE INDEX idx_th_block_number ON token_holders USING btree (block_number);
 CREATE INDEX ix_token_holders_token_balance_id ON token_holders USING btree (token_address, balance, id);

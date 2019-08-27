@@ -23,7 +23,8 @@ tables = [
     "reorgs",
     "chain_splits",
     "chain_events",
-    "internal_transactions"
+    "internal_transactions",
+    "token_holders"
 ]
 
 
@@ -83,6 +84,7 @@ def load_sample(engine, path):
     sample_data = {}
     for t in meta.sorted_tables:
         p = path / f'{t}.json'
+        print(p)
         if not p.exists():
             continue
         table_data = json.load(p.open())

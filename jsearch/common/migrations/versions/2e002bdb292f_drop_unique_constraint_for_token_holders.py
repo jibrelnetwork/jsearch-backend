@@ -22,7 +22,7 @@ CREATE UNIQUE INDEX assets_summary_by_block_hash on assets_summary(block_hash, a
 """
 
 DOWN_SQL = """
-ALTER TABLE assets_summary DROP CONSTRAINT assets_summary_by_block_hash;
+ALTER TABLE assets_summary DROP CONSTRAINT if exists assets_summary_by_block_hash;
 ALTER TABLE assets_summary DROP COLUMN is_forked;
 ALTER TABLE assets_summary DROP COLUMN block_hash;
 """

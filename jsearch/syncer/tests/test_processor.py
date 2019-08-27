@@ -17,7 +17,8 @@ from jsearch.common.tables import (
     internal_transactions_t,
     assets_summary_t,
     token_transfers_t,
-    token_holders_t)
+    token_holders_t
+)
 from jsearch.common.wallet_events import WalletEventType
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.processor import SyncProcessor, dict_keys_case_convert
@@ -32,7 +33,7 @@ async def call_system_under_test(raw_db_dsn: str, db_dsn: str, block_hash: str):
             'block_hash': block_hash,
             'created_at': datetime.datetime.now()
         }
-        await processor.sync_block(block_hash=block_hash, chain_event=chain_event, last_block=8000000)
+        await processor.sync_block(block_hash=block_hash, chain_event=chain_event)
 
 
 @pytest.fixture
@@ -391,7 +392,13 @@ async def test_sync_block_check_assets_summary(db, raw_db_sample, raw_db_dsn, db
         assert int(summary['value']) == int(account_state['balance'])
 
 
-async def test_sync_block_check_token_holders_in_assets_summary(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
+async def test_sync_block_check_token_holders_in_assets_summary(
+        db,
+        raw_db_split_sample,
+        raw_db_dsn,
+        db_dsn,
+        block_hash
+):
     """
     We test on 6000001 block.
     We can calculate ether balances for test blocks.
@@ -406,33 +413,28 @@ async def test_sync_block_check_token_holders_in_assets_summary(db, raw_db_sampl
     It is historical data and we can freeze it.
     """
     # given
-    total_holder_transfers = 40
     total_holder_balances = 36
 
     # when
     await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
 
-    # then
-    token_transfers = db.execute(
-        token_transfers_t.select()
-    ).fetchall()
-    token_owners = list(
-        {(item.token_address, item.address) for item in token_transfers if item.address != contracts.NULL_ADDRESS}
-    )
-    token_owners = sorted(token_owners, key=lambda x: (x[0], x[1]))
+    # then - right
+    token_owners = db.execute(token_holders_t.select()).fetchall()
+    token_owners = [dict(item) for item in token_owners]
+    token_owners = sorted(token_owners, key=lambda x: (x['token_address'], x['account_address']))
 
+    # then - left
     token_summary = db.execute(
         assets_summary_t.select().where(assets_summary_t.c.asset_address != '')
     ).fetchall()
-    token_summary = sorted([dict(item) for item in token_summary], key=lambda x: (x['asset_address'], x['address']))
+    token_summary = [dict(item) for item in token_summary]
+    token_summary = sorted(token_summary, key=lambda x: (x['asset_address'], x['address']))
 
-    assert len(token_transfers) == total_holder_transfers
     assert len(token_summary) == len(token_owners) == total_holder_balances
 
     for summary, token_owner in zip(token_summary, token_owners):
-        token, owner = token_owner
-        assert summary['asset_address'] == token
-        assert summary['address'] == owner
+        assert summary['asset_address'] == token_owner['token_address']
+        assert summary['address'] == token_owner['account_address']
 
 
 @pytest.fixture
@@ -444,7 +446,7 @@ def mock_get_decimals(mocker):
 
 
 @pytest.mark.usefixtures('mock_get_decimals')
-async def test_sync_block_check_holders(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash):
+async def test_sync_block_check_holders(db, raw_db_split_sample, raw_db_dsn, db_dsn, block_hash):
     """
     We test on 6000001 block.
     We can calculate ether balances for test blocks.

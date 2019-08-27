@@ -72,7 +72,8 @@ BEGIN
     */
 	IF json_array_length(token_holders_updates_data::json) > 0 THEN
 		INSERT INTO token_holders (account_address, token_address, balance, decimals, block_number, block_hash, is_forked)
-		    SELECT account_address, token_address, balance, decimals, block_number, block_hash, is_forked 
+		    SELECT account_address, token_address, balance, decimals, block_number, block_hash,
+                CASE WHEN is_forked is null THEN false ELSE is_forked END as is_forked 
 		        FROM json_populate_recordset(null::token_holders, token_holders_updates_data::json)
             ON CONFLICT (account_address, token_address, block_hash)
                 DO UPDATE SET balance = EXCLUDED.balance, block_number = EXCLUDED.block_number
@@ -84,9 +85,10 @@ BEGIN
 	END IF;
 
 	IF json_array_length(assets_summary_updates_data::json) > 0 THEN
-        INSERT INTO assets_summary (address, asset_address, "value", decimals, nonce, block_number, block_hash, is_forked)
-		    SELECT address, asset_address, "value", decimals, nonce, block_number, block_hash, is_forked 
-		        FROM json_populate_recordset(null::assets_summary, assets_summary_updates_data::json)
+        INSERT INTO assets_summary (address, asset_address, "value", decimals, nonce, tx_number, block_number, block_hash, is_forked)
+		    SELECT address, asset_address, "value", decimals, nonce, tx_number, block_number, block_hash,
+                CASE WHEN is_forked is null THEN false ELSE is_forked END as is_forked 
+	        FROM json_populate_recordset(null::assets_summary, assets_summary_updates_data::json)
 		    ON CONFLICT (address, asset_address, block_hash)
 		        DO UPDATE SET value = EXCLUDED.value, block_number = EXCLUDED.block_number, nonce = EXCLUDED.nonce, tx_number = EXCLUDED.tx_number
 		    WHERE assets_summary.block_number is null or assets_summary.block_number < EXCLUDED.block_number;

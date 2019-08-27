@@ -66,6 +66,7 @@ def assets_from_accounts(accounts: Accounts) -> AssetUpdates:
             'decimals': 0,
             'nonce': acc['nonce'],
             'block_number': acc['block_number'],
+            'block_hash': acc['block_hash']
         }
         updates.append(update_data)
     return updates
@@ -99,11 +100,12 @@ def asset_records_from_token_balances(
         decimals = decimals_map[token_holder_balance.token]
         update_data: AssetUpdate = {
             'decimals': decimals,
-            'address': token_holder_balance.token,
-            'asset_address': token_holder_balance.account,
+            'address': token_holder_balance.account,
+            'asset_address': token_holder_balance.token,
             'value': token_holder_balance.balance,
             'block_number': token_holder_balance.block_number,
-            'block_hash': token_holder_balance.block_hash
+            'block_hash': token_holder_balance.block_hash,
+            'tx_number': 1,
         }
         updates.append(update_data)
     return updates
