@@ -15,6 +15,7 @@ depends_on = None
 
 UP_SQL = """
 ALTER TABLE assets_summary ADD COLUMN is_forked BOOLEAN;
+ALTER TABLE assets_summary ALTER COLUMN is_forked SET DEFAULT false;
 ALTER TABLE assets_summary ADD COLUMN block_hash VARCHAR;
 ALTER TABLE assets_summary DROP CONSTRAINT assets_summary_pkey;
 CREATE UNIQUE INDEX assets_summary_by_block_hash on assets_summary(block_hash, asset_address, address);

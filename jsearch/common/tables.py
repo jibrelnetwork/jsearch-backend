@@ -259,7 +259,8 @@ token_holders_t = sa.Table(
     sa.Column('balance', postgresql.NUMERIC(32, 0), index=True),
     sa.Column('decimals', sa.Integer, index=True),
     sa.Column('block_number', sa.Integer),
-    sa.Column('block_hash', sa.String, nullable=True)
+    sa.Column('block_hash', sa.String, nullable=True),
+    sa.Column('is_forked', sa.Boolean, default=False),
 )
 
 reorgs_t = sa.Table(
@@ -336,6 +337,7 @@ assets_summary_t = sa.Table(
     sa.Column('nonce', sa.BigInteger),
     sa.Column('block_number', sa.BigInteger),
     sa.Column('block_hash', sa.String, nullable=True),
+    sa.Column('is_forked', sa.Boolean, default=False),
 )
 
 wallet_events_t = sa.Table(

@@ -27,8 +27,7 @@ async def process_insert_block_event(raw_db: RawDB,
                                      main_db: MainDB,
                                      block_hash: str,
                                      block_num: int,
-                                     chain_event: Dict[str, Any],
-                                     last_block: int) -> None:
+                                     chain_event: Dict[str, Any]) -> None:
     parent_hash = await raw_db.get_parent_hash(block_hash)
     is_block_number_exists = await main_db.is_block_number_exists(block_num)
 
@@ -51,13 +50,10 @@ async def process_insert_block_event(raw_db: RawDB,
             block_number=block_num,
             is_forked=is_forked,
             chain_event=chain_event,
-            last_block=last_block,
         )
 
 
-async def process_chain_split_event(main_db: MainDB,
-                                    split_data: Dict[str, Any],
-                                    last_block: int) -> None:
+async def process_chain_split_event(main_db: MainDB, split_data: Dict[str, Any]) -> None:
     from_block = split_data['block_number']
     to_block = split_data['block_number'] + split_data['add_length']
 
@@ -80,7 +76,6 @@ async def process_chain_split_event(main_db: MainDB,
     await main_db.apply_chain_split(
         new_chain_fragment=new_chain_fragment,
         old_chain_fragment=old_chain_fragment,
-        last_block=last_block,
         chain_event=split_data,
     )
 
@@ -188,7 +183,6 @@ class Manager:
             'block_hash': event['block_hash'],
         })
 
-        last_block = await self.raw_db.get_latest_available_block_number()
         if event['type'] == ChainEvent.INSERT:
             block_hash = event['block_hash']
             block_number = event['block_number']
@@ -198,12 +192,11 @@ class Manager:
                 block_hash=block_hash,
                 block_num=block_number,
                 chain_event=event,
-                last_block=last_block,
             )
         elif event['type'] == ChainEvent.REINSERT:
             await self.main_db.insert_chain_event(event)
         elif event['type'] == ChainEvent.SPLIT:
-            await process_chain_split_event(self.main_db, split_data=event, last_block=last_block)
+            await process_chain_split_event(self.main_db, split_data=event)
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],
@@ -214,7 +207,6 @@ class Manager:
             'event_type': event['type'],
             'block_number': event['block_number'],
             'block_hash': event['block_hash'],
-            'last_block': last_block,
             'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
 

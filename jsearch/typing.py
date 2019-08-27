@@ -39,8 +39,14 @@ AssetTransfer = Dict[str, Any]
 AnyCoroutine = Coroutine[Any, Any, Any]
 AnyCoroutineMaker = Callable[..., AnyCoroutine]
 
+BlockHash = TypeVar('BlockHash', bound=str)
+BlockHashes = List[BlockHash]
+
 TokenAddress = TypeVar('TokenAddress', bound=str)
 TokenAddresses = List[TokenAddress]
+
+TokenHolderUpdate = Dict[str, Any]
+TokenHolderUpdates = List[TokenHolderUpdate]
 
 AccountAddress = TypeVar('AccountAddress', bound=str)
 AccountAddresses = List[AccountAddress]

@@ -1,6 +1,7 @@
 import logging
 
 from jsearch.common import contracts
+from jsearch.syncer.structs import TokenHolderBalances, TokenHolderBalance
 from .wrapper import DBWrapper
 
 logger = logging.getLogger(__name__)
@@ -132,6 +133,20 @@ class RawDB(DBWrapper):
     async def get_block_receipts(self, block_hash):
         q = """SELECT "block_number", "block_hash", "fields" FROM "receipts" WHERE "block_hash"=%s"""
         return await self.fetch_one(q, block_hash)
+
+    async def get_token_holder_balances(self, block_hash: str) -> TokenHolderBalances:
+        query = """
+        SELECT 
+            "block_number",
+            "block_hash",
+            "token_address" as token,
+            "holder_address" as account,
+            "balance"::bigint
+        FROM token_holders
+        WHERE block_hash = %s;
+        """
+        rows = await self.fetch_all(query, block_hash)
+        return [TokenHolderBalance(**row) for row in rows]
 
     async def get_reward(self, block_number, block_hash):
         if block_number == GENESIS_BLOCK_NUMBER:

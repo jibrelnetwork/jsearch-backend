@@ -1,4 +1,4 @@
-from typing import NamedTuple, List, Optional
+from typing import Dict
 
 from jsearch.common.wallet_events import (
     event_from_internal_tx,
@@ -6,47 +6,10 @@ from jsearch.common.wallet_events import (
     event_from_tx,
     WalletEventType,
 )
-from jsearch.syncer.database_queries.assets_summary import upsert_assets_summary_query
-from jsearch.syncer.database_queries.token_holders import upsert_token_holder_balance_q
-from jsearch.typing import Accounts, AssetUpdates, AccountAddress, TokenAddress
+from jsearch.syncer.structs import TokenHolderBalances
+from jsearch.typing import Accounts, AssetUpdates, TokenHolderUpdates, TokenHolderUpdate, AssetUpdate
 
 ETHER_ASSET_ADDRESS = ''
-
-
-class AssetBalanceUpdate(NamedTuple):
-    account_address: AccountAddress
-    asset_address: TokenAddress
-    decimals: Optional[int]
-    balance: int
-
-    block_number: int
-    nonce: Optional[str]
-
-    def as_token_holder_update(self):
-        return {
-            'token_address': self.asset_address,
-            'account_address': self.account_address,
-            'balance': self.balance,
-            'decimals': self.decimals,
-            'block_number': self.block_number
-        }
-
-    def to_upsert_assets_summary_query(self, blocks_to_replace: Optional[List[str]] = None):
-        return upsert_assets_summary_query(
-            address=self.account_address,
-            asset_address=self.asset_address,
-            value=self.balance,
-            decimals=self.decimals,
-            block_number=self.block_number,
-            nonce=self.nonce,
-            blocks_to_replace=blocks_to_replace
-        )
-
-    def to_upsert_token_holder_query(self):
-        return upsert_token_holder_balance_q(**self.as_token_holder_update())
-
-
-AssetBalanceUpdates = List[AssetBalanceUpdate]
 
 
 def events_from_transactions(transactions, contracts_set, excluded_types=(WalletEventType.ERC20_TRANSFER,)):
@@ -108,15 +71,39 @@ def assets_from_accounts(accounts: Accounts) -> AssetUpdates:
     return updates
 
 
-def assets_from_token_balance_updates(token_balance_updates: AssetBalanceUpdates, block_number) -> AssetUpdates:
+def token_holders_from_token_balances(
+        token_holder_balances: TokenHolderBalances,
+        decimals_map: Dict[str, int],
+) -> TokenHolderUpdates:
     updates = []
-    for balance in token_balance_updates:
-        update_data = {
-            'address': balance.account_address,
-            'asset_address': balance.asset_address,
-            'value': balance.balance,
-            'decimals': balance.decimals,
-            'block_number': block_number
+    for token_holder_balance in token_holder_balances:
+        decimals = decimals_map[token_holder_balance.token]
+        update: TokenHolderUpdate = {
+            'decimals': decimals,
+            'token_address': token_holder_balance.token,
+            'account_address': token_holder_balance.account,
+            'balance': token_holder_balance.balance,
+            'block_number': token_holder_balance.block_number,
+            'block_hash': token_holder_balance.block_hash
+        }
+        updates.append(update)
+    return updates
+
+
+def asset_records_from_token_balances(
+        token_holder_balances: TokenHolderBalances,
+        decimals_map: Dict[str, int]
+) -> AssetUpdates:
+    updates = []
+    for token_holder_balance in token_holder_balances:
+        decimals = decimals_map[token_holder_balance.token]
+        update_data: AssetUpdate = {
+            'decimals': decimals,
+            'address': token_holder_balance.token,
+            'asset_address': token_holder_balance.account,
+            'value': token_holder_balance.balance,
+            'block_number': token_holder_balance.block_number,
+            'block_hash': token_holder_balance.block_hash
         }
         updates.append(update_data)
     return updates
