@@ -136,7 +136,7 @@ class RawDB(DBWrapper):
 
     async def get_token_holder_balances(self, block_hash: str) -> TokenHolderBalances:
         query = """
-        SELECT 
+        SELECT
             "block_number",
             "block_hash",
             "token_address" as token,

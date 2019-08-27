@@ -84,7 +84,6 @@ def load_sample(engine, path):
     sample_data = {}
     for t in meta.sorted_tables:
         p = path / f'{t}.json'
-        print(p)
         if not p.exists():
             continue
         table_data = json.load(p.open())
