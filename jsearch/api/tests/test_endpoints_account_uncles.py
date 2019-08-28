@@ -47,11 +47,15 @@ URL = '/v1/accounts/address/mined_uncles?{params}'
                     'order': 'asc'
                 })),
                 10,
-                [9],
-                None,
+                [0, 1, 2],
                 URL.format(params=urlencode({
                     'limit': 3,
-                    'uncle_number': 9,
+                    'uncle_number': 3,
+                    'order': 'asc'
+                })),
+                URL.format(params=urlencode({
+                    'limit': 3,
+                    'uncle_number': 0,
                     'order': 'asc'
                 })),
         ),

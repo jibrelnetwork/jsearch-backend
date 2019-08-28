@@ -25,7 +25,7 @@ class UncleListSchema(ListSchema):
     timestamp = PositiveIntOrTagField(tags={Tag.LATEST})
 
     default_values = {
-        'uncle_number': Tag.LATEST
+        'uncle_number': None
     }
 
     mapping = {
