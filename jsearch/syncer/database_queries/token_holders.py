@@ -17,10 +17,11 @@ def upsert_token_holder_balance_q(token_address: TokenAddress,
         account_address=account_address,
         balance=balance,
         decimals=decimals,
-        block_number=block_number
+        block_number=block_number,
+        block_hash=None,
     )
     return insert_query.on_conflict_do_update(
-        index_elements=['token_address', 'account_address'],
+        index_elements=['token_address', 'account_address', 'block_hash'],
         set_={
             'balance': balance,
             'block_number': block_number

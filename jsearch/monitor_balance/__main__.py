@@ -125,6 +125,11 @@ async def fix_empty_blocks_assets_summary(offset: int) -> None:
                 pass
 
 
+async def sleep():
+    while True:
+        await asyncio.sleep(1)
+
+
 @click.command()
 @click.option('--block', type=int)
 @click.option('--offset', type=int, help="Offset for node requests")

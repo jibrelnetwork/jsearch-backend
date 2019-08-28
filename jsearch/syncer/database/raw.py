@@ -1,26 +1,26 @@
 import logging
 
 from jsearch.common import contracts
-from .common import DBWrapper
+from jsearch.syncer.structs import TokenHolderBalances, TokenHolderBalance
+from .wrapper import DBWrapper
 
 logger = logging.getLogger(__name__)
 
 GENESIS_BLOCK_NUMBER = 0
+
+RAWDB_POOL_SIZE = 1
 
 
 class RawDB(DBWrapper):
     """
     jSearch RAW db wrapper
     """
+    pool_size: int = RAWDB_POOL_SIZE
 
     async def get_latest_available_block_number(self):
         q = """SELECT block_number FROM "bodies" order by block_number desc limit 1"""
 
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q)
-                row = await cur.fetchone()
-                cur.close()
+        row = await self.fetch_one(q)
 
         if row:
             return row['block_number']
@@ -38,11 +38,7 @@ class RawDB(DBWrapper):
         FROM "pending_transactions" WHERE "id" BETWEEN %s AND %s ORDER BY "id"
         """
 
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, [start_id, end_id])
-                rows = await cur.fetchall()
-                cur.close()
+        rows = await self.fetch_all(q, start_id, end_id)
 
         logger.info(
             "Fetched batch of pending TXs",
@@ -53,7 +49,7 @@ class RawDB(DBWrapper):
             },
         )
 
-        return [dict(row) for row in rows]
+        return rows
 
     async def get_last_pending_tx_id(self) -> int:
         return await self._get_boundary_pending_tx_id(boundary='max')
@@ -67,20 +63,13 @@ class RawDB(DBWrapper):
 
         q = f'SELECT {boundary}("id") AS boundary_id FROM "pending_transactions"'
 
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q)
-                row = await cur.fetchone()
+        row = await self.fetch_one(q)
 
         return row and row['boundary_id'] or 0
 
     async def get_parent_hash(self, block_hash):
         q = """SELECT fields FROM headers WHERE block_hash=%s"""
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, [block_hash])
-                row = await cur.fetchone()
-                cur.close()
+        row = await self.fetch_one(q, block_hash)
         return row['fields']['parentHash']
 
     async def get_next_chain_event(self, block_range, event_id, node_id):
@@ -91,17 +80,14 @@ class RawDB(DBWrapper):
         else:
             block_cond = """block_number >= %s"""
             params.append(block_range[0])
+
         q = f"""SELECT * FROM chain_events WHERE
                     id > %s
                     AND node_id=%s
                     AND {block_cond}
                   ORDER BY id ASC LIMIT 1"""
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, params)
-                row = await cur.fetchone()
-                cur.close()
-        return row
+
+        return await self.fetch_one(q, *params)
 
     async def get_first_chain_event_for_block_range(self, block_range, node_id):
         if block_range[1] is not None:
@@ -117,68 +103,58 @@ class RawDB(DBWrapper):
             WHERE {cond}  AND node_id=%s
             ORDER BY id ASC LIMIT 1
         """
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, params)
-                row = await cur.fetchone()
-                cur.close()
-        return row
+        return await self.fetch_one(q, *params)
 
     async def is_canonical_block(self, block_hash):
         q = """SELECT id, reinserted FROM reorgs WHERE block_hash=%s ORDER BY id DESC"""
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, [block_hash])
-                rows = await cur.fetchall()
-                cur.close()
+
+        rows = await self.fetch_all(q, block_hash)
+
         if len(rows) == 0:
             return True
+
         if rows[0]['reinserted'] is True:
             return True
+
         return False
-
-    async def fetch_rows(self, q, params):
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, params)
-                rows = await cur.fetchall()
-                cur.close()
-        return rows
-
-    async def fetch_row(self, q, params):
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, params)
-                row = await cur.fetchone()
-                cur.close()
-        return row
 
     async def get_header_by_hash(self, block_hash):
         q = """SELECT "block_number", "block_hash", "fields" FROM "headers" WHERE "block_hash"=%s"""
-        row = await self.fetch_row(q, [block_hash])
-        return row
+        return await self.fetch_one(q, block_hash)
 
     async def get_block_accounts(self, block_hash):
         q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "accounts" WHERE "block_hash"=%s"""
-        rows = await self.fetch_rows(q, [block_hash])
-        return rows
+        return await self.fetch_all(q, block_hash)
 
     async def get_block_body(self, block_hash):
         q = """SELECT "block_number", "block_hash", "fields" FROM "bodies" WHERE "block_hash"=%s"""
-        row = await self.fetch_row(q, [block_hash])
-        return row
+        return await self.fetch_one(q, block_hash)
 
     async def get_block_receipts(self, block_hash):
         q = """SELECT "block_number", "block_hash", "fields" FROM "receipts" WHERE "block_hash"=%s"""
-        row = await self.fetch_row(q, [block_hash])
-        return row
+        return await self.fetch_one(q, block_hash)
+
+    async def get_token_holder_balances(self, block_hash: str) -> TokenHolderBalances:
+        query = """
+        SELECT
+            "block_number",
+            "block_hash",
+            "token_address" as token,
+            "holder_address" as account,
+            "balance"::bigint
+        FROM token_holders
+        WHERE block_hash = %s;
+        """
+        rows = await self.fetch_all(query, block_hash)
+        return [TokenHolderBalance(**row) for row in rows]
 
     async def get_reward(self, block_number, block_hash):
         if block_number == GENESIS_BLOCK_NUMBER:
             return get_reward_for_genesis_block(block_hash)
 
         q = """SELECT "id", "block_number", "block_hash", "address", "fields" FROM "rewards" WHERE "block_hash"=%s"""
-        rows = await self.fetch_rows(q, [block_hash])
+        rows = await self.fetch_all(q, block_hash)
+
         if len(rows) > 1:
             for r in rows:
                 if r['address'] != contracts.NULL_ADDRESS:
@@ -202,8 +178,7 @@ class RawDB(DBWrapper):
           "fields"
         FROM "internal_transactions" WHERE "block_hash"=%s"""
 
-        rows = await self.fetch_rows(q, [block_hash])
-        return rows
+        return await self.fetch_all(q, block_hash)
 
 
 def get_reward_for_genesis_block(block_hash):
