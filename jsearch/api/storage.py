@@ -53,6 +53,7 @@ from jsearch.api.database_queries.uncles import (
     get_uncles_by_number_query,
     get_uncles_by_miner_address_and_timestamp_query,
     get_uncles_by_miner_address_and_number_query,
+    get_uncles_query,
 )
 from jsearch.api.database_queries.wallet_events import (
     get_wallet_events_query,
@@ -386,14 +387,17 @@ class Storage:
             number: Optional[int] = None,
             timestamp: Optional[int] = None
     ) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
-        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-            query = get_uncles_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
-
-        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_uncles_by_number_query(limit, number=number, order=order)
-
+        if number is None:
+            query = get_uncles_query(limit=limit, order=order)
         else:
-            raise ValueError('Invalid scheme: {scheme}')
+            if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+                query = get_uncles_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
+
+            elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+                query = get_uncles_by_number_query(limit, number=number, order=order)
+
+            else:
+                raise ValueError('Invalid scheme: {scheme}')
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
@@ -416,24 +420,27 @@ class Storage:
             number: Optional[int] = None,
             timestamp: Optional[int] = None
     ) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
-        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-            query = get_uncles_by_miner_address_and_timestamp_query(
-                address=address,
-                limit=limit,
-                timestamp=timestamp,
-                order=order
-            )
-
-        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_uncles_by_miner_address_and_number_query(
-                address=address,
-                limit=limit,
-                number=number,
-                order=order
-            )
-
+        if number is None:
+            query = get_uncles_query(limit=limit, order=order, address=address)
         else:
-            raise ValueError('Invalid scheme: {scheme}')
+            if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+                query = get_uncles_by_miner_address_and_timestamp_query(
+                    address=address,
+                    limit=limit,
+                    timestamp=timestamp,
+                    order=order
+                )
+
+            elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+                query = get_uncles_by_miner_address_and_number_query(
+                    address=address,
+                    limit=limit,
+                    number=number,
+                    order=order
+                )
+
+            else:
+                raise ValueError('Invalid scheme: {scheme}')
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
