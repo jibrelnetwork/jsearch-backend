@@ -259,7 +259,7 @@ token_holders_t = sa.Table(
     sa.Column('balance', postgresql.NUMERIC(32, 0), index=True),
     sa.Column('decimals', sa.Integer, index=True),
     sa.Column('block_number', sa.Integer),
-    sa.Column('block_hash', sa.String, nullable=True),
+    sa.Column('block_hash', sa.String, nullable=True, primary_key=True),
     sa.Column('is_forked', sa.Boolean, default=False),
 )
 
