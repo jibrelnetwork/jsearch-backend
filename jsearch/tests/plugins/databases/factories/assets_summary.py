@@ -1,8 +1,8 @@
-from functools import partial
 from random import randint
 
 import factory
 import pytest
+from functools import partial
 
 from jsearch.common.tables import assets_summary_t
 from jsearch.tests.plugins.databases.factories.common import generate_address
@@ -14,6 +14,7 @@ class AssetsSummaryModel(Base):
     __mapper_args__ = {
         'primary_key': [
             assets_summary_t.c.asset_address,
+            assets_summary_t.c.block_hash,
             assets_summary_t.c.address
         ]
     }
@@ -29,6 +30,9 @@ class AssetsSummaryFactory(factory.alchemy.SQLAlchemyModelFactory):
     tx_number = factory.LazyFunction(partial(randint, 1, 10000))
     nonce = factory.Sequence(lambda n: n)
 
+    block_number = factory.Sequence(lambda n: n)
+    block_hash = factory.LazyFunction(generate_address)
+
     class Meta:
         model = AssetsSummaryModel
         sqlalchemy_session = session
@@ -37,4 +41,5 @@ class AssetsSummaryFactory(factory.alchemy.SQLAlchemyModelFactory):
 
 @pytest.fixture()
 def assets_summary_factory():
-    return AssetsSummaryFactory
+    yield AssetsSummaryFactory
+    AssetsSummaryFactory.reset_sequence()
