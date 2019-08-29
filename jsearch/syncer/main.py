@@ -1,4 +1,8 @@
+import asyncio
+import logging
+
 import click
+from aiopg.sa import create_engine
 
 from jsearch import settings
 from jsearch.common import logs, stats
@@ -6,6 +10,36 @@ from jsearch.common import worker
 from jsearch.syncer import services
 from jsearch.syncer.manager import SYNCER_BALANCE_MODE_LATEST, SYNCER_BALANCE_MODE_OFFSET
 from jsearch.utils import parse_range
+
+logger = logging.getLogger("syncer")
+
+
+# ToDo: Remove after release 1.2
+async def wait_new_scheme():
+    query = """
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_name = 'assets_summary' AND column_name = 'block_hash';
+    """
+    while True:
+        engine = await create_engine(dsn=settings.JSEARCH_MAIN_DB, maxsize=1)
+        try:
+            async with engine.acquire() as connection:
+                async with connection.execute(query) as cursor:
+                    row = await cursor.fetchone()
+                    if row is None:
+                        logger.info('Wait new scheme, wait 5 seconds...')
+                        await asyncio.sleep(5)
+                    else:
+                        logger.info('New schema have founded, start sync...')
+                        break
+        except KeyboardInterrupt:
+            break
+
+
+def wait():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(wait_new_scheme())
 
 
 @click.command()
