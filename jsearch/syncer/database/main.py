@@ -23,7 +23,6 @@ from jsearch.common.tables import (
     uncles_t,
     wallet_events_t,
 )
-from jsearch.syncer.database_queries.accounts import get_accounts_state_for_blocks_query
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.typing import Blocks, Block
@@ -78,10 +77,6 @@ class MainDB(DBWrapper):
                 # here last num is not missed, just not synced, remove them
                 rows = rows[:-1]
             return [r['start'] for r in rows]
-
-    async def get_accounts_addresses_for_blocks(self, blocks_hashes: List[str]) -> List[str]:
-        query = get_accounts_state_for_blocks_query(blocks_hashes=blocks_hashes)
-        return list({item['address'] for item in await self.fetch_all(query)})
 
     async def get_hash_map_from_block_range(self, from_block: int, to_block: int) -> Dict[str, Block]:
         query = blocks_t.select().where(and_(blocks_t.c.number > from_block, blocks_t.c.number <= to_block))

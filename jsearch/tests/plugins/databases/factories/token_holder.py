@@ -18,6 +18,7 @@ class TokenHolderFactory(factory.alchemy.SQLAlchemyModelFactory):
     balance = factory.LazyFunction(lambda: randint(0, 10 ** 18))
     decimals = factory.LazyFunction(lambda: randint(10, 18))
     block_number = factory.Sequence(lambda n: n)
+    block_hash = factory.LazyFunction(generate_address)
 
     id = factory.Sequence(lambda n: n)
 
