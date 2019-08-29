@@ -31,7 +31,7 @@ def get_assets_summary_query(addresses: List[str], assets: Optional[List[str]]) 
             Any(assets_summary_t.c.asset_address, array(tuple(assets)))
         )
 
-    conditions = reduce(lambda accumulator, condition: accumulator & condition, conditions)
+    conditions = reduce(and_, conditions)
 
     sub_query = select(
         [
