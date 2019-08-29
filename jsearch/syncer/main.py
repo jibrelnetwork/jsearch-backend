@@ -14,6 +14,7 @@ from jsearch.utils import parse_range
 logger = logging.getLogger("syncer")
 
 
+# ToDo: Remove after release 1.2
 async def wait_new_scheme():
     query = """
     SELECT column_name
@@ -36,6 +37,11 @@ async def wait_new_scheme():
             break
 
 
+def wait():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(wait_new_scheme())
+
+
 @click.command()
 @click.option('--log-level', default=settings.LOG_LEVEL, help="Log level")
 @click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
@@ -48,9 +54,6 @@ async def wait_new_scheme():
 def run(log_level, no_json_formatter, sync_range, balance_mode):
     stats.setup_syncer_metrics()
     logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(wait_new_scheme())
 
     syncer = services.SyncerService(
         sync_range=parse_range(sync_range),
