@@ -139,8 +139,8 @@ class RawDB(DBWrapper):
         SELECT
             "block_number",
             "block_hash",
-            "token_address" as token,
-            "holder_address" as account,
+            lower("token_address") as token,
+            lower("holder_address") as account,
             "balance"::bigint
         FROM token_holders
         WHERE block_hash = %s;
