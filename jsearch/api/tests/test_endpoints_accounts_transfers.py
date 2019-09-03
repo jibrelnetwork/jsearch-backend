@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 
 import pytest
 import time
+from aiohttp.test_utils import TestClient
 from typing import List, Dict, Any, Callable
 
 from jsearch.api.tests.utils import parse_url
@@ -368,3 +369,37 @@ async def test_get_account_transfers(cli, block_factory, transaction_factory, lo
             'logIndex': transfer.log_index,
         }
     ]
+
+
+@pytest.mark.parametrize(
+    "parameter, value, status",
+    (
+            ('block_number', 2 ** 128, 400),
+            ('block_number', 2 ** 8, 200),
+            ('timestamp', 2 ** 128, 400),
+            ('timestamp', 2 ** 8, 200)
+    ),
+    ids=(
+            "block_number_with_too_big_value",
+            "block_number_with_normal_value",
+            "timestamp_with_too_big_value",
+            "timestamp_with_normal_value"
+    )
+)
+async def test_get_account_token_transfers_filter_by_big_value(
+        cli: TestClient,
+        parameter: str,
+        value: int,
+        status: int
+):
+    # given
+    account = generate_address()
+
+    params = urlencode({parameter: value})
+    url = URL.replace('address', account).format(params=params)
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status

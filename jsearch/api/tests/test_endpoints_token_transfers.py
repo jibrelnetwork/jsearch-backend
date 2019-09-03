@@ -373,16 +373,16 @@ async def test_get_token_transfers_noparams(cli, block_factory, transaction_fact
 @pytest.mark.parametrize(
     "target_limit, expected_items_count, expected_errors",
     (
-        (None, 20, []),
-        (19, 19, []),
-        (20, 20, []),
-        (21, 0, [
-            {
-                "field": "limit",
-                "message": "Must be between 1 and 20.",
-                "code": "INVALID_LIMIT_VALUE",
-            }
-        ]),
+            (None, 20, []),
+            (19, 19, []),
+            (20, 20, []),
+            (21, 0, [
+                {
+                    "field": "limit",
+                    "message": "Must be between 1 and 20.",
+                    "code": "INVALID_LIMIT_VALUE",
+                }
+            ]),
     ),
     ids=[
         "limit=None --- 20 rows returned",
@@ -417,3 +417,37 @@ async def test_get_token_transfers_limits(
     observed_items_count = len(resp_json['data'])
 
     assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)
+
+
+@pytest.mark.parametrize(
+    "parameter, value, status",
+    (
+            ('block_number', 2 ** 128, 400),
+            ('block_number', 2 ** 8, 200),
+            ('timestamp', 2 ** 128, 400),
+            ('timestamp', 2 ** 8, 200)
+    ),
+    ids=(
+            "block_number_with_too_big_value",
+            "block_number_with_normal_value",
+            "timestamp_with_too_big_value",
+            "timestamp_with_normal_value"
+    )
+)
+async def test_get_token_transfers_filter_by_big_value(
+        cli: TestClient,
+        parameter: str,
+        value: int,
+        status: int
+):
+    # given
+    account = generate_address()
+
+    params = urlencode({parameter: value})
+    url = URL.replace('address', account).format(params=params)
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status
