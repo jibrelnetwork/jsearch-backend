@@ -1,6 +1,8 @@
 import logging
+from urllib.parse import urlencode
 
 import pytest
+from aiohttp.test_utils import TestClient
 from typing import Dict, Any
 
 from jsearch import settings
@@ -182,3 +184,37 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
             'error_message': 'Too many addresses requested'
         }
     ]
+
+
+@pytest.mark.parametrize(
+    "parameter, value, status",
+    (
+            ('block_number', 2 ** 128, 400),
+            ('block_number', 2 ** 8, 200),
+            ('timestamp', 2 ** 128, 400),
+            ('timestamp', 2 ** 8, 200)
+    ),
+    ids=(
+            "block_number_with_too_big_value",
+            "block_number_with_normal_value",
+            "timestamp_with_too_big_value",
+            "timestamp_with_normal_value"
+    )
+)
+async def test_get_accounts_txs_filter_by_big_value(
+        cli: TestClient,
+        parameter: str,
+        value: int,
+        status: int
+):
+    # given
+    address = generate_address()
+
+    params = urlencode({parameter: value})
+    url = f"/v1/accounts/{address}/transactions?{params}"
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status

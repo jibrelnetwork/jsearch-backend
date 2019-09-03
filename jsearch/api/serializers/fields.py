@@ -1,12 +1,34 @@
 from datetime import datetime
 
 from marshmallow import fields
-from typing import Set
+from marshmallow.validate import Range
+from typing import Set, Any
+
+INT_MAX = 2147483647
+BIGINT_MAX = 9223372036854775807
+
+int_validator = Range(min=INT_MAX * -1, max=INT_MAX)
+big_int_validator = Range(min=BIGINT_MAX * -1, max=BIGINT_MAX)
+
+
+class IntField(fields.Integer):
+
+    def __init__(self, *args, **kwargs):
+        super(IntField, self).__init__(*args, **kwargs)
+
+        self.validators.append(int_validator)
+
+
+class BigIntField(fields.Integer):
+    def __init__(self, *args, **kwargs):
+        super(BigIntField, self).__init__(*args, **kwargs)
+
+        self.validators.append(big_int_validator)
 
 
 class PositiveIntOrTagField(fields.Field):
     """
-    Allows positive integer or one of available tags
+    Allows positive big integer or one of available tags
     """
     default_error_messages = {
         'invalid': 'Not a valid number or tag.',
@@ -40,6 +62,12 @@ class PositiveIntOrTagField(fields.Field):
 
         self.fail('invalid')
 
+    def _validate(self, value: Any):
+        value = super(PositiveIntOrTagField, self)._validate(value)
+        if isinstance(value, int):
+            value = int_validator(value)
+        return value
+
 
 class StrLower(fields.String):
 
@@ -59,5 +87,5 @@ class Timestamp(fields.Integer):
         if value:
             try:
                 return datetime.fromtimestamp(value)
-            except ValueError:
+            except (ValueError, OverflowError):
                 self.fail('invalid')
