@@ -1,7 +1,7 @@
 FROM python:3.7
 ARG ENVIRONMENT="production"
 
-ENV LOG_LEVEL=INFO \
+ENV LOG_LEVEL="INFO" \
     RAVEN_DSN="" \
     JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_main" \
     JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw" \
@@ -20,7 +20,8 @@ ENV LOG_LEVEL=INFO \
     PENDING_TX_SLEEP_ON_NO_TXS="1" \
     SYNCER_API_PORT="8080" \
     SYNCER_PENDING_API_PORT="8080" \
-    MONITOR_OFFSET="6"
+    MONITOR_OFFSET="6" \
+    GUNICORN_WORKERS="5"
 
 RUN groupadd -g 999 app \
  && useradd -r -u 999 -g app app \
