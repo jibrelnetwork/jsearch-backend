@@ -4,9 +4,7 @@ from marshmallow import validates_schema, ValidationError
 from marshmallow.validate import Length
 
 from jsearch.api.database_queries.uncles import get_uncles_ordering
-from jsearch.api.helpers import (
-    Tag,
-)
+from jsearch.api.helpers import Tag
 from jsearch.api.ordering import Ordering
 from jsearch.api.serializers.common import ListSchema
 from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower
@@ -25,7 +23,7 @@ class UncleListSchema(ListSchema):
     timestamp = PositiveIntOrTagField(tags={Tag.LATEST})
 
     default_values = {
-        'uncle_number': Tag.LATEST
+        'uncle_number': None
     }
 
     mapping = {

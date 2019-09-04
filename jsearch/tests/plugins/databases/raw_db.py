@@ -23,7 +23,8 @@ tables = [
     "reorgs",
     "chain_splits",
     "chain_events",
-    "internal_transactions"
+    "internal_transactions",
+    "token_holders"
 ]
 
 

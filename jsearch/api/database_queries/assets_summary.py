@@ -1,6 +1,9 @@
-from sqlalchemy import Column, select, and_
+from functools import reduce
+from sqlalchemy import false, tuple_
+from sqlalchemy import select, and_
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
+from sqlalchemy.sql.functions import max
 from typing import Optional, List
 
 from jsearch.common.tables import assets_summary_t
@@ -18,18 +21,41 @@ def get_default_fields():
     ]
 
 
-def get_assets_summary_query(addresses: List[str],
-                             assets: Optional[List[str]],
-                             columns: Optional[List[Column]] = None) -> Query:
-    columns = columns or get_default_fields()
-    query = select(columns).where(
+def get_assets_summary_query(addresses: List[str], assets: Optional[List[str]]) -> Query:
+    conditions = [
+        Any(assets_summary_t.c.address, array(tuple(addresses))),
+        assets_summary_t.c.is_forked == false()
+    ]
+    if assets:
+        conditions.append(
+            Any(assets_summary_t.c.asset_address, array(tuple(assets)))
+        )
+
+    conditions = reduce(and_, conditions)
+
+    sub_query = select(
+        [
+            assets_summary_t.c.address,
+            assets_summary_t.c.asset_address,
+            max(assets_summary_t.c.block_number)
+        ]
+    ).where(conditions).group_by(
+        assets_summary_t.c.address,
+        assets_summary_t.c.asset_address
+    ).alias('latest_blocks')
+
+    columns = get_default_fields()
+
+    return select(columns).where(
         and_(
-            Any(assets_summary_t.c.address, array(tuple(addresses))),
+            tuple_(
+                assets_summary_t.c.address,
+                assets_summary_t.c.asset_address,
+                assets_summary_t.c.block_number
+            ).in_(
+                sub_query
+            ),
+            assets_summary_t.c.is_forked == false(),
             assets_summary_t.c.value > 0
         )
     )
-
-    if assets:
-        query = query.where(Any(assets_summary_t.c.asset_address, array(tuple(assets))))
-
-    return query.order_by(assets_summary_t.c.address, assets_summary_t.c.asset_address)

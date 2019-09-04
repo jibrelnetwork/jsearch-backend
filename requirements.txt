@@ -1,7 +1,5 @@
 aiohttp-swagger==1.0.5
 aiohttp==3.5.4
-marshmallow==2.19.5
-webargs==5.3.2
 aiomonitor==0.4.4
 aiopg==0.16.0
 alembic==1.0.11
@@ -19,12 +17,15 @@ ethereum==2.3.1
 funcy==1.11
 gunicorn==19.7.1
 hexbytes==0.1.0
-python-json-logger==0.1.11
+marshmallow==2.19.5
+mode==4.0.1
+prometheus-client==0.7.1
 psycopg2-binary==2.8.1
+python-json-logger==0.1.11
 raven==6.6.0
 requests==2.18.4
 rlp==0.6.0
-sentry-sdk==0.6.2
+sentry-sdk==0.11.1
 SQLAlchemy==1.2.6
 web3==4.2.1
-prometheus-client==0.7.1
+webargs==5.3.2

@@ -31,7 +31,7 @@ class SyncerService(mode.Service):
         await self.manager.stop()
 
         await self.main_db.disconnect()
-        self.raw_db.disconnect()
+        await self.raw_db.disconnect()
 
     @mode.Service.task
     async def syncer(self):

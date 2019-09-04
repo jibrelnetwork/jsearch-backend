@@ -1,10 +1,10 @@
 import logging
-from typing import Optional, List, Dict
+from urllib.parse import urlencode
 
 import pytest
 from aiohttp.test_utils import TestClient
+from typing import Optional, List, Dict
 
-from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.common.wallet_events import WalletEventType
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
@@ -71,43 +71,6 @@ async def test_get_account_block_hash(cli, main_db_data):
                              'nonce': account_state['nonce']}
 
 
-async def test_get_account_balances(cli, main_db_data):
-    a1 = main_db_data['accounts_base'][0]
-    a2 = main_db_data['accounts_base'][1]
-    resp = await cli.get('/v1/accounts/balances?addresses={},{}'.format(a1['address'], a2['address']))
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'address': a1['address'],
-                    'balance': str(main_db_data['accounts_state'][10]['balance'])},
-                   {'address': a2['address'],
-                    'balance': str(main_db_data['accounts_state'][6]['balance'])}]
-
-
-async def test_get_account_balances_invalid_addresses_all(cli):
-    resp = await cli.get('/v1/accounts/balances?addresses=foobar')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == []
-
-
-async def test_get_account_balances_addresses_have_spaces(cli, main_db_data):
-    a1 = main_db_data['accounts_base'][0]
-    a2 = main_db_data['accounts_base'][1]
-    resp = await cli.get('/v1/accounts/balances?addresses={}, {}'.format(a1['address'], a2['address']))
-    res = (await resp.json())['data']
-    assert resp.status == 200
-    assert len(res) == 2
-
-
-async def test_get_account_balances_invalid_addresses(cli: object, main_db_data: object) -> object:
-    a1 = main_db_data['accounts_base'][0]
-    resp = await cli.get('/v1/accounts/balances?addresses={},{},{}'.format('foo', a1['address'], 'bar'))
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'address': a1['address'],
-                    'balance': str(main_db_data['accounts_state'][10]['balance'])}]
-
-
 async def test_account_get_mined_blocks(cli, main_db_data):
     a1 = main_db_data['accounts_base'][0]
     a2 = main_db_data['accounts_base'][1]
@@ -122,50 +85,6 @@ async def test_account_get_mined_blocks(cli, main_db_data):
     res = (await resp.json())['data']
 
     assert len(res) == 0
-
-
-async def test_get_account_token_balance(cli, main_db_data):
-    resp = await cli.get(f'/v1/accounts/a1/token_balance/t1')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == {'accountAddress': 'a1', 'decimals': 2, 'balance': '1000', 'contractAddress': 't1'}
-
-    resp = await cli.get(f'/v1/accounts/a3/token_balance/t3')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == {'accountAddress': 'a3', 'decimals': 2, 'balance': '5000', 'contractAddress': 't3'}
-
-    resp = await cli.get(f'/v1/accounts/a3/token_balance/tX')
-    await assert_not_404_response(resp)
-
-    resp = await cli.get(f'/v1/accounts/aX/token_balance/t1')
-    await assert_not_404_response(resp)
-
-
-async def test_get_accounts_balances_does_not_complain_on_addresses_count_less_than_limit(cli):
-    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH)]
-    addresses_str = ','.join(addresses)
-
-    resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
-
-    assert resp.status == 200
-
-
-async def test_get_accounts_balances_complains_on_addresses_count_more_than_limit(cli):
-    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH + 1)]
-    addresses_str = ','.join(addresses)
-
-    resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
-    resp_json = await resp.json()
-
-    assert resp.status == 400
-    assert resp_json['status']['errors'] == [
-        {
-            'field': 'addresses',
-            'error_code': 'TOO_MANY_ITEMS',
-            'error_message': 'Too many addresses requested'
-        }
-    ]
 
 
 async def test_get_account_internal_transactions(cli, block_factory, transaction_factory, internal_transaction_factory):
@@ -628,16 +547,16 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
 @pytest.mark.parametrize(
     "target_limit, expected_items_count, expected_errors",
     (
-        (None, 20, []),
-        (19, 19, []),
-        (20, 20, []),
-        (21, 0, [
-            {
-                "field": "limit",
-                "message": "Must be between 1 and 20.",
-                "code": "INVALID_LIMIT_VALUE",
-            }
-        ]),
+            (None, 20, []),
+            (19, 19, []),
+            (20, 20, []),
+            (21, 0, [
+                {
+                    "field": "limit",
+                    "message": "Must be between 1 and 20.",
+                    "code": "INVALID_LIMIT_VALUE",
+                }
+            ]),
     ),
     ids=[
         "limit=None --- 20 rows returned",
@@ -681,3 +600,37 @@ async def test_get_accounts_eth_transfers(
     observed_items_count = len(resp_json['data'])
 
     assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)
+
+
+@pytest.mark.parametrize(
+    "parameter, value, status",
+    (
+            ('block_number', 2 ** 128, 400),
+            ('block_number', 2 ** 8, 200),
+            ('timestamp', 2 ** 128, 400),
+            ('timestamp', 2 ** 8, 200)
+    ),
+    ids=(
+            "block_number_with_too_big_value",
+            "block_number_with_normal_value",
+            "timestamp_with_too_big_value",
+            "timestamp_with_normal_value"
+    )
+)
+async def test_get_eth_transfers_filter_by_big_value(
+        cli: TestClient,
+        parameter: str,
+        value: int,
+        status: int
+):
+    # given
+    address = '0xcd424c53f5dc7d22cdff536309c24ad87a97e6af'
+
+    params = urlencode({parameter: value})
+    url = f"/v1/accounts/{address}/eth_transfers?{params}"
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status
