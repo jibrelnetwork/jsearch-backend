@@ -33,8 +33,8 @@ async def get_last_block_number_and_timestamp(
 ) -> Tuple[Optional[int], Optional[int]]:
     if {block_number, timestamp} & {Tag.LATEST}:
         last_block = await storage.get_latest_block_info()
-        block_number = block_number and last_block.number
-        timestamp = timestamp and last_block.timestamp
+        block_number = block_number and last_block and last_block.number
+        timestamp = timestamp and last_block and last_block.timestamp
 
     return block_number, timestamp
 

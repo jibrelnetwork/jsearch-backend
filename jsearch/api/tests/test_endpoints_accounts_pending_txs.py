@@ -9,6 +9,7 @@ from typing import List, Dict, Any, Tuple, Callable, Optional
 
 from jsearch.api.tests.utils import parse_url
 from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
+from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.typing import AnyCoroutine
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
@@ -222,16 +223,16 @@ async def test_get_account_pending_txs_paging(
 @pytest.mark.parametrize(
     "target_limit, expected_items_count, expected_errors",
     (
-        (None, 20, []),
-        (19, 19, []),
-        (20, 20, []),
-        (21, 0, [
-            {
-                "field": "limit",
-                "message": "Must be between 1 and 20.",
-                "code": "INVALID_LIMIT_VALUE",
-            }
-        ]),
+            (None, 20, []),
+            (19, 19, []),
+            (20, 20, []),
+            (21, 0, [
+                {
+                    "field": "limit",
+                    "message": "Must be between 1 and 20.",
+                    "code": "INVALID_LIMIT_VALUE",
+                }
+            ]),
     ),
     ids=[
         "limit=None --- 20 rows returned",
@@ -266,3 +267,37 @@ async def test_get_accounts_pending_txs_limits(
     observed_items_count = len(resp_json['data'])
 
     assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)
+
+
+@pytest.mark.parametrize(
+    "parameter, value, status",
+    (
+            ('id', 2 ** 128, 400),
+            ('id', 2 ** 8, 200),
+            ('timestamp', 2 ** 128, 400),
+            ('timestamp', 2 ** 8, 200)
+    ),
+    ids=(
+            "block_number_with_too_big_value",
+            "block_number_with_normal_value",
+            "timestamp_with_too_big_value",
+            "timestamp_with_normal_value"
+    )
+)
+async def test_get_account_pending_txs_filter_by_big_value(
+        cli: TestClient,
+        parameter: str,
+        value: int,
+        status: int
+):
+    # given
+    account = generate_address()
+
+    params = urlencode({parameter: value})
+    url = URL.replace('address', account).format(params=params)
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status
