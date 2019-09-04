@@ -13,10 +13,6 @@ class LoopStats(NamedTuple):
     is_healthy: bool
 
 
-class KafkaStats(NamedTuple):
-    is_healthy: bool
-
-
 class NodeStats(NamedTuple):
     is_healthy: bool
 

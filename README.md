@@ -42,7 +42,6 @@ Following environmental variables are used by the project and can be configured:
 * `JSEARCH_COMPILER_API="http://compiler"`
 * `JSEARCH_API_ENABLE_RESET_LOGS_PROCESSING="1"`
 * `ENH_NODE_URL="https://main-node.jwallet.network"`
-* `KAFKA_BOOTSTRAP_SERVERS=""`
 * `DOCKERIZE_VERSION="v0.6.1"`
 
 ## API

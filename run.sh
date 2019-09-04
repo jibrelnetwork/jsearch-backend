@@ -13,19 +13,6 @@ RUNMODE="${1:-app}"
 echo "Run: ${RUNMODE}
 "
 
-wait_kafka_ready () {
-    # Collect Kafka nodes and wait for them to be up.
-    KAFKA_LIST=`echo ${KAFKA_BOOTSTRAP_SERVERS} | tr "," "\n"`
-    KAFKA_WAIT=""
-
-    for x in ${KAFKA_LIST}
-    do
-        KAFKA_WAIT="${KAFKA_WAIT} -wait tcp://${x}"
-    done
-
-    dockerize ${KAFKA_WAIT}
-}
-
 wait_raw_db_ready () {
     dockerize -wait tcp://`python -c 'import dsnparse; p = dsnparse.parse_environ("JSEARCH_RAW_DB", hostname="localhost", port="5432"); print(p.hostloc)'`
 }

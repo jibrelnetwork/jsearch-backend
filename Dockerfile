@@ -8,7 +8,6 @@ ENV LOG_LEVEL=INFO \
     JSEARCH_CONTRACTS_API="http://contracts:8080" \
     JSEARCH_COMPILER_API="http://compiler" \
     ETH_NODE_URL="https://main-node.jwallet.network" \
-    KAFKA_BOOTSTRAP_SERVERS="kafka:9092" \
     SYNCER_BACKOFF_MAX_TRIES="5" \
     PENDING_SYNCER_BACKOFF_MAX_TRIES="5" \
     DOCKERIZE_VERSION="v0.6.1" \
@@ -33,9 +32,6 @@ WORKDIR /app
 RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
-
-COPY --chown=app:app ./jsearch-service-bus /app/jsearch-service-bus/
-RUN cd jsearch-service-bus && pip install --no-cache-dir . && cd ..
 
 COPY --chown=app:app requirements*.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt $(test "$ENVIRONMENT" != "production" && echo "-r requirements-test.txt") 
