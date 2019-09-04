@@ -3,4 +3,3 @@ max-line-length = 120
 exclude = 
   ./docker/geth-fork
   ./jsearch/common/migrations/versions
-  ./jsearch-service-bus

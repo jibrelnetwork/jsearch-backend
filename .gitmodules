@@ -1,4 +1,0 @@
-[submodule "jsearch-service-bus"]
-	path = jsearch-service-bus
-	url = git@github.com:jibrelnetwork/jsearch-service-bus.git
-        branch = master
