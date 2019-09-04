@@ -1104,7 +1104,7 @@ paths:
           schema:
             example: {"success": false, "errors": [{"field": "limit", "code": "VALIDATION_ERROR", "message": "bad input parameter"}]}
 
-  /v1/verified_contracts/{address}:
+  /v1/verified_contracts/{contract_address}:
     get:
       summary: Get Verified Contract info.
       description: |
