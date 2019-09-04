@@ -620,3 +620,38 @@ async def test_get_assets_summary_from_history(cli, assets_summary_factory: Asse
         ],
         'outgoingTransactionsNumber': '1'
     }]
+
+
+@pytest.mark.parametrize(
+    "parameter, value, status",
+    (
+            ('block_number', 2 ** 128, 400),
+            ('block_number', 2 ** 8, 200),
+            ('timestamp', 2 ** 128, 400),
+            ('timestamp', 2 ** 8, 200),
+    ),
+    ids=(
+            "block_number_with_too_big_value",
+            "block_number_with_normal_value",
+            "timestamp_with_too_big_value",
+            "timestamp_with_normal_value"
+    )
+)
+async def test_get_wallet_events_filter_by_big_value(
+        cli: TestClient,
+        parameter: str,
+        value: int,
+        status: int
+):
+    # given
+    params = urlencode({
+        parameter: value,
+        'blockchain_address': generate_address()
+    })
+    url = URL.format(params=params)
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status

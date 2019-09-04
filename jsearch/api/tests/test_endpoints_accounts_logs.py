@@ -8,6 +8,7 @@ import pytest
 
 from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
+from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.tests.plugins.databases.factories.logs import LogFactory
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 from jsearch.typing import AnyCoroutine
@@ -411,3 +412,37 @@ async def test_get_accounts_logs_limits(
     observed_items_count = len(resp_json['data'])
 
     assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)
+
+
+@pytest.mark.parametrize(
+    "parameter, value, status",
+    (
+            ('block_number', 2 ** 128, 400),
+            ('block_number', 2 ** 8, 200),
+            ('timestamp', 2 ** 128, 400),
+            ('timestamp', 2 ** 8, 200)
+    ),
+    ids=(
+            "block_number_with_too_big_value",
+            "block_number_with_normal_value",
+            "timestamp_with_too_big_value",
+            "timestamp_with_normal_value"
+    )
+)
+async def test_get_account_logs_filter_by_big_value(
+        cli: TestClient,
+        parameter: str,
+        value: int,
+        status: int
+):
+    # given
+    account = generate_address()
+
+    params = urlencode({parameter: value})
+    url = URL.replace('address', account).format(params=params)
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status
