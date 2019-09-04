@@ -14,14 +14,6 @@ JSEARCH_RAW_DB = os.environ['JSEARCH_RAW_DB']
 LOG_LEVEL = os.environ['LOG_LEVEL']
 NO_JSON_FORMATTER = bool(int(os.environ['NO_JSON_FORMATTER']))
 
-# can get list of connection.
-# examples:
-# kafka-1:19092, kafka-2:192092
-# kafka:9092
-KAFKA_BOOTSTRAP_SERVERS = os.environ['KAFKA_BOOTSTRAP_SERVERS']
-if ',' in KAFKA_BOOTSTRAP_SERVERS:
-    KAFKA_BOOTSTRAP_SERVERS = [server.strip() for server in KAFKA_BOOTSTRAP_SERVERS.split(',')]
-
 ETH_BALANCE_BLOCK_OFFSET = os.environ['ETH_BALANCE_BLOCK_OFFSET']
 
 ETH_NODE_URL = os.environ['ETH_NODE_URL']
@@ -38,8 +30,6 @@ PENDING_TX_BATCH_SIZE = int(os.environ['PENDING_TX_BATCH_SIZE'])
 PENDING_TX_SLEEP_ON_NO_TXS = int(os.environ['PENDING_TX_SLEEP_ON_NO_TXS'])
 
 RAVEN_DSN = os.environ['RAVEN_DSN']
-
-SERVICE_BUS_WORKER_NAME = 'jsearch_backend'
 
 API_QUERY_ARRAY_MAX_LENGTH = 25
 

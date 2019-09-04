@@ -1,14 +1,13 @@
 import asyncio
 import logging
 
-import aiokafka
 import asyncpg
 import prometheus_client
 
 from jsearch import settings
 from jsearch.common import utils
 from jsearch.api.node_proxy import NodeProxy
-from jsearch.common.structs import DbStats, LoopStats, KafkaStats, NodeStats, ChainStats
+from jsearch.common.structs import DbStats, LoopStats, NodeStats, ChainStats
 
 logger = logging.getLogger(__name__)
 
@@ -42,18 +41,6 @@ async def get_node_stats(node_proxy: NodeProxy) -> NodeStats:
         logger.warning('Cannot check the node', extra={'exception': e})
 
     return NodeStats(is_healthy=is_healthy)
-
-
-async def get_kafka_stats(consumer: aiokafka.AIOKafkaConsumer) -> KafkaStats:
-    try:
-        await consumer._client.check_version()
-        return KafkaStats(is_healthy=True)
-    except asyncio.CancelledError:
-        raise
-    except Exception as e:
-        logger.warning('Cannot check the kafka', extra={'exception': e})
-
-    return KafkaStats(is_healthy=False)
 
 
 async def get_loop_stats() -> LoopStats:

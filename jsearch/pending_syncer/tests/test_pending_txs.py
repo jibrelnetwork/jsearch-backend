@@ -94,7 +94,6 @@ async def test_pending_tx_is_not_saved_if_there_is_none(
     assert pending_txs == []
 
 
-@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_tx_is_saved_to_main_db(
         db: Engine,
         raw_db: Engine,
@@ -150,7 +149,6 @@ async def test_pending_tx_is_saved_to_main_db(
     ]
 
 
-@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_tx_is_marked_as_removed(
         db: Engine,
         raw_db: Engine,
@@ -215,7 +213,6 @@ async def test_pending_tx_is_marked_as_removed(
     ]
 
 
-@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_tx_can_be_saved_with_a_big_value(
         db: Engine,
         raw_db: Engine,
@@ -271,7 +268,6 @@ async def test_pending_tx_can_be_saved_with_a_big_value(
     ]
 
 
-@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_syncer_processes_related_txs_in_order(
         db: Engine,
         raw_db: Engine,
@@ -409,7 +405,6 @@ async def test_pending_syncer_processes_related_txs_in_order(
     ]
 
 
-@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_syncer_overrides_stale_data_in_db(
         db: Engine,
         pending_syncer_service: PendingSyncerService
@@ -475,7 +470,6 @@ async def test_pending_syncer_overrides_stale_data_in_db(
     ]
 
 
-@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_syncer_does_not_override_stale_data_in_db(
         db: Engine,
         pending_syncer_service: PendingSyncerService
@@ -541,7 +535,6 @@ async def test_pending_syncer_does_not_override_stale_data_in_db(
     ]
 
 
-@pytest.mark.usefixtures("mock_service_bus")
 async def test_pending_syncer_can_fetch_txs_if_none_synced_yet_and_first_one_is_far_away(
         db: Engine,
         raw_db: Engine,
