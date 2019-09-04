@@ -1,19 +1,19 @@
-from marshmallow import fields, validates_schema, ValidationError
+from marshmallow import validates_schema, ValidationError
 from marshmallow.validate import Range, Length
 
 from jsearch.api.database_queries.token_holders import get_token_holders_ordering
 from jsearch.api.database_queries.token_transfers import get_transfers_ordering
 from jsearch.api.ordering import Ordering
 from jsearch.api.serializers.common import BlockRelatedListSchema, ListSchema
-from jsearch.api.serializers.fields import StrLower
+from jsearch.api.serializers.fields import StrLower, IntField, BigIntField
 from jsearch.typing import OrderScheme, OrderDirection
 
 
 class TokenTransfersSchema(BlockRelatedListSchema):
     address = StrLower(validate=Length(min=1, max=100), location='match_info')
 
-    log_index = fields.Integer(validate=Range(min=0))
-    transaction_index = fields.Integer(validate=Range(min=0))
+    log_index = IntField(validate=Range(min=0))
+    transaction_index = IntField(validate=Range(min=0))
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         return get_transfers_ordering(scheme, direction)
@@ -36,8 +36,8 @@ class TokenTransfersSchema(BlockRelatedListSchema):
 
 
 class TokenHoldersListSchema(ListSchema):
-    _id = fields.Integer(validate=Range(min=0), load_from='id')
-    balance = fields.Integer(validate=Range(min=0))
+    _id = BigIntField(validate=Range(min=0), load_from='id')
+    balance = IntField(validate=Range(min=0))
 
     address = StrLower(validate=Length(min=1, max=100), location='match_info')
 

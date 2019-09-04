@@ -7,7 +7,7 @@ from jsearch.api.database_queries.wallet_events import get_events_ordering
 from jsearch.api.helpers import Tag
 from jsearch.api.ordering import Ordering
 from jsearch.api.serializers.common import BlockRelatedListSchema
-from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower
+from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower, IntField, BigIntField
 from jsearch.typing import OrderScheme, OrderDirection
 
 logger = logging.getLogger(__name__)
@@ -25,8 +25,9 @@ class WalletEventsSchema(BlockRelatedListSchema):
         tags={Tag.LATEST, Tag.TIP}
     )
     timestamp = PositiveIntOrTagField(tags={Tag.LATEST, Tag.TIP})
-    transaction_index = fields.Int(validate=Range(min=0))
-    event_index = fields.Int(validate=Range(min=0))
+
+    transaction_index = IntField(validate=Range(min=0))
+    event_index = BigIntField(validate=Range(min=0))
 
     include_pending_txs = fields.Bool(missing=False)
 

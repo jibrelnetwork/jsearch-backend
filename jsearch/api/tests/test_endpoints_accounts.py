@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlencode
 
 import pytest
 from aiohttp.test_utils import TestClient
@@ -599,3 +600,37 @@ async def test_get_accounts_eth_transfers(
     observed_items_count = len(resp_json['data'])
 
     assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)
+
+
+@pytest.mark.parametrize(
+    "parameter, value, status",
+    (
+            ('block_number', 2 ** 128, 400),
+            ('block_number', 2 ** 8, 200),
+            ('timestamp', 2 ** 128, 400),
+            ('timestamp', 2 ** 8, 200)
+    ),
+    ids=(
+            "block_number_with_too_big_value",
+            "block_number_with_normal_value",
+            "timestamp_with_too_big_value",
+            "timestamp_with_normal_value"
+    )
+)
+async def test_get_eth_transfers_filter_by_big_value(
+        cli: TestClient,
+        parameter: str,
+        value: int,
+        status: int
+):
+    # given
+    address = '0xcd424c53f5dc7d22cdff536309c24ad87a97e6af'
+
+    params = urlencode({parameter: value})
+    url = f"/v1/accounts/{address}/eth_transfers?{params}"
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status
