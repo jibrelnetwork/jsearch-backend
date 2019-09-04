@@ -53,6 +53,9 @@ info:
         }
     }
     ```
+
+    **note**: `status.success` is just a human-readable way of obtaining the result of a response. There could be no cases when 400 series error is returned and `status.success` equals `true` and vice versa. In other words, HTTP Status Code is duplicated like this: `status.success = (code === 200)`.
+
     - 500 series error codes do not return JSON bodies.
 
 
