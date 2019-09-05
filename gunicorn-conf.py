@@ -7,3 +7,4 @@ bind = "0.0.0.0:{port!s}".format(
 )
 loglevel = 'info'
 worker_class = 'aiohttp.worker.GunicornWebWorker'
+workers = int(os.environ["GUNICORN_WORKERS"])
