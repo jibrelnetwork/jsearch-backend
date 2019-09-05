@@ -1009,10 +1009,12 @@ class Storage:
 
     async def get_account_eth_transfers(self, account_address, block_number=None,
                                         event_index=None, order='desc', limit=20):
-        query = get_eth_transfers_by_address_query(account_address, block_number=block_number,
+        query = get_eth_transfers_by_address_query(address=account_address, block_number=block_number,
                                                    event_index=event_index,
-                                                   order=order, limit=limit)
+                                                   ordering=order, limit=limit)
         rows = await fetch(self.pool, query)
+        last_affected_block_number = max([r['block_number'] for r in rows], default=None)
+
         res = []
         for r in rows:
             event_data = json.loads(r['event_data'])
@@ -1030,5 +1032,5 @@ class Storage:
                 'event_index': r['event_index'],
             })
             res.append(t)
-        last_affected_block_number = max([r['block_number'] for r in rows], default=None)
+
         return res, last_affected_block_number
