@@ -21,8 +21,8 @@ async def wait_new_scheme():
     FROM information_schema.columns
     WHERE table_name = 'assets_summary' AND column_name = 'block_hash';
     """
+    engine = await create_engine(dsn=settings.JSEARCH_MAIN_DB, maxsize=1)
     while True:
-        engine = await create_engine(dsn=settings.JSEARCH_MAIN_DB, maxsize=1)
         try:
             async with engine.acquire() as connection:
                 async with connection.execute(query) as cursor:
@@ -35,6 +35,7 @@ async def wait_new_scheme():
                         break
         except KeyboardInterrupt:
             break
+    engine.close()
 
 
 def wait():
