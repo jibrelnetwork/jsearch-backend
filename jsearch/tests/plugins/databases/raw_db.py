@@ -4,6 +4,7 @@ import os
 
 import pytest
 from functools import partial
+from jsearch.syncer.database import RawDB
 from pathlib import Path
 from sqlalchemy import create_engine, MetaData
 
@@ -71,6 +72,15 @@ def raw_db(raw_db_dsn):
     conn = engine.connect()
     yield conn
     conn.close()
+
+
+@pytest.fixture()
+async def raw_db_wrapper(raw_db_dsn):
+    raw_db_wrapper = RawDB(raw_db_dsn)
+
+    await raw_db_wrapper.connect()
+    yield raw_db_wrapper
+    await raw_db_wrapper.disconnect()
 
 
 @pytest.fixture
