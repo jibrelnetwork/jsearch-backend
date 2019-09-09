@@ -3,7 +3,7 @@ import psycopg2
 from aiopg.sa import create_engine as async_create_engine, Engine
 from psycopg2.extras import DictCursor
 
-TIMEOUT = 60 * 2
+TIMEOUT = 60
 
 
 class DBWrapper:
