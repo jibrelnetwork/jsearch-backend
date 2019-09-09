@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 
 from jsearch.common import contracts
 from jsearch.syncer.structs import TokenHolderBalances, TokenHolderBalance
@@ -141,11 +142,17 @@ class RawDB(DBWrapper):
             "block_hash",
             lower("token_address") as token,
             lower("holder_address") as account,
-            "balance"::bigint
+            "balance"
         FROM token_holders
         WHERE block_hash = %s;
         """
         rows = await self.fetch_all(query, block_hash)
+        rows = [dict(row) for row in rows]
+
+        for row in rows:
+            if isinstance(row['balance'], Decimal):
+                row['balance'] = int(row['balance'])
+
         return [TokenHolderBalance(**row) for row in rows]
 
     async def get_reward(self, block_number, block_hash):
