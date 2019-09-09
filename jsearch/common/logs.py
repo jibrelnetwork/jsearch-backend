@@ -7,7 +7,7 @@ from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from jsearch import settings
 
 sentry_sdk.init(
-    settings.RAVEN_DSN,
+    settings.SENTRY_DSN,
     integrations=[AioHttpIntegration()],
 )
 
