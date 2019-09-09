@@ -2,7 +2,7 @@ FROM python:3.7
 ARG ENVIRONMENT="production"
 
 ENV LOG_LEVEL="INFO" \
-    RAVEN_DSN="" \
+    SENTRY_DSN="" \
     JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_main" \
     JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw" \
     JSEARCH_CONTRACTS_API="http://contracts:8080" \
