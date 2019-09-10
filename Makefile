@@ -1,23 +1,23 @@
 PROJECT_NAME=jsearch
 
 shell:
-	docker-compose run --rm tests_shell bash
+	docker-compose run --rm dev_shell bash
 
 build:
-	docker-compose build tests
+	docker-compose build dev
 
 lint:
-	docker-compose run --rm tests flake8 .
+	docker-compose run --rm dev flake8 .
 
 test:
-	docker-compose run --rm tests pytest
+	docker-compose run --rm dev pytest
 
 validate:
 	make build
 	make test
 
 new_db_migration:
-	docker-compose run --entrypoint python tests_shell manage.py revision -db=postgres://postgres:postgres@test_main_db/jsearch-main -m "$(msg)"
+	docker-compose run --entrypoint python dev_shell manage.py revision -db=postgres://postgres:postgres@test_main_db/jsearch-main -m "$(msg)"
 
 db_migrate:
-	docker-compose run --entrypoint python tests_shell manage.py upgrade head -db=postgres://postgres:postgres@test_main_db/jsearch-main
+	docker-compose run --entrypoint python dev_shell manage.py upgrade head -db=postgres://postgres:postgres@test_main_db/jsearch-main
