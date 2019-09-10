@@ -244,4 +244,3 @@ class Manager:
 
     async def try_lock_range(self):
         return await self.main_db.try_advisory_lock(self.sync_range[0], self.sync_range[1])
-
