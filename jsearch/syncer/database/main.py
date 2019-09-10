@@ -1,6 +1,7 @@
 import json
 import logging
 
+import aiopg
 from aiopg.sa import SAConnection
 from sqlalchemy import and_, Table
 from sqlalchemy.orm import Query
@@ -50,6 +51,13 @@ class MainDB(DBWrapper):
     jSearch Main db wrapper
     """
     pool_size = MAIN_DB_POOL_SIZE
+    lock_conn = None
+
+    async def disconnect(self):
+        if self.lock_conn:
+            self.lock_conn.close()
+        self.engine.close()
+        await self.engine.wait_closed()
 
     async def get_latest_synced_block_number(self) -> int:
         """
@@ -238,3 +246,17 @@ class MainDB(DBWrapper):
         async with self.engine.acquire() as connection:
             async with connection.begin():
                 await connection.execute(q, *[json.dumps(item) for item in params])
+
+    async def try_advisory_lock(self, start, end):
+        if end is None:
+            q = """SELECT pg_try_advisory_lock(%s)"""
+            params = [start]
+        else:
+            q = """SELECT pg_try_advisory_lock(%s, %s)"""
+            params = [start, end]
+
+        self.lock_conn = await aiopg.connect(self.connection_string)
+        cur = await self.lock_conn.cursor()
+        await cur.execute(q, params)
+        res = await cur.fetchone()
+        return res[0]
