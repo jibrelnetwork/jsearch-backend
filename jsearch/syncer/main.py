@@ -19,7 +19,7 @@ async def wait_new_scheme():
     query = """
     SELECT column_name
     FROM information_schema.columns
-    WHERE table_name = 'assets_summary' AND column_name = 'block_hash';
+    WHERE table_name = 'blocks' AND column_name = 'number' and data_type = 'bigint';
     """
     engine = await create_engine(dsn=settings.JSEARCH_MAIN_DB, maxsize=1)
     while True:
