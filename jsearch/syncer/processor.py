@@ -10,19 +10,20 @@ from jsearch.common.processing import wallet
 from jsearch.common.processing.decimals_cache import decimals_cache
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
+from jsearch.common.processing.wallet import token_holders_from_token_balances
 from jsearch.syncer.database import RawDB, MainDB
-from jsearch.syncer.utils.balances import (
-    get_token_holders_from_transfers,
-    token_balance_changes_from_transfers,
-    filter_negative_balances,
-    get_token_balance_updates
-)
+from jsearch.syncer.structs import TokenHolderBalances
 from jsearch.typing import Logs
 
 logger = logging.getLogger(__name__)
 
-
 EXCLUDE_TX_ORIGIN = '0x8999999999999999999999999999999999999998'  # fake address used by fork to get token balances
+
+
+def update_is_forked_state(items: List[Dict[str, Any]], is_forked: bool) -> List[Dict[str, Any]]:
+    for item in items:
+        item['is_forked'] = is_forked
+    return items
 
 
 class BlockData(NamedTuple):
@@ -66,7 +67,6 @@ class SyncProcessor:
 
     async def sync_block(self,
                          block_hash: str,
-                         last_block: int,
                          block_number: Optional[int] = None,
                          is_forked: bool = False,
                          chain_event: Optional[Dict[str, Any]] = None) -> bool:
@@ -76,7 +76,6 @@ class SyncProcessor:
             block_number:
             is_forked:
             chain_event: dict with event description
-            last_block: last available block in raw_db
 
         Returns:
             True if sync is successful, False if syn fails or block already synced
@@ -101,6 +100,7 @@ class SyncProcessor:
         body = await self.raw_db.get_block_body(block_hash)
         accounts = await self.raw_db.get_block_accounts(block_hash)
         internal_transactions = await self.raw_db.get_internal_transactions(block_hash)
+        token_holder_balances = await self.raw_db.get_token_holder_balances(block_hash)
         fetch_time = time.monotonic() - start_time
 
         block = await self.process_block(
@@ -110,14 +110,14 @@ class SyncProcessor:
             receipts=receipts,
             reward=reward,
             internal_transactions=internal_transactions,
+            token_holder_balances=token_holder_balances,
             is_forked=is_forked,
-            last_block=last_block,
         )
+
         process_time = time.monotonic() - fetch_time - start_time
 
         await block.write(self.main_db, chain_event)
         db_write_time = time.monotonic() - process_time - fetch_time - start_time
-        bus_write_time = time.monotonic() - db_write_time - process_time - fetch_time - start_time
 
         sync_time = time.monotonic() - start_time
         logger.info("Block is synced", extra={
@@ -127,12 +127,18 @@ class SyncProcessor:
             'fetch_time': '{:0.2f}s'.format(fetch_time),
             'process_time': '{:0.2f}s'.format(process_time),
             'db_write_time': '{:0.2f}s'.format(db_write_time),
-            'bus_write_time': '{:0.2f}s'.format(bus_write_time),
         })
         return True
 
-    async def process_block(self, header, body, reward, receipts, accounts, internal_transactions, is_forked,
-                            last_block: int) -> BlockData:
+    async def process_block(self,
+                            header: Dict[str, Any],
+                            body: Dict[str, Any],
+                            reward: Dict[str, Any],
+                            receipts: [Dict[str, Any]],
+                            accounts: List[Dict[str, Any]],
+                            internal_transactions: List[Dict[str, Any]],
+                            token_holder_balances: TokenHolderBalances,
+                            is_forked: bool) -> BlockData:
         """
         Preprocess data fetched from Raw DB to Main DB
 
@@ -165,47 +171,27 @@ class SyncProcessor:
             if acc['code'] != '':
                 contracts_set.add(acc['address'])
 
-        decimals = await decimals_cache.get_many({l['address'] for l in logs_data})
+        contract_addresses = {item['address'] for item in logs_data} | {item.token for item in token_holder_balances}
+        decimals = await decimals_cache.get_many(contract_addresses)
+
         transfers = logs_to_transfers(logs_data, block_data, decimals)
-        token_holders = get_token_holders_from_transfers(transfers)
 
-        start_time = time.monotonic()
-        async with self.main_db.engine.acquire() as connection:
-            token_holders_updates = await get_token_balance_updates(
-                connection=connection,
-                token_holders=token_holders,
-                last_block=last_block,
-            )
-
-        logger.debug("Get balances", extra={
-            'hash': block_hash,
-            'number': block_number,
-            'get_balance_updates': '{:0.2f}s'.format(time.monotonic() - start_time),
-        })
-
-        last_synced_block = await self.main_db.get_latest_synced_block_number()
-        if not is_forked and block_number > last_synced_block:
-            token_holders_updates = token_balance_changes_from_transfers(transfers, token_holders_updates)
-
-        token_holders_updates = await filter_negative_balances(token_holders_updates)
         wallet_events = [
             *wallet.events_from_transactions(transactions_data, contracts_set=contracts_set),
             *wallet.events_from_transfers(transfers, transactions_data),
             *wallet.events_from_internal_transactions(internal_txs_data, transactions_data),
         ]
         wallet_events = [event for event in wallet_events if event is not None]
+        wallet_events = update_is_forked_state(wallet_events, is_forked)
 
         assets_summary_updates = [
             *wallet.assets_from_accounts(accounts_data),
-            *wallet.assets_from_token_balance_updates(token_holders_updates, block_number)
+            *wallet.asset_records_from_token_balances(token_holder_balances, decimals_map=decimals)
         ]
+        assets_summary_updates = update_is_forked_state(assets_summary_updates, is_forked=is_forked)
 
-        token_holders_balances = [x.as_token_holder_update() for x in token_holders_updates]
-        if is_forked:
-            # WTF: if we process blocks which is forked
-            # we don't need to update actual state of balances
-            token_holders_balances = []
-            assets_summary_updates = []
+        token_holders_balances = token_holders_from_token_balances(token_holder_balances, decimals_map=decimals)
+        token_holders_balances = update_is_forked_state(token_holders_balances, is_forked=is_forked)
 
         return BlockData(
             block=block_data,

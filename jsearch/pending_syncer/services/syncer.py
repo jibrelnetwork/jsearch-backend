@@ -28,7 +28,7 @@ class PendingSyncerService(mode.Service):
         await self.main_db.connect()
 
     async def on_stop(self) -> None:
-        self.raw_db.disconnect()
+        await self.raw_db.disconnect()
         await self.main_db.disconnect()
 
     @mode.Service.task

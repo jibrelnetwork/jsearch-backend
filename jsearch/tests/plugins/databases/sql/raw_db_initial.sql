@@ -91,6 +91,17 @@ CREATE TABLE IF NOT EXISTS chain_events (
     created_at timestamp
 );
 
+CREATE TABLE IF NOT EXISTS token_holders (
+    id bigserial primary key,
+    block_number bigint NOT NULL,
+    block_hash varchar(70) NOT NULL,
+    token_address varchar(45) NOT NULL,
+    holder_address varchar(45) NOT NULL,
+    balance numeric NOT NULL,
+    UNIQUE(block_hash, token_address, holder_address)
+);
+
+
 
 CREATE INDEX IF NOT EXISTS ix_internal_transactions_block_number ON internal_transactions(block_number);
 

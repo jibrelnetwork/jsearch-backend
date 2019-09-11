@@ -7,9 +7,11 @@ from aiohttp.test_utils import TestClient
 from typing import Callable, Tuple, List, Dict, Any, Optional
 
 from jsearch.api.tests.utils import parse_url
-from jsearch.common.wallet_events import make_event_index
 from jsearch.common.tables import assets_summary_t
+from jsearch.common.wallet_events import make_event_index
 from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
+from jsearch.tests.plugins.databases.factories.assets_summary import AssetsSummaryFactory
+from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
@@ -280,16 +282,16 @@ async def test_get_wallet_events_errors(
 @pytest.mark.parametrize(
     "target_limit, expected_items_count, expected_errors",
     (
-        (None, 20, []),
-        (19, 19, []),
-        (20, 20, []),
-        (21, 0, [
-            {
-                "field": "limit",
-                "message": "Must be between 1 and 20.",
-                "code": "INVALID_LIMIT_VALUE",
-            }
-        ]),
+            (None, 20, []),
+            (19, 19, []),
+            (20, 20, []),
+            (21, 0, [
+                {
+                    "field": "limit",
+                    "message": "Must be between 1 and 20.",
+                    "code": "INVALID_LIMIT_VALUE",
+                }
+            ]),
     ),
     ids=[
         "limit=None --- 20 rows returned",
@@ -333,7 +335,7 @@ async def test_get_events_limits(
 async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_factory, transaction_factory):
     # given
     block = block_factory.create(number=100)
-    tx, _ = transaction_factory.create_for_block(block=block,)
+    tx, _ = transaction_factory.create_for_block(block=block, )
     event = wallet_events_factory.create_token_transfer(tx=tx, block=block)
 
     url = 'v1/wallet/events?{params}'.format(
@@ -510,6 +512,7 @@ async def test_get_wallet_assets_summary(cli, db):
             'decimals': 0,
             'tx_number': 1,
             'nonce': 10,
+            'block_number': 100
         },
         {
             'address': 'a1',
@@ -518,6 +521,7 @@ async def test_get_wallet_assets_summary(cli, db):
             'decimals': 0,
             'tx_number': 1,
             'nonce': 10,
+            'block_number': 100
         },
         {
             'address': 'a1',
@@ -526,6 +530,7 @@ async def test_get_wallet_assets_summary(cli, db):
             'decimals': 2,
             'tx_number': 2,
             'nonce': 10,
+            'block_number': 100
         },
         {
             'address': 'a1',
@@ -534,6 +539,7 @@ async def test_get_wallet_assets_summary(cli, db):
             'decimals': 0,
             'tx_number': 3,
             'nonce': 10,
+            'block_number': 100
         },
         {
             'address': 'a2',
@@ -542,6 +548,7 @@ async def test_get_wallet_assets_summary(cli, db):
             'decimals': 1,
             'tx_number': 1,
             'nonce': 5,
+            'block_number': 100
         },
     ]
     for a in assets:
@@ -549,14 +556,23 @@ async def test_get_wallet_assets_summary(cli, db):
     resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1,a2')
     assert resp.status == 200
     res = (await resp.json())['data']
-    assert res == [{'address': 'a1',
-                    'assetsSummary': [{'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 3},
-                                      {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 1},
-                                      {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 2}],
-                    'outgoingTransactionsNumber': "10"},
-                   {'address': 'a2',
-                    'assetsSummary': [{'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 1}],
-                    'outgoingTransactionsNumber': "5"}]
+    assert res == [
+        {
+            'address': 'a1',
+            'assetsSummary': [
+                {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 3},
+                {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 1},
+                {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 2}
+            ],
+            'outgoingTransactionsNumber': "10"},
+        {
+            'address': 'a2',
+            'assetsSummary': [
+                {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 1}
+            ],
+            'outgoingTransactionsNumber': "5"
+        }
+    ]
 
     resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1&assets=c2')
     assert resp.status == 200
@@ -565,3 +581,77 @@ async def test_get_wallet_assets_summary(cli, db):
                     'assetsSummary': [{'address': 'c2', 'balance': "20000", "decimals": "2", 'transfersNumber': 2}],
                     'outgoingTransactionsNumber': "10"},
                    ]
+
+
+@pytest.mark.parametrize("url_with_asset", [(True,), (False,)], ids=('without_assets', 'with_assets'))
+async def test_get_assets_summary_from_history(cli, assets_summary_factory: AssetsSummaryFactory, url_with_asset):
+    # given
+    token = generate_address()
+    account = generate_address()
+
+    data = {
+        'address': account,
+        'asset_address': token,
+    }
+
+    # balances
+    legacy_balance = assets_summary_factory.create(**data)
+    current_balance = assets_summary_factory.create(**{**data, 'block_number': legacy_balance.block_number + 1})
+
+    url = f'/v1/wallet/assets_summary?addresses={account}'
+    if url_with_asset:
+        url = f'{url}&assets={token}'
+
+    # when
+    resp = await cli.get(url)
+    resp_json = await resp.json()
+
+    # then
+    assert resp.status == 200
+    assert resp_json['data'] == [{
+        'address': account,
+        'assetsSummary': [
+            {
+                'address': token,
+                'balance': f'{current_balance.value}',
+                'decimals': f'{current_balance.decimals}',
+                'transfersNumber': current_balance.tx_number
+            }
+        ],
+        'outgoingTransactionsNumber': '1'
+    }]
+
+
+@pytest.mark.parametrize(
+    "parameter, value, status",
+    (
+            ('block_number', 2 ** 128, 400),
+            ('block_number', 2 ** 8, 200),
+            ('timestamp', 2 ** 128, 400),
+            ('timestamp', 2 ** 8, 200),
+    ),
+    ids=(
+            "block_number_with_too_big_value",
+            "block_number_with_normal_value",
+            "timestamp_with_too_big_value",
+            "timestamp_with_normal_value"
+    )
+)
+async def test_get_wallet_events_filter_by_big_value(
+        cli: TestClient,
+        parameter: str,
+        value: int,
+        status: int
+):
+    # given
+    params = urlencode({
+        parameter: value,
+        'blockchain_address': generate_address()
+    })
+    url = URL.format(params=params)
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status

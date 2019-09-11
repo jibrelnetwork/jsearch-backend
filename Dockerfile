@@ -1,14 +1,13 @@
 FROM python:3.7
 ARG ENVIRONMENT="production"
 
-ENV LOG_LEVEL=INFO \
-    RAVEN_DSN="" \
+ENV LOG_LEVEL="INFO" \
+    SENTRY_DSN="" \
     JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_main" \
     JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw" \
     JSEARCH_CONTRACTS_API="http://contracts:8080" \
     JSEARCH_COMPILER_API="http://compiler" \
     ETH_NODE_URL="https://main-node.jwallet.network" \
-    KAFKA_BOOTSTRAP_SERVERS="kafka:9092" \
     SYNCER_BACKOFF_MAX_TRIES="5" \
     PENDING_SYNCER_BACKOFF_MAX_TRIES="5" \
     DOCKERIZE_VERSION="v0.6.1" \
@@ -21,7 +20,8 @@ ENV LOG_LEVEL=INFO \
     PENDING_TX_SLEEP_ON_NO_TXS="1" \
     SYNCER_API_PORT="8080" \
     SYNCER_PENDING_API_PORT="8080" \
-    MONITOR_OFFSET="6"
+    MONITOR_OFFSET="6" \
+    GUNICORN_WORKERS="5"
 
 RUN groupadd -g 999 app \
  && useradd -r -u 999 -g app app \
@@ -33,9 +33,6 @@ WORKDIR /app
 RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
-
-COPY --chown=app:app ./jsearch-service-bus /app/jsearch-service-bus/
-RUN cd jsearch-service-bus && pip install --no-cache-dir . && cd ..
 
 COPY --chown=app:app requirements*.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt $(test "$ENVIRONMENT" != "production" && echo "-r requirements-test.txt") 

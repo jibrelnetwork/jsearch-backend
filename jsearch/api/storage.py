@@ -38,7 +38,7 @@ from jsearch.api.database_queries.pending_transactions import (
     get_outcoming_pending_txs_count,
     get_pending_txs_ordering
 )
-from jsearch.api.database_queries.token_holders import get_token_holders_query
+from jsearch.api.database_queries.token_holders import get_token_holders_query, get_last_token_holders_query
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_account_and_block_number,
     get_token_transfers_by_token_and_block_number
@@ -53,6 +53,7 @@ from jsearch.api.database_queries.uncles import (
     get_uncles_by_number_query,
     get_uncles_by_miner_address_and_timestamp_query,
     get_uncles_by_miner_address_and_number_query,
+    get_uncles_query,
 )
 from jsearch.api.database_queries.wallet_events import (
     get_wallet_events_query,
@@ -386,14 +387,17 @@ class Storage:
             number: Optional[int] = None,
             timestamp: Optional[int] = None
     ) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
-        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-            query = get_uncles_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
-
-        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_uncles_by_number_query(limit, number=number, order=order)
-
+        if number is None:
+            query = get_uncles_query(limit=limit, order=order)
         else:
-            raise ValueError('Invalid scheme: {scheme}')
+            if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+                query = get_uncles_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
+
+            elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+                query = get_uncles_by_number_query(limit, number=number, order=order)
+
+            else:
+                raise ValueError('Invalid scheme: {scheme}')
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
@@ -416,24 +420,27 @@ class Storage:
             number: Optional[int] = None,
             timestamp: Optional[int] = None
     ) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
-        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-            query = get_uncles_by_miner_address_and_timestamp_query(
-                address=address,
-                limit=limit,
-                timestamp=timestamp,
-                order=order
-            )
-
-        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_uncles_by_miner_address_and_number_query(
-                address=address,
-                limit=limit,
-                number=number,
-                order=order
-            )
-
+        if number is None:
+            query = get_uncles_query(limit=limit, order=order, address=address)
         else:
-            raise ValueError('Invalid scheme: {scheme}')
+            if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+                query = get_uncles_by_miner_address_and_timestamp_query(
+                    address=address,
+                    limit=limit,
+                    timestamp=timestamp,
+                    order=order
+                )
+
+            elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+                query = get_uncles_by_miner_address_and_number_query(
+                    address=address,
+                    limit=limit,
+                    number=number,
+                    order=order
+                )
+
+            else:
+                raise ValueError('Invalid scheme: {scheme}')
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
@@ -483,16 +490,15 @@ class Storage:
                 return None
             row = dict(row)
             del row['is_forked']
-            row['logs'] = await self.get_logs(row['transaction_hash'])
+            row['logs'] = await self.get_logs(conn, row['transaction_hash'])
             return models.Receipt(**row)
 
-    async def get_logs(self, tx_hash: str) -> List[models.Log]:
+    async def get_logs(self, conn, tx_hash: str) -> List[models.Log]:
         fields = models.Log.select_fields()
         query = f"SELECT {fields} FROM logs WHERE transaction_hash=$1 ORDER BY log_index"
 
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, tx_hash)
-            return [models.Log(**r) for r in rows]
+        rows = await conn.fetch(query, tx_hash)
+        return [models.Log(**r) for r in rows]
 
     async def get_account_logs(
             self,
@@ -653,15 +659,18 @@ class Storage:
 
         return holders, last_affected_block
 
-    async def get_account_token_balance(self, account_address: str, token_address: str) \
-            -> Tuple[Optional[models.TokenHolder], Optional[LastAffectedBlock]]:
-        query = """
-        SELECT account_address, token_address, balance, decimals, block_number
-        FROM token_holders
-        WHERE account_address=$1 AND token_address=$2
-        """
+    async def get_account_token_balance(
+            self,
+            account_address: str,
+            token_address: str
+    ) -> Tuple[Optional[models.TokenHolder], Optional[LastAffectedBlock]]:
+        query = get_last_token_holders_query(
+            account_address=account_address,
+            token_addresses=[token_address]
+        )
+
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(query, account_address, token_address)
+            row = await fetch_row(conn, query)
 
         if not row:
             return None, None
@@ -671,22 +680,25 @@ class Storage:
 
         return holder, last_affected_block
 
-    async def get_account_tokens_balances(self, account_address: str, tokens_addresses: List[str]) \
-            -> Tuple[Optional[models.TokenHolder], Optional[LastAffectedBlock]]:
-        query = """
-        SELECT account_address, token_address, balance, decimals, block_number
-            FROM token_holders
-            WHERE account_address=$1 AND token_address=ANY($2::varchar[])
-        """
+    async def get_account_tokens_balances(
+            self,
+            account_address: str,
+            tokens_addresses: List[str]
+    ) -> Tuple[List[models.TokenBalance], Optional[LastAffectedBlock]]:
+        if not tokens_addresses:
+            return [], None
+
+        query = get_last_token_holders_query(
+            account_address=account_address,
+            token_addresses=tokens_addresses
+        )
+
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, account_address, tokens_addresses)
+            rows = await fetch(conn, query)
 
-        if not rows:
-            last_affected_block = None
-        else:
-            last_affected_block = max([r['block_number'] for r in rows], default=None)
-
+        last_affected_block = max([r['block_number'] for r in rows], default=None)
         balances = [models.TokenBalance(**row) for row in rows]
+
         return balances, last_affected_block
 
     async def get_latest_block_info(self) -> Optional[BlockInfo]:
