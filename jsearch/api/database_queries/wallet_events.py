@@ -1,4 +1,6 @@
-from sqlalchemy import select, Column, and_, false, tuple_
+import functools
+
+from sqlalchemy import select, Column, and_, false
 from sqlalchemy.orm import Query
 from typing import List, Optional
 
@@ -10,6 +12,7 @@ from jsearch.typing import OrderScheme, OrderDirection, Columns
 
 def get_default_fields() -> List[Column]:
     return [
+        wallet_events_t.c.block_number,
         wallet_events_t.c.type,
         wallet_events_t.c.event_index,
         wallet_events_t.c.event_data,
@@ -31,6 +34,7 @@ def get_wallet_events_query(
         address: str,
         ordering: Ordering,
         block_number: int,
+        type_: Optional[str] = None,
         tx_index: Optional[int] = None,
         event_index: Optional[int] = None,
 ) -> Query:
@@ -41,6 +45,9 @@ def get_wallet_events_query(
             wallet_events_t.c.address == address,
         )
     )
+
+    if type_ is not None:
+        query = query.where(wallet_events_t.c.type == type_)
 
     if ordering.direction == ORDER_DESC:
         block_number = block_number + 1 if block_number is not None else None
@@ -68,44 +75,4 @@ def get_wallet_events_ordering(scheme: OrderScheme, direction: OrderDirection):
     return get_ordering(columns, scheme, direction)
 
 
-def get_eth_transfers_by_address_query(address: str, block_number: str,
-                                       event_index: int, order: Ordering, limit: int):
-    from operator import ge, le
-    page_filter_fields = []
-    page_filter_values = []
-
-    order = order.direction
-
-    if order == 'desc':
-        order_criteria = wallet_events_t.c.event_index.desc()
-        paging_compare_op = le
-    elif order == 'asc':
-        order_criteria = wallet_events_t.c.event_index.asc()
-        paging_compare_op = ge
-    else:
-        raise ValueError(f'Invalid order value {order}')
-
-    if block_number is not None and block_number != 'latest':
-        page_filter_fields.append(wallet_events_t.c.block_number)
-        page_filter_values.append(block_number)
-
-    if event_index is not None:
-        page_filter_fields.append(wallet_events_t.c.event_index)
-        page_filter_values.append(event_index)
-
-    filter_criteria = [
-        wallet_events_t.c.is_forked == false(),
-        wallet_events_t.c.address == address,
-    ]
-
-    if page_filter_fields:
-        filter_criteria.append(
-            paging_compare_op(tuple_(*page_filter_fields), tuple_(*page_filter_values))
-        )
-
-    filter_criteria.append(wallet_events_t.c.type == WalletEventType.ETH_TRANSFER)
-
-    query = wallet_events_t.select().where(
-        and_(*filter_criteria)
-    ).order_by(order_criteria).limit(limit)
-    return query
+get_eth_transfers_by_address_query = functools.partial(get_wallet_events_query, type_=WalletEventType.ETH_TRANSFER)
