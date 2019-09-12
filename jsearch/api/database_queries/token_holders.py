@@ -1,4 +1,5 @@
-from sqlalchemy import select, and_, false, tuple_
+from functools import reduce
+from sqlalchemy import select, and_, false, tuple_, exists
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
 from sqlalchemy.sql.functions import max
@@ -75,19 +76,31 @@ def get_token_holders_query(
         balance: Optional[int] = None,
         _id: Optional[int] = None,
 ) -> Query:
-    query = select(
-        columns=get_default_fields(),
-        whereclause=token_holders_t.c.token_address == token_address,
+    query = select(columns=get_default_fields())
+
+    conditions = [
+        token_holders_t.c.token_address == token_address,
+        token_holders_t.c.is_forked == false()
+    ]
+
+    subquery_table = token_holders_t.alias('source')
+    subquery = ~exists().where(
+        and_(
+            subquery_table.c.account_address == token_holders_t.c.account_address,
+            subquery_table.c.token_address == token_holders_t.c.token_address,
+            subquery_table.c.block_number > token_holders_t.c.block_number,
+            subquery_table.c.is_forked == false()
+        )
     )
+    conditions.append(subquery)
 
     if balance is not None:
-        query = query.where(
-            ordering.operator_or_equal(token_holders_t.c.balance, balance),
-        )
+        filter_by_balance = ordering.operator_or_equal(token_holders_t.c.balance, balance)
+        conditions.append(filter_by_balance)
 
     if _id is not None:
-        query = query.where(
-            ordering.operator_or_equal(token_holders_t.c.id, _id)
-        )
+        filter_by_id = ordering.operator_or_equal(token_holders_t.c.id, _id)
+        conditions.append(filter_by_id)
 
+    query = query.where(reduce(and_, conditions))
     return query.order_by(*ordering.columns).limit(limit)
