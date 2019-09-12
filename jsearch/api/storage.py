@@ -992,7 +992,7 @@ class Storage:
                     transaction=models.PendingTransaction(**tx).to_dict()
                 )
             tx_data = {
-                'rootTxData': models.PendingTransaction(**tx).to_dict(),
+                'transaction': models.PendingTransaction(**tx).to_dict(),
                 'events': [event.to_dict()] if event is not None else None
             }
             result.append(tx_data)

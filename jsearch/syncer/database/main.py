@@ -28,7 +28,7 @@ from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.typing import Blocks, Block
 from .wrapper import DBWrapper
 
-MAIN_DB_POOL_SIZE = 2
+MAIN_DB_POOL_SIZE = 1
 
 logger = logging.getLogger(__name__)
 
@@ -235,6 +235,6 @@ class MainDB(DBWrapper):
             chain_event
         ]
 
-        async with self.engine.acquire() as conn:
-            async with conn.begin():
-                await self.execute(q, [json.dumps(item) for item in params])
+        async with self.engine.acquire() as connection:
+            async with connection.begin():
+                await connection.execute(q, *[json.dumps(item) for item in params])

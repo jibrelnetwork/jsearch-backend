@@ -2402,7 +2402,7 @@ definitions:
 
   TransactionInfo:
     properties:
-      rootTxData:
+      transaction:
         $ref: '#/definitions/Transaction'
       events:
         type: array
@@ -2411,7 +2411,7 @@ definitions:
 
   PendingTransactionInfo:
     properties:
-      rootTxData:
+      transaction:
         $ref: '#/definitions/PendingTransaction'
       events:
         type: array
