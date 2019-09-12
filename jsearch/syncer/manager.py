@@ -116,7 +116,7 @@ class Manager:
     async def start(self):
         can_run = await self.try_lock_range()
         if can_run is not True:
-            logger.info("Syncer instance already exists, exit now", extra={'sync range': self.sync_range})
+            logger.error("Syncer instance already exists, exit now", extra={'sync range': self.sync_range})
             return
         logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
         self._running = True
