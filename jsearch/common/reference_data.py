@@ -1,5 +1,5 @@
 import asyncio
-from collections import namedtuple
+from typing import NamedTuple
 import json
 
 import aiohttp
@@ -7,7 +7,9 @@ import aiohttp
 from jsearch import settings
 
 
-BlockReferenceData = namedtuple('BlockReferenceData', ['hash', 'number'])
+class BlockReferenceData(NamedTuple):
+    hash: str
+    number: int
 
 
 class ReferenceDataProvider:
