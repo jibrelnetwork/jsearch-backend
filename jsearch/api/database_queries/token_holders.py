@@ -64,7 +64,9 @@ def get_last_token_holders_query(account_address: str, token_addresses: List[str
             ).in_(
                 sub_query
             ),
-            token_holders_t.c.is_forked == false()
+            token_holders_t.c.is_forked == false(),
+            token_holders_t.c.balance > 0,
+
         )
     )
 
