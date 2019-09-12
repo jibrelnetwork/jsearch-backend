@@ -435,7 +435,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
     block_factory.create(number=12, timestamp=102)
     wallet_events_factory.create(
         block_number=10,
-        event_index=1000,
+        event_index=100000000,
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
@@ -444,7 +444,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
     )
     wallet_events_factory.create(
         block_number=10,
-        event_index=1001,
+        event_index=100000001,
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
@@ -453,7 +453,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
     )
     t3 = wallet_events_factory.create(
         block_number=12,
-        event_index=1200,
+        event_index=120000000,
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
@@ -462,7 +462,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
     )
     t4 = wallet_events_factory.create(
         block_number=12,
-        event_index=1201,
+        event_index=120000001,
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
@@ -471,7 +471,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
     )
     wallet_events_factory.create(
         block_number=13,
-        event_index=1300,
+        event_index=130000000,
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
@@ -480,14 +480,14 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
     )
     wallet_events_factory.create(
         block_number=13,
-        event_index=1301,
+        event_index=130000001,
         address=address,
         type=WalletEventType.ETH_TRANSFER,
         is_forked=False,
         event_data={'amount': '6000', 'sender': '0xaaa', 'recipient': address},
         tx_data={'timestamp': 103},
     )
-    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&event_index=1201&limit=2')
+    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&event_index=120000001&limit=2')
     assert resp.status == 200
     resp_json = await resp.json()
     assert resp_json['data'] == [{'amount': '4000',
@@ -502,10 +502,10 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
                                   'transactionHash': t3.tx_hash}
                                  ]
     assert resp_json['paging'] == {
-        'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=1201&order=desc&limit=2',
-        'next': f'/v1/accounts/{address}/eth_transfers?block_number=10&event_index=1001&order=desc&limit=2'}
+        'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=120000001&order=desc&limit=2',
+        'next': f'/v1/accounts/{address}/eth_transfers?block_number=10&event_index=100000001&order=desc&limit=2'}
 
-    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&event_index=1200&order=asc&limit=2')
+    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&event_index=120000000&order=asc&limit=2')
     assert resp.status == 200
     resp_json = await resp.json()
     assert resp_json['data'] == [
@@ -521,8 +521,8 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
          'transactionHash': t4.tx_hash},
     ]
     assert resp_json['paging'] == {
-        'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=1200&order=asc&limit=2',
-        'next': f'/v1/accounts/{address}/eth_transfers?block_number=13&event_index=1300&order=asc&limit=2'}
+        'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=120000000&order=asc&limit=2',
+        'next': f'/v1/accounts/{address}/eth_transfers?block_number=13&event_index=130000000&order=asc&limit=2'}
 
     resp = await cli.get(f'v1/accounts/{address}/eth_transfers?timestamp=102&order=asc&limit=2')
     assert resp.status == 200
@@ -540,8 +540,27 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
          'transactionHash': t4.tx_hash},
     ]
     assert resp_json['paging'] == {
-        'link': f'/v1/accounts/{address}/eth_transfers?timestamp=102&event_index=1200&order=asc&limit=2',
-        'next': f'/v1/accounts/{address}/eth_transfers?timestamp=103&event_index=1300&order=asc&limit=2'}
+        'link': f'/v1/accounts/{address}/eth_transfers?timestamp=102&event_index=120000000&order=asc&limit=2',
+        'next': f'/v1/accounts/{address}/eth_transfers?timestamp=103&event_index=130000000&order=asc&limit=2'}
+
+    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&order=asc&limit=2')
+    assert resp.status == 200
+    resp_json = await resp.json()
+    assert resp_json['data'] == [
+        {'amount': '3000',
+         'from': '0xaaa',
+         'timestamp': 102,
+         'to': '0x1111111111111111111111111111111111111111',
+         'transactionHash': t3.tx_hash},
+        {'amount': '4000',
+         'from': '0xaaa',
+         'timestamp': 102,
+         'to': '0x1111111111111111111111111111111111111111',
+         'transactionHash': t4.tx_hash},
+    ]
+    assert resp_json['paging'] == {
+        'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=120000000&order=asc&limit=2',
+        'next': f'/v1/accounts/{address}/eth_transfers?block_number=13&event_index=130000000&order=asc&limit=2'}
 
 
 @pytest.mark.parametrize(
