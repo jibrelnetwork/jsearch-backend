@@ -1,8 +1,8 @@
 version: '3.2'
 
 services:
-  tests:
-    &tests
+  dev:
+    &dev
     depends_on:
       - test_main_db
       - test_raw_db
@@ -11,17 +11,16 @@ services:
       dockerfile: Dockerfile
       args:
         ENVIRONMENT: development
-    image: jsearch/tests
-    container_name: jsearch_tests
+    image: jsearch/dev
     environment:
       JSEARCH_MAIN_DB: postgres://postgres:postgres@test_main_db/jsearch-main
       JSEARCH_RAW_DB: postgres://postgres:postgres@test_raw_db/jsearch-raw
     env_file:
       - config/dev.env
 
-  tests_shell:
-    <<: *tests
-    image: jsearch/tests
+  dev_shell:
+    <<: *dev
+    image: jsearch/dev
     volumes:
       - ./:/app
 

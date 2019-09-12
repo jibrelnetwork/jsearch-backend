@@ -34,7 +34,7 @@ docker-compose build
 
 Following environmental variables are used by the project and can be configured:
 * `LOG_LEVEL=INFO`
-* `RAVEN_DSN=""`
+* `SENTRY_DSN=""`
 * `JSEARCH_SYNC_PARALLEL="10"`
 * `JSEARCH_MAIN_DB="postgres://postgres:postgres@main_db/jsearch_main"`
 * `JSEARCH_RAW_DB="postgres://postgres:postgres@raw_db/jsearch_raw"`
