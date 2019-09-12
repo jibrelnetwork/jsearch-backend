@@ -15,31 +15,13 @@ depends_on = None
 
 # WTF: Postgres integer limit is 2,147,483,647. Soon or later we will reach this limit.
 UP_SQL = """
-ALTER TABLE accounts_state ALTER COLUMN block_number TYPE BIGINT;
-ALTER TABLE assets_summary ALTER COLUMN block_number TYPE BIGINT;
-ALTER TABLE blocks ALTER COLUMN number TYPE BIGINT;
-ALTER TABLE transactions ALTER COLUMN block_number TYPE BIGINT;
-ALTER TABLE internal_transactions ALTER COLUMN block_number TYPE BIGINT;
-ALTER TABLE logs ALTER COLUMN block_number TYPE BIGINT;
-ALTER TABLE reorgs ALTER COLUMN block_number TYPE BIGINT;
 ALTER TABLE reorgs ALTER COLUMN id TYPE BIGINT;
-ALTER TABLE token_holders ALTER COLUMN block_number TYPE BIGINT;
-ALTER TABLE token_transfers ALTER COLUMN block_number TYPE BIGINT;
-ALTER TABLE uncles ALTER COLUMN block_number TYPE BIGINT;
+ALTER TABLE token_holders ALTER COLUMN id TYPE BIGINT;
 """
 
 DOWN_SQL = """
-ALTER TABLE accounts_state ALTER COLUMN block_number TYPE INTEGER;
-ALTER TABLE assets_summary ALTER COLUMN block_number TYPE INTEGER;
-ALTER TABLE blocks ALTER COLUMN number TYPE INTEGER;
-ALTER TABLE transactions ALTER COLUMN block_number TYPE INTEGER;
-ALTER TABLE internal_transactions ALTER COLUMN block_number TYPE INTEGER;
-ALTER TABLE logs ALTER COLUMN block_number TYPE INTEGER;
-ALTER TABLE reorgs ALTER COLUMN block_number TYPE INTEGER;
 ALTER TABLE reorgs ALTER COLUMN id TYPE INTEGER;
-ALTER TABLE token_holders ALTER COLUMN block_number TYPE INTEGER;
-ALTER TABLE token_transfers ALTER COLUMN block_number TYPE INTEGER;
-ALTER TABLE uncles ALTER COLUMN block_number TYPE INTEGER;
+ALTER TABLE token_holders ALTER COLUMN id TYPE INTEGER;
 """
 
 
