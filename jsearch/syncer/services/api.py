@@ -35,6 +35,7 @@ async def healthcheck(request: web.Request) -> web.Response:
     main_db_stats = await stats.get_db_stats(request.app['db_pool'])
     loop_stats = await stats.get_loop_stats()
     chain_stats = await stats.get_chain_stats(request.app['db_pool'])
+    lag_stats = await stats.get_lag_stats(request.app['db_pool'])
 
     healthy = all(
         (
@@ -52,6 +53,7 @@ async def healthcheck(request: web.Request) -> web.Response:
         'isMainDbHealthy': main_db_stats.is_healthy,
         'isLoopHealthy': loop_stats.is_healthy,
         'isChainHealthy': chain_stats.is_healthy,
+        'isLagHealthy': lag_stats.is_healthy
     }
 
     return web.json_response(data=data, status=status)
