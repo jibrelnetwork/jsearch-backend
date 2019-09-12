@@ -14,7 +14,6 @@ branch_labels = None
 depends_on = None
 
 UP_SQL = """
-select pg_sleep(10800);
 ALTER TABLE reorgs DROP COLUMN "id";
 ALTER TABLE reorgs ADD COLUMN "id" SERIAL;
 CREATE UNIQUE INDEX ix_reorgs_hash_split_id_node_id ON reorgs(block_hash, split_id, node_id); 
