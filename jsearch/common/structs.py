@@ -25,3 +25,8 @@ class SyncRange(NamedTuple):
 class ChainStats(NamedTuple):
     is_healthy: bool
     chain_holes: Optional[List]
+
+
+class LagStats(NamedTuple):
+    is_healthy: bool
+    lag: Optional[int]
