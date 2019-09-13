@@ -392,7 +392,7 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
                             'eventType': event.type
                         }
                     ],
-                    'rootTxData': {
+                    'transaction': {
                         'blockHash': tx.block_hash,
                         'blockNumber': tx.block_number,
                         'timestamp': tx.timestamp,
@@ -455,7 +455,7 @@ async def test_get_wallet_events_pending_txs(cli,
                 'eventIndex': 0,
                 'eventType': 'eth-transfer'
             }],
-            'rootTxData': {
+            'transaction': {
                 'from': getattr(pending_tx, 'from'),
                 'gas': str(pending_tx.gas),
                 'gasPrice': str(pending_tx.gas_price),
