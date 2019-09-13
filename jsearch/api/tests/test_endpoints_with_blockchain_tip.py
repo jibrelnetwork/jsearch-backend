@@ -881,7 +881,7 @@ async def test_get_wallet_events_with_tip(
                         'eventType': event.type
                     }
                 ],
-                'rootTxData': {
+                'transaction': {
                     'blockHash': tx.block_hash,
                     'blockNumber': tx.block_number,
                     'timestamp': tx.timestamp,

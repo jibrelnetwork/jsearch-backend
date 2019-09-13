@@ -46,7 +46,7 @@ class WalletEventTransaction(NamedTuple):
 
     def to_dict(self):
         return {
-            'rootTxData': self.transaction,
+            'transaction': self.transaction,
             'events': [event.to_dict() for event in self.events]
         }
 
