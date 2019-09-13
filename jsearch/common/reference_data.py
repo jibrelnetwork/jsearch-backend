@@ -33,10 +33,10 @@ class Web3ApiProvider(ReferenceDataProvider):
                    'method': 'eth_getBlockByNumber',
                    'params': ['latest', False],
                    'id': 1}
-        session = aiohttp.ClientSession()
-        async with session.post(self.get_base_url(), json=payload) as resp:
-            resp_text = await resp.text()
-            data = json.loads(resp_text)['result']
+        async with aiohttp.ClientSession() as session:
+            async with session.post(self.get_base_url(), json=payload) as resp:
+                resp_text = await resp.text()
+                data = json.loads(resp_text)['result']
         return BlockReferenceData(hash=data['hash'], number=int(data['number'], 16))
 
 
@@ -51,11 +51,10 @@ class EtherscanDataProvider(ReferenceDataProvider):
             'boolean': 'false',
             'apikey': self.api_key
         }
-        session = aiohttp.ClientSession()
-        async with session.get(self.root_url, params=query_params) as resp:
-            resp_text = await resp.text()
-            data = json.loads(resp_text)['result']
-        await session.close()
+        async with aiohttp.ClientSession() as session:
+            async with session.get(self.root_url, params=query_params) as resp:
+                resp_text = await resp.text()
+                data = json.loads(resp_text)['result']
         return BlockReferenceData(hash=data['hash'], number=int(data['number'], 16))
 
 
