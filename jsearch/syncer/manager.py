@@ -114,6 +114,10 @@ class Manager:
         self.node_id = settings.ETH_NODE_ID
 
     async def start(self):
+        can_run = await self.try_lock_range()
+        if can_run is not True:
+            logger.error("Syncer instance already exists, exit now", extra={'sync range': self.sync_range})
+            return
         logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
         self._running = True
 
@@ -130,6 +134,8 @@ class Manager:
             self.tasks.append(task)
 
     async def wait(self):
+        if not self.tasks:
+            return
         done, pending = await asyncio.wait(self.tasks, return_when=asyncio.FIRST_EXCEPTION)
 
         exceptions = []
@@ -235,3 +241,6 @@ class Manager:
             return
 
         await self.process_chain_event(next_event)
+
+    async def try_lock_range(self):
+        return await self.main_db.try_advisory_lock(self.sync_range[0], self.sync_range[1])
