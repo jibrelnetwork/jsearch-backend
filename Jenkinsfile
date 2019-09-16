@@ -27,6 +27,11 @@ builder(
                         environment: [
                                 JSEARCH_MAIN_DB: 'postgres://app:pass@maindb/jsearch-maindb',
                                 JSEARCH_RAW_DB: 'postgres://app:pass@rawdb/jsearch-rawdb',
+                                ETHERSCAN_API_URL: '',
+								ETHERSCAN_API_KEY: '',
+								INFURA_API_URL: '',
+								INFURA_API_KEY: '',
+								JWALLET_API_URL: '',
                         ],
                         sidecars: [
                                 maindb: [

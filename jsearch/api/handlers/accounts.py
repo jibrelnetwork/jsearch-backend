@@ -396,6 +396,10 @@ async def get_account_eth_transfers(request,
     storage = request.app['storage']
     if timestamp:
         block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
+        timestamp = None
+
+    block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
+
     transfers, last_affected_block = await storage.get_account_eth_transfers(address,
                                                                              block_number=block_number,
                                                                              event_index=event_index,
