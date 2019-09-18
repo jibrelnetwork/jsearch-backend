@@ -8,7 +8,6 @@ from jsearch import settings
 from jsearch.common import logs, stats
 from jsearch.common import worker
 from jsearch.syncer import services
-from jsearch.syncer.manager import SYNCER_BALANCE_MODE_LATEST, SYNCER_BALANCE_MODE_OFFSET
 from jsearch.utils import parse_range
 
 logger = logging.getLogger("syncer")

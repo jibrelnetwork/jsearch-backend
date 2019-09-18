@@ -13,9 +13,6 @@ logger = logging.getLogger(__name__)
 
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
 
-SYNCER_BALANCE_MODE_LATEST = 'latest'
-SYNCER_BALANCE_MODE_OFFSET = 'offset'
-
 
 class ChainEvent:
     INSERT = 'created'

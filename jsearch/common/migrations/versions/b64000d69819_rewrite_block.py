@@ -98,7 +98,7 @@ AS $$
          END IF;                                                                                                                                           
          
          IF char_length(chain_event_data) > 2 THEN                                                                                                                                           
-            INSERT INTO chain_events SELECT * FROM json_populate_record(null::wallet_events, wallet_events_data::json);                                          
+            INSERT INTO chain_events SELECT * FROM json_populate_record(null::chain_events, chain_event_data::json);                                          
          END IF;
                                                                                                                                                            
          RETURN true;                                                                                                                                      

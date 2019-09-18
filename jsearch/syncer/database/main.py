@@ -229,8 +229,6 @@ class MainDB(DBWrapper):
         else:
             chain_event = ''
 
-        logger.info('WRITE BLOCK', extra={'chain_event': chain_event})
-
         q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
 
         params = [

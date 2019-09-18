@@ -15,6 +15,11 @@ services:
     environment:
       JSEARCH_MAIN_DB: postgres://postgres:postgres@test_main_db/jsearch-main
       JSEARCH_RAW_DB: postgres://postgres:postgres@test_raw_db/jsearch-raw
+      ETHERSCAN_API_URL: https://api.etherscan.io/api
+      ETHERSCAN_API_KEY: nokey
+      INFURA_API_URL: https://mainnet.infura.io/v3
+      INFURA_API_KEY: secret
+      JWALLET_API_URL: https://main-node.jwallet.network
     env_file:
       - config/dev.env
 
