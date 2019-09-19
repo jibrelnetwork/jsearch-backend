@@ -13,9 +13,6 @@ logger = logging.getLogger(__name__)
 
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
 
-SYNCER_BALANCE_MODE_LATEST = 'latest'
-SYNCER_BALANCE_MODE_OFFSET = 'offset'
-
 
 class ChainEvent:
     INSERT = 'created'
@@ -97,14 +94,14 @@ class Manager:
             - chain_splits
     """
 
-    def __init__(self, service, main_db, raw_db, sync_range, balance_mode: str = SYNCER_BALANCE_MODE_LATEST):
+    def __init__(self, service, main_db, raw_db, sync_range, resync=False):
         self.service = service
         self.main_db = main_db
         self.raw_db = raw_db
         self.sync_range = sync_range
         self._running = False
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
-        self.balance_mode = balance_mode
+        self.resync = resync
 
         self.latest_available_block_num = None
         self.latest_synced_block_num = None
@@ -121,9 +118,11 @@ class Manager:
         logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
         self._running = True
 
-        service_loops = [
-            self.chain_events_process_loop(),
-        ]
+        service_loops = []
+        if self.resync is True:
+            service_loops.append(self.resync_loop())
+        else:
+            service_loops.append(self.chain_events_process_loop())
 
         for coro in service_loops:
             coro = asyncio.shield(coro)
@@ -179,6 +178,25 @@ class Manager:
         logger.info("Entering Chain Events Process Loop")
         while self._running is True:
             await self.get_and_process_chain_event()
+
+    async def resync_loop(self):
+        logger.info("Entering ReSync Loop")
+        for block_number in range(self.sync_range[1], self.sync_range[0], -1):
+            if not self._running:
+                logger.info("Leave ReSync Loop")
+                break
+            await self.rewrite_block(block_number)
+
+    async def rewrite_block(self, block_number):
+        logger.info("Rewrite block", extra={'block_number': block_number})
+        block_hash = await self.main_db.get_block_hash_by_number(block_number)
+        await SyncProcessor(raw_db=self.raw_db, main_db=self.main_db).sync_block(
+            block_hash=block_hash,
+            block_number=block_number,
+            is_forked=False,
+            chain_event=None,
+            rewrite=True
+        )
 
     async def process_chain_event(self, event):
         start_time = time.monotonic()

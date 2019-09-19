@@ -3,7 +3,7 @@ import logging
 
 import aiopg
 from aiopg.sa import SAConnection
-from sqlalchemy import and_, Table
+from sqlalchemy import and_, Table, false
 from sqlalchemy.orm import Query
 from typing import List, Dict, Any, Optional
 
@@ -212,7 +212,8 @@ class MainDB(DBWrapper):
             token_holders_updates,
             wallet_events,
             assets_summary_updates,
-            chain_event
+            chain_event,
+            connection=None,
     ):
         """
         Insert block and all related items in main database
@@ -222,8 +223,11 @@ class MainDB(DBWrapper):
         token_holders_updates.sort(key=lambda u: (u['account_address'], u['token_address']))
         assets_summary_updates.sort(key=lambda u: (u['address'], u['asset_address']))
 
-        chain_event = dict(chain_event)
-        chain_event['created_at'] = chain_event['created_at'].isoformat()
+        if chain_event is not None:
+            chain_event = dict(chain_event)
+            chain_event['created_at'] = chain_event['created_at'].isoformat()
+        else:
+            chain_event = ''
 
         q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
 
@@ -243,9 +247,64 @@ class MainDB(DBWrapper):
             chain_event
         ]
 
+        if connection is not None:
+            await connection.execute(q, *[json.dumps(item) for item in params])
+        else:
+            async with self.engine.acquire() as connection:
+                async with connection.begin():
+                    await connection.execute(q, *[json.dumps(item) for item in params])
+
+    async def rewrite_block_data_proc(
+            self,
+            block_data,
+            uncles_data,
+            transactions_data,
+            receipts_data,
+            logs_data,
+            accounts_data,
+            internal_txs_data,
+            transfers,
+            token_holders_updates,
+            wallet_events,
+            assets_summary_updates,
+            chain_event
+    ):
+        """
+        Rewrite block and all related items in main database
+        """
+
         async with self.engine.acquire() as connection:
             async with connection.begin():
-                await connection.execute(q, *[json.dumps(item) for item in params])
+                await self.delete_block_data(block_data['hash'], connection)
+                await self.write_block_data_proc(
+                    block_data,
+                    uncles_data,
+                    transactions_data,
+                    receipts_data,
+                    logs_data,
+                    accounts_data,
+                    internal_txs_data,
+                    transfers,
+                    token_holders_updates,
+                    wallet_events,
+                    assets_summary_updates,
+                    chain_event,
+                    connection
+                )
+
+    async def delete_block_data(self, block_hash, connection):
+        logger.info('deleting block %s', block_hash)
+        await connection.execute("""DELETE FROM token_holders WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM wallet_events WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM assets_summary WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM token_transfers WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM transactions WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM logs WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM receipts WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM accounts_state WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM internal_transactions WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM uncles WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM blocks WHERE hash=%s""", block_hash)
 
     async def try_advisory_lock(self, start, end):
         if end is None:
@@ -260,3 +319,10 @@ class MainDB(DBWrapper):
         await cur.execute(q, params)
         res = await cur.fetchone()
         return res[0]
+
+    async def get_block_hash_by_number(self, block_num):
+        q = blocks_t.select().where(and_(blocks_t.c.number == block_num, blocks_t.c.is_forked == false()))
+        async with self.engine.acquire() as conn:
+            res = await conn.execute(q)
+            row = await res.fetchone()
+            return row['hash']
