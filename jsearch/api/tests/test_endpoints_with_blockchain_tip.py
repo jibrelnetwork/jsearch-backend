@@ -430,7 +430,7 @@ async def test_get_account_mined_uncles_with_tip(
         total_difficulty='10694243015446',
         transactions_root='0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
     )
-    query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
+    query_params = f'uncle_number={tip.tip_number}&limit=1&blockchain_tip={tip.tip_hash}'
     response = await cli.get(f'/v1/accounts/{uncle.miner}/mined_uncles?{query_params}')
     response_json = await response.json()
     response_json.pop('paging', None)
