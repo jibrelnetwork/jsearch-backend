@@ -98,8 +98,6 @@ class SyncProcessor:
             True if sync is successful, False if syn fails or block already synced
         """
         logger.debug("Syncing Block", extra={'hash': block_hash, 'number': block_number})
-        await self.main_db.connect()
-        await self.raw_db.connect()
 
         start_time = time.monotonic()
 
