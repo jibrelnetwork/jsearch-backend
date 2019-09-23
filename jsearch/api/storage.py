@@ -859,7 +859,7 @@ class Storage:
         tx_numbers = await self.get_wallet_assets_tx_numbers(rows)
 
         for asset in rows:
-            asset['tx_number'] = tx_numbers.get((asset['address'], asset['asset_address']))
+            asset['tx_number'] = tx_numbers.get((asset['address'], asset['asset_address']), 0)
 
         addr_map = {}
         for r in rows:
@@ -905,13 +905,17 @@ class Storage:
             from token_transfers 
             where address = any($1::varchar[])
              and is_forked=false 
-            group by address, token_address;
+            group by address, token_address
+            union select count(*) tx_number, address, '' token_address 
+            from transactions 
+            where address = any($1::varchar[])
+             and is_forked=false 
+            group by address;
         """
-        addresses, token_addresses = zip(*[(a['address'], a['asset_address']) for a in assets])
-        addresses = set(addresses)
-        token_addresses = set(token_addresses)
+        addresses = set([a['address'] for a in assets])
+
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(q, addresses, token_addresses)
+            rows = await conn.fetch(q, addresses)
             return {(r['address'], r['token_address']): r['tx_number'] for r in rows}
 
     async def get_nonce(self, address):

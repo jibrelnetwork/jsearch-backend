@@ -503,7 +503,7 @@ async def test_get_wallet_events_pending_txs_limit(cli,
     assert len(response_json['data']['pendingEvents']) == 100
 
 
-async def test_get_wallet_assets_summary(cli, db):
+async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_factory):
     assets = [
         {
             'address': 'a1',
@@ -551,8 +551,24 @@ async def test_get_wallet_assets_summary(cli, db):
             'block_number': 100
         },
     ]
+
     for a in assets:
         db.execute(assets_summary_t.insert().values(**a))
+
+    transfer_factory.create(address='a1', token_address='c100')
+    transfer_factory.create(address='a1', token_address='c1')
+    transfer_factory.create(address='a1', token_address='c1')
+    transfer_factory.create(address='a1', token_address='c2')
+    transfer_factory.create(address='a2', token_address='c1')
+    transfer_factory.create(address='a2', token_address='c1')
+    transfer_factory.create(address='a2', token_address='c1')
+    transfer_factory.create(address='a2', token_address='c1', is_forked=True)
+
+    transaction_factory.create(address='a1')
+    transaction_factory.create(address='a1')
+    transaction_factory.create(address='a1')
+    transaction_factory.create(address='a1', is_forked=True)
+
     resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1,a2')
     assert resp.status == 200
     res = (await resp.json())['data']
@@ -561,14 +577,14 @@ async def test_get_wallet_assets_summary(cli, db):
             'address': 'a1',
             'assetsSummary': [
                 {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 3},
-                {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 1},
-                {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 2}
+                {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 2},
+                {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 1}
             ],
             'outgoingTransactionsNumber': "10"},
         {
             'address': 'a2',
             'assetsSummary': [
-                {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 1}
+                {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 3}
             ],
             'outgoingTransactionsNumber': "5"
         }
@@ -578,15 +594,17 @@ async def test_get_wallet_assets_summary(cli, db):
     assert resp.status == 200
     res = (await resp.json())['data']
     assert res == [{'address': 'a1',
-                    'assetsSummary': [{'address': 'c2', 'balance': "20000", "decimals": "2", 'transfersNumber': 2}],
+                    'assetsSummary': [{'address': 'c2', 'balance': "20000", "decimals": "2", 'transfersNumber': 1}],
                     'outgoingTransactionsNumber': "10"},
                    ]
 
 
 @pytest.mark.parametrize("url_with_asset", [(True,), (False,)], ids=('without_assets', 'with_assets'))
-async def test_get_assets_summary_from_history(cli, assets_summary_factory: AssetsSummaryFactory, url_with_asset):
+async def test_get_assets_summary_from_history(cli, assets_summary_factory: AssetsSummaryFactory, url_with_asset,
+                                               transfer_factory):
     # given
     token = generate_address()
+    token2 = generate_address()
     account = generate_address()
 
     data = {
@@ -597,6 +615,11 @@ async def test_get_assets_summary_from_history(cli, assets_summary_factory: Asse
     # balances
     legacy_balance = assets_summary_factory.create(**data)
     current_balance = assets_summary_factory.create(**{**data, 'block_number': legacy_balance.block_number + 1})
+
+    transfer_factory.create(address=account, token_address=token2)
+    transfer_factory.create(address=account, token_address=token)
+    transfer_factory.create(address=account, token_address=token)
+    transfer_factory.create(address=account, token_address=token, is_forked=True)
 
     url = f'/v1/wallet/assets_summary?addresses={account}'
     if url_with_asset:
@@ -615,7 +638,7 @@ async def test_get_assets_summary_from_history(cli, assets_summary_factory: Asse
                 'address': token,
                 'balance': f'{current_balance.value}',
                 'decimals': f'{current_balance.decimals}',
-                'transfersNumber': current_balance.tx_number
+                'transfersNumber': 2
             }
         ],
         'outgoingTransactionsNumber': '1'
