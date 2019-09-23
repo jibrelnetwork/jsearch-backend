@@ -39,21 +39,37 @@ class BlockData(NamedTuple):
     wallet_events: List[Dict[str, Any]]
     assets_summary_updates: List[Dict[str, Any]]
 
-    async def write(self, main_db: MainDB, chain_event: Dict) -> None:
-        await main_db.write_block_data_proc(
-            accounts_data=self.accounts,
-            assets_summary_updates=self.assets_summary_updates,
-            block_data=self.block,
-            internal_txs_data=self.internal_txs,
-            logs_data=self.logs,
-            receipts_data=self.receipts,
-            token_holders_updates=self.token_holders_updates,
-            transactions_data=self.txs,
-            transfers=self.transfers,
-            uncles_data=self.uncles,
-            wallet_events=self.wallet_events,
-            chain_event=chain_event
-        )
+    async def write(self, main_db: MainDB, chain_event: Dict, rewrite: bool = False) -> None:
+        if rewrite is True:
+            await main_db.rewrite_block_data_proc(
+                accounts_data=self.accounts,
+                assets_summary_updates=self.assets_summary_updates,
+                block_data=self.block,
+                internal_txs_data=self.internal_txs,
+                logs_data=self.logs,
+                receipts_data=self.receipts,
+                token_holders_updates=self.token_holders_updates,
+                transactions_data=self.txs,
+                transfers=self.transfers,
+                uncles_data=self.uncles,
+                wallet_events=self.wallet_events,
+                chain_event=chain_event
+            )
+        else:
+            await main_db.write_block_data_proc(
+                accounts_data=self.accounts,
+                assets_summary_updates=self.assets_summary_updates,
+                block_data=self.block,
+                internal_txs_data=self.internal_txs,
+                logs_data=self.logs,
+                receipts_data=self.receipts,
+                token_holders_updates=self.token_holders_updates,
+                transactions_data=self.txs,
+                transfers=self.transfers,
+                uncles_data=self.uncles,
+                wallet_events=self.wallet_events,
+                chain_event=chain_event
+            )
 
 
 class SyncProcessor:
@@ -69,7 +85,8 @@ class SyncProcessor:
                          block_hash: str,
                          block_number: Optional[int] = None,
                          is_forked: bool = False,
-                         chain_event: Optional[Dict[str, Any]] = None) -> bool:
+                         chain_event: Optional[Dict[str, Any]] = None,
+                         rewrite: Optional[bool] = False) -> bool:
         """
         Args:
             block_hash: number of block to sync
@@ -116,7 +133,7 @@ class SyncProcessor:
 
         process_time = time.monotonic() - fetch_time - start_time
 
-        await block.write(self.main_db, chain_event)
+        await block.write(self.main_db, chain_event, rewrite)
         db_write_time = time.monotonic() - process_time - fetch_time - start_time
 
         sync_time = time.monotonic() - start_time
@@ -138,7 +155,8 @@ class SyncProcessor:
                             accounts: List[Dict[str, Any]],
                             internal_transactions: List[Dict[str, Any]],
                             token_holder_balances: TokenHolderBalances,
-                            is_forked: bool) -> BlockData:
+                            is_forked: bool,
+                            ) -> BlockData:
         """
         Preprocess data fetched from Raw DB to Main DB
 
