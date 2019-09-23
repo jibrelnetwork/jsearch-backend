@@ -856,36 +856,63 @@ class Storage:
         async with self.pool.acquire() as conn:
             rows = await fetch(conn, query)
 
-            addr_map = {k: list(g) for k, g in groupby(rows, lambda r: r['address'])}
-            summary = []
-            for address in addresses:
-                nonce = 0
-                assets_summary = []
-                for row in addr_map.get(address, []):
-                    value = row['value'] or "0"
-                    decimals = row['decimals'] or "0"
+        tx_numbers = await self.get_wallet_assets_tx_numbers(rows)
 
-                    balance = value and int(value)
-                    decimals = decimals and int(decimals)
+        for asset in rows:
+            asset['tx_number'] = tx_numbers.get((asset['address'], asset['asset_address']))
 
-                    asset_summary = AssetSummary(
-                        balance=str(balance),
-                        decimals=str(decimals),
-                        address=row['asset_address'],
-                        transfers_number=row['tx_number'],
-                    )
-                    assets_summary.append(asset_summary)
-                    if row['nonce']:
-                        nonce = row['nonce']
+        addr_map = {}
+        for r in rows:
+            if r['address'] in addr_map:
+                addr_map[r['address']].append(r)
+            else:
+                addr_map[r['address']] = [r]
 
-                item = AddressSummary(
-                    address=address,
-                    assets_summary=assets_summary,
-                    outgoing_transactions_number=str(nonce)
+        # print('ADDR_MAP', addr_map, rows)
+        summary = []
+        for address in addresses:
+            nonce = 0
+            assets_summary = []
+            for row in addr_map.get(address, []):
+                value = row['value'] or "0"
+                decimals = row['decimals'] or "0"
+
+                balance = value and int(value)
+                decimals = decimals and int(decimals)
+
+                asset_summary = AssetSummary(
+                    balance=str(balance),
+                    decimals=str(decimals),
+                    address=row['asset_address'],
+                    transfers_number=row['tx_number'],
                 )
-                summary.append(item)
-            last_affected_block_number = max([r['block_number'] or 0 for r in rows], default=None)
-            return summary, last_affected_block_number
+                assets_summary.append(asset_summary)
+                if row['nonce']:
+                    nonce = row['nonce']
+
+            item = AddressSummary(
+                address=address,
+                assets_summary=assets_summary,
+                outgoing_transactions_number=str(nonce)
+            )
+            summary.append(item)
+        last_affected_block_number = max([r['block_number'] or 0 for r in rows], default=None)
+        return summary, last_affected_block_number
+
+    async def get_wallet_assets_tx_numbers(self, assets):
+        q = """
+            select count(*) tx_number, address, token_address 
+            from token_transfers 
+            where address = any($1::varchar[])
+             and is_forked=false 
+            group by address, token_address;
+        """
+        addresses, token_addresses = zip(*[(a['address'], a['asset_address']) for a in assets])
+        addresses = set(addresses)
+        token_addresses = set(token_addresses)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(q, addresses, token_addresses)
+            return {(r['address'], r['token_address']): r['tx_number'] for r in rows}
 
     async def get_nonce(self, address):
         """
@@ -904,10 +931,8 @@ class Storage:
 
     async def get_internal_transactions(self, parent_tx_hash: str, order: str):
         query = get_internal_txs_by_parent(parent_tx_hash, order)
-
         rows = await fetch(self.pool, query)
         internal_txs = [models.InternalTransaction(**r) for r in rows]
-
         return internal_txs
 
     async def get_account_internal_transactions(
