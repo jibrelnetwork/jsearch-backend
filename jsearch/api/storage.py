@@ -3,7 +3,6 @@ import logging
 from collections import defaultdict
 
 import asyncpgsa
-from itertools import groupby
 from sqlalchemy import select, and_, desc, true
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
@@ -900,16 +899,16 @@ class Storage:
 
     async def get_wallet_assets_tx_numbers(self, assets):
         q = """
-            select count(*) tx_number, address, token_address 
-            from token_transfers 
-            where address = any($1::varchar[])
-             and is_forked=false 
-            group by address, token_address
-            union select count(*) tx_number, address, '' token_address 
-            from transactions 
-            where address = any($1::varchar[])
-             and is_forked=false 
-            group by address;
+        SELECT count(*) tx_number, address, token_address
+            FROM token_transfers
+            WHERE address = ANY($1::varchar[])
+                AND is_forked=false
+            GROUP BY address, token_address
+        UNION SELECT count(*) tx_number, address, '' token_address
+            FROM transactions
+            WHERE address = ANY($1::varchar[])
+                AND is_forked=false
+            GROUP BY address;
         """
         addresses = set([a['address'] for a in assets])
 
