@@ -868,7 +868,6 @@ class Storage:
             else:
                 addr_map[r['address']] = [r]
 
-        # print('ADDR_MAP', addr_map, rows)
         summary = []
         for address in addresses:
             nonce = 0
