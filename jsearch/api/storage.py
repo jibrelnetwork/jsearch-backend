@@ -899,12 +899,12 @@ class Storage:
 
     async def get_wallet_assets_tx_numbers(self, assets):
         q = """
-        SELECT count(*) tx_number, address, token_address
+        SELECT count(*) as tx_number, address, token_address
             FROM token_transfers
             WHERE address = ANY($1::varchar[])
                 AND is_forked=false
             GROUP BY address, token_address
-        UNION SELECT count(*) tx_number, address, '' token_address
+        UNION SELECT count(*) as tx_number, address, '' as token_address
             FROM transactions
             WHERE address = ANY($1::varchar[])
                 AND is_forked=false
