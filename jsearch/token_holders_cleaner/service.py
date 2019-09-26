@@ -81,11 +81,11 @@ class TokenHoldersCleaner(mode.Service):
     @mode.Service.task
     async def main_loop(self):
         logger.info('Enter main loop')
-        last_scanned = {'token_address': '0', 'account_address': '0'}
+        last_scanned = '0'
         while not self.should_stop:
             last_scanned = await self.clean_next_batch(last_scanned)
             if last_scanned is None:
-                last_scanned = {'token_address': '0', 'account_address': '0'}
+                last_scanned = '0'
                 logger.info('Starting new iteration')
                 break
         logger.info('Leaving main loop')
@@ -100,36 +100,21 @@ class TokenHoldersCleaner(mode.Service):
             await self.clean_holder(holder)
         if holders:
             last = holders[-1]
-            return {'token_address': last['token_address'], 'account_address': last['account_address']}
+            return last
 
     async def get_next_batch(self, last_scanned):
         q = """
-            select token_address, account_address, block_number
-                from token_holders
-                where token_address = %(token_address)s
-                    and account_address > %(account_address)s
-            union all
-            select token_address, account_address, block_number
-                from token_holders
-                where token_address > %(token_address)s
-                order by token_address, account_address, block_number limit 100;
+            select distinct token_address from token_holders where token_address > %s order by token_address limit 100;
         """
         async with self.conn.cursor() as cur:
-            await cur.execute(q, last_scanned)
+            await cur.execute(q, [last_scanned])
             rows = await cur.fetchall()
-        return rows
-
+        return [r['token_address'] for r in rows]
 
     async def clean_holder(self, holder):
         q = """
-            delete from token_holders
-                where token_address = %(token_address)s
-                    and account_address = %(account_address)s
-                    and block_number < (select max(block_number) - 6 from token_holders
-                                            where token_address = %(token_address)s
-                                            and account_address = %(account_address)s
-                                            and is_forked=false);
+            select clean_holder(%s);
         """
         async with self.conn.cursor() as cur:
-            await cur.execute(q, holder)
-            logger.debug('Clean for %s: %s', holder, cur.statusmessage)
+            logger.info('Clean for %s', holder)
+            await cur.execute(q, [holder])
