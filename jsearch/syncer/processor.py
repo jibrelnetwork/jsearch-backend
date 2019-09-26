@@ -116,7 +116,9 @@ class SyncProcessor:
         header = await self.raw_db.get_header_by_hash(block_hash)
         body = await self.raw_db.get_block_body(block_hash)
         accounts = await self.raw_db.get_block_accounts(block_hash)
-        internal_transactions = await self.raw_db.get_internal_transactions(block_hash)
+        # internal_transactions = await self.raw_db.get_internal_transactions(block_hash)
+        print('SKIP INTERNAL TXS')
+        internal_transactions = []   # FIXME!!!
         token_holder_balances = await self.raw_db.get_token_holder_balances(block_hash)
         fetch_time = time.monotonic() - start_time
 
