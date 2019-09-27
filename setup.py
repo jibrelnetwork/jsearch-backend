@@ -19,6 +19,7 @@ setup(
         'console_scripts': [
             'jsearch-syncer = jsearch.syncer.main:run',
             'jsearch-syncer-pending = jsearch.pending_syncer.main:run',
+            'jsearch-token-holders-cleaner = jsearch.token_holders_cleaner.main:run',
             'jsearch-monitor-balance = jsearch.monitor_balance.__main__:main',
         ]
     }
