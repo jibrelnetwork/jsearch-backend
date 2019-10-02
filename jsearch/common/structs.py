@@ -21,6 +21,9 @@ class SyncRange(NamedTuple):
     start: int
     end: Optional[int]
 
+    def __str__(self):
+        return f"{self.start}-{self.end if self.end is not None else ''}"
+
 
 class ChainStats(NamedTuple):
     is_healthy: bool

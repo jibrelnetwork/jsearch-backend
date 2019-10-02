@@ -52,14 +52,7 @@ async def test_syncer_entrypoint(
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
-        mocker: MockFixture
 ) -> None:
-    # ToDo: Remove in release 1.2
-    def wait(*args, **kwargs):
-        pass
-
-    mocker.patch("jsearch.syncer.main.wait", wait)
-
     result = cli_runner.invoke(jsearch.syncer.main.run, call_args)
     assert result.exit_code == exit_code
 

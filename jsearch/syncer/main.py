@@ -2,44 +2,40 @@ import asyncio
 import logging
 
 import click
-from aiopg.sa import create_engine
 
 from jsearch import settings
 from jsearch.common import logs, stats
 from jsearch.common import worker
+from jsearch.common.structs import SyncRange
 from jsearch.syncer import services
+from jsearch.syncer.scaler.pool import WorkersPool
+from jsearch.syncer.utils import get_last_block
 from jsearch.utils import parse_range
 
 logger = logging.getLogger("syncer")
 
 
-# ToDo: Remove after release 1.2
-async def wait_new_scheme():
-    query = """
-    SELECT column_name
-    FROM information_schema.columns
-    WHERE table_name = 'token_holders' AND column_name = 'id' and data_type = 'bigint';
-    """
-    engine = await create_engine(dsn=settings.JSEARCH_MAIN_DB, maxsize=1)
-    while True:
-        try:
-            async with engine.acquire() as connection:
-                async with connection.execute(query) as cursor:
-                    row = await cursor.fetchone()
-                    if row is None:
-                        logger.info('Wait new scheme, wait 5 seconds...')
-                        await asyncio.sleep(5)
-                    else:
-                        logger.info('New schema have founded, start sync...')
-                        break
-        except KeyboardInterrupt:
-            break
-    engine.close()
+def run_worker(sync_range: SyncRange, api_port: int, resync: bool) -> None:
+    api_worker = services.ApiService(port=api_port)
+
+    syncer = services.SyncerService(sync_range=(sync_range.start, sync_range.end), resync=resync)
+    syncer.add_dependency(api_worker)
+
+    worker.Worker(syncer).execute_from_commandline()
 
 
-def wait():
+def run_workers_pool(sync_range: SyncRange, workers: int, resync: bool, no_json_formatter: bool, log_level: str):
+    pool = WorkersPool(sync_range, workers)
+    last_block = get_last_block()
+
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(wait_new_scheme())
+    try:
+        run_task = pool.run(last_block, resync, log_level, no_json_formatter)
+        loop.run_until_complete(run_task)
+        loop.run_until_complete(pool.wait())
+    except KeyboardInterrupt:
+        loop.run_until_complete(pool.stop())
+        loop.run_until_complete(pool.wait())
 
 
 @click.command()
@@ -47,19 +43,18 @@ def wait():
 @click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
 @click.option('--sync-range', default=None, help="Blocks range to sync")
 @click.option('--resync', type=bool, default=False)
-def run(log_level, no_json_formatter, sync_range, resync):
+@click.option('--workers', type=int, default=1)
+@click.option('--port', type=int, default=settings.SYNCER_API_PORT)
+def run(log_level: str, no_json_formatter: bool, sync_range: str, resync: bool, workers: int, port: int):
     stats.setup_syncer_metrics()
     logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
 
-    wait()
-
-    syncer = services.SyncerService(
-        sync_range=parse_range(sync_range),
-        resync=resync
-    )
-    syncer.add_dependency(services.ApiService())
-
-    worker.Worker(syncer).execute_from_commandline()
+    sync_range = SyncRange(*parse_range(sync_range))
+    if workers > 1:
+        logger.info("Scale... ", extra={"workers": workers})
+        run_workers_pool(sync_range, workers, resync, no_json_formatter, log_level)
+    else:
+        run_worker(sync_range, port, resync)
 
 
 if __name__ == '__main__':
