@@ -392,7 +392,7 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
                             ],
                             'eventIndex': event.event_index,
                             'eventType': event.type,
-                            'direction': 'out'
+                            'eventDirection': 'out'
                         }
                     ],
                     'transaction': {
@@ -457,7 +457,7 @@ async def test_get_wallet_events_pending_txs(cli,
                 ],
                 'eventIndex': 0,
                 'eventType': 'eth-transfer',
-                'direction': 'in'
+                'eventDirection': 'in'
             }],
             'transaction': {
                 'from': getattr(pending_tx, 'from'),

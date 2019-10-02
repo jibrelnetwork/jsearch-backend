@@ -884,7 +884,7 @@ async def test_get_wallet_events_with_tip(
                         ],
                         'eventIndex': event.event_index,
                         'eventType': event.type,
-                        'direction': 'out'
+                        'eventDirection': 'out'
                     },
 
                     {
@@ -893,7 +893,7 @@ async def test_get_wallet_events_with_tip(
                         ],
                         'eventIndex': event2.event_index,
                         'eventType': event2.type,
-                        'direction': 'in'
+                        'eventDirection': 'in'
                     },
 
                 ],
