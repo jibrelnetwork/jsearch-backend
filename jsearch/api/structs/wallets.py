@@ -40,7 +40,7 @@ class WalletEvent(NamedTuple):
             'eventType': self.type,
             'eventIndex': self.event_index,
             'eventData': data,
-            'direction': self.direction,
+            'eventDirection': self.direction,
         }
 
 
