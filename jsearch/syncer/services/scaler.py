@@ -6,7 +6,7 @@ from aiohttp_apispec import (
     docs,
     request_schema,
     setup_aiohttp_apispec,
-)
+    response_schema)
 from functools import partial
 from marshmallow import Schema, fields
 from marshmallow.fields import Int
@@ -49,7 +49,7 @@ async def get_healthchecks(request: web.Request) -> web.Response:
 @docs(
     summary="Get state of all workers",
 )
-async def state(request: web.Request) -> web.Response:
+async def get_state(request: web.Request) -> web.Response:
     pool: WorkersPool = request.app['pool']
     pool_state = await pool.describe()
     return web.json_response(pool_state, dumps=partial(json.dumps, indent=2))
@@ -73,7 +73,7 @@ class ScaleSchema(Schema):
 )
 @request_schema(ScaleSchema(strict=True))
 @use_kwargs(ScaleSchema())
-async def scale(request: web.Request, sync_range: SyncRange, workers: int) -> web.Response:
+async def post_scale(request: web.Request, sync_range: SyncRange, workers: int) -> web.Response:
     pool: WorkersPool = request.app['pool']
 
     last_block = get_last_block()
@@ -82,19 +82,30 @@ async def scale(request: web.Request, sync_range: SyncRange, workers: int) -> we
     return web.json_response({'status': 'ok'})
 
 
+@docs(
+    summary="Show current workers config"
+)
+@response_schema(ScaleSchema())
+async def get_scale_config(request: web.Request):
+    pool: WorkersPool = request.app['pool']
+
+    return web.json_response({'workers': pool.workers, 'sync_range': str(pool.sync_range)})
+
+
 def make_app() -> Application:
     """
     Create and initialize the application instance.
     """
     app = web.Application(middlewares=(cors_middleware,))
     app.router.add_route('GET', '/healthcheck', get_healthchecks)
-    app.router.add_route('GET', '/api/state', state)
-    app.router.add_route('POST', '/api/scale', scale)
+    app.router.add_route('GET', '/api/state', get_state)
+    app.router.add_route('POST', '/api/scale', post_scale)
+    app.router.add_route('GET', '/api/scale', get_scale_config)
     app['storage'] = {}
 
     setup_aiohttp_apispec(
         app=app,
-        title="Web syncer scaler",
+        title="Web syncer scaler API",
         version="v1",
         url="/api/docs/swagger.json",
         swagger_path="/",
