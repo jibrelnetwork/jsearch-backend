@@ -62,7 +62,7 @@ from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
-from jsearch.api.structs.wallets import WalletEvent
+from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
@@ -835,12 +835,14 @@ class Storage:
                 tx = models.Transaction(**json.loads(tx_data)).to_dict()
             else:
                 tx = {}
-
+            event_data = json.loads(event['event_data'])
+            direction = WalletEventDirection.IN if event_data['recipient'] == address else WalletEventDirection.OUT
             wallet_event = WalletEvent(
                 type=event.get('type'),
                 event_index=event.get('event_index'),
                 event_data=event.get('event_data'),
                 transaction=tx,
+                direction=direction
             )
             wallet_events.append(wallet_event)
 
@@ -1012,10 +1014,13 @@ class Storage:
         for tx in rows:
             event = get_event_from_pending_tx(address=account, pending_tx=tx)
             if event:
+                event_data = event['event_data']
+                direction = WalletEventDirection.IN if event_data['recipient'] == account else WalletEventDirection.OUT
                 event = WalletEvent(
                     type=event.get('type'),
                     event_index=event.get('event_index'),
                     event_data=event.get('event_data'),
+                    direction=direction,
                     transaction=models.PendingTransaction(**tx).to_dict()
                 )
             tx_data = {
