@@ -21,6 +21,7 @@ class Worker:
     kwargs: Dict[str, Any]
     sync_range: SyncRange
 
+    _cmd: Optional[List[str]] = None
     _process: Optional[Process] = None
 
     async def run(self):
@@ -30,6 +31,7 @@ class Worker:
             **self.kwargs
         )
         logger.info("Start new worker", extra={"cmd": " ".join(cmd)})
+        self._cmd = cmd
         self._process = await create_subprocess_exec(*cmd, stdout=sys.stdout, stderr=sys.stderr)
 
     async def stop(self):
@@ -38,19 +40,24 @@ class Worker:
 
     async def wait(self):
         if self._process:
-            await self._process.wait()
+            process = self._process
+            await process.wait()
+
             self._process = None
+            if process.returncode != 0:
+                raise RuntimeError(f'Worker ({" ".join(self._cmd)}) has stopped with exit code {process.returncode}')
 
     async def check_healthy(self):
         if self._process:
             return await request_healthcheck(port=self.port)
-        return {'healthy': False}
+        return {'healthy': True}
 
     def describe(self):
         return {
             'port': self.port,
             'range': self.sync_range,
             'is_working': bool(self._process),
+            'range_synced': not bool(self._process)
         }
 
     @property
