@@ -1,22 +1,26 @@
-from typing import Any
-
 import asyncpg
 from aiohttp import web
-
-from jsearch.api.handlers import monitoring
-from jsearch.api.middlewares import cors_middleware
+from typing import Any
 
 from jsearch import settings
-from jsearch.common import stats
+from jsearch.api.handlers import monitoring
+from jsearch.api.middlewares import cors_middleware
 from jsearch.common import services
+from jsearch.common import stats
+from jsearch.common.structs import LagStats, ChainStats
 
 
 class ApiService(services.ApiService):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, check_lag: bool = True, check_holes: bool = True, *args: Any, **kwargs: Any) -> None:
         kwargs.setdefault('port', settings.SYNCER_API_PORT)
         kwargs.setdefault('app_maker', make_app)
 
         super(ApiService, self).__init__(*args, **kwargs)
+
+        self.app['settings'] = {
+            'check_lag': check_lag,
+            'check_holes': check_holes
+        }
 
 
 def make_app() -> web.Application:
@@ -34,8 +38,16 @@ async def healthcheck(request: web.Request) -> web.Response:
     raw_db_stats = await stats.get_db_stats(request.app['db_pool_raw'])
     main_db_stats = await stats.get_db_stats(request.app['db_pool'])
     loop_stats = await stats.get_loop_stats()
-    chain_stats = await stats.get_chain_stats(request.app['db_pool'])
-    lag_stats = await stats.get_lag_stats(request.app['db_pool'])
+
+    if request.app['settings']['check_holes']:
+        chain_stats = await stats.get_chain_stats(request.app['db_pool'])
+    else:
+        chain_stats = ChainStats(is_healthy=True, chain_holes=None)
+
+    if request.app['settings']['check_lag']:
+        lag_stats = await stats.get_lag_stats(request.app['db_pool'])
+    else:
+        lag_stats = LagStats(is_healthy=True, lag=None)
 
     healthy = all(
         (
@@ -60,8 +72,8 @@ async def healthcheck(request: web.Request) -> web.Response:
 
 
 async def on_startup(app: web.Application) -> None:
-    app['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB)
-    app['db_pool_raw'] = await asyncpg.create_pool(settings.JSEARCH_RAW_DB)
+    app['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB, min_size=1, max_size=1)
+    app['db_pool_raw'] = await asyncpg.create_pool(settings.JSEARCH_RAW_DB, min_size=1, max_size=1)
 
 
 async def on_shutdown(app: web.Application) -> None:
