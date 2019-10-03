@@ -51,7 +51,7 @@ class WalletEventsFactory(factory.alchemy.SQLAlchemyModelFactory):
         defaults = dict(
             address=from_,
             type='erc20-transfer',
-            event_data={'sender': to, 'recipient': from_, 'amount': amount},
+            event_data={'sender': from_, 'recipient': to, 'amount': amount},
             event_index=make_event_index_for_log(block_number, transaction_index, item_index)
         )
 
@@ -84,7 +84,7 @@ class WalletEventsFactory(factory.alchemy.SQLAlchemyModelFactory):
         defaults = dict(
             address=from_,
             type=WalletEventType.ETH_TRANSFER,
-            event_data={'sender': to, 'recipient': from_, 'amount': amount},
+            event_data={'sender': from_, 'recipient': to, 'amount': amount},
             event_index=make_event_index_for_internal_tx(block_number, transaction_index, item_index)
         )
         defaults.update(**kwargs)

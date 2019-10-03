@@ -272,7 +272,7 @@ class ApiError(Exception):
             try:
                 return await func(*args, **kwargs)
             except ApiError as exc:
-                return api_error_response(status=exc.status, errors=exc.errors, data={})
+                return api_error_response(status=exc.status, errors=exc.errors, data=None)
 
         return _wrapper
 
