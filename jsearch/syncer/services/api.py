@@ -1,5 +1,8 @@
+import json
+
 import asyncpg
 from aiohttp import web
+from functools import partial
 from typing import Any
 
 from jsearch import settings
@@ -8,15 +11,23 @@ from jsearch.api.middlewares import cors_middleware
 from jsearch.common import services
 from jsearch.common import stats
 from jsearch.common.structs import LagStats, ChainStats
+from jsearch.syncer.state import SyncerState
 
 
 class ApiService(services.ApiService):
-    def __init__(self, check_lag: bool = True, check_holes: bool = True, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+            self,
+            state: SyncerState,
+            check_lag: bool = True,
+            check_holes: bool = True,
+            *args: Any, **kwargs: Any
+    ) -> None:
         kwargs.setdefault('port', settings.SYNCER_API_PORT)
         kwargs.setdefault('app_maker', make_app)
 
         super(ApiService, self).__init__(*args, **kwargs)
 
+        self.app['state'] = state
         self.app['settings'] = {
             'check_lag': check_lag,
             'check_holes': check_holes
@@ -26,12 +37,18 @@ class ApiService(services.ApiService):
 def make_app() -> web.Application:
     application = web.Application(middlewares=[cors_middleware])
     application.router.add_route('GET', '/healthcheck', healthcheck)
+    application.router.add_route('GET', '/state', get_state)
     application.router.add_route('GET', '/metrics', monitoring.metrics)
 
     application.on_startup.append(on_startup)
     application.on_shutdown.append(on_shutdown)
 
     return application
+
+
+async def get_state(request: web.Request) -> web.Response:
+    state: SyncerState = request.app['state']
+    return web.json_response(data=state.as_dict(), dumps=partial(json.dumps, indent=2))
 
 
 async def healthcheck(request: web.Request) -> web.Response:

@@ -3,11 +3,12 @@ import logging
 
 import backoff
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from jsearch import settings
 from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.processor import SyncProcessor
+from jsearch.syncer.state import SyncerState
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,15 @@ class Manager:
             - chain_splits
     """
 
-    def __init__(self, service, main_db, raw_db, sync_range, resync=False):
+    def __init__(
+            self,
+            service,
+            main_db,
+            raw_db,
+            sync_range,
+            state: Optional[SyncerState] = False,
+            resync: bool = False
+    ):
         self.service = service
         self.main_db = main_db
         self.raw_db = raw_db
@@ -102,6 +111,7 @@ class Manager:
         self._running = False
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
         self.resync = resync
+        self.state = state or SyncerState(started_at=int(time.time()))
 
         self.latest_available_block_num = None
         self.latest_synced_block_num = None
@@ -217,6 +227,7 @@ class Manager:
                 block_num=block_number,
                 chain_event=event,
             )
+            self.state.update(block_number)
         elif event['type'] == ChainEvent.REINSERT:
             await self.main_db.insert_chain_event(event)
         elif event['type'] == ChainEvent.SPLIT:

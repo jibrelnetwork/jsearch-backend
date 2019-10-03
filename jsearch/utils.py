@@ -47,4 +47,8 @@ def parse_range(value: Optional[str] = None) -> Tuple[int, Optional[int]]:
     value_from = int(parts[0]) if parts[0] else DEFAULT_RANGE_START
     value_until = int(parts[1]) if parts[1] else DEFAULT_RANGE_END
 
+    for value in (value_from, value_until):
+        if value is not None and value < 0:
+            raise ValueError('Invalid range. It allows to be from 0 to integer or - .')
+
     return value_from, value_until
