@@ -1,6 +1,7 @@
 import logging
 
 import click
+import time
 from typing import Any, Dict
 
 from jsearch import settings
@@ -9,15 +10,18 @@ from jsearch.common import worker
 from jsearch.common.structs import SyncRange
 from jsearch.syncer import services
 from jsearch.syncer.pool import WorkersPool
+from jsearch.syncer.state import SyncerState
 from jsearch.utils import parse_range
 
 logger = logging.getLogger("syncer")
 
 
 def run_worker(sync_range: SyncRange, api_port: int, check_lag: bool, check_holes: bool, resync: bool) -> None:
-    api_worker = services.ApiService(check_lag=check_lag, check_holes=check_holes, port=api_port)
+    syncer_state = SyncerState(started_at=int(time.time()))
 
-    syncer = services.SyncerService(sync_range=(sync_range.start, sync_range.end), resync=resync)
+    api_worker = services.ApiService(check_lag=check_lag, check_holes=check_holes, port=api_port, state=syncer_state)
+
+    syncer = services.SyncerService(sync_range=(sync_range.start, sync_range.end), resync=resync, state=syncer_state)
     syncer.add_dependency(api_worker)
 
     worker.Worker(syncer).execute_from_commandline()

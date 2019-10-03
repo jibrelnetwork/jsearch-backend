@@ -5,7 +5,7 @@ from asyncio import create_subprocess_exec, gather, Lock
 from dataclasses import dataclass
 
 import signal
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientError
 from asyncio.subprocess import Process
 from typing import Generator, Optional, List, Dict, Any
 
@@ -52,12 +52,20 @@ class Worker:
             return await request_healthcheck(port=self.port)
         return {'healthy': True}
 
-    def describe(self):
+    async def describe(self):
+        state = {}
+        if self._process:
+            try:
+                state = await request_state(self.port)
+            except ClientError:
+                state = {}
+
         return {
             'port': self.port,
             'range': self.sync_range,
             'is_working': bool(self._process),
-            'range_synced': not bool(self._process)
+            'range_synced': not bool(self._process),
+            **state,
         }
 
     @property
@@ -133,18 +141,18 @@ class WorkersPool:
 
     async def check_healthy(self) -> List[Dict[str, Any]]:
         tasks = (worker.check_healthy() for worker in self._workers)
-        results = await gather(*tasks)
-        from pprint import pformat
-        logging.info(pformat(results))
-        return results
+        return await gather(*tasks)
 
-    def describe(self):
+    async def describe(self):
+        states = await gather(*[worker.describe() for worker in self._workers])
+        pool_speed = sum([state.get('speed') for state in states if state.get('speed')], 0)
         return {
             'sync_range': str(self.sync_range),
             'workers': {
                 'count': self.workers,
-                'ranges': [worker.describe() for worker in self._workers]
-            }
+                'ranges': states,
+                'speed': round(pool_speed, 2)
+            },
         }
 
 
@@ -154,6 +162,14 @@ async def request_healthcheck(port: int) -> Dict[str, Any]:
             if response.status == 200:
                 return await response.json()
             return {'healthy': False}
+
+
+async def request_state(port: int) -> Dict[str, Any]:
+    async with ClientSession() as session:
+        async with session.get(f'http://localhost:{port}/state') as response:
+            if response.status == 200:
+                return await response.json()
+            return {}
 
 
 def get_cmd(sync_range: SyncRange, port: int, **kwargs: Any):

@@ -51,7 +51,7 @@ async def get_healthchecks(request: web.Request) -> web.Response:
 )
 async def state(request: web.Request) -> web.Response:
     pool: WorkersPool = request.app['pool']
-    pool_state = pool.describe()
+    pool_state = await pool.describe()
     return web.json_response(pool_state, dumps=partial(json.dumps, indent=2))
 
 
