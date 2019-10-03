@@ -205,7 +205,7 @@ async def test_account_transactions_errors(cli, account_factory, create_account_
             (None, 20, []),
             (19, 19, []),
             (20, 20, []),
-            (21, 0, [
+            (21, None, [
                 {
                     "field": "limit",
                     "message": "Must be between 1 and 20.",
@@ -243,7 +243,10 @@ async def test_get_accounts_transactions_limits(
 
     # then
     observed_errors = resp_json['status']['errors']
-    observed_items_count = len(resp_json['data'])
+    if resp_json['data'] is None:
+        observed_items_count = None
+    else:
+        observed_items_count = len(resp_json['data'])
 
     assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)
 

@@ -285,7 +285,7 @@ async def test_get_wallet_events_errors(
             (None, 20, []),
             (19, 19, []),
             (20, 20, []),
-            (21, 0, [
+            (21, None, [
                 {
                     "field": "limit",
                     "message": "Must be between 1 and 20.",
@@ -325,9 +325,11 @@ async def test_get_events_limits(
 
     # then
     observed_errors = resp_json['status']['errors']
-
     # If 400 is raised -> resp_json['data'] is empty.
-    observed_items_count = len(resp_json['data']['events']) if not observed_errors else 0
+    if resp_json['data'] is None:
+        observed_items_count = None
+    else:
+        observed_items_count = len(resp_json['data']['events'])
 
     assert (observed_errors, observed_items_count) == (expected_errors, expected_items_count)
 
@@ -389,7 +391,8 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
                                 {'fieldName': key, 'fieldValue': value} for key, value in event.event_data.items()
                             ],
                             'eventIndex': event.event_index,
-                            'eventType': event.type
+                            'eventType': event.type,
+                            'eventDirection': 'out'
                         }
                     ],
                     'transaction': {
@@ -453,7 +456,8 @@ async def test_get_wallet_events_pending_txs(cli,
                     }
                 ],
                 'eventIndex': 0,
-                'eventType': 'eth-transfer'
+                'eventType': 'eth-transfer',
+                'eventDirection': 'in'
             }],
             'transaction': {
                 'from': getattr(pending_tx, 'from'),
