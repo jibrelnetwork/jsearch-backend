@@ -3,7 +3,6 @@ import logging
 from collections import defaultdict
 
 import asyncpgsa
-from itertools import groupby
 from sqlalchemy import select, and_, desc, true
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
@@ -63,7 +62,7 @@ from jsearch.api.helpers import Tag, fetch_row
 from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
-from jsearch.api.structs.wallets import WalletEvent
+from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
@@ -836,12 +835,14 @@ class Storage:
                 tx = models.Transaction(**json.loads(tx_data)).to_dict()
             else:
                 tx = {}
-
+            event_data = json.loads(event['event_data'])
+            direction = WalletEventDirection.IN if event_data['recipient'] == address else WalletEventDirection.OUT
             wallet_event = WalletEvent(
                 type=event.get('type'),
                 event_index=event.get('event_index'),
                 event_data=event.get('event_data'),
                 transaction=tx,
+                direction=direction
             )
             wallet_events.append(wallet_event)
 
@@ -856,36 +857,66 @@ class Storage:
         async with self.pool.acquire() as conn:
             rows = await fetch(conn, query)
 
-            addr_map = {k: list(g) for k, g in groupby(rows, lambda r: r['address'])}
-            summary = []
-            for address in addresses:
-                nonce = 0
-                assets_summary = []
-                for row in addr_map.get(address, []):
-                    value = row['value'] or "0"
-                    decimals = row['decimals'] or "0"
+        tx_numbers = await self.get_wallet_assets_tx_numbers(rows)
 
-                    balance = value and int(value)
-                    decimals = decimals and int(decimals)
+        for asset in rows:
+            asset['tx_number'] = tx_numbers.get((asset['address'], asset['asset_address']), 0)
 
-                    asset_summary = AssetSummary(
-                        balance=str(balance),
-                        decimals=str(decimals),
-                        address=row['asset_address'],
-                        transfers_number=row['tx_number'],
-                    )
-                    assets_summary.append(asset_summary)
-                    if row['nonce']:
-                        nonce = row['nonce']
+        addr_map = {}
+        for r in rows:
+            if r['address'] in addr_map:
+                addr_map[r['address']].append(r)
+            else:
+                addr_map[r['address']] = [r]
 
-                item = AddressSummary(
-                    address=address,
-                    assets_summary=assets_summary,
-                    outgoing_transactions_number=str(nonce)
+        summary = []
+        for address in addresses:
+            nonce = 0
+            assets_summary = []
+            for row in addr_map.get(address, []):
+                value = row['value'] or "0"
+                decimals = row['decimals'] or "0"
+
+                balance = value and int(value)
+                decimals = decimals and int(decimals)
+
+                asset_summary = AssetSummary(
+                    balance=str(balance),
+                    decimals=str(decimals),
+                    address=row['asset_address'],
+                    transfers_number=row['tx_number'],
                 )
-                summary.append(item)
-            last_affected_block_number = max([r['block_number'] or 0 for r in rows], default=None)
-            return summary, last_affected_block_number
+                assets_summary.append(asset_summary)
+                if row['nonce']:
+                    nonce = row['nonce']
+
+            item = AddressSummary(
+                address=address,
+                assets_summary=assets_summary,
+                outgoing_transactions_number=str(nonce)
+            )
+            summary.append(item)
+        last_affected_block_number = max([r['block_number'] or 0 for r in rows], default=None)
+        return summary, last_affected_block_number
+
+    async def get_wallet_assets_tx_numbers(self, assets):
+        q = """
+        SELECT count(*) as tx_number, address, token_address
+            FROM token_transfers
+            WHERE address = ANY($1::varchar[])
+                AND is_forked=false
+            GROUP BY address, token_address
+        UNION SELECT count(*) as tx_number, address, '' as token_address
+            FROM transactions
+            WHERE address = ANY($1::varchar[])
+                AND is_forked=false
+            GROUP BY address;
+        """
+        addresses = set([a['address'] for a in assets])
+
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(q, addresses)
+            return {(r['address'], r['token_address']): r['tx_number'] for r in rows}
 
     async def get_nonce(self, address):
         """
@@ -904,10 +935,8 @@ class Storage:
 
     async def get_internal_transactions(self, parent_tx_hash: str, order: str):
         query = get_internal_txs_by_parent(parent_tx_hash, order)
-
         rows = await fetch(self.pool, query)
         internal_txs = [models.InternalTransaction(**r) for r in rows]
-
         return internal_txs
 
     async def get_account_internal_transactions(
@@ -985,10 +1014,13 @@ class Storage:
         for tx in rows:
             event = get_event_from_pending_tx(address=account, pending_tx=tx)
             if event:
+                event_data = event['event_data']
+                direction = WalletEventDirection.IN if event_data['recipient'] == account else WalletEventDirection.OUT
                 event = WalletEvent(
                     type=event.get('type'),
                     event_index=event.get('event_index'),
                     event_data=event.get('event_data'),
+                    direction=direction,
                     transaction=models.PendingTransaction(**tx).to_dict()
                 )
             tx_data = {

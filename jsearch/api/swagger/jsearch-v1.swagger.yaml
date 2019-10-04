@@ -1,6 +1,6 @@
 swagger: '2.0'
 info:
-  version: "1.3.0"
+  version: "1.3.1"
   title: Jsearch API
   description: |
     Jsearch - Ethereum Blockchain Explorer API
@@ -2379,6 +2379,10 @@ definitions:
 
   WalletEvent:
     properties:
+      eventDirection:
+        description: The event direction ("in", "out")
+        type: string
+        example: "in"
       eventType:
         description: The event type ("eth-transfer", "contract-call", "erc20-transfer", "tx-cancellation")
         type: string

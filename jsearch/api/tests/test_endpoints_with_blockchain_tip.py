@@ -854,7 +854,12 @@ async def test_get_wallet_events_with_tip(
 
     block = block_factory.create(number=target_block_number)
     tx, _ = transaction_factory.create_for_block(block=block)
-    event = wallet_events_factory.create_token_transfer(tx=tx, block=block)
+    event = wallet_events_factory.create_token_transfer(tx=tx, block=block, event_index=101)
+    event2 = wallet_events_factory.create_token_transfer(tx=tx, block=block, event_index=100,
+                                                         address=event.address,
+                                                         event_data={'recipient': event.address,
+                                                                     'sender': '0x321',
+                                                                     'amount': '42'})
 
     url = 'v1/wallet/events?{query_params}'.format(
         query_params=urlencode({
@@ -878,8 +883,19 @@ async def test_get_wallet_events_with_tip(
                             {'fieldName': key, 'fieldValue': value} for key, value in event.event_data.items()
                         ],
                         'eventIndex': event.event_index,
-                        'eventType': event.type
-                    }
+                        'eventType': event.type,
+                        'eventDirection': 'out'
+                    },
+
+                    {
+                        'eventData': [
+                            {'fieldName': key, 'fieldValue': value} for key, value in event2.event_data.items()
+                        ],
+                        'eventIndex': event2.event_index,
+                        'eventType': event2.type,
+                        'eventDirection': 'in'
+                    },
+
                 ],
                 'transaction': {
                     'blockHash': tx.block_hash,
@@ -891,7 +907,7 @@ async def test_get_wallet_events_with_tip(
                     'hash': tx.hash,
                     'input': tx.input,
                     'nonce': tx.nonce,
-                    'status': True,
+                    'status': 1,
                     'r': tx.r,
                     's': tx.s,
                     'to': tx.to,

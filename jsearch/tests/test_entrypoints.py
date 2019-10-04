@@ -34,17 +34,17 @@ def _mock_loop_runners(mocker: MockFixture):
         ([], CODE_OK),
         (['invalid', 'set', 'of', 'args'], CODE_ERROR_FROM_CLICK),
         (['--log-level', 'ERROR', '--no-json-formatter', '--sync-range', '26000-27000'], CODE_OK),
-        (['--log-level', 'ERROR', '--no-json-formatter', '--balance-mode', 'latest'], CODE_OK),
-        (['--log-level', 'ERROR', '--no-json-formatter', '--balance-mode', 'offset'], CODE_OK),
+        (['--log-level', 'ERROR', '--no-json-formatter', '--resync', 'true'], CODE_OK),
+        (['--log-level', 'ERROR', '--no-json-formatter', '--resync', 'false'], CODE_OK),
         (['--log-level', 'ERROR', '--no-json-formatter', '--sync-range',
-          '26000-27000', '--balance-mode', 'offset'], CODE_OK),
+          '26000-27000', '--resync', 'false'], CODE_OK),
     ],
     ids=[
         "no args",
         "invalid args",
         "sync range",
-        "balance mode latest",
-        "balance mode offset",
+        "resync true",
+        "resync false",
         "all args",
     ]
 )
@@ -52,14 +52,7 @@ async def test_syncer_entrypoint(
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
-        mocker: MockFixture
 ) -> None:
-    # ToDo: Remove in release 1.2
-    def wait(*args, **kwargs):
-        pass
-
-    mocker.patch("jsearch.syncer.main.wait", wait)
-
     result = cli_runner.invoke(jsearch.syncer.main.run, call_args)
     assert result.exit_code == exit_code
 

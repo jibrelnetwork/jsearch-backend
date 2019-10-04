@@ -4,8 +4,14 @@ from collections import OrderedDict
 from typing import NamedTuple, List, Dict, Any
 
 
+class WalletEventDirection:
+    IN = 'in'
+    OUT = 'out'
+
+
 class WalletEvent(NamedTuple):
     type: str
+    direction: str
     event_index: int
     event_data: Dict[str, Any]
 
@@ -34,6 +40,7 @@ class WalletEvent(NamedTuple):
             'eventType': self.type,
             'eventIndex': self.event_index,
             'eventData': data,
+            'eventDirection': self.direction,
         }
 
 
