@@ -2,6 +2,9 @@ from dataclasses import dataclass
 
 import time
 from datetime import datetime
+from typing import Optional
+
+from jsearch.common.structs import SyncRange
 
 
 @dataclass
@@ -15,7 +18,10 @@ class SyncerState:
     last_check_blocks: int = 0
     new_check_blocks: int = 0
 
-    CHECK_TIMEOUT = 60
+    hole: Optional[SyncRange] = None
+    checked_on_holes: Optional[SyncRange] = None
+
+    CHECK_TIMEOUT: int = 60
 
     def as_dict(self):
         return {

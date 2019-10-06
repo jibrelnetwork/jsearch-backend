@@ -157,6 +157,39 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             return row is not None
 
+    async def check_on_holes(self, start: int, end: int) -> Optional[int]:
+        """
+        We use next technique to found gaps:
+
+        We get a range a ... z,
+            and do left join with self,
+            after - filter by left side.
+
+          |a|       |b| ( a - 1 )
+          |b| join  |c| ( b - 1 )
+          |c|       |d| ( c - 1 )
+          |d|       | |
+          | |       | |
+          | |       | |
+
+        We need a minimal number to find gap.
+        In example up there it is `d`.
+
+        """
+        # ToDo: need to rewrite query with is_forked state and change index on blocks table
+        query = """
+        SELECT
+            blocks.number - 1 as number
+        FROM blocks
+        LEFT JOIN blocks as l ON l.number = blocks.number - 1
+        WHERE blocks.number BETWEEN %s AND %s
+            AND l.number IS null
+        ORDER BY blocks.number LIMIT 1;
+        """
+        result = await self.fetch_one(query, start + 1, end + 1)
+        if result:
+            return result.number
+
     async def get_last_chain_event(self, sync_range, node_id):
         if sync_range[1] is not None:
             cond = """block_number BETWEEN %s AND %s"""
