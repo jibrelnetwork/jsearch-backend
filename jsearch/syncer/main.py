@@ -7,7 +7,7 @@ from typing import Any, Dict
 from jsearch import settings
 from jsearch.common import logs, stats
 from jsearch.common import worker
-from jsearch.common.structs import SyncRange
+from jsearch.common.structs import BlockRange
 from jsearch.syncer import services
 from jsearch.syncer.pool import WorkersPool
 from jsearch.syncer.state import SyncerState
@@ -16,18 +16,18 @@ from jsearch.utils import parse_range
 logger = logging.getLogger("syncer")
 
 
-def run_worker(sync_range: SyncRange, api_port: int, check_lag: bool, check_holes: bool, resync: bool) -> None:
+def run_worker(sync_range: BlockRange, api_port: int, check_lag: bool, check_holes: bool, resync: bool) -> None:
     syncer_state = SyncerState(started_at=int(time.time()))
 
     api_worker = services.ApiService(check_lag=check_lag, check_holes=check_holes, port=api_port, state=syncer_state)
 
-    syncer = services.SyncerService(sync_range=(sync_range.start, sync_range.end), resync=resync, state=syncer_state)
+    syncer = services.SyncerService(sync_range=sync_range, resync=resync, state=syncer_state)
     syncer.add_dependency(api_worker)
 
     worker.Worker(syncer).execute_from_commandline()
 
 
-def run_workers_pool(sync_range: SyncRange, workers: int, **kwargs: Dict[str, Any]):
+def run_workers_pool(sync_range: BlockRange, workers: int, **kwargs: Dict[str, Any]):
     pool = WorkersPool(
         sync_range=sync_range,
         workers=workers,
@@ -63,7 +63,7 @@ def run(
     stats.setup_syncer_metrics()
     logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
 
-    sync_range = SyncRange(*parse_range(sync_range))
+    sync_range = BlockRange(*parse_range(sync_range))
     if workers > 1:
         logger.info("Scale... ", extra={"workers": workers})
         run_workers_pool(

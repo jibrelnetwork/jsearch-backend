@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from typing import Optional
 
-from jsearch.common.structs import SyncRange
+from jsearch.common.structs import BlockRange
 
 
 @dataclass
@@ -18,8 +18,8 @@ class SyncerState:
     last_check_blocks: int = 0
     new_check_blocks: int = 0
 
-    hole: Optional[SyncRange] = None
-    checked_on_holes: Optional[SyncRange] = None
+    hole: Optional[BlockRange] = None
+    checked_on_holes: Optional[BlockRange] = None
 
     CHECK_TIMEOUT: int = 60
 
