@@ -1,5 +1,6 @@
 from sqlalchemy import and_, false, Column, select, desc
 from sqlalchemy.orm import Query
+from sqlalchemy.sql.functions import count
 from typing import List, Optional
 
 from jsearch.api.database_queries.transactions import get_ordering
@@ -92,7 +93,7 @@ def get_blocks_by_timestamp_query(
         miner: Optional[str] = None,
         columns: Optional[Columns] = None,
 ) -> Query:
-    query = get_blocks_query(limit, order=order, miner=miner, columns=columns)
+    query = get_blocks_query(limit=limit, order=order, miner=miner, columns=columns)
 
     if order.direction == ORDER_DESC:
         query = query.where(blocks_t.c.timestamp <= timestamp)

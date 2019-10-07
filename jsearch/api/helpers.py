@@ -4,14 +4,16 @@ import asyncpgsa
 from aiohttp import web
 from asyncpg import Connection
 from functools import partial
+from math import ceil
 from sqlalchemy import asc, desc, Column
 from sqlalchemy.orm import Query
+from sqlalchemy.sql.functions import count
 from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.ordering import DEFAULT_ORDER, ORDER_ASC, ORDER_DESC
 from jsearch.api.pagination import Page
-from jsearch.typing import AnyCoroutine
+from jsearch.typing import AnyCoroutine, PagesCount
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
@@ -129,7 +131,12 @@ def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -
     return strings_list
 
 
-def api_success(data, page: Optional[Page] = None, meta: Optional[Dict[str, Any]] = None):
+def api_success(
+        data: Union[Dict[str, Any], Any],
+        page: Optional[Page] = None,
+        pages: Optional[PagesCount] = None,
+        meta: Optional[Dict[str, Any]] = None
+):
     body = {
         'status': {
             'success': True,
@@ -139,10 +146,13 @@ def api_success(data, page: Optional[Page] = None, meta: Optional[Dict[str, Any]
     }
 
     if page:
-        body.update(page.to_dict())
+        body['paging'] = page.to_dict()
+        if pages is not None:
+            body['paging']['pages'] = pages
 
     if meta:
         body['meta'] = meta
+
     return web.json_response(body)
 
 
@@ -198,6 +208,12 @@ def get_order(columns: List[Column], direction: Optional[str]) -> List[Column]:
         columns = [operator(column) for column in columns]
 
     return columns
+
+
+async def get_pages_left_count(connection: Connection, query: Query, page_size: int) -> PagesCount:
+    query = query.with_only_columns([count().label('total')]).limit(None).order_by(None)
+    result = await fetch_row(connection, query)
+    return result and ceil((result['total'] - page_size) / page_size) or 0
 
 
 async def fetch(connection: Connection, query: Query) -> List[Dict[str, Any]]:
