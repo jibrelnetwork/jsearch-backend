@@ -29,6 +29,10 @@ class ChainEventFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = session
         sqlalchemy_session_persistence = 'flush'
 
+    @classmethod
+    def create_block(cls, block, *args, **kwargs):
+        cls.create(block_hash=block.hash, block_number=block.number, type='created', *args, **kwargs)
+
 
 @pytest.fixture()
 def chain_events_factory():
