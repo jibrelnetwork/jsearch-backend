@@ -24,6 +24,7 @@ from jsearch.common.tables import (
     uncles_t,
     wallet_events_t,
 )
+from jsearch.common.utils import async_timeit
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.typing import Blocks, Block
@@ -157,6 +158,7 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             return row is not None
 
+    @async_timeit(name='Query to find gaps')
     async def check_on_holes(self, start: int, end: int) -> Optional[int]:
         """
         We use next technique to found gaps:
@@ -188,6 +190,7 @@ class MainDB(DBWrapper):
         """
         result = await self.fetch_one(query, start + 1, end + 1)
         if result:
+            logger.info('Gap was founded', extra={'end': result.number})
             return result.number
 
     async def get_last_chain_event(self, sync_range, node_id):
