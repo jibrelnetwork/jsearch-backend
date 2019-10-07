@@ -1,3 +1,8 @@
+import pytest
+
+pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
+
+
 async def test_get_transaction(cli, main_db_data):
     tx = main_db_data['transactions'][0]
     resp = await cli.get('/v1/transactions/' + tx['hash'])
