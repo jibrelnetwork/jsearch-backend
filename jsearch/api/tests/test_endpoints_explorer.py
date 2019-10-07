@@ -1,4 +1,9 @@
 import pytest
+from aiohttp.test_utils import TestClient
+
+from jsearch.tests.plugins.databases.factories.logs import LogFactory
+from jsearch.tests.plugins.databases.factories.receipts import ReceiptFactory
+from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 
 pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
 
@@ -58,3 +63,63 @@ async def test_get_receipt(cli, main_db_data):
         'transactionHash': r['transaction_hash'],
         'transactionIndex': r['transaction_index'],
     }
+
+
+async def test_get_transaction_does_not_return_data_from_fork(
+        cli: TestClient,
+        transaction_factory: TransactionFactory,
+) -> None:
+    transaction = transaction_factory.create(is_forked=True)
+
+    resp = await cli.get('/v1/transactions/' + transaction.hash)
+    resp_json = await resp.json()
+
+    assert resp_json == {
+        "status": {
+            "success": False,
+            "errors": [
+                {
+                    "code": "NOT_FOUND",
+                    "message": "Resource not found",
+                }
+            ],
+        },
+        "data": None,
+    }
+
+
+async def test_get_receipt_does_not_return_data_from_fork(
+        cli: TestClient,
+        receipt_factory: ReceiptFactory,
+) -> None:
+    receipt = receipt_factory.create(is_forked=True)
+
+    resp = await cli.get('/v1/receipts/' + receipt.transaction_hash)
+    resp_json = await resp.json()
+
+    assert resp_json == {
+        "status": {
+            "success": False,
+            "errors": [
+                {
+                    "code": "NOT_FOUND",
+                    "message": "Resource not found",
+                }
+            ],
+        },
+        "data": None,
+    }
+
+
+async def test_get_receipt_does_not_return_logs_data_from_fork(
+        cli: TestClient,
+        receipt_factory: ReceiptFactory,
+        log_factory: LogFactory,
+) -> None:
+    receipt = receipt_factory.create(is_forked=False)
+    log_factory.create_for_receipt(receipt, is_forked=True)
+
+    resp = await cli.get('/v1/receipts/' + receipt.transaction_hash)
+    resp_json = await resp.json()
+
+    assert resp_json["data"]["logs"] == []

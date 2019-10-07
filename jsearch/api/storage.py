@@ -482,7 +482,7 @@ class Storage:
                 return models.Transaction(**row)
 
     async def get_receipt(self, tx_hash):
-        query = "SELECT * FROM receipts WHERE transaction_hash=$1"
+        query = "SELECT * FROM receipts WHERE transaction_hash=$1 AND is_forked=false"
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, tx_hash)
             if row is None:
@@ -494,7 +494,7 @@ class Storage:
 
     async def get_logs(self, conn, tx_hash: str) -> List[models.Log]:
         fields = models.Log.select_fields()
-        query = f"SELECT {fields} FROM logs WHERE transaction_hash=$1 ORDER BY log_index"
+        query = f"SELECT {fields} FROM logs WHERE transaction_hash=$1 AND is_forked=false ORDER BY log_index"
 
         rows = await conn.fetch(query, tx_hash)
         return [models.Log(**r) for r in rows]
