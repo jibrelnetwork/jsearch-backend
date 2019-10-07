@@ -3,9 +3,10 @@ import logging
 
 import backoff
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 from jsearch import settings
+from jsearch.common.structs import SyncRange
 from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.processor import SyncProcessor
 from jsearch.syncer.state import SyncerState
@@ -247,11 +248,15 @@ class Manager:
 
     @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
     async def get_and_process_chain_event(self):
-        last_event = await self.main_db.get_last_chain_event(self.sync_range, self.node_id)
+        start, end = self.sync_range
+        start, end = await get_range_and_check_holes(self.main_db, start, end, self.state)
+        block_range = (start, end)
+
+        last_event = await self.main_db.get_last_chain_event(block_range, self.node_id)
         if last_event is None:
-            next_event = await self.raw_db.get_first_chain_event_for_block_range(self.sync_range, self.node_id)
+            next_event = await self.raw_db.get_first_chain_event_for_block_range(block_range, self.node_id)
         else:
-            next_event = await self.raw_db.get_next_chain_event(self.sync_range, last_event['id'], self.node_id)
+            next_event = await self.raw_db.get_next_chain_event(block_range, last_event['id'], self.node_id)
 
         if self.sync_range[1] and next_event is None:
             logger.info(
@@ -273,3 +278,62 @@ class Manager:
 
     async def try_lock_range(self):
         return await self.main_db.try_advisory_lock(self.sync_range[0], self.sync_range[1])
+
+
+async def get_range_and_check_holes(
+        main_db: MainDB,
+        start: int,
+        end: Optional[int],
+        state: SyncerState
+) -> Tuple[int, Optional[int]]:
+    """
+    Get range until
+    a                     b
+    |                     |
+    "----    -----        "
+         |  |     |
+         h1 h2    c
+
+    Where:
+     "-" - already synced blocks
+     " " - empty block records
+
+    This function returns the range nearliest to first hole on sync range.
+
+    For example:
+        - h1
+        - ... until h2
+        - c
+        - ... until b
+
+    Early we get latest block on this range we can sync only from c to b.
+    In such case we will have the hole from h1 to h2.
+
+    For example:
+        - c
+        - ... until b
+
+    Such approach allows us to avoid holes appearing.
+
+    Output data:
+      - range
+      - state:
+          - hole
+          - checked_on_holes
+    """
+    if end is None:
+        return start, end
+
+    if state.hole and state.last_processed_block < state.hole.end:
+        end = state.hole.end
+    elif state.checked_on_holes and state.last_check_blocks <= state.checked_on_holes.end:
+        end = state.checked_on_holes.end
+    else:
+        hole_right_border = await main_db.check_on_holes(start, end)
+        if hole_right_border:
+            state.hole = SyncRange(start, hole_right_border)
+            end = hole_right_border
+        else:
+            state.hole = None
+            state.checked_on_holes = SyncRange(start, end)
+    return start, end
