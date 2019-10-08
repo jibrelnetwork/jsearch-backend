@@ -10,7 +10,7 @@ from asyncio.subprocess import Process
 from typing import Generator, Optional, List, Dict, Any
 
 from jsearch import settings
-from jsearch.common.structs import SyncRange
+from jsearch.common.structs import BlockRange
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class Worker:
     port: int
     kwargs: Dict[str, Any]
-    sync_range: SyncRange
+    sync_range: BlockRange
 
     _cmd: Optional[List[str]] = None
     _process: Optional[Process] = None
@@ -75,7 +75,7 @@ class Worker:
 
 @dataclass
 class WorkersPool:
-    sync_range: SyncRange
+    sync_range: BlockRange
 
     workers: int
     worker_kwargs: Dict[str, Any]
@@ -121,7 +121,7 @@ class WorkersPool:
                 logger.info('Workers waiting has stopped...')
                 break
 
-    async def scale(self, sync_range: SyncRange, workers: int, last_block: int):
+    async def scale(self, sync_range: BlockRange, workers: int, last_block: int):
         logging.info('[SCALE]: start')
         try:
             self._rescaling_in_progress = True
@@ -172,7 +172,7 @@ async def request_state(port: int) -> Dict[str, Any]:
             return {}
 
 
-def get_cmd(sync_range: SyncRange, port: int, **kwargs: Any):
+def get_cmd(sync_range: BlockRange, port: int, **kwargs: Any):
     cmd = [
         "jsearch-syncer",
         "--port", str(port),
@@ -192,16 +192,16 @@ def get_cmd(sync_range: SyncRange, port: int, **kwargs: Any):
     return cmd
 
 
-def scale_range(sync_range: SyncRange, last_block, workers: int = 1) -> Generator[SyncRange, None, None]:
+def scale_range(sync_range: BlockRange, last_block, workers: int = 1) -> Generator[BlockRange, None, None]:
     """
-    >>> list(scale_range(SyncRange(0, 100), 100, 2))
-    [SyncRange(start=0, end=49), SyncRange(start=50, end=99)]
+    >>> list(scale_range(BlockRange(0, 100), 100, 2))
+    [BlockRange(start=0, end=49), BlockRange(start=50, end=99)]
 
-    >>> list(scale_range(SyncRange(0, None), 90, 2))
-    [SyncRange(start=0, end=89), SyncRange(start=90, end=None)]
+    >>> list(scale_range(BlockRange(0, None), 90, 2))
+    [BlockRange(start=0, end=89), BlockRange(start=90, end=None)]
 
-    >>> list(scale_range(SyncRange(0, None), 90, 3))
-    [SyncRange(start=0, end=44), SyncRange(start=45, end=89), SyncRange(start=90, end=None)]
+    >>> list(scale_range(BlockRange(0, None), 90, 3))
+    [BlockRange(start=0, end=44), BlockRange(start=45, end=89), BlockRange(start=90, end=None)]
     """
     end = sync_range.end
     if end is None:
@@ -210,13 +210,13 @@ def scale_range(sync_range: SyncRange, last_block, workers: int = 1) -> Generato
 
     step = int((end - sync_range.start) / workers)
     for start in range(sync_range.start, end, step):
-        yield SyncRange(start, end=start + step - 1)
+        yield BlockRange(start, end=start + step - 1)
 
     if sync_range.end is None:
-        yield SyncRange(last_block, None)
+        yield BlockRange(last_block, None)
 
 
-def get_workers(sync_range: SyncRange, last_block: int, workers: int = 1, **kwargs: Dict[str, Any]) -> List[Worker]:
+def get_workers(sync_range: BlockRange, last_block: int, workers: int = 1, **kwargs: Dict[str, Any]) -> List[Worker]:
     pool = []
     default_port = settings.SYNCER_API_PORT
     for i, worker_sync_range in enumerate(scale_range(sync_range, last_block, workers), start=1):

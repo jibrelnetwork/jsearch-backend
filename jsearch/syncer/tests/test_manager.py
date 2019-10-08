@@ -41,7 +41,7 @@ This is history data.
 
 import pytest
 
-from jsearch.common.structs import SyncRange
+from jsearch.common.structs import BlockRange
 from jsearch.common.tables import assets_summary_t
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.manager import Manager
@@ -57,7 +57,7 @@ def mock_getting_last_block_from_row_db(mocker):
 
 async def call_system_under_test(db_dsn: MainDB, raw_db_dsn: str, start: int, end: int) -> None:
     async with MainDB(db_dsn) as main_db, RawDB(raw_db_dsn) as raw_db:
-        manager = Manager(None, main_db, raw_db, sync_range=SyncRange(start=start, end=end))
+        manager = Manager(None, main_db, raw_db, sync_range=BlockRange(start=start, end=end))
         for i in range(0, 10):
             await manager.get_and_process_chain_event()
 

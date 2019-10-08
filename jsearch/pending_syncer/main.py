@@ -2,7 +2,7 @@ import click
 
 from jsearch import settings
 from jsearch.common import logs, worker, stats
-from jsearch.common.structs import SyncRange
+from jsearch.common.structs import BlockRange
 from jsearch.pending_syncer import services
 from jsearch.utils import parse_range
 
@@ -19,7 +19,7 @@ def run(log_level, no_json_formatter, sync_range):
     # didn't do it right now because this causes slight refactoring of the
     # `jsearch.syncer.manager.Manager` which causes merge conflicts.
     parsed_range = parse_range(sync_range)
-    parsed_sync_range = SyncRange(start=parsed_range[0], end=parsed_range[1])
+    parsed_sync_range = BlockRange(start=parsed_range[0], end=parsed_range[1])
 
     worker.Worker(
         services.PendingSyncerService(

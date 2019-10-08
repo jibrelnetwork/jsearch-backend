@@ -8,6 +8,7 @@ from sqlalchemy.orm import Query
 from typing import List, Dict, Any, Optional
 
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
+from jsearch.common.structs import BlockRange
 from jsearch.common.tables import (
     accounts_state_t,
     assets_summary_t,
@@ -188,18 +189,24 @@ class MainDB(DBWrapper):
             AND l.number IS null
         ORDER BY blocks.number LIMIT 1;
         """
-        result = await self.fetch_one(query, start + 1, end + 1)
+        result = await self.fetch_one(query, start + 1, end)
         if result:
-            logger.info('Gap was founded', extra={'end': result.number})
+            logger.info(
+                'Gap was founded',
+                extra={
+                    'gap': BlockRange(start, result.number),
+                    'range': BlockRange(start, end)
+                }
+            )
             return result.number
 
-    async def get_last_chain_event(self, sync_range, node_id):
-        if sync_range[1] is not None:
+    async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> None:
+        if sync_range.end is not None:
             cond = """block_number BETWEEN %s AND %s"""
             params = list(sync_range)
         else:
             cond = """block_number >= %s"""
-            params = [sync_range[0]]
+            params = [sync_range.end]
 
         params.insert(0, node_id)
         q = f"""SELECT * FROM chain_events

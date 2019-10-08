@@ -1,7 +1,7 @@
 import pytest
 from typing import List
 
-from jsearch.common.structs import SyncRange
+from jsearch.common.structs import BlockRange
 from jsearch.syncer.database import MainDB
 from jsearch.syncer.state import SyncerState
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
@@ -52,13 +52,14 @@ def sync_block_range(sync_block):
             (10, 20, [(10, 12), ]),
             (10, 20, [(18, 20), ]),
             (10, 20, [(12, 14), (16, 18)]),
+            (10, 20, [(10, 14), (16, 20)]),
     )
 )
 async def test_fills_holes(
         main_db,
         start: int,
         end: int,
-        synced_blocks: List[SyncRange],
+        synced_blocks: List[BlockRange],
         sync_block_range,
         sync_block,
         db
@@ -71,10 +72,11 @@ async def test_fills_holes(
     # when
     state = SyncerState(last_processed_block=0)
 
+    block_range = BlockRange(start, end)
     while state.last_processed_block < end:
-        range_start, range_end = await get_range_and_check_holes(main_db, start, end, state)
+        range_ = await get_range_and_check_holes(main_db, block_range, state)
 
-        event = await main_db.get_last_chain_event([range_start, range_end], node_id="1")
+        event = await main_db.get_last_chain_event(range_, node_id="1")
         number = event and event['block_number'] + 1 or start
 
         sync_block(number=number)
@@ -103,7 +105,7 @@ async def test_find_holes(
         main_db,
         start: int,
         end: int,
-        synced_blocks: List[SyncRange],
+        synced_blocks: List[BlockRange],
         expected: int,
         sync_block_range
 ):
