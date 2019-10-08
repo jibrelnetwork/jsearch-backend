@@ -6,7 +6,7 @@ from psycopg2._json import Json
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 
-from jsearch.common.structs import SyncRange
+from jsearch.common.structs import BlockRange
 from jsearch.common.tables import pending_transactions_t
 from jsearch.pending_syncer.services import PendingSyncerService
 
@@ -71,7 +71,7 @@ async def pending_syncer_service(
         raw_db_dsn=raw_db_dsn,
         main_db_dsn=db_dsn,
         loop=event_loop,
-        sync_range=SyncRange(0, None)
+        sync_range=BlockRange(0, None)
     )
 
     await service.on_start()

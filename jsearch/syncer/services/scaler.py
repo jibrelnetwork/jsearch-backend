@@ -17,7 +17,7 @@ from webargs.aiohttpparser import use_kwargs
 from jsearch import settings
 from jsearch.api.middlewares import cors_middleware
 from jsearch.common import services
-from jsearch.common.structs import SyncRange
+from jsearch.common.structs import BlockRange
 from jsearch.syncer.pool import WorkersPool
 from jsearch.syncer.utils import get_last_block
 from jsearch.utils import parse_range
@@ -60,7 +60,7 @@ class SyncRangeField(fields.String):
     def _deserialize(self, value, attr, data):
         value = super(SyncRangeField, self)._deserialize(value, attr, data)
         if value:
-            return SyncRange(*parse_range(value))
+            return BlockRange(*parse_range(value))
 
 
 class ScaleSchema(Schema):
@@ -73,7 +73,7 @@ class ScaleSchema(Schema):
 )
 @request_schema(ScaleSchema(strict=True))
 @use_kwargs(ScaleSchema())
-async def post_scale(request: web.Request, sync_range: SyncRange, workers: int) -> web.Response:
+async def post_scale(request: web.Request, sync_range: BlockRange, workers: int) -> web.Response:
     pool: WorkersPool = request.app['pool']
 
     last_block = get_last_block()
