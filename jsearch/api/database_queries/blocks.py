@@ -1,6 +1,5 @@
 from sqlalchemy import and_, false, Column, select, desc
 from sqlalchemy.orm import Query
-from sqlalchemy.sql.functions import count
 from typing import List, Optional
 
 from jsearch.api.database_queries.transactions import get_ordering
