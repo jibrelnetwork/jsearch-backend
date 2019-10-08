@@ -148,7 +148,7 @@ def api_success(
     if page:
         body['paging'] = page.to_dict()
         if pages is not None:
-            body['paging']['pages'] = pages
+            body['paging']['pagesLeft'] = pages
 
     if meta:
         body['meta'] = meta
