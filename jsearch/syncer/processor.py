@@ -184,7 +184,7 @@ class SyncProcessor:
 
         contracts_set = set()
         for acc in accounts_data:
-            if acc['code'] != '':
+            if acc.get('code', '') != '':
                 contracts_set.add(acc['address'])
 
         contract_addresses = {item['address'] for item in logs_data} | {item.token for item in token_holder_balances}
