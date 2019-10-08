@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
-import argparse
 import os
 import sys
+
+import argparse
 from pathlib import Path
 
 import jsearch.common.alembic_utils as alembic
+from jsearch import settings
+from jsearch.utils import get_alembic_version
 
 
 class Manage(object):
@@ -101,6 +104,24 @@ class Manage(object):
         args = parser.parse_args(sys.argv[2:])
         sys.stdout.write(f'Running alembic downgrade {args.revision}.')
         alembic.downgrade(args.db or os.environ['JSEARCH_MAIN_DB'], args.revision)
+
+    def apply_if_db_is_empty(self):
+        parser = argparse.ArgumentParser(usage=f"{self.script_name}: Apply migrations if schema is empty.")
+        parser.add_argument('-db', default=settings.JSEARCH_MAIN_DB, action='store', help=argparse.SUPPRESS)
+
+        args = parser.parse_args(sys.argv[2:])
+
+        sys.stdout.write(f'Try to find migrations schema...\n')
+        version_num = get_alembic_version(args.db)
+        if version_num is None:
+            sys.stdout.write(f'Schema is empty, need to apply migrations...\n')
+
+            alembic.upgrade(args.db, 'head')
+
+            sys.stdout.write(f'Migrations is completed.\n')
+            version_num = get_alembic_version(args.db)
+
+        sys.stdout.write(f'Version num is [{version_num}].\n')
 
     def json_dump(self):
         parser = argparse.ArgumentParser(usage=f"usage {self.script_name} [-h]")
