@@ -52,7 +52,7 @@ def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
         ),
     ],
     ids=[
-        "/v1/blocks?limit=5",
+        "/v1/blocks?limit=3",
         "/v1/blocks?limit=3&order=asc",
         "/v1/blocks?limit=3&block_number=5",
         "/v1/blocks?limit=3&block_number=latest",
@@ -112,8 +112,8 @@ async def test_get_blocks(cli,
     ],
     ids=[
         "/v1/blocks?limit=10               --- returns 0 pages",
-        "/v1/blocks?limit=5                --- returns 2 pages",
-        "/v1/blocks?limit=3                --- returns 2 pages",
+        "/v1/blocks?limit=5                --- returns 1 pages",
+        "/v1/blocks?limit=3                --- returns 3 pages",
         "/v1/blocks?block_number=1&limit=3 --- returns 0 page",
     ]
 )
@@ -134,7 +134,7 @@ async def test_get_blocks_pages(cli,
     assert resp.status == 200
     assert resp_json['status']['success']
 
-    assert paging['pages'] == pages
+    assert paging['pagesLeft'] == pages
 
 
 @pytest.mark.parametrize(
