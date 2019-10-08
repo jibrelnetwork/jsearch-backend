@@ -17,7 +17,7 @@ class NodeStats(NamedTuple):
     is_healthy: bool
 
 
-class SyncRange(NamedTuple):
+class BlockRange(NamedTuple):
     start: int
     end: Optional[int]
 

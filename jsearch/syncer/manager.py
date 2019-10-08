@@ -6,6 +6,7 @@ import time
 from typing import Dict, Any, Optional
 
 from jsearch import settings
+from jsearch.common.structs import BlockRange
 from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.processor import SyncProcessor
 from jsearch.syncer.state import SyncerState
@@ -100,7 +101,7 @@ class Manager:
             service,
             main_db,
             raw_db,
-            sync_range,
+            sync_range: BlockRange,
             state: Optional[SyncerState] = False,
             resync: bool = False
     ):
@@ -191,7 +192,7 @@ class Manager:
 
     async def resync_loop(self):
         logger.info("Entering ReSync Loop")
-        for block_number in range(self.sync_range[1], self.sync_range[0], -1):
+        for block_number in range(self.sync_range.end, self.sync_range.start, -1):
             if not self._running:
                 logger.info("Leave ReSync Loop")
                 break
@@ -247,18 +248,37 @@ class Manager:
 
     @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
     async def get_and_process_chain_event(self):
-        last_event = await self.main_db.get_last_chain_event(self.sync_range, self.node_id)
-        if last_event is None:
-            next_event = await self.raw_db.get_first_chain_event_for_block_range(self.sync_range, self.node_id)
-        else:
-            next_event = await self.raw_db.get_next_chain_event(self.sync_range, last_event['id'], self.node_id)
+        block_range = await get_range_and_check_holes(self.main_db, self.sync_range, self.state)
 
-        if self.sync_range[1] and next_event is None:
+        logger.info("Try to find new event", extra={"range": block_range})
+        last_event = await self.main_db.get_last_chain_event(block_range, self.node_id)
+        if last_event is None:
+            next_event = await self.raw_db.get_first_chain_event_for_block_range(block_range, self.node_id)
+        else:
+            next_event = await self.raw_db.get_next_chain_event(block_range, last_event['id'], self.node_id)
+
+        if self.state.hole and next_event is None:
+            self.state.checked_on_holes = self.state.hole
+            self.state.last_processed_block = self.state.hole.end
+            self.state.hole = None
+            logger.error(
+                "No events in the gap",
+                extra={"range": self.state.checked_on_holes}
+            )
+            return
+
+        there_is_no_gap_in_middle = not self.state.hole or block_range.end and self.state.hole.end >= block_range.end
+        is_sync_complete = (
+                there_is_no_gap_in_middle
+                and self.sync_range.end
+                and next_event is None
+        )
+        if is_sync_complete:
             logger.info(
                 'Sync range complete',
                 extra={
-                    'from': self.sync_range[0],
-                    'to': self.sync_range[1]
+                    'from': self.sync_range.start,
+                    'to': self.sync_range.end
                 }
             )
             await asyncio.sleep(10)
@@ -272,4 +292,67 @@ class Manager:
         await self.process_chain_event(next_event)
 
     async def try_lock_range(self):
-        return await self.main_db.try_advisory_lock(self.sync_range[0], self.sync_range[1])
+        return await self.main_db.try_advisory_lock(self.sync_range.start, self.sync_range.end)
+
+
+async def get_range_and_check_holes(
+        main_db: MainDB,
+        sync_range: BlockRange,
+        state: SyncerState
+) -> BlockRange:
+    """
+    Get range until
+    a                     b
+    |                     |
+    "----    -----        "
+         |  |     |
+         h1 h2    c
+
+    Where:
+     "-" - already synced blocks
+     " " - empty block records
+
+    This function returns the range nearliest to first hole on sync range.
+
+    For example:
+        - h1
+        - ... until h2
+        - c
+        - ... until b
+
+    Early we get latest block on this range we can sync only from c to b.
+    In such case we will have the hole from h1 to h2.
+
+    For example:
+        - c
+        - ... until b
+
+    Such approach allows us to avoid holes appearing.
+
+    Output data:
+      - range
+      - state:
+          - hole
+          - checked_on_holes
+    """
+    end = sync_range.end
+    start = sync_range.start
+
+    if sync_range.end is None:
+        return BlockRange(start, end)
+
+    if state.hole and state.last_processed_block < state.hole.end:
+        end = state.hole.end
+    elif state.checked_on_holes and state.last_processed_block < state.checked_on_holes.end:
+        end = state.checked_on_holes.end
+    else:
+        hole_left_border = (state.checked_on_holes and state.checked_on_holes.end + 1) or start
+        hole_right_border = await main_db.check_on_holes(hole_left_border, end)
+        if hole_right_border:
+            state.hole = BlockRange(start, hole_right_border)
+            end = hole_right_border
+        else:
+            state.hole = None
+            state.checked_on_holes = BlockRange(start, end)
+
+    return BlockRange(start, end)

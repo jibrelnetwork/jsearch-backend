@@ -35,6 +35,7 @@ fi
 
 
 if [[ "$@" = "app" ]]; then
+    python manage.py apply_if_db_is_empty
     gunicorn -c gunicorn-conf.py jsearch.api.app:make_app
 elif [[ "$@" = "migrate" ]]; then
     python manage.py upgrade head

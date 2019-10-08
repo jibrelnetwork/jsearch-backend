@@ -8,6 +8,7 @@ from sqlalchemy.orm import Query
 from typing import List, Dict, Any, Optional
 
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
+from jsearch.common.structs import BlockRange
 from jsearch.common.tables import (
     accounts_state_t,
     assets_summary_t,
@@ -24,6 +25,7 @@ from jsearch.common.tables import (
     uncles_t,
     wallet_events_t,
 )
+from jsearch.common.utils import async_timeit
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.typing import Blocks, Block
@@ -157,13 +159,54 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             return row is not None
 
-    async def get_last_chain_event(self, sync_range, node_id):
-        if sync_range[1] is not None:
+    @async_timeit(name='Query to find gaps')
+    async def check_on_holes(self, start: int, end: int) -> Optional[int]:
+        """
+        We use next technique to found gaps:
+
+        We get a range a ... z,
+            and do left join with self,
+            after - filter by left side.
+
+          |a|       |b| ( a - 1 )
+          |b| join  |c| ( b - 1 )
+          |c|       |d| ( c - 1 )
+          |d|       | |
+          | |       | |
+          | |       | |
+
+        We need a minimal number to find gap.
+        In example up there it is `d`.
+
+        """
+        # ToDo: need to rewrite query with is_forked state and change index on blocks table
+        query = """
+        SELECT
+            blocks.number - 1 as number
+        FROM blocks
+        LEFT JOIN blocks as l ON l.number = blocks.number - 1
+        WHERE blocks.number BETWEEN %s AND %s
+            AND l.number IS null
+        ORDER BY blocks.number LIMIT 1;
+        """
+        result = await self.fetch_one(query, start + 1, end)
+        if result:
+            logger.info(
+                'Gap was founded',
+                extra={
+                    'gap': BlockRange(start, result.number),
+                    'range': BlockRange(start, end)
+                }
+            )
+            return result.number
+
+    async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> None:
+        if sync_range.end is not None:
             cond = """block_number BETWEEN %s AND %s"""
             params = list(sync_range)
         else:
             cond = """block_number >= %s"""
-            params = [sync_range[0]]
+            params = [sync_range.start]
 
         params.insert(0, node_id)
         q = f"""SELECT * FROM chain_events
