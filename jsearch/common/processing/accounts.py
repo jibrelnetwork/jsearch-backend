@@ -13,7 +13,7 @@ def accounts_to_state_and_base_data(accounts: Accounts) -> Tuple[Accounts, Accou
             address_set.add(account['address'])
             accounts_base_data.append({
                 'address': account['address'],
-                'code': account['code'],
+                'code': account.get('code', ''),
                 'code_hash': account['code_hash'],
                 'last_known_balance': account['balance'],
                 'root': account['root'],
