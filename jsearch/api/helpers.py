@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.ordering import DEFAULT_ORDER, ORDER_ASC, ORDER_DESC
 from jsearch.api.pagination import Page
+from jsearch.common.utils import async_timeit
 from jsearch.typing import AnyCoroutine, PagesCount
 
 DEFAULT_LIMIT = 20
@@ -210,10 +211,16 @@ def get_order(columns: List[Column], direction: Optional[str]) -> List[Column]:
     return columns
 
 
+@async_timeit(name='Pages left query')
 async def get_pages_left_count(connection: Connection, query: Query, page_size: int) -> PagesCount:
     query = query.with_only_columns([count().label('total')]).limit(None).order_by(None)
     result = await fetch_row(connection, query)
-    return result and ceil((result['total'] - page_size) / page_size) or 0
+
+    pages = result and ceil((result['total'] - page_size) / page_size) or 0
+    if pages < 0:
+        pages = 0
+
+    return pages
 
 
 async def fetch(connection: Connection, query: Query) -> List[Dict[str, Any]]:

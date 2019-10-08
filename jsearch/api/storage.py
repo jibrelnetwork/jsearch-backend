@@ -827,6 +827,9 @@ class Storage:
         )
         async with self.pool.acquire() as connection:
             events = await fetch(connection, query)
+            # for page_size we decrease limit for 1 block,
+            # because we set limit + 2 (extra queries) to check next page
+            pages = await get_pages_left_count(connection=connection, query=query, page_size=(query_limit - 2))
 
         events = in_app_distinct(events)[:limit]
 
@@ -849,7 +852,7 @@ class Storage:
             wallet_events.append(wallet_event)
 
         last_affected_block = max([event['blockNumber'] for event in wallet_events], default=None)
-        return wallet_events, last_affected_block
+        return wallet_events, pages, last_affected_block
 
     async def get_wallet_assets_summary(self,
                                         addresses: List[str],
