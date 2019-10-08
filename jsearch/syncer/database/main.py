@@ -206,7 +206,7 @@ class MainDB(DBWrapper):
             params = list(sync_range)
         else:
             cond = """block_number >= %s"""
-            params = [sync_range.end]
+            params = [sync_range.start]
 
         params.insert(0, node_id)
         q = f"""SELECT * FROM chain_events

@@ -4,7 +4,6 @@
         "block_hash": "0xa618c3ac198431ead17dd143f3fab8a73da6a3c506764dff84108bd06f72eb82",
         "address": "0x00000C54792dC959bBfcC8617537be8a84605b68",
         "fields": {
-            "code": "",
             "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "nonce": 111,
             "balance": "140649001180059223",
@@ -17,7 +16,6 @@
         "block_hash": "0xa618c3ac198431ead17dd143f3fab8a73da6a3c506764dff84108bd06f72eb82",
         "address": "0x004Bd3562A42C8A7394794849b8fF5Ad71C527B2",
         "fields": {
-            "code": "",
             "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "nonce": 39575,
             "balance": "54010512842231385776",
@@ -30,7 +28,6 @@
         "block_hash": "0xa618c3ac198431ead17dd143f3fab8a73da6a3c506764dff84108bd06f72eb82",
         "address": "0x00C70e80D9f85b0bd0d98577A1dc5d71b853156e",
         "fields": {
-            "code": "",
             "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "nonce": 581,
             "balance": "7552066967872695621",
@@ -43,7 +40,6 @@
         "block_hash": "0xa618c3ac198431ead17dd143f3fab8a73da6a3c506764dff84108bd06f72eb82",
         "address": "0x024902e514c72241F96987712336b819F11153fe",
         "fields": {
-            "code": "",
             "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "nonce": 0,
             "balance": "1170000000000000",
@@ -69,7 +65,6 @@
         "block_hash": "0xa618c3ac198431ead17dd143f3fab8a73da6a3c506764dff84108bd06f72eb82",
         "address": "0x04AB96C0c58ba42428C752F7D49D930df1E1A4b9",
         "fields": {
-            "code": "",
             "root": "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
             "nonce": 434,
             "balance": "11694348337948413",
