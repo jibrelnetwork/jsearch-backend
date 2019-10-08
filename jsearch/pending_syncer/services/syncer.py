@@ -9,7 +9,7 @@ from jsearch.syncer.database_queries.pending_transactions import prepare_pending
 
 from jsearch import settings
 from jsearch.common import metrics, async_utils
-from jsearch.common.structs import SyncRange
+from jsearch.common.structs import BlockRange
 from jsearch.syncer.database import MainDB, RawDB
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ ADVISORY_LOCK_ID = -1
 
 
 class PendingSyncerService(mode.Service):
-    def __init__(self, raw_db_dsn: str, main_db_dsn: str, sync_range: SyncRange, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, raw_db_dsn: str, main_db_dsn: str, sync_range: BlockRange, *args: Any, **kwargs: Any) -> None:
         self.raw_db = RawDB(raw_db_dsn)
         self.main_db = MainDB(main_db_dsn)
         self.sync_range = sync_range
