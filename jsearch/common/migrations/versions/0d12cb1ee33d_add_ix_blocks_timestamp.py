@@ -22,7 +22,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_blocks_timestamp ON blocks("timestamp
 """
 
 DOWN_SQL = """
-DROP INDEX CONCURRENTLY ix_blocks_timestamp;
+DROP INDEX CONCURRENTLY IF EXISTS ix_blocks_timestamp;
 """
 
 
