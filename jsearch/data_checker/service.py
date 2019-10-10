@@ -29,6 +29,7 @@ class Transfer(NamedTuple):
 
 FETCH_SLEEP_TIME = 1
 REORG_WAIT_TIME = 5
+ES_SCAN_DEPTH = 30
 
 proxy_cycle = itertools.cycle(open(settings.PROXY_LIST_PATH, 'r').readlines())
 
@@ -122,7 +123,7 @@ class DataChecker(mode.Service):
 
     async def es_get_transfers(self, block_timestamp):
         transfers = []
-        for page in range(1, 10):
+        for page in range(2, ES_SCAN_DEPTH):
             et = await self.get_page(f'https://etherscan.io/tokentxns/?ps=100&p={page}')
             rows = et.xpath('//table//tr')
             for row in rows[1:]:
