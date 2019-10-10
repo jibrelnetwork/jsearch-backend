@@ -7,14 +7,12 @@ from typing import Dict, Any, List, Optional
 
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.helpers import (
-    ORDER_ASC,
-    ORDER_DESC,
     DEFAULT_LIMIT,
     MAX_LIMIT,
     Tag,
     ApiError
 )
-from jsearch.api.ordering import get_order_schema, Ordering
+from jsearch.api.ordering import get_order_schema, Ordering, ORDER_DESC, ORDER_ASC
 from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower
 from jsearch.typing import OrderScheme, OrderDirection
 
