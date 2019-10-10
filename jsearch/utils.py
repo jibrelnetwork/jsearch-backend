@@ -1,5 +1,7 @@
 import logging
 
+from sqlalchemy import create_engine
+from sqlalchemy.exc import ProgrammingError
 from typing import List, Any, Tuple, Optional, Iterable
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,22 @@ def split(iterable: Iterable[Any], size: int) -> List[List[Any]]:
     if isinstance(iterable, set):
         iterable = list(iterable)
     return [iterable[i:i + size] for i in range(0, len(iterable), size)]
+
+
+def get_alembic_version(db_dsn: str) -> Optional[int]:
+    query = """
+    SELECT version_num FROM alembic_version LIMIT 1;
+    """
+
+    engine = create_engine(db_dsn)
+    try:
+        cursor = engine.execute(query)
+        row = cursor.fetchone()
+    except ProgrammingError:
+        return None
+
+    if row:
+        return row['version_num']
 
 
 def parse_range(value: Optional[str] = None) -> Tuple[int, Optional[int]]:
@@ -46,5 +64,9 @@ def parse_range(value: Optional[str] = None) -> Tuple[int, Optional[int]]:
 
     value_from = int(parts[0]) if parts[0] else DEFAULT_RANGE_START
     value_until = int(parts[1]) if parts[1] else DEFAULT_RANGE_END
+
+    for value in (value_from, value_until):
+        if value is not None and value < 0:
+            raise ValueError('Invalid range. It allows to be from 0 to integer or - .')
 
     return value_from, value_until

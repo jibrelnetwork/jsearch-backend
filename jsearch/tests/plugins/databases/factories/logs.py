@@ -61,6 +61,21 @@ class LogFactory(factory.alchemy.SQLAlchemyModelFactory):
             }
         )
 
+    @classmethod
+    def create_for_receipt(cls, receipt, **kwargs):
+        return cls.create(
+            **{
+                **{
+                    'block_number': receipt.block_number,
+                    'block_hash': receipt.block_hash,
+                    'address': getattr(receipt, 'from'),
+                    'transaction_hash': receipt.transaction_hash,
+                    'transaction_index': receipt.transaction_index
+                },
+                **kwargs,
+            }
+        )
+
 
 @pytest.fixture()
 def log_factory():

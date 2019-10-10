@@ -98,8 +98,6 @@ class SyncProcessor:
             True if sync is successful, False if syn fails or block already synced
         """
         logger.debug("Syncing Block", extra={'hash': block_hash, 'number': block_number})
-        await self.main_db.connect()
-        await self.raw_db.connect()
 
         start_time = time.monotonic()
 
@@ -186,7 +184,7 @@ class SyncProcessor:
 
         contracts_set = set()
         for acc in accounts_data:
-            if acc['code'] != '':
+            if acc.get('code', '') != '':
                 contracts_set.add(acc['address'])
 
         contract_addresses = {item['address'] for item in logs_data} | {item.token for item in token_holder_balances}

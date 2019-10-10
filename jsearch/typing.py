@@ -57,4 +57,5 @@ OrderDirection = TypeVar('OrderDirection', bound=str)
 OrderScheme = TypeVar('OrderScheme', bound=str)
 
 LastAffectedBlock = TypeVar('LastAffectedBlock', bound=int)
+PagesCount = TypeVar('PagesCount', bound=int)
 BlockchainTipAsDict = Dict[str, Any]

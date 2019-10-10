@@ -2,6 +2,7 @@ import logging
 from decimal import Decimal
 
 from jsearch.common import contracts
+from jsearch.common.structs import BlockRange
 from jsearch.syncer.structs import TokenHolderBalances, TokenHolderBalance
 from .wrapper import DBWrapper
 
@@ -73,14 +74,14 @@ class RawDB(DBWrapper):
         row = await self.fetch_one(q, block_hash)
         return row['fields']['parentHash']
 
-    async def get_next_chain_event(self, block_range, event_id, node_id):
+    async def get_next_chain_event(self, block_range: BlockRange, event_id: int, node_id: str):
         params = [event_id, node_id]
-        if block_range[1] is not None:
+        if block_range.end is not None:
             block_cond = """block_number BETWEEN %s AND %s"""
             params += list(block_range)
         else:
             block_cond = """block_number >= %s"""
-            params.append(block_range[0])
+            params.append(block_range.start)
 
         q = f"""SELECT * FROM chain_events WHERE
                     id > %s
@@ -90,13 +91,13 @@ class RawDB(DBWrapper):
 
         return await self.fetch_one(q, *params)
 
-    async def get_first_chain_event_for_block_range(self, block_range, node_id):
-        if block_range[1] is not None:
+    async def get_first_chain_event_for_block_range(self, block_range: BlockRange, node_id):
+        if block_range.end is not None:
             cond = """block_number BETWEEN %s AND %s"""
             params = list(block_range)
         else:
             cond = """block_number >= %s"""
-            params = [block_range[0]]
+            params = [block_range.start]
         params.append(node_id)
 
         q = f"""

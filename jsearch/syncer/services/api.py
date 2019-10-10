@@ -1,27 +1,43 @@
-from typing import Any
+import json
 
 import asyncpg
 from aiohttp import web
-
-from jsearch.api.handlers import monitoring
-from jsearch.api.middlewares import cors_middleware
+from functools import partial
+from typing import Any
 
 from jsearch import settings
-from jsearch.common import stats
+from jsearch.api.handlers import monitoring
+from jsearch.api.middlewares import cors_middleware
 from jsearch.common import services
+from jsearch.common import stats
+from jsearch.common.structs import LagStats, ChainStats
+from jsearch.syncer.state import SyncerState
 
 
 class ApiService(services.ApiService):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+            self,
+            state: SyncerState,
+            check_lag: bool = True,
+            check_holes: bool = True,
+            *args: Any, **kwargs: Any
+    ) -> None:
         kwargs.setdefault('port', settings.SYNCER_API_PORT)
         kwargs.setdefault('app_maker', make_app)
 
         super(ApiService, self).__init__(*args, **kwargs)
 
+        self.app['state'] = state
+        self.app['settings'] = {
+            'check_lag': check_lag,
+            'check_holes': check_holes
+        }
+
 
 def make_app() -> web.Application:
     application = web.Application(middlewares=[cors_middleware])
     application.router.add_route('GET', '/healthcheck', healthcheck)
+    application.router.add_route('GET', '/state', get_state)
     application.router.add_route('GET', '/metrics', monitoring.metrics)
 
     application.on_startup.append(on_startup)
@@ -30,12 +46,25 @@ def make_app() -> web.Application:
     return application
 
 
+async def get_state(request: web.Request) -> web.Response:
+    state: SyncerState = request.app['state']
+    return web.json_response(data=state.as_dict(), dumps=partial(json.dumps, indent=2))
+
+
 async def healthcheck(request: web.Request) -> web.Response:
     raw_db_stats = await stats.get_db_stats(request.app['db_pool_raw'])
     main_db_stats = await stats.get_db_stats(request.app['db_pool'])
     loop_stats = await stats.get_loop_stats()
-    chain_stats = await stats.get_chain_stats(request.app['db_pool'])
-    lag_stats = await stats.get_lag_stats(request.app['db_pool'])
+
+    if request.app['settings']['check_holes']:
+        chain_stats = await stats.get_chain_stats(request.app['db_pool'])
+    else:
+        chain_stats = ChainStats(is_healthy=True, chain_holes=None)
+
+    if request.app['settings']['check_lag']:
+        lag_stats = await stats.get_lag_stats(request.app['db_pool'])
+    else:
+        lag_stats = LagStats(is_healthy=True, lag=None)
 
     healthy = all(
         (
@@ -60,8 +89,8 @@ async def healthcheck(request: web.Request) -> web.Response:
 
 
 async def on_startup(app: web.Application) -> None:
-    app['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB)
-    app['db_pool_raw'] = await asyncpg.create_pool(settings.JSEARCH_RAW_DB)
+    app['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB, min_size=1, max_size=1)
+    app['db_pool_raw'] = await asyncpg.create_pool(settings.JSEARCH_RAW_DB, min_size=1, max_size=1)
 
 
 async def on_shutdown(app: web.Application) -> None:

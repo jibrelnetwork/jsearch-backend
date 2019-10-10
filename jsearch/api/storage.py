@@ -20,8 +20,7 @@ from jsearch.api.database_queries.blocks import (
     get_blocks_query,
     get_last_block_query,
     ORDER_SCHEME_BY_NUMBER,
-    ORDER_SCHEME_BY_TIMESTAMP,
-)
+    ORDER_SCHEME_BY_TIMESTAMP)
 from jsearch.api.database_queries.internal_transactions import (
     get_internal_txs_by_parent,
     get_internal_txs_by_address_and_block_query,
@@ -58,7 +57,7 @@ from jsearch.api.database_queries.wallet_events import (
     get_wallet_events_query,
     get_eth_transfers_by_address_query,
 )
-from jsearch.api.helpers import Tag, fetch_row
+from jsearch.api.helpers import Tag, fetch_row, get_pages_left_count
 from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
@@ -66,7 +65,7 @@ from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
-from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress
+from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress, PagesCount
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +277,7 @@ class Storage:
             order: Ordering,
             number: Optional[int] = None,
             timestamp: Optional[int] = None,
-    ) -> Tuple[List[models.Block], Optional[LastAffectedBlock]]:
+    ) -> Tuple[List[models.Block], PagesCount, Optional[LastAffectedBlock]]:
         if number is None:
             query = get_blocks_query(limit=limit, order=order)
         else:
@@ -292,28 +291,31 @@ class Storage:
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
+            # for page_size we decrease limit for 1 block,
+            # because we set limit + 1 to check next page
+            pages = await get_pages_left_count(connection=connection, query=query, page_size=limit - 1)
 
-            for row in rows:
-                uncles = row.get('uncles')
-                if uncles:
-                    uncles = json.loads(uncles)
+        for row in rows:
+            uncles = row.get('uncles')
+            if uncles:
+                uncles = json.loads(uncles)
 
-                txs = row.get('transactions')
-                if txs:
-                    txs = json.loads(txs)
+            txs = row.get('transactions')
+            if txs:
+                txs = json.loads(txs)
 
-                row.update({
-                    'uncles': uncles,
-                    'transactions': txs,
-                    'static_reward': int(row['static_reward']),
-                    'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
-                    'tx_fees': int(row['tx_fees']),
-                })
+            row.update({
+                'uncles': uncles,
+                'transactions': txs,
+                'static_reward': int(row['static_reward']),
+                'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
+                'tx_fees': int(row['tx_fees']),
+            })
 
         blocks = [models.Block(**row) for row in rows]
         last_affected_block = max((r['number'] for r in rows), default=None)
 
-        return blocks, last_affected_block
+        return blocks, pages, last_affected_block
 
     async def get_account_mined_blocks(
             self,
@@ -482,7 +484,7 @@ class Storage:
                 return models.Transaction(**row)
 
     async def get_receipt(self, tx_hash):
-        query = "SELECT * FROM receipts WHERE transaction_hash=$1"
+        query = "SELECT * FROM receipts WHERE transaction_hash=$1 AND is_forked=false"
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, tx_hash)
             if row is None:
@@ -494,7 +496,7 @@ class Storage:
 
     async def get_logs(self, conn, tx_hash: str) -> List[models.Log]:
         fields = models.Log.select_fields()
-        query = f"SELECT {fields} FROM logs WHERE transaction_hash=$1 ORDER BY log_index"
+        query = f"SELECT {fields} FROM logs WHERE transaction_hash=$1 AND is_forked=false ORDER BY log_index"
 
         rows = await conn.fetch(query, tx_hash)
         return [models.Log(**r) for r in rows]
