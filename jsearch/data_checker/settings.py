@@ -1,6 +1,6 @@
 import os
 
-from jsearch.settings import JSEARCH_MAIN_DB, LOG_LEVEL  # noqa: F401
+from jsearch.settings import JSEARCH_MAIN_DB, LOG_LEVEL, NO_JSON_FORMATTER  # noqa: F401
 
 DEFAULT_WORKERS = 2
 
