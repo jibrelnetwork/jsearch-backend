@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import re
@@ -17,7 +16,6 @@ from dateutil import parser
 
 from . import settings
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -32,7 +30,6 @@ class Transfer(NamedTuple):
 FETCH_SLEEP_TIME = 1
 REORG_WAIT_TIME = 5
 
-
 proxy_cycle = itertools.cycle(open(settings.PROXY_LIST_PATH, 'r').readlines())
 
 
@@ -42,7 +39,7 @@ class DataChecker(mode.Service):
     with Etherscan transfers list https://etherscan.io/tokentxns
     """
 
-    def __init__(self, main_db_dsn: str, use_proxy: bool,  *args, **kwargs) -> None:
+    def __init__(self, main_db_dsn: str, use_proxy: bool, *args, **kwargs) -> None:
         self.main_db_dsn = main_db_dsn
         self.total = 0
         self.check_queue = asyncio.Queue()
@@ -211,7 +208,7 @@ class DataChecker(mode.Service):
         logger.info('Check complete', extra=block)
 
     def parse_block_timestamp(self, time_stamp):
-        res = re.findall("\((.*)\s\+UTC\)", time_stamp)
+        res = re.findall(r'\((.*)\s\+UTC\)', time_stamp)
         if not res:
             return None
         try:
@@ -277,6 +274,6 @@ class DataChecker(mode.Service):
         return list(set(transfers))
 
     def get_address_from_url(self, url):
-        matches = re.findall('(0x[\w\d]+)', url)
+        matches = re.findall(r'(0x[\w\d]+)', url)
         if matches:
             return matches[0]

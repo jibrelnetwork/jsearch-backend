@@ -1,10 +1,8 @@
 import os
 
-from jsearch.settings import *
+from jsearch.settings import JSEARCH_MAIN_DB, LOG_LEVEL  # noqa: F401
 
 DEFAULT_WORKERS = 2
-
-JSEARCH_MAIN_DB = os.environ['JSEARCH_MAIN_DB']
 
 WORKERS = int(os.environ.get('WORKERS', DEFAULT_WORKERS))
 

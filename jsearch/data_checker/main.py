@@ -13,7 +13,7 @@ def run(log_level, no_json_formatter):
     logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
 
     worker.Worker(
-        service.DataChecker (
+        service.DataChecker(
             main_db_dsn=settings.JSEARCH_MAIN_DB,
             use_proxy=settings.USE_PROXY,
         ),
