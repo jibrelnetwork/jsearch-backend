@@ -179,13 +179,13 @@ class MainDB(DBWrapper):
         In example up there it is `d`.
 
         """
-        # ToDo: need to rewrite query with is_forked state and change index on blocks table
         query = """
         SELECT
             blocks.number - 1 as number
         FROM blocks
         LEFT JOIN blocks as l ON l.number = blocks.number - 1
         WHERE blocks.number BETWEEN %s AND %s
+            AND blocks.is_forked = False
             AND l.number IS null
         ORDER BY blocks.number LIMIT 1;
         """

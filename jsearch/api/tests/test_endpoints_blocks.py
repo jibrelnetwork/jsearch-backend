@@ -71,13 +71,70 @@ async def test_get_blocks(cli,
     resp = await cli.get(url)
     resp_json = await resp.json()
 
+    assert 'paging' in resp_json
+    assert 'data' in resp_json
+
+    paging = resp_json['paging']
+    data = resp_json['data']
+
     assert resp.status == 200
     assert resp_json['status']['success']
 
-    assert parse_url(resp_json['paging']['next']) == parse_url(next_link)
-    assert parse_url(resp_json['paging']['link']) == parse_url(link)
+    assert parse_url(paging['next']) == parse_url(next_link)
+    assert parse_url(paging['link']) == parse_url(link)
 
-    assert [block['number'] for block in resp_json['data']] == blocks_on_page
+    assert [block['number'] for block in data] == blocks_on_page
+
+
+@pytest.mark.parametrize(
+    "url, blocks, pages",
+    [
+        (
+                "/v1/blocks",
+                10,
+                0
+        ),
+        (
+                "/v1/blocks?limit=5",
+                10,
+                1
+        ),
+        (
+                "/v1/blocks?limit=3",
+                10,
+                3
+        ),
+        (
+                "/v1/blocks?block_number=1&limit=3",
+                10,
+                0
+        ),
+    ],
+    ids=[
+        "/v1/blocks?limit=10               --- returns 0 pages",
+        "/v1/blocks?limit=5                --- returns 1 pages",
+        "/v1/blocks?limit=3                --- returns 3 pages",
+        "/v1/blocks?block_number=1&limit=3 --- returns 0 page",
+    ]
+)
+async def test_get_blocks_pages(cli,
+                                block_factory,
+                                url: str,
+                                blocks: int,
+                                progress: int) -> None:
+    # given
+    block_factory.create_batch(blocks)
+
+    resp = await cli.get(url)
+    resp_json = await resp.json()
+
+    assert 'paging' in resp_json
+    paging = resp_json['paging']
+
+    assert resp.status == 200
+    assert resp_json['status']['success']
+
+    assert paging['progress'] == progress
 
 
 @pytest.mark.parametrize(

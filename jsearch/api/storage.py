@@ -20,8 +20,7 @@ from jsearch.api.database_queries.blocks import (
     get_blocks_query,
     get_last_block_query,
     ORDER_SCHEME_BY_NUMBER,
-    ORDER_SCHEME_BY_TIMESTAMP,
-)
+    ORDER_SCHEME_BY_TIMESTAMP)
 from jsearch.api.database_queries.internal_transactions import (
     get_internal_txs_by_parent,
     get_internal_txs_by_address_and_block_query,
@@ -58,7 +57,7 @@ from jsearch.api.database_queries.wallet_events import (
     get_wallet_events_query,
     get_eth_transfers_by_address_query,
 )
-from jsearch.api.helpers import Tag, fetch_row
+from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent
 from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
@@ -66,7 +65,7 @@ from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
-from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress
+from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress, ProgressPercent
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +277,7 @@ class Storage:
             order: Ordering,
             number: Optional[int] = None,
             timestamp: Optional[int] = None,
-    ) -> Tuple[List[models.Block], Optional[LastAffectedBlock]]:
+    ) -> Tuple[List[models.Block], ProgressPercent, Optional[LastAffectedBlock]]:
         if number is None:
             query = get_blocks_query(limit=limit, order=order)
         else:
@@ -292,28 +291,33 @@ class Storage:
 
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
+            progress = await get_cursor_percent(
+                connection=connection,
+                query=query,
+                full_query=get_blocks_query(order=order),
+            )
 
-            for row in rows:
-                uncles = row.get('uncles')
-                if uncles:
-                    uncles = json.loads(uncles)
+        for row in rows:
+            uncles = row.get('uncles')
+            if uncles:
+                uncles = json.loads(uncles)
 
-                txs = row.get('transactions')
-                if txs:
-                    txs = json.loads(txs)
+            txs = row.get('transactions')
+            if txs:
+                txs = json.loads(txs)
 
-                row.update({
-                    'uncles': uncles,
-                    'transactions': txs,
-                    'static_reward': int(row['static_reward']),
-                    'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
-                    'tx_fees': int(row['tx_fees']),
-                })
+            row.update({
+                'uncles': uncles,
+                'transactions': txs,
+                'static_reward': int(row['static_reward']),
+                'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
+                'tx_fees': int(row['tx_fees']),
+            })
 
         blocks = [models.Block(**row) for row in rows]
         last_affected_block = max((r['number'] for r in rows), default=None)
 
-        return blocks, last_affected_block
+        return blocks, progress, last_affected_block
 
     async def get_account_mined_blocks(
             self,
@@ -811,7 +815,7 @@ class Storage:
             tx_index: Optional[int],
             event_index: int,
             ordering: Ordering
-    ) -> Tuple[List[WalletEvent], Optional[LastAffectedBlock]]:
+    ) -> Tuple[List[WalletEvent], Optional[ProgressPercent], Optional[LastAffectedBlock]]:
         # Notes: syncer writes txs to main db with denormalization (x2 records per transaction)
         query_limit = limit * 2
 
@@ -825,6 +829,11 @@ class Storage:
         )
         async with self.pool.acquire() as connection:
             events = await fetch(connection, query)
+            progresss = await get_cursor_percent(
+                connection=connection,
+                query=query,
+                full_query=get_wallet_events_query(address=address, ordering=ordering)
+            )
 
         events = in_app_distinct(events)[:limit]
 
@@ -847,7 +856,7 @@ class Storage:
             wallet_events.append(wallet_event)
 
         last_affected_block = max([event['blockNumber'] for event in wallet_events], default=None)
-        return wallet_events, last_affected_block
+        return wallet_events, progresss, last_affected_block
 
     async def get_wallet_assets_summary(self,
                                         addresses: List[str],

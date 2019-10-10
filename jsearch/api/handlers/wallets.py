@@ -61,7 +61,7 @@ async def get_wallet_events(
     block_number, timestamp = await get_tip_block_number_and_timestamp(block_number, timestamp, tip_hash, storage)
 
     # Notes: we need to query limit + 1 items to get link on next page
-    events, last_affected_block = await storage.get_wallet_events(
+    events, pages, last_affected_block = await storage.get_wallet_events(
         address=address,
         block_number=block_number,
         tx_index=tx_index,
@@ -98,6 +98,7 @@ async def get_wallet_events(
             "pendingEvents": pending_events
         },
         page=page,
+        pages=pages,
         meta=tip_meta
     )
 

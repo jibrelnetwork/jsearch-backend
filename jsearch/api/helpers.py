@@ -5,13 +5,15 @@ from aiohttp import web
 from asyncpg import Connection
 from functools import partial
 from sqlalchemy import asc, desc, Column
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Query
 from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.ordering import DEFAULT_ORDER, ORDER_ASC, ORDER_DESC
 from jsearch.api.pagination import Page
-from jsearch.typing import AnyCoroutine
+from jsearch.common.utils import async_timeit
+from jsearch.typing import AnyCoroutine, ProgressPercent
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
@@ -129,7 +131,12 @@ def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -
     return strings_list
 
 
-def api_success(data, page: Optional[Page] = None, meta: Optional[Dict[str, Any]] = None):
+def api_success(
+        data: Union[Dict[str, Any], Any],
+        page: Optional[Page] = None,
+        pages: Optional[ProgressPercent] = None,
+        meta: Optional[Dict[str, Any]] = None
+):
     body = {
         'status': {
             'success': True,
@@ -139,10 +146,13 @@ def api_success(data, page: Optional[Page] = None, meta: Optional[Dict[str, Any]
     }
 
     if page:
-        body.update(page.to_dict())
+        body['paging'] = page.to_dict()
+        if pages is not None:
+            body['paging']['progress'] = pages
 
     if meta:
         body['meta'] = meta
+
     return web.json_response(body)
 
 
@@ -200,13 +210,40 @@ def get_order(columns: List[Column], direction: Optional[str]) -> List[Column]:
     return columns
 
 
-async def fetch(connection: Connection, query: Query) -> List[Dict[str, Any]]:
+async def estimate_query(connection: Connection, query: Query) -> int:
+    query = query.with_only_columns('*').limit(None)
+    query = query.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
+
+    query = f"SELECT row_estimator('{query};');"
+    result = await fetch_row(connection, query)
+
+    if result:
+        return result.get('row_estimator', 0)
+
+    return 0
+
+
+@async_timeit(name='Pages left query')
+async def get_cursor_percent(
+        connection: Connection,
+        query: Query,
+        full_query: Query,
+) -> Optional[ProgressPercent]:
+    query_estimation = await estimate_query(connection, full_query)
+    filter_estimation = await estimate_query(connection, query)
+
+    if query_estimation:
+        return 100 - int((filter_estimation / query_estimation or 1) * 100)
+    return 0
+
+
+async def fetch(connection: Connection, query: Union[Query, str]) -> List[Dict[str, Any]]:
     query, params = asyncpgsa.compile_query(query)
     result = await connection.fetch(query, *params)
     return [dict(item) for item in result]
 
 
-async def fetch_row(connection: Connection, query: Query) -> Optional[Dict[str, Any]]:
+async def fetch_row(connection: Connection, query: Union[Query, str]) -> Optional[Dict[str, Any]]:
     query, params = asyncpgsa.compile_query(query)
     result = await connection.fetchrow(query, *params)
     if result is not None:

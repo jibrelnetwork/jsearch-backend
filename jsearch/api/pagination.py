@@ -14,10 +14,8 @@ class Page(NamedTuple):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "paging": {
-                "next": self.next_link,
-                "link": self.link
-            }
+            "next": self.next_link,
+            "link": self.link
         }
 
 
