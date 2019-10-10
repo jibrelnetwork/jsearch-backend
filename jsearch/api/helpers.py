@@ -214,7 +214,7 @@ async def estimate_query(connection: Connection, query: Query) -> int:
     query = query.with_only_columns('*').limit(None)
     query = query.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
 
-    query = f"SELECT row_estimator('{query};');"
+    query = f"SELECT row_estimator('$${query}$$');"
     result = await fetch_row(connection, query)
 
     if result:
