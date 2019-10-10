@@ -151,3 +151,22 @@ def get_block_number_by_timestamp_query(timestamp: int, order_direction: OrderDi
     return select([blocks_t.c.number, blocks_t.c.hash, blocks_t.c.timestamp]).where(
         operator_or_equal(blocks_t.c.timestamp, timestamp)
     ).order_by(direction_func(blocks_t.c.timestamp))
+
+
+def generate_blocks_query(
+        order: Ordering,
+        number: Optional[int] = None,
+        timestamp: Optional[int] = None,
+        limit: Optional[int] = None,
+) -> Query:
+    if number is None:
+        query = get_blocks_query(limit=limit, order=order)
+    else:
+        if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
+            query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
+
+        elif order.scheme == ORDER_SCHEME_BY_NUMBER:
+            query = get_blocks_by_number_query(limit=limit, number=number, order=order)
+        else:
+            raise ValueError('Invalid scheme: {scheme}')
+    return query

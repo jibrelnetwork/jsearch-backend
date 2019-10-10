@@ -3,6 +3,7 @@ import logging
 from collections import defaultdict
 
 import asyncpgsa
+from functools import partial
 from sqlalchemy import select, and_, desc, true
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
@@ -20,7 +21,7 @@ from jsearch.api.database_queries.blocks import (
     get_blocks_query,
     get_last_block_query,
     ORDER_SCHEME_BY_NUMBER,
-    ORDER_SCHEME_BY_TIMESTAMP)
+    ORDER_SCHEME_BY_TIMESTAMP, generate_blocks_query)
 from jsearch.api.database_queries.internal_transactions import (
     get_internal_txs_by_parent,
     get_internal_txs_by_address_and_block_query,
@@ -278,23 +279,16 @@ class Storage:
             number: Optional[int] = None,
             timestamp: Optional[int] = None,
     ) -> Tuple[List[models.Block], ProgressPercent, Optional[LastAffectedBlock]]:
-        if number is None:
-            query = get_blocks_query(limit=limit, order=order)
-        else:
-            if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-                query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
+        get_query = partial(generate_blocks_query, number=number, timestamp=timestamp, limit=limit)
 
-            elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-                query = get_blocks_by_number_query(limit, number=number, order=order)
-            else:
-                raise ValueError('Invalid scheme: {scheme}')
-
+        query = get_query(order=order)
+        reverse_query = get_query(order=order.reverse())
         async with self.pool.acquire() as connection:
             rows = await fetch(connection=connection, query=query)
             progress = await get_cursor_percent(
                 connection=connection,
                 query=query,
-                full_query=get_blocks_query(order=order),
+                reverse_query=reverse_query
             )
 
         for row in rows:
@@ -819,20 +813,23 @@ class Storage:
         # Notes: syncer writes txs to main db with denormalization (x2 records per transaction)
         query_limit = limit * 2
 
-        query = get_wallet_events_query(
+        get_query = partial(
+            get_wallet_events_query,
             limit=query_limit,
             address=address,
             block_number=block_number,
             tx_index=tx_index,
             event_index=event_index,
-            ordering=ordering
         )
+
+        query = get_query(ordering=ordering)
+        reverse_query = get_query(ordering=ordering.reverse())
         async with self.pool.acquire() as connection:
             events = await fetch(connection, query)
             progresss = await get_cursor_percent(
                 connection=connection,
                 query=query,
-                full_query=get_wallet_events_query(address=address, ordering=ordering)
+                reverse_query=reverse_query
             )
 
         events = in_app_distinct(events)[:limit]

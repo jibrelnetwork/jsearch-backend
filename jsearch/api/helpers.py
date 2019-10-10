@@ -215,6 +215,7 @@ async def estimate_query(connection: Connection, query: Query) -> int:
     query = query.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
 
     query = f"SELECT row_estimator($${query}$$);"
+    print(query.replace("\n", " "))
     result = await fetch_row(connection, query)
 
     if result:
@@ -227,13 +228,14 @@ async def estimate_query(connection: Connection, query: Query) -> int:
 async def get_cursor_percent(
         connection: Connection,
         query: Query,
-        full_query: Query,
+        reverse_query: Query,
 ) -> Optional[ProgressPercent]:
-    query_estimation = await estimate_query(connection, full_query)
-    filter_estimation = await estimate_query(connection, query)
+    query_estimation = await estimate_query(connection, query)
+    reverse_estimation = await estimate_query(connection, reverse_query)
 
     if query_estimation:
-        return 100 - int((filter_estimation / query_estimation or 1) * 100)
+        total = (reverse_estimation + query_estimation)
+        return 100 - int((query_estimation / total) * 100)
     return 0
 
 
