@@ -98,7 +98,7 @@ async def get_wallet_events(
             "pendingEvents": pending_events
         },
         page=page,
-        pages=pages,
+        progress=pages,
         meta=tip_meta
     )
 

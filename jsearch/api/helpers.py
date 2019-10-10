@@ -134,7 +134,7 @@ def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -
 def api_success(
         data: Union[Dict[str, Any], Any],
         page: Optional[Page] = None,
-        pages: Optional[ProgressPercent] = None,
+        progress: Optional[ProgressPercent] = None,
         meta: Optional[Dict[str, Any]] = None
 ):
     body = {
@@ -147,8 +147,8 @@ def api_success(
 
     if page:
         body['paging'] = page.to_dict()
-        if pages is not None:
-            body['paging']['progress'] = pages
+        if page.next_link and progress is not None:
+            body['paging']['progress'] = progress
 
     if meta:
         body['meta'] = meta
@@ -235,7 +235,10 @@ async def get_cursor_percent(
 
     if query_estimation:
         total = (reverse_estimation + query_estimation)
-        return 100 - int((query_estimation / total) * 100)
+        print(query_estimation, reverse_estimation, total, total / query_estimation)
+        progress = 100 - round((query_estimation / total) * 100, 2)
+        if progress >= 100:
+            return 99.99
     return 0
 
 

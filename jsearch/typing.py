@@ -57,5 +57,5 @@ OrderDirection = TypeVar('OrderDirection', bound=str)
 OrderScheme = TypeVar('OrderScheme', bound=str)
 
 LastAffectedBlock = TypeVar('LastAffectedBlock', bound=int)
-ProgressPercent = TypeVar('ProgressPercent', bound=int)
+ProgressPercent = TypeVar('ProgressPercent', bound=float)
 BlockchainTipAsDict = Dict[str, Any]
