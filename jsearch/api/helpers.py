@@ -1,5 +1,3 @@
-import json
-
 import asyncpgsa
 from aiohttp import web
 from asyncpg import Connection
@@ -11,7 +9,6 @@ from sqlalchemy.sql.functions import count
 from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.ordering import DEFAULT_ORDER, ORDER_ASC, ORDER_DESC
 from jsearch.api.pagination import Page
 from jsearch.typing import AnyCoroutine, PagesCount
 
@@ -59,64 +56,6 @@ def get_tag(request):
         value = tag_value
         type_ = Tag.HASH
     return Tag(type_, value)
-
-
-def validate_params(request, max_limit=None, max_offset=None, default_order=None):
-    # todo: need to refactoring this function.
-    # May be split to a few smaller or rewrite to marshmallow
-    default_order = default_order or DEFAULT_ORDER
-
-    params = {}
-    errors = []
-
-    limit = request.query.get('limit')
-    if limit and limit.isdigit():
-        params['limit'] = min(int(limit), max_limit or MAX_LIMIT)
-
-    elif limit and not limit.isdigit():
-        errors.append({'field': 'limit',
-                       'error_code': ErrorCode.INVALID_LIMIT_VALUE,
-                       'error_message': 'Limit value should be valid integer, got "{}"'.format(limit)
-                       })
-    else:
-        params['limit'] = max_limit or DEFAULT_LIMIT
-
-    offset = request.query.get('offset')
-    if offset and offset.isdigit():
-        params['offset'] = int(offset)
-    elif offset and not offset.isdigit():
-        errors.append({'field': 'offset',
-                       'error_code': ErrorCode.INVALID_OFFSET_VALUE,
-                       'error_message': 'Offset value should be valid integer, got "{}"'.format(offset)
-                       })
-    else:
-        params['offset'] = DEFAULT_OFFSET
-
-    if params.get('offset') and params['offset'] > (max_offset or MAX_OFFSET):
-        errors.append({
-            'field': 'offset',
-            'error_code': ErrorCode.TOO_BIG_OFFSET_VALUE,
-            'error_message': 'Offset value should be less then "{}"'.format(MAX_OFFSET)
-        })
-
-    order = request.query.get('order', '').lower()
-    if order and order in [ORDER_ASC, ORDER_DESC]:
-        params['order'] = order
-    elif order:
-        errors.append({'field': 'order',
-                       'error_code': ErrorCode.INVALID_ORDER_VALUE,
-                       'error_message': 'Order value should be one of "asc", "desc", got "{}"'.format(order)
-                       })
-    else:
-        params['order'] = default_order
-
-    if errors:
-        body = {
-            'status': {'success': False, 'errors': errors},
-            'data': None
-        }
-        raise web.HTTPBadRequest(text=json.dumps(body), content_type='application/json')
-    return params
 
 
 def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -> List[str]:
