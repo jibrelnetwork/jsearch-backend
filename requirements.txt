@@ -30,3 +30,5 @@ sentry-sdk==0.11.1
 SQLAlchemy==1.2.6
 web3==4.2.1
 webargs==5.3.2
+lxml==4.4.1
+python-dateutil==2.8.0
