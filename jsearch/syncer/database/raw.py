@@ -79,7 +79,7 @@ class RawDB(DBWrapper):
     async def get_next_chain_event(self, block_range: BlockRange, event_id: int, node_id: str):
         params = [event_id, node_id]
         if block_range.end is not None:
-            block_cond = """block_number >= %s AND block_number =< %s"""
+            block_cond = """block_number >= %s AND block_number <= %s"""
             params += list(block_range)
         else:
             block_cond = """block_number >= %s"""
@@ -96,7 +96,7 @@ class RawDB(DBWrapper):
     @async_timeit('[RAW DB] Get first chain event')
     async def get_first_chain_event_for_block_range(self, block_range: BlockRange, node_id):
         if block_range.end is not None:
-            cond = """block_number >= %s AND block_number =< %s"""
+            cond = """block_number >= %s AND block_number <= %s"""
             params = list(block_range)
         else:
             cond = """block_number >= %s"""
