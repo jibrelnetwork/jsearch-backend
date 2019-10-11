@@ -248,14 +248,21 @@ class Manager:
 
     @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
     async def get_and_process_chain_event(self):
+        logger.info("Start processing of chain event")
+        started_at = time.monotonic()
+
         block_range = await get_range_and_check_holes(self.main_db, self.sync_range, self.state)
+        get_block_range_at = time.monotonic() - started_at
 
         logger.info("Try to find new event", extra={"range": block_range})
         last_event = await self.main_db.get_last_chain_event(block_range, self.node_id)
+        get_last_event_at = time.monotonic() - started_at
+
         if last_event is None:
             next_event = await self.raw_db.get_first_chain_event_for_block_range(block_range, self.node_id)
         else:
             next_event = await self.raw_db.get_next_chain_event(block_range, last_event['id'], self.node_id)
+        get_next_event_at = time.monotonic() - started_at
 
         if self.state.hole and next_event is None:
             self.state.checked_on_holes = self.state.hole
@@ -265,6 +272,15 @@ class Manager:
                 "No events in the gap",
                 extra={"range": self.state.checked_on_holes}
             )
+            logger.info("Block is synced", extra={
+                'hash': next_event['block_hash'],
+                'number': next_event['block_number'],
+                'type': next_event['type'],
+                'get_block_range_at': '{:0.2f}s'.format(get_block_range_at),
+                'get_last_event_at': '{:0.2f}s'.format(get_last_event_at),
+                'get_next_event_at': '{:0.2f}s'.format(get_next_event_at),
+                'total': '{:0.2f}s'.format(time.monotonic() - started_at),
+            })
             return
 
         there_is_no_gap_in_middle = not self.state.hole or block_range.end and self.state.hole.end >= block_range.end
@@ -290,6 +306,17 @@ class Manager:
             return
 
         await self.process_chain_event(next_event)
+
+        if next_event:
+            logger.info("Block is synced", extra={
+                'hash': next_event['block_hash'],
+                'number': next_event['block_number'],
+                'type': next_event['type'],
+                'get_block_range_at': '{:0.2f}s'.format(get_block_range_at),
+                'get_last_event_at': '{:0.2f}s'.format(get_last_event_at),
+                'get_next_event_at': '{:0.2f}s'.format(get_next_event_at),
+                'total': '{:0.2f}s'.format(time.monotonic() - started_at),
+            })
 
     async def try_lock_range(self):
         return await self.main_db.try_advisory_lock(self.sync_range.start, self.sync_range.end)
