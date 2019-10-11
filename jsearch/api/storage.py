@@ -826,7 +826,7 @@ class Storage:
         reverse_query = get_query(ordering=ordering.reverse())
         async with self.pool.acquire() as connection:
             events = await fetch(connection, query)
-            progresss = await get_cursor_percent(
+            progress = await get_cursor_percent(
                 connection=connection,
                 query=query,
                 reverse_query=reverse_query
@@ -853,7 +853,7 @@ class Storage:
             wallet_events.append(wallet_event)
 
         last_affected_block = max([event['blockNumber'] for event in wallet_events], default=None)
-        return wallet_events, progresss, last_affected_block
+        return wallet_events, progress, last_affected_block
 
     async def get_wallet_assets_summary(self,
                                         addresses: List[str],
