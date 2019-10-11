@@ -234,10 +234,10 @@ async def get_cursor_percent(
 
     if query_estimation:
         total = (reverse_estimation + query_estimation)
-        progress = round((query_estimation / total) * 100, 2)
+        progress = int((query_estimation / total) * 100)
         if progress >= 100:
-            return 99.99
-        return round(100 - progress, 2)
+            return 99
+        return 100 - progress
     return 0
 
 
