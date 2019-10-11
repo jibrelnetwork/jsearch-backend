@@ -33,7 +33,7 @@ def as_dicts(func):
     return _wrapper
 
 
-def async_timeit(timeout: Optional[int] = None, name: Optional[str] = None):
+def async_timeit(name: Optional[str] = None, timeout: Optional[int] = None):
     def _wrapper(func):
         @wraps(func)
         async def _async_wrapper(*args, **kwargs):
