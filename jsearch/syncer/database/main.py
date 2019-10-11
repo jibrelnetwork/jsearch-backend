@@ -184,7 +184,7 @@ class MainDB(DBWrapper):
             blocks.number - 1 as number
         FROM blocks
         LEFT JOIN blocks as l ON l.number = blocks.number - 1
-        WHERE blocks.number BETWEEN %s AND %s
+        WHERE blocks.number >= %s and blocks.number <= %s
             AND blocks.is_forked = False
             AND l.number IS null
         ORDER BY blocks.number LIMIT 1;
@@ -200,18 +200,21 @@ class MainDB(DBWrapper):
             )
             return result.number
 
+    @async_timeit('[MAIN DB] Get last chain event')
     async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> None:
         if sync_range.end is not None:
-            cond = """block_number BETWEEN %s AND %s"""
+            cond = """block_number >= %s AND block_number <= %s"""
             params = list(sync_range)
         else:
             cond = """block_number >= %s"""
             params = [sync_range.start]
 
         params.insert(0, node_id)
-        q = f"""SELECT * FROM chain_events
-                    WHERE node_id=%s AND ({cond})
-                    ORDER BY id DESC LIMIT 1"""
+        q = f"""
+            SELECT * FROM chain_events
+            WHERE node_id=%s AND ({cond})
+            ORDER BY id DESC LIMIT 1
+        """
         async with self.engine.acquire() as conn:
             res = await conn.execute(q, params)
             row = await res.fetchone()

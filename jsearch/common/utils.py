@@ -33,7 +33,7 @@ def as_dicts(func):
     return _wrapper
 
 
-def async_timeit(timeout: Optional[int] = None, name: Optional[str] = None):
+def async_timeit(name: Optional[str] = None, timeout: Optional[int] = None):
     def _wrapper(func):
         @wraps(func)
         async def _async_wrapper(*args, **kwargs):
@@ -42,7 +42,7 @@ def async_timeit(timeout: Optional[int] = None, name: Optional[str] = None):
             result = await func(*args, **kwargs)
 
             duration = time.monotonic() - started_at
-            if timeout is None or timeout < duration:
+            if not (timeout and timeout > duration):
                 func_name = name is not None and name or func.__name__
                 logger.info(f"{func_name} has took", extra={"seconds": round(duration, 2)})
 

@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from jsearch.common import contracts
 from jsearch.common.structs import BlockRange
+from jsearch.common.utils import async_timeit
 from jsearch.syncer.structs import TokenHolderBalances, TokenHolderBalance
 from .wrapper import DBWrapper
 
@@ -74,10 +75,11 @@ class RawDB(DBWrapper):
         row = await self.fetch_one(q, block_hash)
         return row['fields']['parentHash']
 
+    @async_timeit('[RAW DB] Get next chain event')
     async def get_next_chain_event(self, block_range: BlockRange, event_id: int, node_id: str):
         params = [event_id, node_id]
         if block_range.end is not None:
-            block_cond = """block_number BETWEEN %s AND %s"""
+            block_cond = """block_number >= %s AND block_number <= %s"""
             params += list(block_range)
         else:
             block_cond = """block_number >= %s"""
@@ -91,9 +93,10 @@ class RawDB(DBWrapper):
 
         return await self.fetch_one(q, *params)
 
+    @async_timeit('[RAW DB] Get first chain event')
     async def get_first_chain_event_for_block_range(self, block_range: BlockRange, node_id):
         if block_range.end is not None:
-            cond = """block_number BETWEEN %s AND %s"""
+            cond = """block_number >= %s AND block_number <= %s"""
             params = list(block_range)
         else:
             cond = """block_number >= %s"""
