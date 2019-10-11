@@ -87,57 +87,6 @@ async def test_get_blocks(cli,
 
 
 @pytest.mark.parametrize(
-    "url, blocks, pages",
-    [
-        (
-                "/v1/blocks",
-                10,
-                0
-        ),
-        (
-                "/v1/blocks?limit=5",
-                10,
-                1
-        ),
-        (
-                "/v1/blocks?limit=3",
-                10,
-                3
-        ),
-        (
-                "/v1/blocks?block_number=1&limit=3",
-                10,
-                0
-        ),
-    ],
-    ids=[
-        "/v1/blocks?limit=10               --- returns 0 pages",
-        "/v1/blocks?limit=5                --- returns 1 pages",
-        "/v1/blocks?limit=3                --- returns 3 pages",
-        "/v1/blocks?block_number=1&limit=3 --- returns 0 page",
-    ]
-)
-async def test_get_blocks_pages(cli,
-                                block_factory,
-                                url: str,
-                                blocks: int,
-                                pages: int) -> None:
-    # given
-    block_factory.create_batch(blocks)
-
-    resp = await cli.get(url)
-    resp_json = await resp.json()
-
-    assert 'paging' in resp_json
-    paging = resp_json['paging']
-
-    assert resp.status == 200
-    assert resp_json['status']['success']
-
-    assert paging['pagesLeft'] == pages
-
-
-@pytest.mark.parametrize(
     "url, errors",
     [
         ('/v1/blocks?block_number=aaaa', [
