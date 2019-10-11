@@ -184,7 +184,7 @@ class MainDB(DBWrapper):
             blocks.number - 1 as number
         FROM blocks
         LEFT JOIN blocks as l ON l.number = blocks.number - 1
-        WHERE blocks.number BETWEEN %s AND %s
+        WHERE blocks.number >= %s and blocks.number <= %s
             AND blocks.is_forked = False
             AND l.number IS null
         ORDER BY blocks.number LIMIT 1;
