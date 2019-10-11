@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional
 
 from jsearch import settings
 from jsearch.common.structs import BlockRange
+from jsearch.common.utils import async_timeit
 from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.processor import SyncProcessor
 from jsearch.syncer.state import SyncerState
@@ -247,6 +248,7 @@ class Manager:
         })
 
     @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
+    @async_timeit(name='Process chain event')
     async def get_and_process_chain_event(self):
         block_range = await get_range_and_check_holes(self.main_db, self.sync_range, self.state)
 
@@ -295,6 +297,7 @@ class Manager:
         return await self.main_db.try_advisory_lock(self.sync_range.start, self.sync_range.end)
 
 
+@async_timeit('Finding gaps')
 async def get_range_and_check_holes(
         main_db: MainDB,
         sync_range: BlockRange,
