@@ -30,10 +30,10 @@ def get_events_ordering(scheme: OrderScheme, direction: OrderDirection) -> Order
 
 
 def get_wallet_events_query(
-        limit: int,
         address: str,
         ordering: Ordering,
-        block_number: int,
+        block_number: Optional[int] = None,
+        limit: Optional[int] = None,
         type_: Optional[str] = None,
         tx_index: Optional[int] = None,
         event_index: Optional[int] = None,
