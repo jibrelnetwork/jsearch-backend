@@ -26,7 +26,8 @@ class SyncerState:
     def as_dict(self):
         return {
             'last_block': self.last_processed_block,
-            'speed': self.speed,
+            'speed': self.total_speed,
+            'speed_last_60_seconds': self.total_speed,
             'started_at': datetime.fromtimestamp(self.started_at).isoformat(),
             'blocks': self.total_blocks
         }
