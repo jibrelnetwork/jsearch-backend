@@ -153,7 +153,10 @@ class MainDB(DBWrapper):
             )
 
     async def is_block_number_exists(self, block_num):
-        q = blocks_t.select().where(blocks_t.c.number == block_num)
+        q = blocks_t.select().where(
+            blocks_t.c.number == block_num,
+            blocks_t.c.is_forked == false()
+        )
         async with self.engine.acquire() as conn:
             res = await conn.execute(q)
             row = await res.fetchone()
