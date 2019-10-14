@@ -152,6 +152,7 @@ class MainDB(DBWrapper):
                 },
             )
 
+    @async_timeit('[RAW DB] is block exists query')
     async def is_block_number_exists(self, block_num):
         q = blocks_t.select().where(
             blocks_t.c.number == block_num,
