@@ -159,46 +159,48 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             return row is not None
 
-    @async_timeit(name='Query to find gaps')
-    async def check_on_holes(self, start: int, end: int) -> Optional[int]:
-        """
-        We use next technique to found gaps:
-
-        We get a range a ... z,
-            and do left join with self,
-            after - filter by left side.
-
-          |a|       |b| ( a - 1 )
-          |b| join  |c| ( b - 1 )
-          |c|       |d| ( c - 1 )
-          |d|       | |
-          | |       | |
-          | |       | |
-
-        We need a minimal number to find gap.
-        In example up there it is `d`.
-
-        """
+    async def get_set_left_border(self, start: int, end: int) -> Optional[int]:
         query = """
-        SELECT
-            blocks.number - 1 as number
-        FROM blocks
-        LEFT JOIN blocks as l ON l.number = blocks.number - 1
-        WHERE blocks.number >= %s and blocks.number <= %s
-            AND blocks.is_forked = False
-            AND l.number IS null
-        ORDER BY blocks.number LIMIT 1;
+            select min(number) as edge
+            from blocks
+            where is_forked = false and number >= %s and number <= %s;
         """
-        result = await self.fetch_one(query, start + 1, end)
+        result = await self.fetch_one(query, start, end)
+        if result:
+            return result.edge
+
+    async def get_gap_right_border(self, start: int, end: int) -> Optional[int]:
+        query = """
+        select next_number - 1 as gap_end
+        from (
+          select number, lead(number) over (order by number asc) as next_number
+          from blocks
+          where is_forked = false and blocks.number >= %s and blocks.number < %s
+        ) numbers
+        where number + 1 <> next_number limit 1;
+        """
+        result = await self.fetch_one(query, start, end + 1)
         if result:
             logger.info(
                 'Gap was founded',
                 extra={
-                    'gap': BlockRange(start, result.number),
+                    'gap': BlockRange(start, result.gap_end),
                     'range': BlockRange(start, end)
                 }
             )
-            return result.number
+            return result.gap_end
+
+    @async_timeit(name='Query to find gaps')
+    async def check_on_holes(self, start: int, end: int) -> Optional[int]:
+        records_right_border = await self.get_set_left_border(start, end)
+
+        if records_right_border and records_right_border != start:
+            gap_right_border = records_right_border - 1
+            return gap_right_border if gap_right_border > start else start
+
+        gap_right_border = await self.get_gap_right_border(start, end)
+        if gap_right_border:
+            return gap_right_border
 
     @async_timeit('[MAIN DB] Get last chain event')
     async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> None:
