@@ -162,7 +162,7 @@ async def estimate_query(connection: Connection, query: Query) -> int:
     return 0
 
 
-@async_timeit(name='Pages left query')
+@async_timeit(name='[MAIN DB] Pages left query')
 async def get_cursor_percent(
         connection: Connection,
         query: Query,

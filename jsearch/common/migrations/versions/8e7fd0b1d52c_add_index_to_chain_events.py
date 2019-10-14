@@ -14,7 +14,7 @@ branch_labels = None
 depends_on = None
 
 UP_SQL = """
-create index if not exists ix_chain_events_by_block_node_and_id on chain_events(block_number, node_id, id);
+create index if not exists ix_chain_events_by_block_node_and_id on chain_events(id, block_number);
 """
 
 DOWN_SQL = """

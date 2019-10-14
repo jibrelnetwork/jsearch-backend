@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional
 
 from jsearch import settings
 from jsearch.common.structs import BlockRange
+from jsearch.common.utils import async_timeit
 from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.processor import SyncProcessor
 from jsearch.syncer.state import SyncerState
@@ -247,10 +248,11 @@ class Manager:
         })
 
     @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
+    @async_timeit('Get and process chain event')
     async def get_and_process_chain_event(self):
         block_range = await get_range_and_check_holes(self.main_db, self.sync_range, self.state)
 
-        logger.info("Try to find new event", extra={"range": block_range})
+        logger.info("Try to find new event on", extra={"range": block_range})
         last_event = await self.main_db.get_last_chain_event(block_range, self.node_id)
         if last_event is None:
             next_event = await self.raw_db.get_first_chain_event_for_block_range(block_range, self.node_id)
