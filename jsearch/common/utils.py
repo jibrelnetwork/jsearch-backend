@@ -44,7 +44,7 @@ def async_timeit(name: Optional[str] = None, timeout: Optional[int] = None):
             duration = time.monotonic() - started_at
             if not (timeout and timeout > duration):
                 func_name = name is not None and name or func.__name__
-                logger.info(f"{func_name} has took", extra={"seconds": round(duration, 2)})
+                logger.info(f"{func_name} has taken", extra={"seconds": round(duration, 2)})
 
                 return result
 

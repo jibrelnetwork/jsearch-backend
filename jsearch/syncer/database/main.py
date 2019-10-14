@@ -220,6 +220,7 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             return dict(row) if row else None
 
+    @async_timeit('Insert chain event')
     async def insert_chain_event(self, event):
         q = chain_events_t.insert().values(**event)
         async with self.engine.acquire() as conn:
