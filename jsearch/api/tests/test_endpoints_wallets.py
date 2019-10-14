@@ -515,7 +515,7 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
             'value': 0,
             'decimals': 0,
             'tx_number': 1,
-            'nonce': 10,
+            'nonce': None,
             'block_number': 100
         },
         {
@@ -524,7 +524,7 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
             'value': 100,
             'decimals': 0,
             'tx_number': 1,
-            'nonce': 10,
+            'nonce': None,
             'block_number': 100
         },
         {
@@ -533,7 +533,7 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
             'value': 20000,
             'decimals': 2,
             'tx_number': 2,
-            'nonce': 10,
+            'nonce': None,
             'block_number': 100
         },
         {
@@ -551,7 +551,7 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
             'value': 1000,
             'decimals': 1,
             'tx_number': 1,
-            'nonce': 5,
+            'nonce': None,
             'block_number': 100
         },
     ]
@@ -590,7 +590,7 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
             'assetsSummary': [
                 {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 3}
             ],
-            'outgoingTransactionsNumber': "5"
+            'outgoingTransactionsNumber': "0"
         }
     ]
 
