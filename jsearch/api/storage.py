@@ -916,6 +916,7 @@ class Storage:
             FROM transactions
             WHERE address = ANY($1::varchar[])
                 AND is_forked=false
+                AND value != '0x0'
             GROUP BY address;
         """
         addresses = set([a['address'] for a in assets])

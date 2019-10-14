@@ -568,9 +568,9 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
     transfer_factory.create(address='a2', token_address='c1')
     transfer_factory.create(address='a2', token_address='c1', is_forked=True)
 
-    transaction_factory.create(address='a1')
-    transaction_factory.create(address='a1')
-    transaction_factory.create(address='a1')
+    transaction_factory.create(address='a1', value='0x0')
+    transaction_factory.create(address='a1', value='0x2')
+    transaction_factory.create(address='a1', value='0x4')
     transaction_factory.create(address='a1', is_forked=True)
 
     resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1,a2')
@@ -580,7 +580,7 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
         {
             'address': 'a1',
             'assetsSummary': [
-                {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 3},
+                {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 2},
                 {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 2},
                 {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 1}
             ],
