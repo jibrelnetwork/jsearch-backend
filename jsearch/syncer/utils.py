@@ -5,13 +5,13 @@ from jsearch import settings
 
 def get_last_block() -> int:
     query = """
-    SELECT number FROM blocks ORDER BY number DESC LIMIT 1;
+    SELECT block_number FROM headers ORDER BY block_number DESC LIMIT 1;
     """
 
-    engine = create_engine(settings.JSEARCH_MAIN_DB)
+    engine = create_engine(settings.JSEARCH_RAW_DB)
     cursor = engine.execute(query)
     row = cursor.fetchone()
 
     if row:
-        return row['number']
+        return row['block_number']
     return 0
