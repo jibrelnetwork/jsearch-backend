@@ -1,17 +1,16 @@
-import json
-
 import asyncpgsa
 from aiohttp import web
 from asyncpg import Connection
 from functools import partial
 from sqlalchemy import asc, desc, Column
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Query
 from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.ordering import DEFAULT_ORDER, ORDER_ASC, ORDER_DESC
 from jsearch.api.pagination import Page
-from jsearch.typing import AnyCoroutine
+from jsearch.common.utils import async_timeit
+from jsearch.typing import AnyCoroutine, ProgressPercent
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
@@ -59,64 +58,6 @@ def get_tag(request):
     return Tag(type_, value)
 
 
-def validate_params(request, max_limit=None, max_offset=None, default_order=None):
-    # todo: need to refactoring this function.
-    # May be split to a few smaller or rewrite to marshmallow
-    default_order = default_order or DEFAULT_ORDER
-
-    params = {}
-    errors = []
-
-    limit = request.query.get('limit')
-    if limit and limit.isdigit():
-        params['limit'] = min(int(limit), max_limit or MAX_LIMIT)
-
-    elif limit and not limit.isdigit():
-        errors.append({'field': 'limit',
-                       'error_code': ErrorCode.INVALID_LIMIT_VALUE,
-                       'error_message': 'Limit value should be valid integer, got "{}"'.format(limit)
-                       })
-    else:
-        params['limit'] = max_limit or DEFAULT_LIMIT
-
-    offset = request.query.get('offset')
-    if offset and offset.isdigit():
-        params['offset'] = int(offset)
-    elif offset and not offset.isdigit():
-        errors.append({'field': 'offset',
-                       'error_code': ErrorCode.INVALID_OFFSET_VALUE,
-                       'error_message': 'Offset value should be valid integer, got "{}"'.format(offset)
-                       })
-    else:
-        params['offset'] = DEFAULT_OFFSET
-
-    if params.get('offset') and params['offset'] > (max_offset or MAX_OFFSET):
-        errors.append({
-            'field': 'offset',
-            'error_code': ErrorCode.TOO_BIG_OFFSET_VALUE,
-            'error_message': 'Offset value should be less then "{}"'.format(MAX_OFFSET)
-        })
-
-    order = request.query.get('order', '').lower()
-    if order and order in [ORDER_ASC, ORDER_DESC]:
-        params['order'] = order
-    elif order:
-        errors.append({'field': 'order',
-                       'error_code': ErrorCode.INVALID_ORDER_VALUE,
-                       'error_message': 'Order value should be one of "asc", "desc", got "{}"'.format(order)
-                       })
-    else:
-        params['order'] = default_order
-
-    if errors:
-        body = {
-            'status': {'success': False, 'errors': errors},
-            'data': None
-        }
-        raise web.HTTPBadRequest(text=json.dumps(body), content_type='application/json')
-    return params
-
-
 def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -> List[str]:
     """Lowers, splits and strips the joined string."""
     if joined_string is None:
@@ -129,7 +70,12 @@ def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -
     return strings_list
 
 
-def api_success(data, page: Optional[Page] = None, meta: Optional[Dict[str, Any]] = None):
+def api_success(
+        data: Union[Dict[str, Any], Any],
+        page: Optional[Page] = None,
+        progress: Optional[ProgressPercent] = None,
+        meta: Optional[Dict[str, Any]] = None
+):
     body = {
         'status': {
             'success': True,
@@ -139,10 +85,13 @@ def api_success(data, page: Optional[Page] = None, meta: Optional[Dict[str, Any]
     }
 
     if page:
-        body.update(page.to_dict())
+        body['paging'] = page.to_dict()
+        if page.next_link and progress is not None:
+            body['paging']['progress'] = progress
 
     if meta:
         body['meta'] = meta
+
     return web.json_response(body)
 
 
@@ -200,13 +149,44 @@ def get_order(columns: List[Column], direction: Optional[str]) -> List[Column]:
     return columns
 
 
-async def fetch(connection: Connection, query: Query) -> List[Dict[str, Any]]:
+async def estimate_query(connection: Connection, query: Query) -> int:
+    query = query.with_only_columns('*').limit(None)
+    query = query.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
+
+    query = f"SELECT row_estimator($${query}$$);"
+    result = await fetch_row(connection, query)
+
+    if result:
+        return result.get('row_estimator', 0)
+
+    return 0
+
+
+@async_timeit(name='[MAIN DB] Pages left query')
+async def get_cursor_percent(
+        connection: Connection,
+        query: Query,
+        reverse_query: Query,
+) -> Optional[ProgressPercent]:
+    query_estimation = await estimate_query(connection, query)
+    reverse_estimation = await estimate_query(connection, reverse_query)
+
+    if query_estimation:
+        total = (reverse_estimation + query_estimation)
+        progress = int((query_estimation / total) * 100)
+        if progress >= 100:
+            return 99
+        return 100 - progress
+    return 0
+
+
+async def fetch(connection: Connection, query: Union[Query, str]) -> List[Dict[str, Any]]:
     query, params = asyncpgsa.compile_query(query)
     result = await connection.fetch(query, *params)
     return [dict(item) for item in result]
 
 
-async def fetch_row(connection: Connection, query: Query) -> Optional[Dict[str, Any]]:
+async def fetch_row(connection: Connection, query: Union[Query, str]) -> Optional[Dict[str, Any]]:
     query, params = asyncpgsa.compile_query(query)
     result = await connection.fetchrow(query, *params)
     if result is not None:

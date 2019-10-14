@@ -379,7 +379,7 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
                 f'limit=20&'
                 f'blockchain_address={event.address}'
             ),
-            'next': None
+            'next': None,
         },
         'data': {
             'pendingEvents': [],

@@ -71,13 +71,19 @@ async def test_get_blocks(cli,
     resp = await cli.get(url)
     resp_json = await resp.json()
 
+    assert 'paging' in resp_json
+    assert 'data' in resp_json
+
+    paging = resp_json['paging']
+    data = resp_json['data']
+
     assert resp.status == 200
     assert resp_json['status']['success']
 
-    assert parse_url(resp_json['paging']['next']) == parse_url(next_link)
-    assert parse_url(resp_json['paging']['link']) == parse_url(link)
+    assert parse_url(paging['next']) == parse_url(next_link)
+    assert parse_url(paging['link']) == parse_url(link)
 
-    assert [block['number'] for block in resp_json['data']] == blocks_on_page
+    assert [block['number'] for block in data] == blocks_on_page
 
 
 @pytest.mark.parametrize(
