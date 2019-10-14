@@ -880,6 +880,10 @@ class Storage:
             nonce = 0
             assets_summary = []
             for row in addr_map.get(address, []):
+                if row['nonce']:
+                    nonce = row['nonce']
+                if assets and row['asset_address'] == '':
+                    continue
                 value = row['value'] or "0"
                 decimals = row['decimals'] or "0"
 
@@ -893,8 +897,6 @@ class Storage:
                     transfers_number=row['tx_number'],
                 )
                 assets_summary.append(asset_summary)
-                if row['nonce']:
-                    nonce = row['nonce']
 
             item = AddressSummary(
                 address=address,
