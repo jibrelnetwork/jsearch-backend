@@ -27,6 +27,9 @@ def get_assets_summary_query(addresses: List[str], assets: Optional[List[str]]) 
         assets_summary_t.c.is_forked == false()
     ]
     if assets:
+        # "outgoingTransactionsNumber" (nonce) can get only from ETH assest
+        # so adding ETH address ('') ot assets list
+        assets.append('')
         conditions.append(
             Any(assets_summary_t.c.asset_address, array(tuple(assets)))
         )

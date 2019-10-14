@@ -26,7 +26,8 @@ class SyncerState:
     def as_dict(self):
         return {
             'last_block': self.last_processed_block,
-            'speed': self.speed,
+            'speed': self.total_speed,
+            'speed_last_60_seconds': self.speed,
             'started_at': datetime.fromtimestamp(self.started_at).isoformat(),
             'blocks': self.total_blocks
         }
@@ -37,7 +38,7 @@ class SyncerState:
         self.total_blocks += 1
         self.new_check_blocks += 1
 
-        if (time.time() - self.last_check) > self.CHECK_TIMEOUT:
+        if (time.monotonic() - self.last_check) > self.CHECK_TIMEOUT:
             self.last_check = int(time.time())
             self.last_check_blocks = self.new_check_blocks
             self.new_check_blocks = 0
