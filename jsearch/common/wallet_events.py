@@ -88,7 +88,7 @@ def event_from_token_transfer(address: str, transfer_data: Transfer, tx_data: Tr
         event data object
     """
     event_type = WalletEventType.ERC20_TRANSFER
-    decimals = transfer_data['token_decimals'] or TOKEN_DECIMALS_DEFAULT
+    decimals = TOKEN_DECIMALS_DEFAULT if transfer_data['token_decimals'] is None else transfer_data['token_decimals']
 
     amount = str(transfer_data['token_value'])
     decimals = str(decimals)
