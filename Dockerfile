@@ -1,5 +1,20 @@
+# Build Goose in a stock Go builder container
+FROM golang:1.13 as goose
+
+# use pure go implemntation to avoid dependency from glibc
+ENV CGO_ENABLED=0
+
+#RUN apt-get update \
+# && apt-get install --no-install-recommends gcc libc6 -y \
+# && go get -u github.com/pressly/goose/cmd/goose \
+# && rm -rf /var/lib/apt/lists/*
+
+RUN go get -u github.com/pressly/goose/cmd/goose
+
+
 FROM python:3.7
 ARG ENVIRONMENT="production"
+
 
 ENV LOG_LEVEL="INFO" \
     SENTRY_DSN="" \
@@ -39,6 +54,8 @@ RUN pip install --no-cache-dir -r requirements.txt $(test "$ENVIRONMENT" != "pro
 
 COPY --chown=app:app . /app
 RUN pip install --no-cache-dir .
+
+COPY --from=goose /go/bin/goose /usr/local/bin/
 
 USER app
 ENTRYPOINT ["/app/run.sh"]
