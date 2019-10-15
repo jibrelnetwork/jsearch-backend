@@ -70,6 +70,7 @@ class RawDB(DBWrapper):
 
         return row and row['boundary_id'] or 0
 
+    @async_timeit('[RAW DB] Get parent hash')
     async def get_parent_hash(self, block_hash):
         q = """SELECT fields FROM headers WHERE block_hash=%s"""
         row = await self.fetch_one(q, block_hash)
@@ -110,6 +111,7 @@ class RawDB(DBWrapper):
         """
         return await self.fetch_one(q, *params)
 
+    @async_timeit('[RAW DB] Is it canonical block query')
     async def is_canonical_block(self, block_hash):
         q = """SELECT id, reinserted FROM reorgs WHERE block_hash=%s ORDER BY id DESC"""
 
