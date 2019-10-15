@@ -57,6 +57,14 @@ Swagger docs for API is available by `{hostname}/docs/index.html` URL.
 
 Use `docker-compose` and `make` to create and run development environment.
 
+### Updating requirments
+
+Use [pip-tools](https://github.com/jazzband/pip-tools#example-usage-for-pip-compile).
+```.env
+make shell_root
+>>> pip compile requirements.in
+```
+
 ### Running components 
 
 Components can be run either from the [meta repository](https://github.com/jibrelnetwork/jsearch)
