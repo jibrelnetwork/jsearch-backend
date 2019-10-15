@@ -3,6 +3,9 @@ PROJECT_NAME=jsearch
 shell:
 	docker-compose run --rm dev_shell bash
 
+shell_root:
+	docker-compose run -u root dev_shell bash
+
 build:
 	docker-compose build dev
 
