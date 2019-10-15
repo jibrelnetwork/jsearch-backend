@@ -198,11 +198,11 @@ def scale_range(sync_range: BlockRange, last_block, workers: int = 1) -> Generat
     Scaling is done in a following manner (5 workers for example from 0 to
     latest block 100):
 
-        start        - start+step*1-1  |  0   - 24
-        start+step*1 - start+step*2-1  |  25  - 49
-        start+step*2 - start+step*3-1  |  50  - 74
-        start+step*3 - start+step*4-1  |  75  - 99
-        start+step*4 - end             |  100 - None
+        start        - start+step*1-1  |  0     - 25*1-1  | 0   - 24
+        start+step*1 - start+step*2-1  |  25*1  - 25*2-1  | 25  - 49
+        start+step*2 - start+step*3-1  |  25*2  - 25*3-1  | 50  - 74
+        start+step*3 - start+step*4-1  |  25*3  - 25*4-1  | 75  - 99
+        start+step*4 - end             |  25*4  - None    | 100 - None
 
 
     Examples:
