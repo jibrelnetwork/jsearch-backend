@@ -12,7 +12,6 @@ from jsearch.common.structs import BlockRange
 from jsearch.common.tables import (
     accounts_state_t,
     assets_summary_t,
-    assets_transfers_t,
     blocks_t,
     chain_events_t,
     internal_transactions_t,
@@ -127,7 +126,6 @@ class MainDB(DBWrapper):
         affected_tables = (
             accounts_state_t,
             assets_summary_t,
-            assets_transfers_t,
             internal_transactions_t,
             logs_t,
             receipts_t,

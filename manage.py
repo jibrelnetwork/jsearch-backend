@@ -8,13 +8,15 @@ from typing import NamedTuple, Any
 
 from jsearch.utils import get_alembic_version, get_goose_version
 
+MIGRATIONS_FOLDER = './migrations'
+
 
 class GooseWrapper(NamedTuple):
     dsn: str
     dir: str
 
     def _call(self, *args: Any) -> None:
-        cmd = f"goose -dir {self.dir} postgres {self.dsn}?sslmode=disable {' '.join(args)} sql"
+        cmd = f"goose -dir {self.dir} postgres {self.dsn}?sslmode=disable {' '.join(args)}"
         sys.stdout.write('CMD: {cmd}\n'.format(cmd=cmd.replace(self.dsn, '*' * len(self.dsn))))
 
         result = subprocess.run(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
@@ -22,7 +24,7 @@ class GooseWrapper(NamedTuple):
             sys.exit(1)
 
     def create(self, message: str) -> None:
-        self._call("create", message)
+        self._call("create", message, "sql")
 
     def up(self) -> None:
         self._call("up")
@@ -69,7 +71,7 @@ def init_goose(db_dsn: str) -> None:
 
 @click.group()
 @click.option('--dsn', envvar='JSEARCH_MAIN_DB')
-@click.option('--dir', default="./migrations")
+@click.option('--dir', default=MIGRATIONS_FOLDER)
 @click.pass_context
 def cli(ctx, dsn, dir):
     ctx.obj = GooseWrapper(dsn=dsn, dir=dir)
