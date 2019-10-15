@@ -59,7 +59,7 @@ def init_goose(db_dsn: str) -> None:
         is_applied boolean NOT NULL,
         tstamp timestamp NULL default now(),
         PRIMARY KEY(id)
-    ); 
+    );
     """
     insert_query = """
     INSERT INTO goose_db_version (version_id, is_applied) VALUES (%s, %s);

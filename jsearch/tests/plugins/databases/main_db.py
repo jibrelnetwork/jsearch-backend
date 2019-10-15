@@ -53,7 +53,7 @@ def apply_migrations(goose, db_dsn, pytestconfig):
 @pytest.fixture(scope='function', autouse=True)
 def truncate_tables(db):
     yield
-    
+
     from jsearch.common.tables import TABLES
 
     tables = ",".join([table.name for table in TABLES])
