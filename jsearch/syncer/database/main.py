@@ -152,8 +152,14 @@ class MainDB(DBWrapper):
                 },
             )
 
+    @async_timeit('[RAW DB] is block exists query')
     async def is_block_number_exists(self, block_num):
-        q = blocks_t.select().where(blocks_t.c.number == block_num)
+        q = blocks_t.select().where(
+            and_(
+                blocks_t.c.number == block_num,
+                blocks_t.c.is_forked == false()
+            )
+        )
         async with self.engine.acquire() as conn:
             res = await conn.execute(q)
             row = await res.fetchone()
