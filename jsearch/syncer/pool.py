@@ -195,27 +195,55 @@ def get_cmd(sync_range: BlockRange, port: int, **kwargs: Any):
 
 
 def scale_range(sync_range: BlockRange, last_block, workers: int = 1) -> Generator[BlockRange, None, None]:
+    """Scales provided `sync_range` for multiple `workers` to process.
+
+    Scaling is done in a following manner (5 workers for example from 0 to
+    latest block 100):
+
+        start        - start+step*1-1  |  0     - 25*1-1  | 0   - 24
+        start+step*1 - start+step*2-1  |  25*1  - 25*2-1  | 25  - 49
+        start+step*2 - start+step*3-1  |  25*2  - 25*3-1  | 50  - 74
+        start+step*3 - start+step*4-1  |  25*3  - 25*4-1  | 75  - 99
+        start+step*4 - end             |  25*4  - None    | 100 - None
+
+
+    Examples:
+        >>> list(scale_range(BlockRange(0, None), 200, 1))
+        [BlockRange(start=0, end=None)]
+
+        >>> list(scale_range(BlockRange(0, 100), 100, 2))
+        [BlockRange(start=0, end=49), BlockRange(start=50, end=100)]
+
+        >>> list(scale_range(BlockRange(0, None), 90, 2))
+        [BlockRange(start=0, end=89), BlockRange(start=90, end=None)]
+
+        >>> list(scale_range(BlockRange(0, None), 90, 3))
+        [BlockRange(start=0, end=44), BlockRange(start=45, end=89), BlockRange(start=90, end=None)]
+
+        >>> list(scale_range(BlockRange(0, 50), 8740094, 3))  # Uneven ranges.
+        [BlockRange(start=0, end=15), BlockRange(start=16, end=31), BlockRange(start=32, end=50)]
+
+        >>> list(scale_range(BlockRange(3500000, None), 8740094, 5)) == [
+        ...     BlockRange(start=3500000, end=4810022),
+        ...     BlockRange(start=4810023, end=6120045),
+        ...     BlockRange(start=6120046, end=7430068),
+        ...     BlockRange(start=7430069, end=8740091),
+        ...     BlockRange(start=8740092, end=None),
+        ... ]
+        True
     """
-    >>> list(scale_range(BlockRange(0, 100), 100, 2))
-    [BlockRange(start=0, end=49), BlockRange(start=50, end=99)]
+    step = _get_sync_range_step(sync_range, last_block, workers)
 
-    >>> list(scale_range(BlockRange(0, None), 90, 2))
-    [BlockRange(start=0, end=89), BlockRange(start=90, end=None)]
+    for x in range(workers-1):
+        yield BlockRange(
+            start=sync_range.start + step * x,
+            end=sync_range.start + step * (x + 1) - 1,
+        )
 
-    >>> list(scale_range(BlockRange(0, None), 90, 3))
-    [BlockRange(start=0, end=44), BlockRange(start=45, end=89), BlockRange(start=90, end=None)]
-    """
-    end = sync_range.end
-    if end is None:
-        end = last_block
-        workers -= 1
-
-    step = int((end - sync_range.start) / workers)
-    for start in range(sync_range.start, end, step):
-        yield BlockRange(start, end=start + step - 1)
-
-    if sync_range.end is None:
-        yield BlockRange(last_block, None)
+    yield BlockRange(
+        start=sync_range.start + step * (workers - 1),
+        end=sync_range.end,
+    )
 
 
 def get_workers(sync_range: BlockRange, last_block: int, workers: int = 1, **kwargs: Dict[str, Any]) -> List[Worker]:
@@ -230,3 +258,21 @@ def get_workers(sync_range: BlockRange, last_block: int, workers: int = 1, **kwa
         pool.append(worker)
 
     return pool
+
+
+def _get_sync_range_step(sync_range: BlockRange, last_block, workers: int) -> int:
+    start = sync_range.start
+    end = last_block if sync_range.end is None else sync_range.end
+
+    if sync_range.end is None:
+        # WTF: This increases ranges' chunks and allows running last worker
+        # closer to the network's end:
+        #     0-None, 50, 5 -> 0-11, 12-23, 24-35, 36-47, 48-None
+        #
+        # Without workers decrease, ranges will be like that with the last one
+        # further from the last block (50):
+        #     0-None, 50, 5 -> 0-9, 10-19, 20-29, 30-39, 40-None
+
+        workers = workers - 1
+
+    return (end - start) // max(workers, 1)
