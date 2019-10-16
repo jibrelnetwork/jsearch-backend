@@ -346,7 +346,7 @@ async def get_range_and_check_holes(
     if state.hole and state.last_processed_block < state.hole.end:
         start, end = state.hole
     elif state.checked_on_holes and state.last_processed_block < state.checked_on_holes.end:
-        start, end = state.checked_on_holes.end
+        start, end = state.checked_on_holes
     else:
         hole_left_border = (state.checked_on_holes and state.checked_on_holes.end + 1) or start
         gap = await main_db.check_on_holes(hole_left_border, end)

@@ -172,7 +172,7 @@ class MainDB(DBWrapper):
             where is_forked = false and number >= %s and number <= %s;
         """
         result = await self.fetch_one(query, start, end)
-        if result:
+        if result and (result.left or result.right):
             return BlockRange(result.left, result.right)
 
     async def get_gap_right_border(self, start: int, end: int) -> Optional[int]:
@@ -207,7 +207,9 @@ class MainDB(DBWrapper):
             gap_end = blocks.start - 1
             gap_end = gap_end if gap_end > start else start
 
-        gap_end = gap_end is None and await self.get_gap_right_border(start, end)
+        if gap_end is None:
+            gap_end = await self.get_gap_right_border(start, end)
+
         if gap_end is not None:
 
             # we have found right border of gap
