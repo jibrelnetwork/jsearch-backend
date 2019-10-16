@@ -175,6 +175,16 @@ class MainDB(DBWrapper):
         if result:
             return result.edge
 
+    async def get_set_right_border(self, start: int, end: int) -> Optional[int]:
+        query = """
+            select max(number) as edge
+            from blocks
+            where is_forked = false and number >= %s and number <= %s;
+        """
+        result = await self.fetch_one(query, start, end)
+        if result:
+            return result.edge
+
     async def get_gap_right_border(self, start: int, end: int) -> Optional[int]:
         query = """
         select next_number - 1 as gap_end
