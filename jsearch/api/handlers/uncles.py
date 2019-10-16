@@ -40,12 +40,12 @@ async def get_uncles(
         order=order,
     )
 
-    uncles, tip_meta = await maybe_apply_tip(storage, tip_hash, uncles, last_affected_block, empty=[])
+    uncles, tip = await maybe_apply_tip(storage, tip_hash, uncles, last_affected_block, empty=[])
 
     url = request.app.router['uncles'].url_for()
     page = get_page(url=url, items=uncles, limit=limit, ordering=order, mapping=UncleListSchema.mapping)
 
-    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
+    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())
 
 
 async def get_uncle(request):
