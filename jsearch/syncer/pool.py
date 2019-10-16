@@ -145,13 +145,15 @@ class WorkersPool:
 
     async def describe(self):
         states = await gather(*[worker.describe() for worker in self._workers])
+        blocks = sum([state.get("blocks", 0) for state in states], 0)
         pool_speed = sum([state.get('speed') for state in states if state.get('speed')], 0)
         return {
             'sync_range': str(self.sync_range),
             'workers': {
                 'count': self.workers,
                 'ranges': states,
-                'speed': round(pool_speed, 2)
+                'speed': round(pool_speed, 3),
+                'blocks': blocks,
             },
         }
 
