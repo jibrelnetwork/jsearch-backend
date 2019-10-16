@@ -5,7 +5,7 @@ import aiopg
 from aiopg.sa import SAConnection
 from sqlalchemy import and_, Table, false
 from sqlalchemy.orm import Query
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
 from jsearch.common.structs import BlockRange
@@ -165,25 +165,15 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             return row is not None
 
-    async def get_set_left_border(self, start: int, end: int) -> Optional[int]:
+    async def get_set_borders(self, start: int, end: int) -> Optional[BlockRange]:
         query = """
-            select min(number) as edge
+            select min(number) as left, max(number) as right
             from blocks
             where is_forked = false and number >= %s and number <= %s;
         """
         result = await self.fetch_one(query, start, end)
         if result:
-            return result.edge
-
-    async def get_set_right_border(self, start: int, end: int) -> Optional[int]:
-        query = """
-            select max(number) as edge
-            from blocks
-            where is_forked = false and number >= %s and number <= %s;
-        """
-        result = await self.fetch_one(query, start, end)
-        if result:
-            return result.edge
+            return BlockRange(result.left, result.right)
 
     async def get_gap_right_border(self, start: int, end: int) -> Optional[int]:
         query = """
@@ -207,16 +197,29 @@ class MainDB(DBWrapper):
             return result.gap_end
 
     @async_timeit(name='Query to find gaps')
-    async def check_on_holes(self, start: int, end: int) -> Optional[int]:
-        records_right_border = await self.get_set_left_border(start, end)
+    async def check_on_holes(self, start: int, end: int) -> Optional[Tuple[int, int]]:
+        gap_end = None
+        # check blocks to prevent case:
+        # | | | |x|x|x|
+        blocks = await self.get_set_borders(start, end)
 
-        if records_right_border and records_right_border != start:
-            gap_right_border = records_right_border - 1
-            return gap_right_border if gap_right_border > start else start
+        if blocks and blocks.start > start:
+            gap_end = blocks.start - 1
+            gap_end = gap_end if gap_end > start else start
 
-        gap_right_border = await self.get_gap_right_border(start, end)
-        if gap_right_border:
-            return gap_right_border
+        gap_end = gap_end is None and await self.get_gap_right_border(start, end)
+        if gap_end is not None:
+
+            # we have found right border of gap
+            # let's find left border
+            # |x|x|x| | | | |x|x|
+            blocks = await self.get_set_borders(start, gap_end)
+            if blocks and blocks.end > start:
+                gap_start = blocks.end
+            else:
+                gap_start = start
+
+            return BlockRange(gap_start, gap_end)
 
     @async_timeit('[MAIN DB] Get last chain event')
     async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> None:
