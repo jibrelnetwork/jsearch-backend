@@ -344,15 +344,15 @@ async def get_range_and_check_holes(
         return BlockRange(start, end)
 
     if state.hole and state.last_processed_block < state.hole.end:
-        end = state.hole.end
+        start, end = state.hole
     elif state.checked_on_holes and state.last_processed_block < state.checked_on_holes.end:
-        end = state.checked_on_holes.end
+        start, end = state.checked_on_holes
     else:
         hole_left_border = (state.checked_on_holes and state.checked_on_holes.end + 1) or start
-        hole_right_border = await main_db.check_on_holes(hole_left_border, end)
-        if hole_right_border:
-            state.hole = BlockRange(start, hole_right_border)
-            end = hole_right_border
+        gap = await main_db.check_on_holes(hole_left_border, end)
+        if gap:
+            state.hole = gap
+            start, end = gap
         else:
             state.hole = None
             state.checked_on_holes = BlockRange(start, end)

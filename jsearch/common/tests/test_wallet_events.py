@@ -1,3 +1,5 @@
+from typing import Optional
+
 import factory
 import pytest
 
@@ -64,6 +66,29 @@ def test_event_from_token_transfer_event_index_is_formed_correctly(
     event_index = event["event_index"]
 
     assert event_index == expected_event_index
+
+
+@pytest.mark.parametrize(
+    "decimals_in_transfer, expected_decimals_in_event",
+    (
+        (12, '12'),
+        (0, '0'),
+        (None, '18'),
+    )
+)
+def test_event_from_token_transfer_handles_decimals_correctly(
+        transaction_factory: TransactionFactory,
+        transfer_factory: TokenTransferFactory,
+        decimals_in_transfer: Optional[int],
+        expected_decimals_in_event: Optional[int],
+) -> None:
+    tx = factory.build(dict, FACTORY_CLASS=transaction_factory)
+    transfer = factory.build(dict, FACTORY_CLASS=transfer_factory, token_decimals=decimals_in_transfer)
+
+    event = wallet_events.event_from_token_transfer(address=tx["from"], tx_data=tx, transfer_data=transfer)
+    decimals = event["event_data"]["decimals"]
+
+    assert decimals == expected_decimals_in_event
 
 
 @pytest.mark.parametrize(

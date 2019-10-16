@@ -30,6 +30,8 @@ class TokenTransferFactory(factory.alchemy.SQLAlchemyModelFactory):
     transaction_hash = factory.LazyFunction(generate_address)
     transaction_index = factory.LazyFunction(lambda: randint(0, 30))
 
+    log_index = factory.LazyFunction(lambda: randint(0, 30))
+
     block_number = factory.Sequence(lambda n: n)
     block_hash = factory.LazyFunction(generate_address)
 
