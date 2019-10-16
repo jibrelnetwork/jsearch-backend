@@ -1,5 +1,5 @@
 import pytest
-from typing import List
+from typing import List, NamedTuple, Optional
 
 from jsearch.common.structs import BlockRange
 from jsearch.syncer.database import MainDB
@@ -44,77 +44,126 @@ def sync_block_range(sync_block):
     return create_blocks
 
 
+class SyncHoleCase(NamedTuple):
+    sync_range: BlockRange
+    synced_ranges: List[BlockRange]
+
+
 @pytest.mark.parametrize(
-    "start, end, synced_blocks",
+    "case",
     (
-            (10, 20, []),
-            (10, 20, [(12, 14), ]),
-            (10, 20, [(10, 12), ]),
-            (10, 20, [(18, 20), ]),
-            (10, 20, [(12, 14), (16, 18)]),
-            (10, 20, [(10, 14), (16, 20)]),
+            SyncHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[],
+            ),
+            SyncHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[BlockRange(12, 14)],
+            ),
+            SyncHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[BlockRange(10, 12)],
+            ),
+            SyncHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[BlockRange(18, 20)],
+            ),
+            SyncHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[BlockRange(12, 14), BlockRange(16, 18)],
+            ),
+            SyncHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[BlockRange(10, 14), BlockRange(16, 20)],
+            ),
     )
 )
 async def test_fills_holes(
         main_db,
-        start: int,
-        end: int,
-        synced_blocks: List[BlockRange],
         sync_block_range,
         sync_block,
-        db
+        db,
+        case
 ) -> None:
     # given
     from jsearch.syncer.manager import get_range_and_check_holes
-    for range_start, range_end in synced_blocks:
+    for range_start, range_end in case.synced_ranges:
         sync_block_range(range_start, range_end)
 
     # when
     state = SyncerState(last_processed_block=0)
 
-    block_range = BlockRange(start, end)
-    while state.last_processed_block < end:
+    block_range = case.sync_range
+    while state.last_processed_block < case.sync_range.end:
         range_ = await get_range_and_check_holes(main_db, block_range, state)
 
         event = await main_db.get_last_chain_event(range_, node_id="1")
-        number = event and event['block_number'] + 1 or start
+        number = event and event['block_number'] + 1 or case.sync_range.start
 
         sync_block(number=number)
         state.update(number)
 
     # then
     numbers = db.execute("select number from blocks order by number").fetchall()
-    for i, n in enumerate(range(start, end), ):
+    for i, n in enumerate(range(*case.sync_range), ):
         assert n == numbers[i].number
 
-    assert not await main_db.check_on_holes(start, end)
+    assert not await main_db.check_on_holes(*case.sync_range)
+
+
+class FindHoleCase(NamedTuple):
+    sync_range: BlockRange
+    synced_ranges: List[BlockRange]
+
+    gap: Optional[BlockRange]
 
 
 @pytest.mark.parametrize(
-    "start, end, synced_blocks, expected",
+    "case",
     (
-            (10, 20, [], None),
-            (10, 20, [(12, 14)], 11),
-            (10, 20, [(10, 12)], None),
-            (10, 20, [(18, 20)], 17),
-            (10, 20, [(12, 14), (16, 18)], 11),
-            (10, 20, [(10, 12), (14, 16)], 13),
+            FindHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[],
+                gap=None
+            ),
+            FindHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[BlockRange(12, 14)],
+                gap=BlockRange(10, 11)
+            ),
+            FindHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[BlockRange(10, 12)],
+                gap=None
+            ),
+            FindHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[BlockRange(18, 20)],
+                gap=BlockRange(10, 17)
+            ),
+            FindHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[BlockRange(12, 14), BlockRange(16, 18)],
+                gap=BlockRange(10, 11)
+            ),
+            FindHoleCase(
+                sync_range=BlockRange(10, 20),
+                synced_ranges=[BlockRange(10, 12), BlockRange(14, 16)],
+                gap=BlockRange(11, 13)
+            ),
     )
 )
 async def test_find_holes(
         main_db,
-        start: int,
-        end: int,
-        synced_blocks: List[BlockRange],
-        expected: int,
-        sync_block_range
+        sync_block_range,
+        case
 ):
     # given
-    for range_start, range_end in synced_blocks:
+    for range_start, range_end in case.synced_ranges:
         sync_block_range(range_start, range_end)
 
     # then
-    right_hole_border = await main_db.check_on_holes(start, end)
+    gap = await main_db.check_on_holes(case.sync_range.start, case.sync_range.end)
 
     # when
-    assert right_hole_border == expected
+    assert gap == case.gap
