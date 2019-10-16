@@ -22,6 +22,10 @@ from jsearch.api.database_queries.blocks import (
     get_last_block_query,
     ORDER_SCHEME_BY_NUMBER,
     ORDER_SCHEME_BY_TIMESTAMP, generate_blocks_query)
+from jsearch.api.database_queries.chain_events import (
+    select_latest_chain_event_id,
+    select_closest_chain_split,
+)
 from jsearch.api.database_queries.internal_transactions import (
     get_internal_txs_by_parent,
     get_internal_txs_by_address_and_block_query,
@@ -58,13 +62,14 @@ from jsearch.api.database_queries.wallet_events import (
     get_wallet_events_query,
     get_eth_transfers_by_address_query,
 )
-from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent
+from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent, ChainEvent
 from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
+from jsearch.common.types import Rows, Row
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress, ProgressPercent
 
@@ -99,6 +104,36 @@ class Storage:
 
     def __init__(self, pool):
         self.pool = pool
+
+    async def get_latest_chain_insert_id(self) -> Optional[int]:
+        query = select_latest_chain_event_id(type_=ChainEvent.INSERT)
+
+        async with self.pool.acquire() as conn:
+            row = await fetch_row(conn, query)
+
+        return row and row['max_id']
+
+    async def is_data_affected_by_chain_split(self, last_known_chain_insert_id: int, last_affected_block: int) -> bool:
+        """
+        --[15a]---[16a]---[17a]
+               \
+                \
+                 -[16b]---[17b]
+
+        Data is considered affected by chain split if after last memorized
+        history state (i.e. last known chain event ID with type inserted)
+        there's a chain split involving last figured block in any database
+        request.
+        """
+        query = select_closest_chain_split(
+            last_known_chain_insert_id=last_known_chain_insert_id,
+            last_affected_block=last_affected_block,
+        )
+
+        async with self.pool.acquire() as conn:
+            row = await fetch_row(conn, query)
+
+        return row is not None
 
     async def get_account(self, address, tag) -> Tuple[Optional[models.Account], Optional[LastAffectedBlock]]:
         """
