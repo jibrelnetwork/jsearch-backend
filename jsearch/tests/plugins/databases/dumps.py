@@ -1,33 +1,9 @@
 import json
-from pathlib import Path
 
 import pytest
-
-from jsearch.tests.utils import get_dump, sync_blocks
-
+from pathlib import Path
 
 DUMPS_FOLDER = Path(__file__).parent / "dumps"
-
-
-@pytest.fixture(scope="session")
-def db_dump_on_fuck_token_transfer_case(
-        db_dsn,
-        raw_db_dsn,
-        transfer_on_fuck_token_contract
-):
-    sync_blocks(
-        blocks=transfer_on_fuck_token_contract,
-        main_db_dsn=db_dsn,
-        raw_db_dsn=raw_db_dsn,
-    )
-    return get_dump(connection_string=db_dsn)
-
-
-@pytest.fixture(scope="function")
-def db_from_fuck_token_transfer_case(request, db, db_dump_on_fuck_token_transfer_case, fill_db, do_truncate_db):
-    fill_db(dump=db_dump_on_fuck_token_transfer_case)
-
-    request.addfinalizer(do_truncate_db)
 
 
 @pytest.fixture(scope='session')

@@ -133,17 +133,12 @@ class Manage(object):
         alembic.json_dump(args.db or os.environ['JSEARCH_MAIN_DB'], args.out)
 
     def add_test_contract(self):
-        from jsearch.tests.utils import add_test_contract
-        from jsearch.tests.plugins.tokens.fuck_token import FuckTokenSource
 
         parser = argparse.ArgumentParser(usage=f"usage: {self.script_name} [-h]")
         parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
         parser.add_argument('-address', action='store', help=argparse.SUPPRESS)
 
-        args = parser.parse_args(sys.argv[2:])
         sys.stdout.write('Running add_test_contract')
-
-        add_test_contract(args.db, args.address, FuckTokenSource.load())
 
 
 if __name__ == '__main__':
