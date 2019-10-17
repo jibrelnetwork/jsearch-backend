@@ -1,7 +1,5 @@
 import pytest
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 @pytest.mark.parametrize(
     ('name', 'expected'),

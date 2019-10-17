@@ -15,8 +15,6 @@ from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
     if url:

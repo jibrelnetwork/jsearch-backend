@@ -12,8 +12,6 @@ from jsearch.tests.plugins.databases.factories.chain_events import ChainEventFac
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 from jsearch.tests.plugins.databases.factories.wallet_events import WalletEventsFactory
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 class DataConsistencyCase(NamedTuple):
     block_number_of_data: int
