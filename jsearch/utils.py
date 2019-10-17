@@ -25,11 +25,7 @@ def split(iterable: Iterable[Any], size: int) -> List[List[Any]]:
     return [iterable[i:i + size] for i in range(0, len(iterable), size)]
 
 
-def get_alembic_version(db_dsn: str) -> Optional[int]:
-    query = """
-    SELECT version_num FROM alembic_version LIMIT 1;
-    """
-
+def safe_query(db_dsn: str, query: str, key: str) -> Optional[str]:
     engine = create_engine(db_dsn)
     try:
         cursor = engine.execute(query)
@@ -38,7 +34,21 @@ def get_alembic_version(db_dsn: str) -> Optional[int]:
         return None
 
     if row:
-        return row['version_num']
+        return row[key]
+
+
+def get_alembic_version(db_dsn: str) -> Optional[str]:
+    query = """
+    SELECT version_num FROM alembic_version LIMIT 1;
+    """
+    return safe_query(db_dsn, query, key='version_num')
+
+
+def get_goose_version(db_dsn: str) -> Optional[str]:
+    query = """
+    SELECT version_id, is_applied FROM goose_db_version ORDER BY version_id DESC LIMIT 1;
+    """
+    return safe_query(db_dsn, query, key='version_id')
 
 
 def parse_range(value: Optional[str] = None) -> Tuple[int, Optional[int]]:
