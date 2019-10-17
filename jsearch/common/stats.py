@@ -116,7 +116,22 @@ def setup_api_metrics(app: web.Application) -> None:
             settings.METRIC_API_REQUESTS_ORPHANED_TOTAL,
             'Total amount of requests failed due to data inconsistency.',
             ['endpoint'],
-        )
+        ),
+        'REQUESTS_LATENCY': prometheus_client.Histogram(
+            settings.METRIC_API_REQUESTS_LATENCY_SECONDS,
+            'Time spent to serve response in seconds.',
+            ['endpoint'],
+        ),
+        'REQUESTS_IN_PROGRESS': prometheus_client.Gauge(
+            settings.METRIC_API_REQUESTS_IN_PROGRESS_TOTAL,
+            'Total amount of requests in progress.',
+            ['endpoint', 'method'],
+        ),
+        'REQUESTS_TOTAL': prometheus_client.Counter(
+            settings.METRIC_API_REQUESTS_TOTAL,
+            'Total amount of served requests.',
+            ['endpoint', 'method', 'status'],
+        ),
     }
 
 

@@ -24,7 +24,7 @@ from jsearch.api.handlers.accounts import (
     get_account_transaction_count,
     get_account_eth_transfers
 )
-from jsearch.api.middlewares import cors_middleware
+from jsearch.api.middlewares import cors_middleware, prom_middleware
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.api.storage import Storage
 from jsearch.common import logs, stats
@@ -95,7 +95,7 @@ async def make_app() -> Application:
     """
     Create and initialize the application instance.
     """
-    app = web.Application(middlewares=(cors_middleware,))
+    app = web.Application(middlewares=(prom_middleware, cors_middleware))
     app.on_shutdown.append(on_shutdown)
 
     app['db_pool'] = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)

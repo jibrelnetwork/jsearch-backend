@@ -14,3 +14,16 @@ async def cors_middleware(request: web.Request, handler: Handler) -> web.Respons
     response.headers['Access-Control-Request-Method'] = 'POST, GET, OPTIONS, HEAD'
 
     return response
+
+
+@web.middleware
+async def prom_middleware(request: web.Request, handler: Handler) -> web.Response:
+    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request.path, request.method).inc()
+
+    with request.app['metrics']['REQUESTS_LATENCY'].labels(request.path).time():
+        response = await handler(request)
+
+    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request.path, request.method).dec()
+    request.app['metrics']['REQUESTS_TOTAL'].labels(request.method, request.path, response.status).inc()
+
+    return response
