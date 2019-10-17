@@ -3,7 +3,6 @@ from typing import List, NamedTuple, Optional
 
 from jsearch.common.structs import BlockRange
 from jsearch.syncer.database import MainDB
-from jsearch.syncer.state import SyncerState
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
 from jsearch.tests.plugins.databases.factories.chain_events import ChainEventFactory
 
@@ -28,9 +27,9 @@ def node_id():
 
 @pytest.fixture
 def sync_block(node_id, block_factory: BlockFactory, chain_events_factory: ChainEventFactory):
-    def create_block(number: int):
+    def create_block(number: int, event_id: Optional[int] = None):
         block = block_factory.create(number=number)
-        chain_events_factory.create_block(block, node_id=node_id, id=number)
+        chain_events_factory.create_for_block(block, node_id=node_id, id=event_id if event_id is not None else number)
 
     return create_block
 
@@ -44,37 +43,71 @@ def sync_block_range(sync_block):
     return create_blocks
 
 
+class RawDbEvent(NamedTuple):
+    block_number: int
+    id: int
+
+
 class SyncHoleCase(NamedTuple):
+    raw_db_events: List[RawDbEvent]
     sync_range: BlockRange
     synced_ranges: List[BlockRange]
+
+
+class RawDBMock(NamedTuple):
+    db_events: List[RawDbEvent]
+
+    async def get_first_chain_event_for_block_range(self, *args, **kwargs):
+        return self.db_events[0]
+
+    async def get_next_chain_event(self, block_range: BlockRange, last_id: int, *args, **kwargs):
+        for event in self.db_events:
+            if event.block_number in block_range and event.id > last_id:
+                return event
 
 
 @pytest.mark.parametrize(
     "case",
     (
             SyncHoleCase(
+                raw_db_events=[RawDbEvent(i, i) for i in range(10, 21)],
                 sync_range=BlockRange(10, 20),
                 synced_ranges=[],
             ),
             SyncHoleCase(
+                raw_db_events=[RawDbEvent(i, i) for i in range(10, 21)],
                 sync_range=BlockRange(10, 20),
                 synced_ranges=[BlockRange(12, 14)],
             ),
             SyncHoleCase(
+                raw_db_events=[RawDbEvent(i, i) for i in range(10, 21)],
                 sync_range=BlockRange(10, 20),
                 synced_ranges=[BlockRange(10, 12)],
             ),
             SyncHoleCase(
+                raw_db_events=[RawDbEvent(i, i) for i in range(10, 21)],
                 sync_range=BlockRange(10, 20),
                 synced_ranges=[BlockRange(18, 20)],
             ),
             SyncHoleCase(
+                raw_db_events=[RawDbEvent(i, i) for i in range(10, 21)],
                 sync_range=BlockRange(10, 20),
                 synced_ranges=[BlockRange(12, 14), BlockRange(16, 18)],
             ),
             SyncHoleCase(
+                raw_db_events=[RawDbEvent(i, i) for i in range(10, 21)],
                 sync_range=BlockRange(10, 20),
                 synced_ranges=[BlockRange(10, 14), BlockRange(16, 20)],
+            ),
+            SyncHoleCase(
+                raw_db_events=[RawDbEvent(i, i) for i in range(10, 30)],
+                sync_range=BlockRange(10, 30),
+                synced_ranges=[
+                    BlockRange(10, 14),
+                    BlockRange(16, 20),
+                    BlockRange(20, 24),
+                    BlockRange(27, 29)
+                ],
             ),
     )
 )
@@ -83,31 +116,39 @@ async def test_fills_holes(
         sync_block_range,
         sync_block,
         db,
-        case
+        case,
+        mocker,
+        node_id,
 ) -> None:
     # given
-    from jsearch.syncer.manager import get_range_and_check_holes
+    async def process_chain_event(self, event):
+        blocks = {x.block_number for x in case.raw_db_events}
+        if event.block_number in blocks:
+            sync_block(event.block_number, event.id)
+
+    mocker.patch("jsearch.syncer.manager.Manager.process_chain_event", process_chain_event)
+
+    from jsearch.syncer.manager import Manager
+
     for range_start, range_end in case.synced_ranges:
         sync_block_range(range_start, range_end)
 
+    manager = Manager(service=None, main_db=main_db, raw_db=RawDBMock(case.raw_db_events), sync_range=case.sync_range)
+    manager._running = True
+    manager.node_id = node_id
+
     # when
-    state = SyncerState(last_processed_block=0)
-
-    block_range = case.sync_range
-    while state.last_processed_block < case.sync_range.end:
-        range_ = await get_range_and_check_holes(main_db, block_range, state)
-
-        event = await main_db.get_last_chain_event(range_, node_id="1")
-        number = event and event['block_number'] + 1 or case.sync_range.start
-
-        sync_block(number=number)
-        state.update(number)
+    while manager._running:
+        await manager.get_and_process_chain_event()
 
     # then
+
+    # check - all block are synced
     numbers = db.execute("select number from blocks order by number").fetchall()
     for i, n in enumerate(range(*case.sync_range), ):
         assert n == numbers[i].number
 
+    # check - there are no holes
     assert not await main_db.check_on_holes(*case.sync_range)
 
 
