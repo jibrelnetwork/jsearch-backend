@@ -187,6 +187,9 @@ class SyncProcessor:
             if acc.get('code', '') != '':
                 contracts_set.add(acc['address'])
 
+        tx_recepients = set([tx['to'] for tx in transactions_data])
+        contracts_set |= await self.get_contracts_set(tx_recepients)
+
         contract_addresses = {item['address'] for item in logs_data} | {item.token for item in token_holder_balances}
         decimals = await decimals_cache.get_many(contract_addresses)
 
@@ -405,6 +408,9 @@ class SyncProcessor:
             data['parent_tx_index'] = tx_index_map[tx['parent_tx_hash']]
             items.append(data)
         return items
+
+    async def get_contracts_set(self, addresses):
+        return set(await self.main_db.is_contract_address(addresses))
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')

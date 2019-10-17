@@ -9,7 +9,6 @@ pytest_plugins = (
     "jsearch.tests.plugins.databases.dumps",
     "jsearch.tests.plugins.databases.factories.accounts",
     "jsearch.tests.plugins.databases.factories.assets_summary",
-    "jsearch.tests.plugins.databases.factories.assets_transfers",
     "jsearch.tests.plugins.databases.factories.blocks",
     "jsearch.tests.plugins.databases.factories.chain_events",
     "jsearch.tests.plugins.databases.factories.contracts",
