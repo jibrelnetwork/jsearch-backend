@@ -69,7 +69,6 @@ from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, 
 from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
-from jsearch.common.types import Rows, Row
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress, ProgressPercent
 
@@ -113,7 +112,11 @@ class Storage:
 
         return row and row['max_id']
 
-    async def is_data_affected_by_chain_split(self, last_known_chain_insert_id: int, last_affected_block: int) -> bool:
+    async def is_data_affected_by_chain_split(
+            self,
+            last_known_chain_insert_id: Optional[int],
+            last_affected_block: Optional[int],
+    ) -> bool:
         """
         --[15a]---[16a]---[17a]
                \
@@ -125,6 +128,9 @@ class Storage:
         there's a chain split involving last figured block in any database
         request.
         """
+        if last_known_chain_insert_id is None or last_affected_block is None:
+            return False
+
         query = select_closest_chain_split(
             last_known_chain_insert_id=last_known_chain_insert_id,
             last_affected_block=last_affected_block,

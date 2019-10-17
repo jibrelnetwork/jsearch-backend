@@ -96,7 +96,7 @@ async def get_wallet_events(
 
     is_data_affected_by_chain_split = await storage.is_data_affected_by_chain_split(
         last_known_chain_insert_id=last_known_chain_insert_id,
-        last_affected_block=max(last_affected_block, tip and tip.last_number or 0)
+        last_affected_block=max([last_affected_block, tip and tip.last_number], key=lambda x: x or 0)
     )
 
     if is_data_affected_by_chain_split:

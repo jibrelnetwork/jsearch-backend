@@ -108,3 +108,22 @@ async def test_get_wallet_events_checks_data_consistency(
         assert response_json['data'] == {'isOrphaned': True}
     else:
         assert response_json['data'] != {'isOrphaned': True}
+
+
+async def test_get_wallet_events_does_not_fails_if_there_s_no_events(cli: TestClient) -> None:
+    # given
+    url = 'v1/wallet/events?{query_params}'.format(
+        query_params=urlencode({
+            'blockchain_address': '0x0193d941b50d91be6567c7ee1c0fe7af498b4137',
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    assert response.status == 200
+    assert response_json['data'] == {
+        'events': [],
+        'pendingEvents': [],
+    }
