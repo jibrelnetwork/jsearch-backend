@@ -42,12 +42,12 @@ async def get_token_transfers(
         transaction_index=transaction_index,
         log_index=log_index
     )
-    transfers, tip_meta = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
+    transfers, tip = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
 
     url = request.app.router['token_transfers'].url_for(address=address)
     page = get_page(url=url, items=transfers, limit=limit, ordering=order)
 
-    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
+    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())
 
 
 @ApiError.catch
@@ -72,9 +72,9 @@ async def get_token_holders(
         _id=_id
     )
 
-    holders, tip_meta = await maybe_apply_tip(storage, tip_hash, holders, last_affected_block, empty=[])
+    holders, tip = await maybe_apply_tip(storage, tip_hash, holders, last_affected_block, empty=[])
 
     url = request.app.router['token_holders'].url_for(address=address)
     page = get_page(url=url, items=holders, limit=limit, ordering=order, decimals_to_ints=True)
 
-    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
+    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())

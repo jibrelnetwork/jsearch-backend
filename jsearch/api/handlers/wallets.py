@@ -70,7 +70,7 @@ async def get_wallet_events(
         limit=limit + 1
     )
 
-    data, tip_meta = await maybe_apply_tip(storage, tip_hash, events, last_affected_block, empty=[])
+    data, tip = await maybe_apply_tip(storage, tip_hash, events, last_affected_block, empty=[])
 
     url = request.app.router['wallet_events'].url_for()
     page = get_page(
@@ -99,7 +99,7 @@ async def get_wallet_events(
         },
         page=page,
         progress=progress,
-        meta=tip_meta
+        meta=tip and tip.to_dict()
     )
 
 
@@ -133,5 +133,5 @@ async def get_assets_summary(request):
     else:
         summary = []
         last_affected_block = None
-    data, tip_meta = await maybe_apply_tip(storage, tip_hash, summary, last_affected_block, empty=[])
-    return api_success([item.to_dict() for item in data], meta=tip_meta)
+    data, tip = await maybe_apply_tip(storage, tip_hash, summary, last_affected_block, empty=[])
+    return api_success([item.to_dict() for item in data], meta=tip and tip.to_dict())
