@@ -3,6 +3,7 @@ import logging
 from aiohttp import web
 from typing import Optional
 
+from jsearch import settings
 from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.handlers.common import (
@@ -101,7 +102,7 @@ async def get_wallet_events(
     )
 
     if is_data_affected_by_chain_split:
-        request.app['metrics']['REQUESTS_ORPHANED'].labels(request.path).inc()
+        request.app['metrics']['REQUESTS_ORPHANED'].labels(settings.PID, request.path).inc()
         return api_success(data={"isOrphaned": True})
 
     return api_success(

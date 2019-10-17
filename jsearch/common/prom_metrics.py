@@ -8,26 +8,27 @@ from jsearch import settings
 METRIC_API_LOOP_TASKS_TOTAL = Gauge(
     settings.METRIC_API_LOOP_TASKS_TOTAL,
     'Total amount of tasks in the event loop.',
+    ['pid'],
 )
 METRIC_API_REQUESTS_ORPHANED_TOTAL = Counter(
     settings.METRIC_API_REQUESTS_ORPHANED_TOTAL,
     'Total amount of requests failed due to data inconsistency.',
-    ['endpoint'],
+    ['pid', 'endpoint'],
 )
 METRIC_API_REQUESTS_LATENCY_SECONDS = Histogram(
     settings.METRIC_API_REQUESTS_LATENCY_SECONDS,
     'Time spent to serve response in seconds.',
-    ['endpoint'],
+    ['pid', 'endpoint'],
 )
 METRIC_API_REQUESTS_IN_PROGRESS_TOTAL = Gauge(
     settings.METRIC_API_REQUESTS_IN_PROGRESS_TOTAL,
     'Total amount of requests in progress.',
-    ['endpoint', 'method'],
+    ['pid', 'endpoint', 'method'],
 )
 METRIC_API_REQUESTS_TOTAL = Counter(
     settings.METRIC_API_REQUESTS_TOTAL,
     'Total amount of served requests.',
-    ['endpoint', 'method', 'status'],
+    ['pid', 'endpoint', 'method', 'status'],
 )
 
 
