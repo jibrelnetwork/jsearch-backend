@@ -4,36 +4,32 @@ from asyncio import AbstractEventLoop
 
 import aiopg
 import asyncpg
-import dsnparse
 import pytest
 from aiopg.sa import Engine
-from functools import partial
 from sqlalchemy import create_engine
 
 from jsearch.api.storage import Storage
-from jsearch.common.alembic_utils import downgrade, upgrade
+from manage import GooseWrapper, MIGRATIONS_FOLDER
 
 logger = logging.getLogger(__name__)
 
 
-def setup_database(connection_string):
-    upgrade(connection_string, 'head')
+def get_db_name(db_dsn: str) -> str:
+    return db_dsn.split('/')[-1]
 
 
-def teardown_database(connection_string):
-    parsed_dsn = dsnparse.parse(connection_string)
-
-    engine = create_engine(connection_string)
+def reset_postgres_activities(db_dsn: str) -> None:
+    engine = create_engine(db_dsn)
+    db_name = get_db_name(db_dsn)
     with engine.connect() as db:
         db.execute(
             f"""
             SELECT pg_terminate_backend(pg_stat_activity.pid)
             FROM pg_stat_activity
-            WHERE pg_stat_activity.datname = '{parsed_dsn.dbname}'
-            AND pid <> pg_backend_pid();
+            WHERE pg_stat_activity.datname = '{db_name}'
+                AND pid <> pg_backend_pid();
             """
         )
-    downgrade(connection_string, 'base')
 
 
 @pytest.fixture(scope="session")
@@ -41,17 +37,27 @@ def db_dsn():
     return os.environ['JSEARCH_MAIN_DB']
 
 
-@pytest.fixture(scope="function")
-def db_name(db_dsn):
-    return db_dsn.split('/')[-1]
+@pytest.fixture(scope="session")
+def goose(db_dsn):
+    return GooseWrapper(db_dsn, MIGRATIONS_FOLDER)
 
 
 @pytest.fixture(scope='session', autouse=True)
-def setup_database_migrations(request, db_dsn, pytestconfig):
-    setup_database(db_dsn)
+def apply_migrations(goose, db_dsn, pytestconfig):
+    goose.up()
+    yield
+    reset_postgres_activities(db_dsn)
+    goose.down()
 
-    finalizer = partial(teardown_database, db_dsn)
-    request.addfinalizer(finalizer)
+
+@pytest.fixture(scope='function', autouse=True)
+def truncate_tables(db):
+    yield
+
+    from jsearch.common.tables import TABLES
+
+    tables = ",".join([table.name for table in TABLES])
+    db.execute(f"TRUNCATE {tables};")
 
 
 @pytest.fixture(scope='function')
@@ -66,40 +72,6 @@ def db(db_dsn):
 @pytest.fixture
 async def sa_engine(db_dsn, loop: AbstractEventLoop) -> Engine:
     return await aiopg.sa.create_engine(db_dsn)
-
-
-@pytest.fixture(scope='function')
-def fill_db(db, do_truncate_db):
-    def _wrapper(dump):
-        do_truncate_db()
-
-        from jsearch.common.tables import TABLES
-        for table in TABLES:
-            records = dump.get(table.name)
-            if records:
-                db.execute(table.insert(), records)
-                logger.info('Fill table', extra={'table_name': table.name})
-            else:
-                logger.info('Table has empty data', extra={'table_name': table.name})
-
-    return _wrapper
-
-
-@pytest.fixture()
-def do_truncate_db(db):
-    def wrapper():
-        from jsearch.common.tables import TABLES
-
-        tables = ",".join([table.name for table in TABLES])
-        db.execute(f"TRUNCATE {tables};")
-
-    return wrapper
-
-
-@pytest.fixture(scope='function', autouse=True)
-def truncate_db(do_truncate_db):
-    yield
-    do_truncate_db()
 
 
 @pytest.mark.asyncio
