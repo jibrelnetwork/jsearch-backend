@@ -45,6 +45,7 @@ PENDING_SYNCER_BACKOFF_MAX_TRIES = int(os.environ['PENDING_SYNCER_BACKOFF_MAX_TR
 
 
 METRIC_API_LOOP_TASKS_TOTAL = 'jsearch_api_loop_tasks_total'
+METRIC_API_REQUESTS_ORPHANED_TOTAL = 'jsearch_api_requests_orphaned_total'
 METRIC_SYNCER_LOOP_TASKS_TOTAL = 'jsearch_syncer_loop_tasks_total'
 METRIC_SYNCER_PENDING_LOOP_TASKS_TOTAL = 'jsearch_syncer_pending_loop_tasks_total'
 METRIC_LAG_ETHERSCAN = 'jsearch_syncer_lag_etherscan'

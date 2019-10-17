@@ -106,7 +106,7 @@ async def make_app() -> Application:
     define_routes(app)
     enable_swagger_docs(app)
 
-    stats.setup_api_metrics()
+    stats.setup_api_metrics(app)
     logs.configure(
         log_level=settings.LOG_LEVEL,
         formatter_class=logs.select_formatter_class(settings.NO_JSON_FORMATTER),

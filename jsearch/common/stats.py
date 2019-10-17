@@ -3,6 +3,7 @@ import logging
 
 import asyncpg
 import prometheus_client
+from aiohttp import web
 
 from jsearch import settings
 from jsearch.common import utils
@@ -105,8 +106,18 @@ async def get_lag_stats(db_pool: asyncpg.pool.Pool) -> LagStats:
     return LagStats(is_healthy=is_healthy, lag=lag)
 
 
-def setup_api_metrics() -> None:
+def setup_api_metrics(app: web.Application) -> None:
+    # Automatic metrics, handled by state-less function.
     _setup_loop_tasks_total_metric(settings.METRIC_API_LOOP_TASKS_TOTAL)
+
+    # Non-automatic metrics, changeable inside a request.
+    app['metrics'] = {
+        'REQUESTS_ORPHANED': prometheus_client.Counter(
+            settings.METRIC_API_REQUESTS_ORPHANED_TOTAL,
+            'Total amount of requests failed due to data inconsistency.',
+            ['endpoint'],
+        )
+    }
 
 
 def setup_syncer_metrics() -> None:

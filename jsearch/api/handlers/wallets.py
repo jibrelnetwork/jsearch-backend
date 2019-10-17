@@ -1,5 +1,6 @@
 import logging
 
+from aiohttp import web
 from typing import Optional
 
 from jsearch.api.blockchain_tip import maybe_apply_tip
@@ -41,7 +42,7 @@ def get_key_set_fields(scheme: OrderScheme):
 @ApiError.catch
 @use_kwargs(WalletEventsSchema())
 async def get_wallet_events(
-        request,
+        request: web.Request,
         address: str,
         order: Ordering,
         limit: int,
@@ -51,7 +52,7 @@ async def get_wallet_events(
         timestamp: Optional[IntOrStr] = None,
         tx_index: Optional[int] = None,
         event_index: Optional[int] = None,
-):
+) -> web.Response:
     storage = request.app['storage']
     last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
 
@@ -100,6 +101,7 @@ async def get_wallet_events(
     )
 
     if is_data_affected_by_chain_split:
+        request.app['metrics']['REQUESTS_ORPHANED'].labels(request.path).inc()
         return api_success(data={"isOrphaned": True})
 
     return api_success(
