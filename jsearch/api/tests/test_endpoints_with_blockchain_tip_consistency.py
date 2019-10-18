@@ -7,9 +7,15 @@ from urllib.parse import urlencode
 
 from aiohttp.test_utils import TestClient
 
+from jsearch.tests.plugins.databases.factories.accounts import AccountStateFactory, AccountFactory
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
 from jsearch.tests.plugins.databases.factories.chain_events import ChainEventFactory
+from jsearch.tests.plugins.databases.factories.internal_transactions import InternalTransactionFactory
+from jsearch.tests.plugins.databases.factories.logs import LogFactory
+from jsearch.tests.plugins.databases.factories.token_holder import TokenHolderFactory
+from jsearch.tests.plugins.databases.factories.token_transfers import TokenTransferFactory
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
+from jsearch.tests.plugins.databases.factories.uncles import UncleFactory
 from jsearch.tests.plugins.databases.factories.wallet_events import WalletEventsFactory
 
 
@@ -79,6 +85,471 @@ cases = [
         does_chain_split_affect_data_consistency=False,
     ),
 ]
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_accounts_balances_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        account_state_factory: AccountStateFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    account_state = account_state_factory.create(block_number=block_of_data.number)
+
+    _patch_maybe_apply_tip(case.block_numbers_of_chain_splits)
+
+    url = 'v1/accounts/balances?{query_params}'.format(
+        query_params=urlencode({
+            'addresses': account_state.address,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_account_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        account_factory: AccountFactory,
+        account_state_factory: AccountStateFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    account = account_factory.create()
+    account_state_factory.create(block_number=block_of_data.number, address=account.address)
+
+    url = 'v1/accounts/{address}?{query_params}'.format(
+        address=account.address,
+        query_params=urlencode({
+            'addresses': account.address,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_account_transactions_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        transaction_factory: TransactionFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    transaction, _ = transaction_factory.create_for_block(block_of_data)
+
+    url = 'v1/accounts/{txhash}/transactions?{query_params}'.format(
+        txhash=transaction.hash,
+        query_params=urlencode({
+            'block_number': transaction.block_number,
+            'limit': 1,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_account_internal_transactions_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        internal_transaction_factory: InternalTransactionFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    internal_tx = internal_transaction_factory.create(block_number=block_of_data.number)
+
+    url = 'v1/accounts/{address}/internal_transactions?{query_params}'.format(
+        address=getattr(internal_tx, 'from'),
+        query_params=urlencode({
+            'block_number': internal_tx.block_number,
+            'limit': 1,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_account_mined_blocks_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    url = 'v1/accounts/{address}/transactions?{query_params}'.format(
+        address=block_of_data.miner,
+        query_params=urlencode({
+            'block_number': block_of_data.number,
+            'limit': 1,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_account_mined_uncles_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        uncle_factory: UncleFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    uncle = uncle_factory.create(block_number=block_of_data.number)
+
+    url = 'v1/accounts/{address}/mined_uncles?{query_params}'.format(
+        address=uncle.miner,
+        query_params=urlencode({
+            'uncle_number': uncle.number,
+            'limit': 1,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_account_token_transfers_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        transfer_factory: TokenTransferFactory,
+        transaction_factory: TransactionFactory,
+        log_factory: LogFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    block = block_factory.create(number=block_of_data.number)
+    tx, _ = transaction_factory.create_for_block(block_of_data)
+    log = log_factory.create_for_tx(tx)
+    transfer, _ = transfer_factory.create_for_log(block, tx, log)
+
+    url = 'v1/accounts/{address}/token_transfers?{query_params}'.format(
+        address=transfer.address,
+        query_params=urlencode({
+            'block_number': block_of_data.number,
+            'blockchain_tip': block_of_tip.hash,
+            'limit': 1,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_account_token_balance_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        token_holder_factory: TokenHolderFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    token_holder = token_holder_factory.create(block_number=block_of_data.number)
+
+    address = token_holder.account_address
+    token_address = token_holder.token_address
+
+    url = 'v1/tokens/{address}/holders?{query_params}'.format(
+        address=token_holder.token_address,
+        query_params=urlencode({
+            'block_number': token_holder.block_number,
+            'limit': 1,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    response = await cli.get(f'/v1/accounts/{address}/token_balance/{token_address}?blockchain_tip={block_of_tip.hash}')
+    response_json = await response.json()
+    response_json.pop('paging', None)
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_account_logs_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        log_factory: LogFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    log = log_factory.create(block_number=block_of_data.number)
+
+    url = 'v1/accounts/{address}/logs?{query_params}'.format(
+        address=log.address,
+        query_params=urlencode({
+            'block_number': log.block_number,
+            'limit': 1,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_blocks_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    url = 'v1/blocks?{query_params}'.format(
+        query_params=urlencode({
+            'block_number': block_of_data.number,
+            'limit': 1,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_uncles_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        uncle_factory: UncleFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    uncle = uncle_factory.create(block_number=block_of_data.number)
+
+    url = 'v1/uncles?{query_params}'.format(
+        query_params=urlencode({
+            'uncle_number': uncle.block_number,
+            'limit': 1,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_token_transfers_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        transaction_factory: TransactionFactory,
+        log_factory: LogFactory,
+        transfer_factory: TokenTransferFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    block = block_factory.create(number=block_of_data.number)
+    tx, _ = transaction_factory.create_for_block(block)
+    log = log_factory.create_for_tx(tx)
+    transfer, _ = transfer_factory.create_for_log(block, tx, log)
+
+    url = 'v1/tokens/{address}/transfers?{query_params}'.format(
+        address=transfer.token_address,
+        query_params=urlencode({
+            'block_number': transfer.block_number,
+            'limit': 1,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
+async def test_get_token_holders_orphaned_requests(
+        cli: TestClient,
+        case: DataConsistencyCase,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        token_holder_factory: TokenHolderFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    token_holder = token_holder_factory.create(block_number=block_of_data.number)
+
+    url = 'v1/tokens/{address}/holders?{query_params}'.format(
+        address=token_holder.token_address,
+        query_params=urlencode({
+            'block_number': token_holder.block_number,
+            'limit': 1,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    if case.does_chain_split_affect_data_consistency:
+        assert response_json['data'] == {'isOrphaned': True}
+    else:
+        assert response_json['data'] != {'isOrphaned': True}
 
 
 @pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
