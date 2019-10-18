@@ -18,6 +18,12 @@ DEFAULT_OFFSET = 0
 MAX_OFFSET = 10000
 
 
+class ChainEvent:
+    INSERT = 'created'
+    REINSERT = 'reinserted'
+    SPLIT = 'split'
+
+
 class Tag:
     """
     Block tag, can be block number, block hash or 'latest' label

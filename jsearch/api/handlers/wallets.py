@@ -53,6 +53,8 @@ async def get_wallet_events(
         event_index: Optional[int] = None,
 ):
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     if timestamp:
         block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
         timestamp = None
@@ -91,6 +93,14 @@ async def get_wallet_events(
             account=address,
             limit=PENDING_EVENTS_DEFAULT_LIMIT
         )
+
+    is_data_affected_by_chain_split = await storage.is_data_affected_by_chain_split(
+        last_known_chain_insert_id=last_known_chain_insert_id,
+        last_affected_block=max([last_affected_block, tip and tip.last_number], key=lambda x: x or 0)
+    )
+
+    if is_data_affected_by_chain_split:
+        return api_success(data={"isOrphaned": True})
 
     return api_success(
         data={
