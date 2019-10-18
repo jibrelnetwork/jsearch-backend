@@ -398,9 +398,9 @@ class MainDB(DBWrapper):
 
     async def is_contract_address(self, addresses):
         contracts_addresses = []
-        q = """SELECT address FROM accounts_base WHERE address = %s AND code_hash <> %s limit 1"""
+        q = """SELECT code_hash FROM accounts_base WHERE address = %s limit 1"""
         for address in addresses:
-            row = await self.fetch_one(q, address, NO_CODE_HASH)
-            if row is not None:
-                contracts_addresses.append(row['address'])
+            row = await self.fetch_one(q, address)
+            if row is not None and row['code_hash'] != NO_CODE_HASH:
+                contracts_addresses.append(address)
         return contracts_addresses
