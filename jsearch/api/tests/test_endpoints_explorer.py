@@ -1,11 +1,8 @@
-import pytest
 from aiohttp.test_utils import TestClient
 
 from jsearch.tests.plugins.databases.factories.logs import LogFactory
 from jsearch.tests.plugins.databases.factories.receipts import ReceiptFactory
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
-
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
 
 
 async def test_get_transaction(cli, main_db_data):
