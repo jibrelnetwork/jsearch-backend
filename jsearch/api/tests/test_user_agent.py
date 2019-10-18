@@ -1,4 +1,4 @@
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import ProcessPoolExecutor
 
 import pytest
 from aiohttp import web

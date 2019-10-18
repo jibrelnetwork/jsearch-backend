@@ -3,16 +3,16 @@ import logging
 
 import aiopg
 from aiopg.sa import SAConnection
-from sqlalchemy import and_, Table, false
+from sqlalchemy import and_, Table, false, select
 from sqlalchemy.orm import Query
 from typing import List, Dict, Any, Optional, Tuple
 
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
 from jsearch.common.structs import BlockRange
 from jsearch.common.tables import (
+    accounts_base_t,
     accounts_state_t,
     assets_summary_t,
-    assets_transfers_t,
     blocks_t,
     chain_events_t,
     internal_transactions_t,
@@ -32,6 +32,7 @@ from jsearch.typing import Blocks, Block
 from .wrapper import DBWrapper
 
 MAIN_DB_POOL_SIZE = 1
+NO_CODE_HASH = 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +128,6 @@ class MainDB(DBWrapper):
         affected_tables = (
             accounts_state_t,
             assets_summary_t,
-            assets_transfers_t,
             internal_transactions_t,
             logs_t,
             receipts_t,
@@ -396,3 +396,10 @@ class MainDB(DBWrapper):
             res = await conn.execute(q)
             row = await res.fetchone()
             return row['hash']
+
+    async def is_contract_address(self, addresses):
+        q = select([accounts_base_t.c.address]).where(
+            and_(accounts_base_t.c.address.in_(addresses),
+                 accounts_base_t.c.code_hash != NO_CODE_HASH))
+        rows = await self.fetch_all(q)
+        return [r['address'] for r in rows]
