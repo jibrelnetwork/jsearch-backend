@@ -1,14 +1,13 @@
 import logging
 
 from asyncpg.pool import Pool
-from typing import Any, Dict, List
 
 import asyncpgsa
 from sqlalchemy.orm import Query
 
-logger = logging.getLogger(__name__)
+from jsearch.common.types import Rows
 
-Rows = List[Dict[str, Any]]
+logger = logging.getLogger(__name__)
 
 
 async def fetch(pool: Pool, saquery: Query) -> Rows:

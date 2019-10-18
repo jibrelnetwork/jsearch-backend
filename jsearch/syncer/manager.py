@@ -3,6 +3,7 @@ import logging
 
 import backoff
 import time
+from jsearch.api.helpers import ChainEvent
 from typing import Dict, Any, Optional
 
 from jsearch import settings
@@ -15,12 +16,6 @@ from jsearch.syncer.state import SyncerState
 logger = logging.getLogger(__name__)
 
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
-
-
-class ChainEvent:
-    INSERT = 'created'
-    REINSERT = 'reinserted'
-    SPLIT = 'split'
 
 
 async def process_insert_block_event(raw_db: RawDB,

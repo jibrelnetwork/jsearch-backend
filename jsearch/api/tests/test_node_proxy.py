@@ -4,8 +4,6 @@ from pytest_mock import MockFixture
 
 from jsearch.api.node_proxy import NodeProxy
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 @pytest.mark.parametrize(
     'endpoint',

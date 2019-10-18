@@ -12,8 +12,6 @@ from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 @pytest.fixture()
 def create_account_transfers(
