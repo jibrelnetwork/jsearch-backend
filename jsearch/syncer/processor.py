@@ -420,6 +420,8 @@ class SyncProcessor:
         end_t = time.time() - start_t
         logger.debug("Contract Address Cache Summary: misses %s hits %s new_entries %s db_time %0.2fs",
                      len(misses), len(hits), len(new_entries), end_t)
+        if end_t > 0.1:
+            logger.debug("Contract Misses: %s", misses)
         contracts_addresses_cache.add(new_entries)
         return hits | new_entries
 
