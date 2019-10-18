@@ -19,13 +19,13 @@ from jsearch.tests.plugins.databases.factories.uncles import UncleFactory
 from jsearch.tests.plugins.databases.factories.wallet_events import WalletEventsFactory
 
 
-MaybeApplyTipPatcher = Callable[[List[int]], None]
+MaybeApplyTipPatcher = Callable[[str, List[int]], None]
 
 
 @pytest.fixture
 def _patch_maybe_apply_tip(mocker: MockFixture, chain_events_factory: ChainEventFactory) -> MaybeApplyTipPatcher:
 
-    def wrapper(block_numbers_of_chain_splits: List[int]) -> None:
+    def wrapper(target_name: str, block_numbers_of_chain_splits: List[int]) -> None:
         async def maybe_apply_tip_and_split_the_chain_after_that(*args: Any, **kwargs: Any) -> Any:
             result = await maybe_apply_tip(*args, **kwargs)
 
@@ -34,7 +34,7 @@ def _patch_maybe_apply_tip(mocker: MockFixture, chain_events_factory: ChainEvent
 
             return result
 
-        mocker.patch('jsearch.api.handlers.wallets.maybe_apply_tip', maybe_apply_tip_and_split_the_chain_after_that)
+        mocker.patch(target_name, maybe_apply_tip_and_split_the_chain_after_that)
 
     return wrapper
 
@@ -102,7 +102,7 @@ async def test_get_accounts_balances_orphaned_requests(
 
     account_state = account_state_factory.create(block_number=block_of_data.number)
 
-    _patch_maybe_apply_tip(case.block_numbers_of_chain_splits)
+    _patch_maybe_apply_tip('jsearch.api.handlers.accounts.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
     url = 'v1/accounts/balances?{query_params}'.format(
         query_params=urlencode({
@@ -139,6 +139,8 @@ async def test_get_account_orphaned_requests(
     account = account_factory.create()
     account_state_factory.create(block_number=block_of_data.number, address=account.address)
 
+    _patch_maybe_apply_tip('jsearch.api.handlers.accounts.maybe_apply_tip', case.block_numbers_of_chain_splits)
+
     url = 'v1/accounts/{address}?{query_params}'.format(
         address=account.address,
         query_params=urlencode({
@@ -172,6 +174,8 @@ async def test_get_account_transactions_orphaned_requests(
     block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
 
     transaction, _ = transaction_factory.create_for_block(block_of_data)
+
+    _patch_maybe_apply_tip('jsearch.api.handlers.accounts.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
     url = 'v1/accounts/{txhash}/transactions?{query_params}'.format(
         txhash=transaction.hash,
@@ -208,6 +212,8 @@ async def test_get_account_internal_transactions_orphaned_requests(
 
     internal_tx = internal_transaction_factory.create(block_number=block_of_data.number)
 
+    _patch_maybe_apply_tip('jsearch.api.handlers.accounts.maybe_apply_tip', case.block_numbers_of_chain_splits)
+
     url = 'v1/accounts/{address}/internal_transactions?{query_params}'.format(
         address=getattr(internal_tx, 'from'),
         query_params=urlencode({
@@ -239,6 +245,8 @@ async def test_get_account_mined_blocks_orphaned_requests(
     # given
     block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
     block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    _patch_maybe_apply_tip('jsearch.api.handlers.accounts.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
     url = 'v1/accounts/{address}/transactions?{query_params}'.format(
         address=block_of_data.miner,
@@ -274,6 +282,8 @@ async def test_get_account_mined_uncles_orphaned_requests(
     block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
 
     uncle = uncle_factory.create(block_number=block_of_data.number)
+
+    _patch_maybe_apply_tip('jsearch.api.handlers.accounts.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
     url = 'v1/accounts/{address}/mined_uncles?{query_params}'.format(
         address=uncle.miner,
@@ -315,6 +325,8 @@ async def test_get_account_token_transfers_orphaned_requests(
     log = log_factory.create_for_tx(tx)
     transfer, _ = transfer_factory.create_for_log(block, tx, log)
 
+    _patch_maybe_apply_tip('jsearch.api.handlers.accounts.maybe_apply_tip', case.block_numbers_of_chain_splits)
+
     url = 'v1/accounts/{address}/token_transfers?{query_params}'.format(
         address=transfer.address,
         query_params=urlencode({
@@ -352,6 +364,8 @@ async def test_get_account_token_balance_orphaned_requests(
 
     address = token_holder.account_address
     token_address = token_holder.token_address
+
+    _patch_maybe_apply_tip('jsearch.api.handlers.accounts.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
     url = 'v1/tokens/{address}/holders?{query_params}'.format(
         address=token_holder.token_address,
@@ -392,6 +406,8 @@ async def test_get_account_logs_orphaned_requests(
 
     log = log_factory.create(block_number=block_of_data.number)
 
+    _patch_maybe_apply_tip('jsearch.api.handlers.accounts.maybe_apply_tip', case.block_numbers_of_chain_splits)
+
     url = 'v1/accounts/{address}/logs?{query_params}'.format(
         address=log.address,
         query_params=urlencode({
@@ -423,6 +439,8 @@ async def test_get_blocks_orphaned_requests(
     # given
     block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
     block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
+    _patch_maybe_apply_tip('jsearch.api.handlers.blocks.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
     url = 'v1/blocks?{query_params}'.format(
         query_params=urlencode({
@@ -457,6 +475,8 @@ async def test_get_uncles_orphaned_requests(
     block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
 
     uncle = uncle_factory.create(block_number=block_of_data.number)
+
+    _patch_maybe_apply_tip('jsearch.api.handlers.uncles.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
     url = 'v1/uncles?{query_params}'.format(
         query_params=urlencode({
@@ -497,6 +517,8 @@ async def test_get_token_transfers_orphaned_requests(
     log = log_factory.create_for_tx(tx)
     transfer, _ = transfer_factory.create_for_log(block, tx, log)
 
+    _patch_maybe_apply_tip('jsearch.api.handlers.tokens.maybe_apply_tip', case.block_numbers_of_chain_splits)
+
     url = 'v1/tokens/{address}/transfers?{query_params}'.format(
         address=transfer.token_address,
         query_params=urlencode({
@@ -531,6 +553,8 @@ async def test_get_token_holders_orphaned_requests(
     block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
 
     token_holder = token_holder_factory.create(block_number=block_of_data.number)
+
+    _patch_maybe_apply_tip('jsearch.api.handlers.tokens.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
     url = 'v1/tokens/{address}/holders?{query_params}'.format(
         address=token_holder.token_address,
@@ -569,7 +593,7 @@ async def test_get_wallet_events_checks_data_consistency(
     tx, _ = transaction_factory.create_for_block(block=block_of_data)
     event = wallet_events_factory.create_token_transfer(tx=tx, block=block_of_data)
 
-    _patch_maybe_apply_tip(case.block_numbers_of_chain_splits)
+    _patch_maybe_apply_tip('jsearch.api.wallets.tokens.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
     url = 'v1/wallet/events?{query_params}'.format(
         query_params=urlencode({
