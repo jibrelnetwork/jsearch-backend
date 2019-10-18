@@ -593,7 +593,7 @@ async def test_get_wallet_events_checks_data_consistency(
     tx, _ = transaction_factory.create_for_block(block=block_of_data)
     event = wallet_events_factory.create_token_transfer(tx=tx, block=block_of_data)
 
-    _patch_maybe_apply_tip('jsearch.api.wallets.tokens.maybe_apply_tip', case.block_numbers_of_chain_splits)
+    _patch_maybe_apply_tip('jsearch.api.handlers.wallets.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
     url = 'v1/wallet/events?{query_params}'.format(
         query_params=urlencode({
