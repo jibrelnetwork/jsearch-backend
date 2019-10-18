@@ -2,7 +2,7 @@ import pytest
 
 from jsearch.api.blockchain_tip import maybe_apply_tip
 from pytest_mock import MockFixture
-from typing import NamedTuple, Any, List
+from typing import NamedTuple, Any, List, Callable
 from urllib.parse import urlencode
 
 from aiohttp.test_utils import TestClient
@@ -11,6 +11,26 @@ from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
 from jsearch.tests.plugins.databases.factories.chain_events import ChainEventFactory
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 from jsearch.tests.plugins.databases.factories.wallet_events import WalletEventsFactory
+
+
+MaybeApplyTipPatcher = Callable[[List[int]], None]
+
+
+@pytest.fixture
+def _patch_maybe_apply_tip(mocker: MockFixture, chain_events_factory: ChainEventFactory) -> MaybeApplyTipPatcher:
+
+    def wrapper(block_numbers_of_chain_splits: List[int]) -> None:
+        async def maybe_apply_tip_and_split_the_chain_after_that(*args: Any, **kwargs: Any) -> Any:
+            result = await maybe_apply_tip(*args, **kwargs)
+
+            for block_number in block_numbers_of_chain_splits:
+                chain_events_factory.create(block_number=block_number, type='split')
+
+            return result
+
+        mocker.patch('jsearch.api.handlers.wallets.maybe_apply_tip', maybe_apply_tip_and_split_the_chain_after_that)
+
+    return wrapper
 
 
 class DataConsistencyCase(NamedTuple):
@@ -64,31 +84,21 @@ cases = [
 @pytest.mark.parametrize('case', cases, ids=[repr(c) for c in cases])
 async def test_get_wallet_events_checks_data_consistency(
         cli: TestClient,
-        mocker: MockFixture,
         case: DataConsistencyCase,
         chain_events_factory: ChainEventFactory,
         block_factory: BlockFactory,
         transaction_factory: TransactionFactory,
         wallet_events_factory: WalletEventsFactory,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
 ) -> None:
     # given
-    block_of_tip = block_factory.create(number=case.block_number_of_tip)
-    block_of_data = block_factory.create(number=case.block_number_of_data)
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_tip)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=case.block_number_of_data)
+
     tx, _ = transaction_factory.create_for_block(block=block_of_data)
     event = wallet_events_factory.create_token_transfer(tx=tx, block=block_of_data)
 
-    chain_events_factory.create_block(block=block_of_tip)
-    chain_events_factory.create_block(block=block_of_data)
-
-    async def maybe_apply_tip_and_split_the_chain_after_that(*args: Any, **kwargs: Any) -> Any:
-        result = await maybe_apply_tip(*args, **kwargs)
-
-        for block_number in case.block_numbers_of_chain_splits:
-            chain_events_factory.create(block_number=block_number, type='split')
-
-        return result
-
-    mocker.patch('jsearch.api.handlers.wallets.maybe_apply_tip', maybe_apply_tip_and_split_the_chain_after_that)
+    _patch_maybe_apply_tip(case.block_numbers_of_chain_splits)
 
     url = 'v1/wallet/events?{query_params}'.format(
         query_params=urlencode({
@@ -106,22 +116,3 @@ async def test_get_wallet_events_checks_data_consistency(
         assert response_json['data'] == {'isOrphaned': True}
     else:
         assert response_json['data'] != {'isOrphaned': True}
-
-
-async def test_get_wallet_events_does_not_fails_if_there_s_no_events(cli: TestClient) -> None:
-    # given
-    url = 'v1/wallet/events?{query_params}'.format(
-        query_params=urlencode({
-            'blockchain_address': '0x0193d941b50d91be6567c7ee1c0fe7af498b4137',
-        })
-    )
-
-    # when
-    response = await cli.get(url)
-    response_json = await response.json()
-
-    assert response.status == 200
-    assert response_json['data'] == {
-        'events': [],
-        'pendingEvents': [],
-    }
