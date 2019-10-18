@@ -11,8 +11,6 @@ from jsearch.tests.plugins.databases.factories.uncles import UncleFactory
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
     if url:

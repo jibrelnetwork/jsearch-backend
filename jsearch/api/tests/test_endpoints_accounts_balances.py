@@ -12,8 +12,6 @@ from jsearch.tests.plugins.databases.factories.token_holder import TokenHolderFa
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 async def test_get_account_balances(cli, main_db_data):
     a1 = main_db_data['accounts_base'][0]

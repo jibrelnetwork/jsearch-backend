@@ -4,8 +4,6 @@ from aiohttp.test_utils import TestClient
 from jsearch.tests.plugins.databases.factories.internal_transactions import InternalTransactionFactory
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 async def test_get_internal_transactions(cli, internal_transaction_factory):
     internal_transaction_data = {
