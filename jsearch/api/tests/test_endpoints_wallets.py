@@ -16,8 +16,6 @@ from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 def get_indexes(data: Dict[str, Any]) -> int:
     indexes = []

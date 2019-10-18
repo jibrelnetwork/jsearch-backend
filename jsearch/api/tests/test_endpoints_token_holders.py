@@ -10,8 +10,6 @@ from jsearch.tests.plugins.databases.factories.common import generate_address
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 @pytest.fixture()
 def create_token_holders(

@@ -10,8 +10,6 @@ from jsearch.tests.entities import BlockFromDumpWrapper
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 async def test_get_block_404(cli):
     resp = await cli.get('/v1/blocks/1')
