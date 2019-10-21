@@ -925,6 +925,8 @@ class Storage:
                     nonce = row['nonce']
                 if assets and row['asset_address'] == '':
                     continue
+                if not row['value']:
+                    continue
                 value = row['value'] or "0"
                 decimals = row['decimals'] or "0"
 
