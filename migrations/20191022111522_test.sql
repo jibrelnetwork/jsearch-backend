@@ -12,11 +12,19 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION insert_block_data(block_data text, uncles_data text, transactions_data text, receipts_data text,
-                                  logs_data text, accounts_state_data text, accounts_base_data text,
-                                  internal_txs_data text, transfers_data text, token_holders_updates_data text,
-                                  wallet_events_data text, assets_summary_updates_data text,
-                                  chain_event_data text) RETURNS boolean
+CREATE OR REPLACE FUNCTION insert_block_data(block_data text,
+                                             uncles_data text,
+                                             transactions_data text,
+                                             receipts_data text,
+                                             logs_data text,
+                                             accounts_state_data text,
+                                             accounts_base_data text,
+                                             internal_txs_data text,
+                                             transfers_data text,
+                                             token_holders_updates_data text,
+                                             wallet_events_data text,
+                                             assets_summary_updates_data text,
+                                             chain_event_data text) RETURNS boolean
     LANGUAGE plpgsql
 AS
 $$
