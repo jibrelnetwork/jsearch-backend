@@ -3,14 +3,13 @@ import logging
 
 import aiopg
 from aiopg.sa import SAConnection
-from sqlalchemy import and_, Table, false, select
+from sqlalchemy import and_, Table, false
 from sqlalchemy.orm import Query
 from typing import List, Dict, Any, Optional, Tuple
 
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
 from jsearch.common.structs import BlockRange
 from jsearch.common.tables import (
-    accounts_base_t,
     accounts_state_t,
     assets_summary_t,
     blocks_t,
@@ -398,8 +397,10 @@ class MainDB(DBWrapper):
             return row['hash']
 
     async def is_contract_address(self, addresses):
-        q = select([accounts_base_t.c.address]).where(
-            and_(accounts_base_t.c.address.in_(addresses),
-                 accounts_base_t.c.code_hash != NO_CODE_HASH))
-        rows = await self.fetch_all(q)
-        return [r['address'] for r in rows]
+        contracts_addresses = []
+        q = """SELECT code_hash FROM accounts_base WHERE address = %s limit 1"""
+        for address in addresses:
+            row = await self.fetch_one(q, address)
+            if row is not None and row['code_hash'] != NO_CODE_HASH:
+                contracts_addresses.append(address)
+        return contracts_addresses
