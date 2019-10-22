@@ -9,6 +9,7 @@ from jsearch.api.helpers import (
     api_success,
     api_error_response_404,
     ApiError,
+    maybe_orphan_request,
 )
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_page
@@ -30,6 +31,8 @@ async def get_blocks(
     Get blocks list
     """
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     # Notes: we need to query limit + 1 items to get link on next page
     blocks, progress, last_affected_block = await storage.get_blocks(
@@ -43,6 +46,16 @@ async def get_blocks(
 
     url = request.app.router['blocks'].url_for()
     page = get_page(url=url, items=blocks, limit=limit, ordering=order, mapping=BlockListSchema.mapping)
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
 
     return api_success(data=[x.to_dict() for x in page.items], page=page, progress=progress, meta=tip and tip.to_dict())
 
