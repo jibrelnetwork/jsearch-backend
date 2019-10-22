@@ -257,7 +257,10 @@ class Manager:
             next_event = await self.raw_db.get_next_chain_event(block_range, last_event['id'], self.node_id)
 
         if self.sync_range.end != block_range.end and next_event is None:
-            logger.info("No more events in the range", extra={"range": self.state.checked_on_holes})
+            logger.info("No more events in the range", extra={
+                "range": self.state.checked_on_holes,
+                'last': last_event and last_event['id']
+            })
             self.state.hole = None
             self.state.left = block_range.end + 1
             self.state.checked_on_holes = block_range
