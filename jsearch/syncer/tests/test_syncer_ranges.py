@@ -57,8 +57,10 @@ class SyncHoleCase(NamedTuple):
 class RawDBMock(NamedTuple):
     db_events: List[RawDbEvent]
 
-    async def get_first_chain_event_for_block_range(self, *args, **kwargs):
-        return self.db_events[0]
+    async def get_first_chain_event_for_block_range(self, block_range: BlockRange, *args, **kwargs):
+        for event in self.db_events:
+            if event.block_number in block_range:
+                return event
 
     async def get_next_chain_event(self, block_range: BlockRange, last_id: int, *args, **kwargs):
         for event in self.db_events:
@@ -190,7 +192,7 @@ class FindHoleCase(NamedTuple):
             FindHoleCase(
                 sync_range=BlockRange(10, 20),
                 synced_ranges=[BlockRange(10, 12), BlockRange(14, 16)],
-                gap=BlockRange(11, 13)
+                gap=BlockRange(12, 13)
             ),
     )
 )
