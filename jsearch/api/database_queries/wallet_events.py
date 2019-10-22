@@ -69,7 +69,7 @@ def get_wallet_events_query(
 
 def get_wallet_events_ordering(scheme: OrderScheme, direction: OrderDirection):
     columns = {
-        ORDER_SCHEME_BY_NUMBER: [wallet_events_t.c.block_number, wallet_events_t.c.event_index],
+        ORDER_SCHEME_BY_NUMBER: [wallet_events_t.c.event_index],
         ORDER_SCHEME_BY_TIMESTAMP: [wallet_events_t.c.event_index]
     }[scheme]
     return get_ordering(columns, scheme, direction)
