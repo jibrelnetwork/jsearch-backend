@@ -58,7 +58,6 @@ def get_assets_summary_query(addresses: List[str], assets: Optional[List[str]]) 
             ).in_(
                 sub_query
             ),
-            assets_summary_t.c.is_forked == false(),
-            assets_summary_t.c.value > 0
+            assets_summary_t.c.is_forked == false()
         )
     )
