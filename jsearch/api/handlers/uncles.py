@@ -9,7 +9,7 @@ from jsearch.api.helpers import (
     api_success,
     api_error_response_404,
     ApiError,
-)
+    maybe_orphan_request)
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.uncles import UncleListSchema
@@ -30,6 +30,8 @@ async def get_uncles(
     Get uncles list
     """
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     block_number, timestamp = await get_last_block_number_and_timestamp(uncle_number, timestamp, storage)
 
     # Notes: we need to query limit + 1 items to get link on next page
@@ -44,6 +46,16 @@ async def get_uncles(
 
     url = request.app.router['uncles'].url_for()
     page = get_page(url=url, items=uncles, limit=limit, ordering=order, mapping=UncleListSchema.mapping)
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
 
     return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())
 

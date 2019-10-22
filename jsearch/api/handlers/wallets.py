@@ -134,10 +134,13 @@ async def get_blockchain_tip(request):
 
 
 async def get_assets_summary(request):
+    storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     addresses = get_from_joined_string(request.query.get('addresses'))
     assets = get_from_joined_string(request.query.get('assets'))
-    storage = request.app['storage']
     tip_hash = request.query.get('blockchain_tip')
+
     if addresses:
         summary, last_affected_block = await storage.get_wallet_assets_summary(
             addresses,
@@ -147,4 +150,15 @@ async def get_assets_summary(request):
         summary = []
         last_affected_block = None
     data, tip = await maybe_apply_tip(storage, tip_hash, summary, last_affected_block, empty=[])
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
+
     return api_success([item.to_dict() for item in data], meta=tip and tip.to_dict())
