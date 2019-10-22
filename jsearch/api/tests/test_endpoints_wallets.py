@@ -552,6 +552,15 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
             'nonce': None,
             'block_number': 100
         },
+        {
+            'address': 'a2',
+            'asset_address': '',
+            'value': 0,
+            'decimals': 0,
+            'tx_number': 1,
+            'nonce': 2,
+            'block_number': 10
+        },
     ]
 
     for a in assets:
@@ -588,7 +597,7 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
             'assetsSummary': [
                 {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 3}
             ],
-            'outgoingTransactionsNumber': "0"
+            'outgoingTransactionsNumber': "2"
         }
     ]
 
