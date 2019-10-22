@@ -258,7 +258,7 @@ class Manager:
 
         if self.sync_range.end != block_range.end and next_event is None:
             logger.info("No more events in the range", extra={
-                "range": self.state.checked_on_holes,
+                "range": block_range,
                 'last': last_event and last_event['id']
             })
             self.state.hole = None
