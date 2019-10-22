@@ -109,7 +109,6 @@ class RawDB(DBWrapper):
             WHERE {cond}  AND node_id=%s
             ORDER BY id ASC LIMIT 1
         """
-        print(q, params)
         return await self.fetch_one(q, *params)
 
     @async_timeit('[RAW DB] Is it canonical block query')
