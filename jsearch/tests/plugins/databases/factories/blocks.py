@@ -48,6 +48,13 @@ class BlockFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = session
         sqlalchemy_session_persistence = 'flush'
 
+    @classmethod
+    def create_with_event(cls, chain_events_factory, **kwargs) -> BlockModel:
+        block = cls.create(**kwargs)
+        chain_events_factory.create_block(block)
+
+        return block
+
 
 @pytest.fixture()
 def block_factory():

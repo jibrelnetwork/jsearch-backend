@@ -3,7 +3,6 @@ import logging
 from aiohttp import web
 from typing import Optional
 
-from jsearch import settings
 from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.handlers.common import (
@@ -11,7 +10,7 @@ from jsearch.api.handlers.common import (
     get_tip_block_number_and_timestamp,
     get_block_number_or_tag_from_timestamp
 )
-from jsearch.api.helpers import ApiError
+from jsearch.api.helpers import ApiError, maybe_orphan_request
 from jsearch.api.helpers import (
     api_success,
     api_error_response,
@@ -96,14 +95,15 @@ async def get_wallet_events(
             limit=PENDING_EVENTS_DEFAULT_LIMIT
         )
 
-    is_data_affected_by_chain_split = await storage.is_data_affected_by_chain_split(
-        last_known_chain_insert_id=last_known_chain_insert_id,
-        last_affected_block=max([last_affected_block, tip and tip.last_number], key=lambda x: x or 0)
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
     )
 
-    if is_data_affected_by_chain_split:
-        request.app['metrics']['REQUESTS_ORPHANED'].labels(settings.PID, request.path).inc()
-        return api_success(data={"isOrphaned": True})
+    if orphaned_request is not None:
+        return orphaned_request
 
     return api_success(
         data={
@@ -134,10 +134,13 @@ async def get_blockchain_tip(request):
 
 
 async def get_assets_summary(request):
+    storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     addresses = get_from_joined_string(request.query.get('addresses'))
     assets = get_from_joined_string(request.query.get('assets'))
-    storage = request.app['storage']
     tip_hash = request.query.get('blockchain_tip')
+
     if addresses:
         summary, last_affected_block = await storage.get_wallet_assets_summary(
             addresses,
@@ -147,4 +150,15 @@ async def get_assets_summary(request):
         summary = []
         last_affected_block = None
     data, tip = await maybe_apply_tip(storage, tip_hash, summary, last_affected_block, empty=[])
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
+
     return api_success([item.to_dict() for item in data], meta=tip and tip.to_dict())
