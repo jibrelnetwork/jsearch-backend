@@ -209,7 +209,7 @@ class MainDB(DBWrapper):
             # |x|x|x| | | | |x|x|
             blocks = await self.get_set_borders(start, gap_end)
             if blocks and blocks.end > start:
-                gap_start = blocks.end
+                gap_start = blocks.end + 1
             else:
                 gap_start = start
 
