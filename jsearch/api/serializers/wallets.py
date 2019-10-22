@@ -1,12 +1,13 @@
 import logging
+from typing import Dict, List, Any
 
-from marshmallow import fields
+from marshmallow import fields, validates_schema, ValidationError
 from marshmallow.validate import Range, Length
 
 from jsearch.api.database_queries.wallet_events import get_events_ordering
 from jsearch.api.helpers import Tag
 from jsearch.api.ordering import Ordering
-from jsearch.api.serializers.common import BlockRelatedListSchema
+from jsearch.api.serializers.common import BlockRelatedListSchema, is_less_than_two_values_provided
 from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower, IntField, BigIntField
 from jsearch.typing import OrderScheme, OrderDirection
 
@@ -33,6 +34,13 @@ class WalletEventsSchema(BlockRelatedListSchema):
 
     class Meta:
         strict = True
+
+    @validates_schema
+    def validate_numbers(self, data, **kwargs):
+        if is_less_than_two_values_provided(data, 'block_number', 'timestamp', 'event_index'):
+            return
+
+        raise ValidationError("Filtration should be either by number, by timestamp or by event_index")
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         return get_events_ordering(scheme, direction)

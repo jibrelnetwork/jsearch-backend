@@ -6,7 +6,7 @@ from marshmallow.validate import Length
 from jsearch.api.database_queries.uncles import get_uncles_ordering
 from jsearch.api.helpers import Tag
 from jsearch.api.ordering import Ordering
-from jsearch.api.serializers.common import ListSchema
+from jsearch.api.serializers.common import ListSchema, is_less_than_two_values_provided
 from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower
 from jsearch.typing import OrderScheme, OrderDirection
 
@@ -35,8 +35,10 @@ class UncleListSchema(ListSchema):
 
     @validates_schema
     def validate_numbers(self, data, **kwargs):
-        if data.get("uncle_number") and data.get("timestamp"):
-            raise ValidationError("Filtration should be either by number or by timestamp")
+        if is_less_than_two_values_provided(data, 'uncle_number', 'timestamp'):
+            return
+
+        raise ValidationError("Filtration should be either by number or by timestamp")
 
 
 class AccountUncleSchema(UncleListSchema):
