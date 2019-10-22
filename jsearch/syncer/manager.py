@@ -322,9 +322,9 @@ async def get_range_and_check_holes(
     if sync_range.end is None:
         return sync_range
 
-    if state.hole and state.already_processed in state.hole:
+    if state.hole and sync_range.start in state.hole:
         sync_range = state.hole
-    elif state.checked_on_holes and state.already_processed in state.checked_on_holes:
+    elif state.checked_on_holes and sync_range.start in state.checked_on_holes:
         sync_range = state.checked_on_holes
     else:
         left, right = sync_range
