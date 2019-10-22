@@ -272,6 +272,7 @@ class Manager:
         elif next_event is None:
             await asyncio.sleep(self.sleep_on_no_blocks)
         else:
+            self.state.already_processed = max(self.state.already_processed, block_range.start)
             await self.process_chain_event(next_event)
 
     async def try_lock_range(self):
