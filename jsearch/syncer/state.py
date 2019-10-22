@@ -20,7 +20,7 @@ class SyncerState:
 
     hole: Optional[BlockRange] = None
 
-    left: Optional[int] = None
+    already_processed: Optional[int] = None
     checked_on_holes: Optional[BlockRange] = None
 
     CHECK_TIMEOUT: int = 30

@@ -245,8 +245,8 @@ class Manager:
     @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
     @async_timeit('Get and process chain event')
     async def get_and_process_chain_event(self):
-        if self.state.left is None:
-            self.state.left = self.sync_range.start
+        if self.state.already_processed is None:
+            self.state.already_processed = self.sync_range.start
 
         block_range = await get_range_and_check_holes(self.main_db, self.sync_range, self.state)
         logger.info("Try to find new event on", extra={"range": block_range})
@@ -262,7 +262,7 @@ class Manager:
                 'last': last_event and last_event['id']
             })
             self.state.hole = None
-            self.state.left = block_range.end + 1
+            self.state.already_processed = block_range.end + 1
             self.state.checked_on_holes = block_range
 
         elif self.sync_range.end and self.sync_range.end == block_range.end and next_event is None:
@@ -318,17 +318,16 @@ async def get_range_and_check_holes(
           - hole
           - checked_on_holes
     """
-    sync_range = BlockRange(max(state.left, sync_range.start), sync_range.end)
+    sync_range = BlockRange(max(state.already_processed, sync_range.start), sync_range.end)
     if sync_range.end is None:
         return sync_range
 
-    if state.hole and state.left in state.hole:
+    if state.hole and state.already_processed in state.hole:
         sync_range = state.hole
-    elif state.checked_on_holes and state.left in state.checked_on_holes:
+    elif state.checked_on_holes and state.already_processed in state.checked_on_holes:
         sync_range = state.checked_on_holes
     else:
-        left = (state.checked_on_holes and state.checked_on_holes.end + 1) or sync_range.start
-        right = sync_range.end
+        left, right = sync_range
 
         gap = await main_db.check_on_holes(left, right)
         if gap:
