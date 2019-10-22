@@ -34,26 +34,31 @@ BEGIN
     INSERT INTO blocks SELECT * FROM json_populate_recordset(null::blocks, block_data::json);
     RAISE LOG 'INSERT blocks %s', clock_timestamp() - start_time;
 
+    start_time = clock_timestamp();
     IF json_array_length(uncles_data::json) > 0 THEN
         INSERT INTO uncles SELECT * FROM json_populate_recordset(null::uncles, uncles_data::json);
     END IF;
     RAISE LOG 'INSERT uncles %s', clock_timestamp() - start_time;
 
+    start_time = clock_timestamp();
     IF json_array_length(transactions_data::json) > 0 THEN
         INSERT INTO transactions SELECT * FROM json_populate_recordset(null::transactions, transactions_data::json);
     END IF;
     RAISE LOG 'INSERT transactions %s', clock_timestamp() - start_time;
 
+    start_time = clock_timestamp();
     IF json_array_length(receipts_data::json) > 0 THEN
         INSERT INTO receipts SELECT * FROM json_populate_recordset(null::receipts, receipts_data::json);
     END IF;
     RAISE LOG 'INSERT receipts %s', clock_timestamp() - start_time;
 
+    start_time = clock_timestamp();
     IF json_array_length(logs_data::json) > 0 THEN
         INSERT INTO logs SELECT * FROM json_populate_recordset(null::logs, logs_data::json);
     END IF;
     RAISE LOG 'INSERT logs %s', clock_timestamp() - start_time;
 
+    start_time = clock_timestamp();
     IF json_array_length(accounts_state_data::json) > 0 THEN
         INSERT INTO accounts_state
         SELECT *
@@ -61,11 +66,13 @@ BEGIN
     END IF;
     RAISE LOG 'INSERT accounts_state %s', clock_timestamp() - start_time;
 
+    start_time = clock_timestamp();
     IF json_array_length(accounts_base_data::json) > 0 THEN
         INSERT INTO accounts_base SELECT * FROM json_populate_recordset(null::accounts_base, accounts_base_data::json);
     END IF;
     RAISE LOG 'INSERT accounts_base %s', clock_timestamp() - start_time;
 
+    start_time = clock_timestamp();
     IF json_array_length(internal_txs_data::json) > 0 THEN
         INSERT INTO internal_transactions
         SELECT *
@@ -73,6 +80,7 @@ BEGIN
     END IF;
     RAISE LOG 'INSERT internal_transactions %s', clock_timestamp() - start_time;
 
+    start_time = clock_timestamp();
     IF json_array_length(transfers_data::json) > 0 THEN
         INSERT INTO token_transfers SELECT * FROM json_populate_recordset(null::token_transfers, transfers_data::json);
     END IF;
@@ -82,6 +90,7 @@ BEGIN
         `SELECT account_address, token_address, balance, decimals, block_number` -
         need to prevent insert null to `id` field which will cause error.
     */
+    start_time = clock_timestamp();
     IF json_array_length(token_holders_updates_data::json) > 0 THEN
         INSERT INTO token_holders (account_address, token_address, balance, decimals, block_number, block_hash,
                                    is_forked)
@@ -100,11 +109,13 @@ BEGIN
     END IF;
     RAISE LOG 'INSERT token_holders %s', clock_timestamp() - start_time;
 
+    start_time = clock_timestamp();
     IF json_array_length(wallet_events_data::json) > 0 THEN
         INSERT INTO wallet_events SELECT * FROM json_populate_recordset(null::wallet_events, wallet_events_data::json);
     END IF;
     RAISE LOG 'INSERT wallet_events %s', clock_timestamp() - start_time;
 
+    start_time = clock_timestamp();
     IF json_array_length(assets_summary_updates_data::json) > 0 THEN
         INSERT INTO assets_summary (address, asset_address, "value", decimals, nonce, tx_number, block_number,
                                     block_hash, is_forked)
@@ -128,6 +139,7 @@ BEGIN
     END IF;
     RAISE LOG 'INSERT assets_summary %s', clock_timestamp() - start_time;
 
+    start_time = clock_timestamp();
     IF char_length(chain_event_data) > 2 THEN
         INSERT INTO chain_events SELECT * FROM json_populate_record(null::chain_events, chain_event_data::json);
     END IF;
