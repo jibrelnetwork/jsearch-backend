@@ -72,13 +72,11 @@ URL = '/v1/wallet/events?{params}'
                     (4, 0, 2),
                 ],
                 URL.format(params=urlencode({
-                    'block_number': 4,
                     'event_index': make_event_index(4, 0, 1),
                     'limit': 3,
                     'order': 'desc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 4,
                     'event_index': make_event_index(4, 1, 2),
                     'limit': 3,
                     'order': 'desc'
@@ -88,13 +86,11 @@ URL = '/v1/wallet/events?{params}'
                 URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 5, 'order': 'asc'})),
                 [(0, 0, 1), (0, 0, 2), (0, 1, 1), (0, 1, 2), (1, 0, 1)],
                 URL.format(params=urlencode({
-                    'timestamp': TIMESTAMP + 1,
                     'event_index': make_event_index(1, 0, 2),
                     'limit': 5,
                     'order': 'asc'
                 })),
                 URL.format(params=urlencode({
-                    'timestamp': TIMESTAMP,
                     'event_index': make_event_index(0, 0, 1),
                     'limit': 5,
                     'order': 'asc'
@@ -104,13 +100,11 @@ URL = '/v1/wallet/events?{params}'
                 URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
                 [(0, 0, 1), (0, 0, 2), (0, 1, 1)],
                 URL.format(params=urlencode({
-                    'block_number': 0,
                     'event_index': make_event_index(0, 1, 2),
                     'limit': 3,
                     'order': 'asc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 0,
                     'event_index': make_event_index(0, 0, 1),
                     'limit': 3,
                     'order': 'asc'
@@ -120,13 +114,11 @@ URL = '/v1/wallet/events?{params}'
                 URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
                 [(3, 1, 2), (3, 1, 1), (3, 0, 2)],
                 URL.format(params=urlencode({
-                    'block_number': 3,
                     'event_index': make_event_index(3, 0, 1),
                     'limit': 3,
                     'order': 'desc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 3,
                     'event_index': make_event_index(3, 1, 2),
                     'limit': 3,
                     'order': 'desc'
@@ -134,20 +126,17 @@ URL = '/v1/wallet/events?{params}'
         ),
         (
                 URL.format(params=urlencode({
-                    'block_number': 3,
                     'event_index': make_event_index(3, 0, 2),
                     'limit': 3
                 })),
                 [(3, 0, 2), (3, 0, 1), (2, 1, 2)],
                 URL.format(params=urlencode({
-                    'block_number': 2,
                     'event_index': make_event_index(2, 1, 1),
                     'limit': 3,
                     'order': 'desc'
                 })),
                 URL.format(params=urlencode({
                     'event_index': make_event_index(3, 0, 2),
-                    'block_number': 3,
                     'limit': 3,
                     'order': 'desc'
                 })),
@@ -156,13 +145,11 @@ URL = '/v1/wallet/events?{params}'
                 URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
                 [(4, 1, 2), (4, 1, 1), (4, 0, 2)],
                 URL.format(params=urlencode({
-                    'block_number': 4,
                     'event_index': make_event_index(4, 0, 1),
                     'limit': 3,
                     'order': 'desc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 4,
                     'event_index': make_event_index(4, 1, 2),
                     'limit': 3,
                     'order': 'desc'
@@ -174,11 +161,7 @@ URL = '/v1/wallet/events?{params}'
         URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 5, 'order': 'asc'})),
         URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
         URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
-        URL.format(params=urlencode({
-            'block_number': 3,
-            'event_index': make_event_index(3, 0, 1),
-            'limit': 3
-        })),
+        URL.format(params=urlencode({'event_index': make_event_index(3, 0, 1), 'limit': 3})),
         URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
     ]
 )
@@ -387,7 +370,6 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
         'paging': {
             'link': (
                 f'/v1/wallet/events?'
-                f'block_number={block.number}&'
                 f'event_index={event.event_index}'
                 f'&order=desc&'
                 f'limit=20&'
@@ -419,7 +401,7 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
                         'hash': tx.hash,
                         'input': tx.input,
                         'nonce': tx.nonce,
-                        'status': True,
+                        'status': 1,
                         'r': tx.r,
                         's': tx.s,
                         'to': tx.to,
