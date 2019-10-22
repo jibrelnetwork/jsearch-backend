@@ -16,7 +16,7 @@ from jsearch.api.helpers import (
     api_error_response_404,
     get_from_joined_string,
     ApiError,
-)
+    maybe_orphan_request)
 from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, OrderScheme
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.accounts import (
@@ -42,6 +42,7 @@ async def get_accounts_balances(request):
     Get ballances for list of accounts
     """
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
     addresses = get_from_joined_string(request.query.get('addresses'))
     tip_hash = request.query.get('blockchain_tip') or None
 
@@ -58,6 +59,16 @@ async def get_accounts_balances(request):
     balances, tip = await maybe_apply_tip(storage, tip_hash, balances, last_affected_block, empty=[])
     balances = [b.to_dict() for b in balances]
 
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
+
     return api_success(balances, meta=tip and tip.to_dict())
 
 
@@ -67,6 +78,8 @@ async def get_account(request):
     Get account by address
     """
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     address = request.match_info.get('address').lower()
     tag = get_tag(request)
     tip_hash = request.query.get('blockchain_tip') or None
@@ -78,6 +91,16 @@ async def get_account(request):
 
     account, tip = await maybe_apply_tip(storage, tip_hash, account, last_affected_block, empty=None)
     account = {} if account is None else account.to_dict()
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
 
     return api_success(account, meta=tip and tip.to_dict())
 
@@ -98,6 +121,8 @@ async def get_account_transactions(
     Get account transactions
     """
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
 
     txs, last_affected_block = await storage.get_account_transactions(
@@ -113,6 +138,16 @@ async def get_account_transactions(
 
     url = request.app.router['accounts_txs'].url_for(address=address)
     page = get_page(url=url, items=txs, limit=limit, ordering=order)
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
 
     return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())
 
@@ -134,6 +169,8 @@ async def get_account_internal_txs(
     Get account internal transactions
     """
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     txs, last_affected_block = await storage.get_account_internal_transactions(
         address=address,
@@ -148,6 +185,16 @@ async def get_account_internal_txs(
 
     url = request.app.router['accounts_internal_txs'].url_for(address=address)
     page = get_page(url=url, items=txs, limit=limit, ordering=order, mapping=AccountsInternalTxsSchema.mapping)
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
 
     return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())
 
@@ -201,6 +248,7 @@ async def get_account_logs(
     Get contract logs
     """
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     logs, last_affected_block = await storage.get_account_logs(
@@ -216,6 +264,16 @@ async def get_account_logs(
 
     url = request.app.router['accounts_logs'].url_for(address=address)
     page = get_page(url=url, items=logs, limit=limit, ordering=order)
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
 
     return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())
 
@@ -235,6 +293,7 @@ async def get_account_mined_blocks(
     Get account mined blocks
     """
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     blocks, last_affected_block = await storage.get_account_mined_blocks(
@@ -249,6 +308,16 @@ async def get_account_mined_blocks(
 
     url = request.app.router['accounts_mined_blocks'].url_for(address=address)
     page = get_page(url=url, items=blocks, limit=limit, ordering=order, mapping=AccountMinedBlocksSchema.mapping)
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
 
     return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())
 
@@ -268,6 +337,8 @@ async def get_account_mined_uncles(
     Get account mined uncles
     """
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     block_number, timestamp = await get_last_block_number_and_timestamp(uncle_number, timestamp, storage)
 
     # Notes: we need to query limit + 1 items to get link on next page
@@ -283,6 +354,16 @@ async def get_account_mined_uncles(
 
     url = request.app.router['accounts_mined_uncles'].url_for(address=address)
     page = get_page(url=url, items=uncles, limit=limit, ordering=order, mapping=AccountUncleSchema.mapping)
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
 
     return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())
 
@@ -301,6 +382,7 @@ async def get_account_token_transfers(
         log_index: Optional[int] = None,
 ):
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
 
     if timestamp is not None:
         block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
@@ -320,12 +402,24 @@ async def get_account_token_transfers(
     url = request.app.router['account_transfers'].url_for(address=address)
     page = get_page(url=url, items=transfers, limit=limit, ordering=order)
 
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
+
     return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())
 
 
 @ApiError.catch
 async def get_account_token_balance(request):
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     token_address = request.match_info['token_address'].lower()
     account_address = request.match_info['address'].lower()
     tip_hash = request.query.get('blockchain_tip') or None
@@ -341,12 +435,24 @@ async def get_account_token_balance(request):
     holder, tip = await maybe_apply_tip(storage, tip_hash, holder, last_affected_block, empty=None)
     holder = {} if holder is None else holder.to_dict()
 
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
+
     return api_success(holder, meta=tip and tip.to_dict())
 
 
 @ApiError.catch
 async def get_account_token_balances_multi(request):
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     account_address = request.match_info['address'].lower()
     tokens_addresses = get_from_joined_string(request.query.get('contract_addresses'))
     tip_hash = request.query.get('blockchain_tip') or None
@@ -362,6 +468,17 @@ async def get_account_token_balances_multi(request):
 
     balances, last_affected_block = await storage.get_account_tokens_balances(account_address, tokens_addresses)
     balances, tip = await maybe_apply_tip(storage, tip_hash, balances, last_affected_block, empty=[])
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
+
     return api_success([b.to_dict() for b in balances], meta=tip and tip.to_dict())
 
 
@@ -394,6 +511,8 @@ async def get_account_eth_transfers(request,
                                     order=None,
                                     limit=None):
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     if timestamp:
         block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
         timestamp = None
@@ -415,4 +534,15 @@ async def get_account_eth_transfers(request,
         del d['block_number']
         del d['event_index']
         data.append(d)
+
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
+
     return api_success(data=data, page=page, meta=tip and tip.to_dict())
