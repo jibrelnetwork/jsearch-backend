@@ -262,18 +262,3 @@ def make_event_index(
         85000001870042
     """
     return block_number * 10000000 + transaction_index * 10000 + item_index
-
-
-def is_event_belongs_to_block(event_index: int, block_number: int) -> bool:
-    """
-    This functions checks if a wallet event comes from a block.
-
-    Examples:
-        >>> is_event_belongs_to_block(78500000060010, 7850000)
-        True
-        >>> is_event_belongs_to_block(78500009999999, 7850000)
-        True
-        >>> make_event_index(10, 7850000)
-        False
-    """
-    return event_index // 10000000 == block_number
