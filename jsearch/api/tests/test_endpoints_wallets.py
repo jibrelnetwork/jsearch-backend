@@ -229,7 +229,21 @@ async def test_get_wallet_events_pagination(
         (URL.format(params=urlencode({'timestamp': 10, 'block_number': 10})), [
             {
                 "field": "__all__",
-                "message": "Filtration should be either by number or by timestamp",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        (URL.format(params=urlencode({'timestamp': 10, 'event_index': 10})), [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        (URL.format(params=urlencode({'event_index': 10, 'block_number': 10})), [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
                 "code": "VALIDATION_ERROR"
             }
         ]),
@@ -251,7 +265,9 @@ async def test_get_wallet_events_pagination(
     ids=[
         "invalid_tag",
         "invalid_timestamp",
-        "either_number_or_timestamp",
+        "timestamp_and_block_number",
+        "timestamp_and_event_index",
+        "block_number_and_event_index",
         "invalid_limit",
         "invalid_order",
     ]

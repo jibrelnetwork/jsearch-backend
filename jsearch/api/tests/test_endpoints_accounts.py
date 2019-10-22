@@ -8,6 +8,7 @@ from typing import Optional, List, Dict
 from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.common.wallet_events import WalletEventType
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
+from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.tests.plugins.databases.factories.wallet_events import WalletEventsFactory
 
 logger = logging.getLogger(__name__)
@@ -654,3 +655,84 @@ async def test_get_eth_transfers_filter_by_big_value(
 
     # then
     assert status == resp.status
+
+
+URL = '/v1/accounts/<address>/eth_transfers?{params}'
+
+
+@pytest.mark.parametrize(
+    "url, errors",
+    [
+        (URL.format(params=urlencode({'block_number': 'aaaa'})), [
+            {
+                "field": "block_number",
+                "message": "Not a valid number or tag.",
+                "code": "INVALID_VALUE"
+            }
+        ]),
+        (URL.format(params=urlencode({'timestamp': 'aaaa'})), [
+            {
+                "field": "timestamp",
+                "message": "Not a valid number or tag.",
+                "code": "INVALID_VALUE"
+            }
+        ]),
+        (URL.format(params=urlencode({'timestamp': 10, 'block_number': 10})), [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        (URL.format(params=urlencode({'timestamp': 10, 'event_index': 10})), [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        (URL.format(params=urlencode({'event_index': 10, 'block_number': 10})), [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        (URL.format(params=urlencode({'limit': 100})), [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE"
+            }
+        ]),
+        (URL.format(params=urlencode({'order': 'ascending'})), [
+            {
+                "field": "order",
+                "message": 'Ordering can be either "asc" or "desc".',
+                "code": "INVALID_ORDER_VALUE"
+            }
+        ]),
+    ],
+    ids=[
+        "invalid_tag",
+        "invalid_timestamp",
+        "timestamp_and_block_number",
+        "timestamp_and_event_index",
+        "block_number_and_event_index",
+        "invalid_limit",
+        "invalid_order",
+    ]
+)
+async def test_get_eth_transfers_errors(
+        cli,
+        url,
+        errors
+):
+    # when
+    resp = await cli.get(url.replace('<address>', generate_address()))
+    resp_json = await resp.json()
+
+    # then
+    assert resp.status == 400
+    assert not resp_json['status']['success']
+    assert resp_json['status']['errors'] == errors
