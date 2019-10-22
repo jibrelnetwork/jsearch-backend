@@ -29,7 +29,7 @@ def node_id():
 def sync_block(node_id, block_factory: BlockFactory, chain_events_factory: ChainEventFactory):
     def create_block(number: int, event_id: Optional[int] = None):
         block = block_factory.create(number=number)
-        chain_events_factory.create_for_block(block, node_id=node_id, id=event_id if event_id is not None else number)
+        chain_events_factory.create_block(block, node_id=node_id, id=event_id if event_id is not None else number)
 
     return create_block
 
