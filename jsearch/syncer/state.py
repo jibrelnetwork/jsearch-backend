@@ -19,6 +19,8 @@ class SyncerState:
     new_check_blocks: int = 0
 
     hole: Optional[BlockRange] = None
+
+    already_processed: Optional[int] = None
     checked_on_holes: Optional[BlockRange] = None
 
     CHECK_TIMEOUT: int = 30
