@@ -16,7 +16,7 @@ from jsearch.api.helpers import (
     api_error_response,
     get_from_joined_string,
 )
-from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER
+from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.wallets import WalletEventsSchema
 from jsearch.api.structs.wallets import wallet_events_to_json
@@ -32,11 +32,7 @@ PENDING_EVENTS_DEFAULT_LIMIT = 100
 
 
 def get_key_set_fields(scheme: OrderScheme):
-    if scheme == ORDER_SCHEME_BY_NUMBER:
-        key_set_fields = ['blockNumber', 'event_index']
-    else:
-        key_set_fields = ['timestamp', 'event_index']
-    return key_set_fields
+    return ['event_index']
 
 
 @ApiError.catch

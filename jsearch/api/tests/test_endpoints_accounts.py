@@ -8,6 +8,7 @@ from typing import Optional, List, Dict
 from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.common.wallet_events import WalletEventType
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
+from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.tests.plugins.databases.factories.wallet_events import WalletEventsFactory
 
 logger = logging.getLogger(__name__)
@@ -399,7 +400,7 @@ async def test_get_account_eth_transfers_ok(cli, wallet_events_factory):
          'transactionHash': t1.tx_hash},
     ]
     assert resp_json['paging'] == {
-        'link': f'/v1/accounts/{address}/eth_transfers?block_number=2&event_index=2&order=desc&limit=20',
+        'link': f'/v1/accounts/{address}/eth_transfers?event_index=2&order=desc&limit=20',
         'next': None
     }
 
@@ -413,8 +414,8 @@ async def test_get_account_eth_transfers_ok(cli, wallet_events_factory):
          'transactionHash': t3.tx_hash},
     ]
     assert resp_json['paging'] == {
-        'link': f'/v1/accounts/{address}/eth_transfers?block_number=2&event_index=2&order=desc&limit=1',
-        'next': f'/v1/accounts/{address}/eth_transfers?block_number=0&event_index=0&order=desc&limit=1'
+        'link': f'/v1/accounts/{address}/eth_transfers?event_index=2&order=desc&limit=1',
+        'next': f'/v1/accounts/{address}/eth_transfers?event_index=0&order=desc&limit=1'
     }
 
     resp = await cli.get(resp_json['paging']['next'])
@@ -485,7 +486,7 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
         event_data={'amount': '6000', 'sender': '0xaaa', 'recipient': address},
         tx_data={'timestamp': 103},
     )
-    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&event_index=120000001&limit=2')
+    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?event_index=120000001&limit=2')
     assert resp.status == 200
     resp_json = await resp.json()
     assert resp_json['data'] == [{'amount': '4000',
@@ -500,10 +501,10 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
                                   'transactionHash': t3.tx_hash}
                                  ]
     assert resp_json['paging'] == {
-        'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=120000001&order=desc&limit=2',
-        'next': f'/v1/accounts/{address}/eth_transfers?block_number=10&event_index=100000001&order=desc&limit=2'}
+        'link': f'/v1/accounts/{address}/eth_transfers?event_index=120000001&order=desc&limit=2',
+        'next': f'/v1/accounts/{address}/eth_transfers?event_index=100000001&order=desc&limit=2'}
 
-    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&event_index=120000000&order=asc&limit=2')
+    resp = await cli.get(f'v1/accounts/{address}/eth_transfers?event_index=120000000&order=asc&limit=2')
     assert resp.status == 200
     resp_json = await resp.json()
     assert resp_json['data'] == [
@@ -519,8 +520,8 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
          'transactionHash': t4.tx_hash},
     ]
     assert resp_json['paging'] == {
-        'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=120000000&order=asc&limit=2',
-        'next': f'/v1/accounts/{address}/eth_transfers?block_number=13&event_index=130000000&order=asc&limit=2'}
+        'link': f'/v1/accounts/{address}/eth_transfers?event_index=120000000&order=asc&limit=2',
+        'next': f'/v1/accounts/{address}/eth_transfers?event_index=130000000&order=asc&limit=2'}
 
     resp = await cli.get(f'v1/accounts/{address}/eth_transfers?timestamp=102&order=asc&limit=2')
     assert resp.status == 200
@@ -538,8 +539,8 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
          'transactionHash': t4.tx_hash},
     ]
     assert resp_json['paging'] == {
-        'link': f'/v1/accounts/{address}/eth_transfers?timestamp=102&event_index=120000000&order=asc&limit=2',
-        'next': f'/v1/accounts/{address}/eth_transfers?timestamp=103&event_index=130000000&order=asc&limit=2'}
+        'link': f'/v1/accounts/{address}/eth_transfers?event_index=120000000&order=asc&limit=2',
+        'next': f'/v1/accounts/{address}/eth_transfers?event_index=130000000&order=asc&limit=2'}
 
     resp = await cli.get(f'v1/accounts/{address}/eth_transfers?block_number=12&order=asc&limit=2')
     assert resp.status == 200
@@ -557,8 +558,8 @@ async def test_get_account_eth_transfers_page2(cli, wallet_events_factory, block
          'transactionHash': t4.tx_hash},
     ]
     assert resp_json['paging'] == {
-        'link': f'/v1/accounts/{address}/eth_transfers?block_number=12&event_index=120000000&order=asc&limit=2',
-        'next': f'/v1/accounts/{address}/eth_transfers?block_number=13&event_index=130000000&order=asc&limit=2'}
+        'link': f'/v1/accounts/{address}/eth_transfers?event_index=120000000&order=asc&limit=2',
+        'next': f'/v1/accounts/{address}/eth_transfers?event_index=130000000&order=asc&limit=2'}
 
 
 @pytest.mark.parametrize(
@@ -654,3 +655,84 @@ async def test_get_eth_transfers_filter_by_big_value(
 
     # then
     assert status == resp.status
+
+
+URL = '/v1/accounts/<address>/eth_transfers?{params}'
+
+
+@pytest.mark.parametrize(
+    "url, errors",
+    [
+        (URL.format(params=urlencode({'block_number': 'aaaa'})), [
+            {
+                "field": "block_number",
+                "message": "Not a valid number or tag.",
+                "code": "INVALID_VALUE"
+            }
+        ]),
+        (URL.format(params=urlencode({'timestamp': 'aaaa'})), [
+            {
+                "field": "timestamp",
+                "message": "Not a valid number or tag.",
+                "code": "INVALID_VALUE"
+            }
+        ]),
+        (URL.format(params=urlencode({'timestamp': 10, 'block_number': 10})), [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        (URL.format(params=urlencode({'timestamp': 10, 'event_index': 10})), [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        (URL.format(params=urlencode({'event_index': 10, 'block_number': 10})), [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        (URL.format(params=urlencode({'limit': 100})), [
+            {
+                "field": "limit",
+                "message": "Must be between 1 and 20.",
+                "code": "INVALID_LIMIT_VALUE"
+            }
+        ]),
+        (URL.format(params=urlencode({'order': 'ascending'})), [
+            {
+                "field": "order",
+                "message": 'Ordering can be either "asc" or "desc".',
+                "code": "INVALID_ORDER_VALUE"
+            }
+        ]),
+    ],
+    ids=[
+        "invalid_tag",
+        "invalid_timestamp",
+        "timestamp_and_block_number",
+        "timestamp_and_event_index",
+        "block_number_and_event_index",
+        "invalid_limit",
+        "invalid_order",
+    ]
+)
+async def test_get_eth_transfers_errors(
+        cli,
+        url,
+        errors
+):
+    # when
+    resp = await cli.get(url.replace('<address>', generate_address()))
+    resp_json = await resp.json()
+
+    # then
+    assert resp.status == 400
+    assert not resp_json['status']['success']
+    assert resp_json['status']['errors'] == errors

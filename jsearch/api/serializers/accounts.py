@@ -11,7 +11,7 @@ from jsearch.api.database_queries.token_transfers import get_transfers_ordering
 from jsearch.api.database_queries.transactions import get_tx_ordering
 from jsearch.api.database_queries.wallet_events import get_wallet_events_ordering
 from jsearch.api.ordering import Ordering
-from jsearch.api.serializers.common import BlockRelatedListSchema, ListSchema
+from jsearch.api.serializers.common import BlockRelatedListSchema, ListSchema, is_less_than_two_values_provided
 from jsearch.api.serializers.fields import StrLower, Timestamp, IntField, BigIntField
 from jsearch.typing import OrderScheme, OrderDirection
 
@@ -133,6 +133,13 @@ class EthTransfersListSchema(BlockRelatedListSchema):
     tip_hash = StrLower(load_from='blockchain_tip')
     address = StrLower(validate=Length(min=1, max=100), location='match_info')
     event_index = BigIntField(validate=Range(min=0))
+
+    @validates_schema
+    def validate_numbers(self, data, **kwargs):
+        if is_less_than_two_values_provided(data, 'block_number', 'timestamp', 'event_index'):
+            return
+
+        raise ValidationError("Filtration should be either by number, by timestamp or by event_index")
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         return get_wallet_events_ordering(scheme, direction)
