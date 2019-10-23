@@ -42,6 +42,21 @@ def get_flatten_error_messages(messages: Dict[str, List[str]]) -> List[Dict[str,
     return flatten_messages
 
 
+def is_less_than_two_values_provided(data: Dict[str, Any], *keys: str) -> bool:
+    """
+    >>> is_less_than_two_values_provided({'a': 1, 'b': 2}, 'a', 'b')
+    False
+    >>> is_less_than_two_values_provided({'a': 1, 'c': 2}, 'a', 'b')
+    True
+    >>> is_less_than_two_values_provided({'a': 1, 'b': 2}, 'a')
+    True
+    >>> is_less_than_two_values_provided({'a': 1, 'c': 2}, 'a', 'b', 'c')
+    False
+    """
+    values = [data.get(key) for key in keys if data.get(key) is not None]
+    return len(values) < 2
+
+
 def convert_to_api_error_and_raise(exc: ValidationError, field_mapping: Optional[Dict[str, str]] = None):
     """
     Notes:
@@ -114,5 +129,7 @@ class BlockRelatedListSchema(ListSchema):
 
     @validates_schema
     def validate_numbers(self, data, **kwargs):
-        if data.get("block_number") is not None and data.get("timestamp") is not None:
-            raise ValidationError("Filtration should be either by number or by timestamp")
+        if is_less_than_two_values_provided(data, 'block_number', 'timestamp'):
+            return
+
+        raise ValidationError("Filtration should be either by number or by timestamp")

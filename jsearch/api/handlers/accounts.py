@@ -17,7 +17,7 @@ from jsearch.api.helpers import (
     get_from_joined_string,
     ApiError,
     maybe_orphan_request)
-from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, OrderScheme
+from jsearch.api.ordering import Ordering, OrderScheme
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.accounts import (
     AccountsTxsSchema,
@@ -493,11 +493,7 @@ async def get_account_transaction_count(request):
 
 
 def get_key_set_fields(scheme: OrderScheme):
-    if scheme == ORDER_SCHEME_BY_NUMBER:
-        key_set_fields = ['block_number', 'event_index']
-    else:
-        key_set_fields = ['timestamp', 'event_index']
-    return key_set_fields
+    return ['event_index']
 
 
 @ApiError.catch
