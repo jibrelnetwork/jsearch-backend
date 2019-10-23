@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import subprocess
 import time
-from functools import wraps, partial
+from functools import wraps
 from typing import List, Any, Optional
 
 logger = logging.getLogger(__name__)
