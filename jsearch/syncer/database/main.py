@@ -186,13 +186,6 @@ class MainDB(DBWrapper):
         """
         result = await self.fetch_one(query, start, end + 1)
         if result:
-            logger.info(
-                'Gap was founded',
-                extra={
-                    'gap': BlockRange(start, result.gap_end),
-                    'range': BlockRange(start, end)
-                }
-            )
             return result.gap_end
 
     @async_timeit(name='Query to find gaps')
@@ -216,11 +209,19 @@ class MainDB(DBWrapper):
             # |x|x|x| | | | |x|x|
             blocks = await self.get_set_borders(start, gap_end)
             if blocks and blocks.end > start:
-                gap_start = blocks.end
+                gap_start = blocks.end + 1
             else:
                 gap_start = start
 
-            return BlockRange(gap_start, gap_end)
+            gap = BlockRange(gap_start, gap_end)
+            logger.info(
+                'Gap was founded',
+                extra={
+                    'gap': gap,
+                    'range': BlockRange(start, end)
+                }
+            )
+            return gap
 
     @async_timeit('[MAIN DB] Get last chain event')
     async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> None:
