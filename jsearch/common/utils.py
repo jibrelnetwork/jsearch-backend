@@ -48,9 +48,9 @@ class Timer:
 
 @contextmanager
 def timer():
-    timer_ = Timer(start_at=time.time(), end_at=None)
+    timer_ = Timer(start_at=time.perf_counter(), end_at=None)
     yield timer_
-    timer_.end_at = time.time()
+    timer_.end_at = time.perf_counter()
 
 
 def timeit(name: Optional[str] = None, timeout: Optional[int] = None, precision: int = 3):
@@ -58,7 +58,7 @@ def timeit(name: Optional[str] = None, timeout: Optional[int] = None, precision:
 
         def log_time(t):
             if not (timeout and timeout > t.get()):
-                func_name = name is not None and name or func.__name__
+                func_name = name or func.__name__
                 logger.info(f"async {func_name} has taken", extra={"seconds": round(t.seconds, precision)})
 
         if asyncio.iscoroutinefunction(func):
