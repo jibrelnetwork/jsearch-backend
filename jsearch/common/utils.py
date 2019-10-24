@@ -117,7 +117,7 @@ def timeit(name: Optional[str] = None, timeout: Optional[int] = None, precision:
 
         def log_time(t):
             if not (timeout and timeout > t.get()):
-                logger.info(f"async {func_name} has taken", extra={"seconds": round(t.seconds, precision)})
+                logger.info(f"{func_name} has taken", extra={"seconds": round(t.seconds, precision)})
 
         if asyncio.iscoroutinefunction(func):
             @wraps(func)

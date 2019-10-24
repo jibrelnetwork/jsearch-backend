@@ -21,19 +21,18 @@ from jsearch.common.tables import (
 )
 from jsearch.common.wallet_events import WalletEventType
 from jsearch.syncer.database import RawDB, MainDB
-from jsearch.syncer.processor import SyncProcessor, dict_keys_case_convert
+from jsearch.syncer.processor import dict_keys_case_convert, sync_block
 
 
 async def call_system_under_test(raw_db_dsn: str, db_dsn: str, block_hash: str):
     async with MainDB(db_dsn) as main_db, RawDB(raw_db_dsn) as raw_db:
-        processor = SyncProcessor(raw_db, main_db)
         chain_event = {
             'id': 1,
             'block_number': 1,
             'block_hash': block_hash,
             'created_at': datetime.datetime.now()
         }
-        await processor.sync_block(block_hash=block_hash, chain_event=chain_event)
+        await sync_block(raw_db, main_db, block_hash=block_hash, chain_event=chain_event)
 
 
 @pytest.fixture
