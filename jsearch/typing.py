@@ -1,6 +1,9 @@
 from sqlalchemy import Column
 from typing import Any, Dict, NewType, Callable, Awaitable, Coroutine, List, TypeVar, Union
 
+AnyDict = Dict[str, Any]
+AnyDicts = List[AnyDict]
+
 Abi = List[Dict[str, Any]]
 Abi_ERC20 = NewType('Abi_ERC20', Abi)
 
