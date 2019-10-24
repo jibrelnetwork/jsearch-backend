@@ -15,6 +15,7 @@ from web3.utils.normalizers import abi_bytes_to_bytes, abi_address_to_hex, abi_s
 
 from jsearch import settings
 from jsearch.common.rpc import EthRequestException, EthCallException
+from jsearch.common.utils import timeit
 from jsearch.syncer.structs import TokenHolder
 
 LATEST_BLOCK = 'latest'
@@ -199,9 +200,9 @@ async def get_balances(
     return balances
 
 
+@timeit("[GETH] Decimals total time", accumulate=True)
 async def get_decimals(addresses: List[str], batch_size: int) -> Dict[str, int]:
     calls = []
-    gt = time.monotonic()
     for i, addr in enumerate(addresses):
         call = get_decimals_rpc_call(addr, i)
         calls.append(call)
@@ -214,7 +215,6 @@ async def get_decimals(addresses: List[str], batch_size: int) -> Dict[str, int]:
     for res in calls_results_list:
         calls_results.update(res)
 
-    logger.info('decimals total time', extra={'time': time.monotonic() - gt, 'batch_size': batch_size})
     decimals = {}
     for i, addr in enumerate(addresses):
         try:

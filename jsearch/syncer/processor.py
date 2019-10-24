@@ -28,7 +28,7 @@ def update_is_forked_state(items: List[Dict[str, Any]], is_forked: bool) -> List
     return items
 
 
-@timeit("[RAW DB] Load block data")
+@timeit("[RAW DB] Load block data", accumulate=True)
 async def load_block(
         raw_db: RawDB,
         block_hash: str,
@@ -57,7 +57,7 @@ async def load_block(
     )
 
 
-@timeit("[RAW DB] Sync block")
+@timeit("[RAW DB] Sync block", accumulate=True)
 async def sync_block(
         raw_db: RawDB,
         main_db: MainDB,

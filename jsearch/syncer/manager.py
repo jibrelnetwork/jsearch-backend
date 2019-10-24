@@ -241,13 +241,13 @@ class Manager:
             })
 
     @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
-    @timeit('[SYNCER] Get and process chain event')
+    @timeit('[SYNCER] Get and process chain event', accumulate=True)
     async def get_and_process_chain_event(self):
         if self.state.already_processed is None:
             self.state.already_processed = self.sync_range.start
 
         block_range = await get_range_and_check_holes(self.main_db, self.sync_range, self.state)
-        logger.info("Event range", extra={"range": block_range})
+
         last_event = await self.main_db.get_last_chain_event(block_range, self.node_id)
         if last_event is None:
             next_event = await self.raw_db.get_first_chain_event_for_block_range(block_range, self.node_id)

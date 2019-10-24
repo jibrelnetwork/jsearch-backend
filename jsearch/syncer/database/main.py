@@ -309,7 +309,7 @@ class MainDB(DBWrapper):
         ]
         await connection.execute(q, *[json.dumps(item) for item in params])
 
-    @timeit('[MAIN DB] Write block')
+    @timeit('[MAIN DB] Write block', accumulate=True)
     async def write_block(self, chain_event: Dict[str, Any], block_data: BlockData, rewrite: bool):
         async with self.engine.acquire() as connection:
             async with connection.begin():
