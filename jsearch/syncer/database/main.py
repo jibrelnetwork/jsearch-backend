@@ -151,7 +151,7 @@ class MainDB(DBWrapper):
                 },
             )
 
-    @timeit('[RAW DB] is block exists query')
+    @timeit('[MAIN DB] is block exists query', accumulate=True)
     async def is_block_number_exists(self, block_num):
         q = blocks_t.select().where(
             and_(
@@ -188,7 +188,7 @@ class MainDB(DBWrapper):
         if result:
             return result.gap_end
 
-    @timeit(name='Query to find gaps')
+    @timeit(name='Query to find gaps', accumulate=True)
     async def check_on_holes(self, start: int, end: int) -> Optional[Tuple[int, int]]:
         gap_end = None
         # check blocks to prevent case:
@@ -223,7 +223,7 @@ class MainDB(DBWrapper):
             )
             return gap
 
-    @timeit('[MAIN DB] Get last chain event')
+    @timeit('[MAIN DB] Get last chain event', accumulate=True)
     async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> None:
         if sync_range.end is not None:
             cond = """block_number >= %s AND block_number <= %s"""
@@ -243,7 +243,7 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             return dict(row) if row else None
 
-    @timeit('Insert chain event')
+    @timeit('Insert chain event', accumulate=True)
     async def insert_chain_event(self, event):
         q = chain_events_t.insert().values(**event)
         async with self.engine.acquire() as conn:
@@ -269,6 +269,7 @@ class MainDB(DBWrapper):
         row = await self.fetch_one(q, block_hash)
         return row['hash'] == block_hash if row else False
 
+    @timeit("[MAIN DB] Write block")
     async def write_block_data_proc(
             self,
             block_data,
@@ -324,6 +325,7 @@ class MainDB(DBWrapper):
                 async with connection.begin():
                     await connection.execute(q, *[json.dumps(item) for item in params])
 
+    @timeit("[MAIN DB] rewrite block", accumulate=True)
     async def rewrite_block_data_proc(
             self,
             block_data,

@@ -26,7 +26,7 @@ def configure(log_level: str, formatter_class: str) -> None:
         'formatters': {
             'default': {
                 'class': formatter_class,
-                'format': '%(asctime)-15s %(levelname)-8s %(name)s: %(message)s',
+                'format': '%(process) %(asctime)-15s %(levelname)-8s %(name)s: %(message)s',
             }
         },
         'handlers': {

@@ -7,8 +7,8 @@ from typing import NamedTuple, Dict, Any, List, Tuple, Optional
 
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
-from jsearch.common.processing.decimals_cache import decimals_cache
 from jsearch.common.processing.contracts_addresses_cache import contracts_addresses_cache
+from jsearch.common.processing.decimals_cache import decimals_cache
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.wallet import token_holders_from_token_balances
@@ -89,38 +89,32 @@ class SyncProcessor:
                          is_forked: bool = False,
                          chain_event: Optional[Dict[str, Any]] = None,
                          rewrite: Optional[bool] = False) -> bool:
-        """
-        Args:
-            block_hash: number of block to sync
-            block_number:
-            is_forked:
-            chain_event: dict with event description
+        block = await self.get_block(block_hash, block_number, is_forked)
+        if block:
+            await block.write(self.main_db, chain_event, rewrite)
+        return True
 
-        Returns:
-            True if sync is successful, False if syn fails or block already synced
-        """
-        logger.debug("Syncing Block", extra={'hash': block_hash, 'number': block_number})
-
-        start_time = time.monotonic()
-
+    async def get_block(self,
+                        block_hash: str,
+                        block_number: Optional[int] = None,
+                        is_forked: bool = False) -> Optional[BlockData]:
         receipts = await self.raw_db.get_block_receipts(block_hash)
         if receipts is None:
             logger.debug("Block is not ready, no receipts", extra={'hash': block_hash})
-            return False
+            return
 
         reward = await self.raw_db.get_reward(block_number, block_hash)
         if reward is None:
             logger.debug("Block is not ready, no reward", extra={'hash': block_hash})
-            return False
+            return
 
         header = await self.raw_db.get_header_by_hash(block_hash)
         body = await self.raw_db.get_block_body(block_hash)
         accounts = await self.raw_db.get_block_accounts(block_hash)
         internal_transactions = await self.raw_db.get_internal_transactions(block_hash)
         token_holder_balances = await self.raw_db.get_token_holder_balances(block_hash)
-        fetch_time = time.monotonic() - start_time
 
-        block = await self.process_block(
+        return await self.process_block(
             header=header,
             body=body,
             accounts=accounts,
@@ -131,22 +125,7 @@ class SyncProcessor:
             is_forked=is_forked,
         )
 
-        process_time = time.monotonic() - fetch_time - start_time
-
-        await block.write(self.main_db, chain_event, rewrite)
-        db_write_time = time.monotonic() - process_time - fetch_time - start_time
-
-        sync_time = time.monotonic() - start_time
-        logger.info("Block is synced", extra={
-            'hash': block_hash,
-            'number': block_number,
-            'sync_time': '{:0.2f}s'.format(sync_time),
-            'fetch_time': '{:0.2f}s'.format(fetch_time),
-            'process_time': '{:0.2f}s'.format(process_time),
-            'db_write_time': '{:0.2f}s'.format(db_write_time),
-        })
-        return True
-
+    @timeit("Process block")
     async def process_block(self,
                             header: Dict[str, Any],
                             body: Dict[str, Any],
@@ -230,7 +209,7 @@ class SyncProcessor:
             assets_summary_updates=assets_summary_updates
         )
 
-    @timeit("[CPU] Process rewards")
+    @timeit("[CPU] Process rewards", accumulate=True)
     def process_rewards(self,
                         reward: Dict[str, Any],
                         block_number: int) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
@@ -247,7 +226,7 @@ class SyncProcessor:
             uncles_rewards = reward_data['Uncles']
         return block_reward, uncles_rewards
 
-    @timeit("[CPU] Process headers")
+    @timeit("[CPU] Process headers", accumulate=True)
     def process_header(self,
                        header: Dict[str, Any],
                        reward: Dict[str, Any],
@@ -273,7 +252,7 @@ class SyncProcessor:
         )
         return data
 
-    @timeit("[CPU] Process uncles")
+    @timeit("[CPU] Process uncles", accumulate=True)
     def process_uncles(self,
                        uncles: List[Dict[str, Any]],
                        rewards: List[Dict[str, Any]],
@@ -298,7 +277,7 @@ class SyncProcessor:
             items.append(data)
         return items
 
-    @timeit("[CPU] Process transactions")
+    @timeit("[CPU] Process transactions", accumulate=True)
     def process_transactions(self,
                              transactions: List[Dict[str, Any]],
                              block_number: int,
@@ -327,7 +306,7 @@ class SyncProcessor:
 
         return items
 
-    @timeit("[CPU] Process receipts")
+    @timeit("[CPU] Process receipts", accumulate=True)
     def process_receipts(self,
                          receipts: Dict[str, Any],
                          transactions: List[Dict[str, Any]],
@@ -384,7 +363,7 @@ class SyncProcessor:
             items.append(data)
         return items
 
-    @timeit("[CPU] Process accounts")
+    @timeit("[CPU] Process accounts", accumulate=True)
     def process_accounts(self,
                          accounts: List[Dict[str, Any]],
                          block_number: int,
@@ -400,7 +379,7 @@ class SyncProcessor:
             items.append(data)
         return items
 
-    @timeit("[CPU] Process internal transactions")
+    @timeit("[CPU] Process internal transactions", accumulate=True)
     def process_internal_txs(self,
                              internal_txs: List[Dict[str, Any]],
                              transactions: List[Dict[str, Any]],

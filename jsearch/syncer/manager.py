@@ -3,12 +3,12 @@ import logging
 
 import backoff
 import time
-from jsearch.api.helpers import ChainEvent
 from typing import Dict, Any, Optional
 
 from jsearch import settings
+from jsearch.api.helpers import ChainEvent
 from jsearch.common.structs import BlockRange
-from jsearch.common.utils import timeit
+from jsearch.common.utils import timeit, timers
 from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.processor import SyncProcessor
 from jsearch.syncer.state import SyncerState
@@ -48,6 +48,7 @@ async def process_insert_block_event(raw_db: RawDB,
         )
 
 
+@timeit("Apply chain split", accumulate=True)
 async def process_chain_split_event(main_db: MainDB, split_data: Dict[str, Any]) -> None:
     from_block = split_data['block_number']
     to_block = split_data['block_number'] + split_data['add_length']
@@ -185,6 +186,7 @@ class Manager:
         logger.info("Entering Chain Events Process Loop")
         while self._running is True:
             await self.get_and_process_chain_event()
+            timers.flush("[SYNCER] Process chain event")
 
     async def resync_loop(self):
         logger.info("Entering ReSync Loop")
@@ -193,6 +195,7 @@ class Manager:
                 logger.info("Leave ReSync Loop")
                 break
             await self.rewrite_block(block_number)
+            timers.flush("[SYNCER] Rewrite block")
 
     async def rewrite_block(self, block_number):
         logger.info("Rewrite block", extra={'block_number': block_number})
@@ -206,14 +209,12 @@ class Manager:
         )
 
     async def process_chain_event(self, event):
-        start_time = time.monotonic()
-        logger.info("Start Processing Chain Event", extra={
-            'event_id': event['id'],
-            'event_type': event['type'],
-            'block_number': event['block_number'],
-            'block_hash': event['block_hash'],
-        })
-
+        timers.add_meta(
+            event_id=event['id'],
+            event_type=event['type'],
+            block_number=event['block_number'],
+            block_hash=event['block_hash']
+        )
         if event['type'] == ChainEvent.INSERT:
             block_hash = event['block_hash']
             block_number = event['block_number']
@@ -234,13 +235,6 @@ class Manager:
                 'event_id': event['id'],
                 'event_type': event['type'],
             })
-        logger.info("Finish Processing Chain Event", extra={
-            'event_id': event['id'],
-            'event_type': event['type'],
-            'block_number': event['block_number'],
-            'block_hash': event['block_hash'],
-            'time': '{:0.2f}s'.format(time.monotonic() - start_time),
-        })
 
     @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
     @timeit('Get and process chain event')
