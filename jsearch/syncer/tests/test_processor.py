@@ -308,6 +308,9 @@ async def test_sync_block_check_assets_balances(db, raw_db_sample, raw_db_dsn, d
           - another record has address from "to" column
     """
     # when
+    db.execute(accounts_base_t.insert().values(
+        address='0xc5f60fa4613493931b605b6da1e9febbdeb61e16',
+        code_hash='be665ac12211616c83adf37101ae341202be6c9a7f6c2082960c86983f4df739'))
     await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
 
     # then
@@ -372,7 +375,7 @@ async def test_sync_block_check_assets_summary(db, raw_db_sample, raw_db_dsn, db
     It is historical data and we can freeze it.
     """
     # given
-    total_states = 209
+    total_states = 208
 
     accounts_stats = sorted(block_accounts, key=lambda x: x['address'])
 

@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.handlers.common import get_last_block_number_and_timestamp, get_block_number_or_tag_from_timestamp
-from jsearch.api.helpers import api_success, ApiError
+from jsearch.api.helpers import api_success, ApiError, maybe_orphan_request
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_page
 from jsearch.api.serializers.tokens import TokenTransfersSchema, TokenHoldersListSchema
@@ -29,6 +29,8 @@ async def get_token_transfers(
         log_index: Optional[int] = None,
 ):
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+
     if timestamp is not None:
         block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
         timestamp = None
@@ -42,12 +44,22 @@ async def get_token_transfers(
         transaction_index=transaction_index,
         log_index=log_index
     )
-    transfers, tip_meta = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
+    transfers, tip = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
 
     url = request.app.router['token_transfers'].url_for(address=address)
     page = get_page(url=url, items=transfers, limit=limit, ordering=order)
 
-    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
+
+    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())
 
 
 @ApiError.catch
@@ -62,6 +74,7 @@ async def get_token_holders(
         _id: Optional[int] = None
 ):
     storage = request.app['storage']
+    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
 
     # Notes: we need to query limit + 1 items to get link on next page
     holders, last_affected_block = await storage.get_tokens_holders(
@@ -72,9 +85,19 @@ async def get_token_holders(
         _id=_id
     )
 
-    holders, tip_meta = await maybe_apply_tip(storage, tip_hash, holders, last_affected_block, empty=[])
+    holders, tip = await maybe_apply_tip(storage, tip_hash, holders, last_affected_block, empty=[])
 
     url = request.app.router['token_holders'].url_for(address=address)
     page = get_page(url=url, items=holders, limit=limit, ordering=order, decimals_to_ints=True)
 
-    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip_meta)
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_insert_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
+
+    return api_success(data=[x.to_dict() for x in page.items], page=page, meta=tip and tip.to_dict())

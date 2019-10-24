@@ -5,7 +5,6 @@ from typing import List
 
 import jsearch.common.worker
 import jsearch.monitor_balance.__main__
-import jsearch.multiprocessing
 import jsearch.pending_syncer.main
 import jsearch.syncer.main
 
@@ -13,12 +12,7 @@ CODE_OK = 0
 CODE_ERROR = 1
 CODE_ERROR_FROM_CLICK = 2
 
-pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures('disable_metrics_setup')]
-
-
-@pytest.fixture()
-def _mock_executor(mocker: MockFixture):
-    mocker.patch.object(jsearch.multiprocessing.executor, 'init')
+pytestmark = [pytest.mark.asyncio]
 
 
 @pytest.fixture()

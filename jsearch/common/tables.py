@@ -295,37 +295,6 @@ token_transfers_t = sa.Table(
     sa.Column('status', sa.Integer),
 )
 
-chain_splits_t = sa.Table(
-    'chain_splits',
-    metadata,
-    sa.Column('id', sa.BigInteger, primary_key=True),
-    sa.Column('common_block_number', sa.Integer),
-    sa.Column('common_block_hash', sa.String),
-    sa.Column('drop_length', sa.Integer),
-    sa.Column('drop_block_hash', sa.String),
-    sa.Column('add_length', sa.Integer),
-    sa.Column('add_block_hash', sa.String),
-    sa.Column('node_id', sa.String),
-)
-
-assets_transfers_t = sa.Table(
-    'assets_transfers',
-    metadata,
-    sa.Column('address', sa.String),
-    sa.Column('type', sa.String),
-    sa.Column('from', sa.String),
-    sa.Column('to', sa.String),
-    sa.Column('asset_address', sa.String),
-    sa.Column('value', postgresql.NUMERIC()),
-    sa.Column('decimals', sa.Integer),
-    sa.Column('tx_data', postgresql.JSONB),
-    sa.Column('is_forked', sa.Boolean),
-    sa.Column('block_number', sa.BigInteger),
-    sa.Column('block_hash', sa.String),
-    sa.Column('ordering', sa.String),
-    sa.Column('status', sa.Integer),
-)
-
 assets_summary_t = sa.Table(
     'assets_summary',
     metadata,
@@ -372,15 +341,6 @@ chain_events_t = sa.Table(
     sa.Column('created_at', sa.TIMESTAMP),
 )
 
-erc20_balance_requests_t = sa.Table(
-    'erc20_balance_requests',
-    metadata,
-    sa.Column('token_address', sa.String),
-    sa.Column('account_address', sa.String),
-    sa.Column('block_number', sa.Integer),
-    sa.Column('balance', postgresql.NUMERIC()),
-)
-
 TABLES = (
     blocks_t,
     uncles_t,
@@ -394,10 +354,7 @@ TABLES = (
     pending_transactions_t,
     reorgs_t,
     token_transfers_t,
-    chain_splits_t,
-    assets_transfers_t,
     assets_summary_t,
     wallet_events_t,
     chain_events_t,
-    erc20_balance_requests_t
 )

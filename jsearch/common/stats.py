@@ -2,10 +2,10 @@ import asyncio
 import logging
 
 import asyncpg
-import prometheus_client
+from aiohttp import web
 
 from jsearch import settings
-from jsearch.common import utils
+from jsearch.common import utils, prom_metrics
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.common.structs import DbStats, LoopStats, NodeStats, ChainStats, LagStats
 from jsearch.common.reference_data import get_ref_blocks
@@ -105,21 +105,26 @@ async def get_lag_stats(db_pool: asyncpg.pool.Pool) -> LagStats:
     return LagStats(is_healthy=is_healthy, lag=lag)
 
 
-def setup_api_metrics() -> None:
-    _setup_loop_tasks_total_metric(settings.METRIC_API_LOOP_TASKS_TOTAL)
+def setup_api_metrics(app: web.Application) -> None:
+    # Automatic metrics, handled by state-less function.
+    prom_metrics.METRIC_API_LOOP_TASKS_TOTAL.labels(settings.PID).set_function(lambda: utils.get_loop_tasks_count())
+
+    # Non-automatic metrics, changeable inside a request.
+    app['metrics'] = {
+        'REQUESTS_ORPHANED': prom_metrics.METRIC_API_REQUESTS_ORPHANED_TOTAL,
+        'REQUESTS_LATENCY': prom_metrics.METRIC_API_REQUESTS_LATENCY_SECONDS,
+        'REQUESTS_IN_PROGRESS': prom_metrics.METRIC_API_REQUESTS_IN_PROGRESS_TOTAL,
+        'REQUESTS_TOTAL': prom_metrics.METRIC_API_REQUESTS_TOTAL,
+    }
 
 
 def setup_syncer_metrics() -> None:
-    _setup_loop_tasks_total_metric(settings.METRIC_SYNCER_LOOP_TASKS_TOTAL)
-    _lag_metrics['etherscan'] = prometheus_client.Gauge(settings.METRIC_LAG_ETHERSCAN, 'Chain lag with Etherscan')
-    _lag_metrics['infura'] = prometheus_client.Gauge(settings.METRIC_LAG_INFURA, 'Chain lag with Infura')
-    _lag_metrics['jwallet'] = prometheus_client.Gauge(settings.METRIC_LAG_JWALLET, 'Chain lag with jWallet')
+    prom_metrics.METRIC_SYNCER_LOOP_TASKS_TOTAL.set_function(lambda: utils.get_loop_tasks_count())
+
+    _lag_metrics['etherscan'] = prom_metrics.METRIC_SYNCER_LAG_ETHERSCAN
+    _lag_metrics['infura'] = prom_metrics.METRIC_SYNCER_LAG_INFURA
+    _lag_metrics['jwallet'] = prom_metrics.METRIC_SYNCER_LAG_JWALLET
 
 
 def setup_pending_syncer_metrics() -> None:
-    _setup_loop_tasks_total_metric(settings.METRIC_SYNCER_PENDING_LOOP_TASKS_TOTAL)
-
-
-def _setup_loop_tasks_total_metric(name: str) -> None:
-    loop_tasks_total = prometheus_client.Gauge(name, 'Total amount of tasks in the event loop.')
-    loop_tasks_total.set_function(lambda: utils.get_loop_tasks_count())
+    prom_metrics.METRIC_SYNCER_PENDING_LOOP_TASKS_TOTAL.set_function(lambda: utils.get_loop_tasks_count())

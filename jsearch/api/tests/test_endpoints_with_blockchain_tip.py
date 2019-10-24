@@ -52,7 +52,6 @@ TipGetter = Callable[[bool], Awaitable[BlockchainTip]]
 
 pytestmark = [
     pytest.mark.asyncio,
-    pytest.mark.usefixtures('disable_metrics_setup'),
 ]
 
 

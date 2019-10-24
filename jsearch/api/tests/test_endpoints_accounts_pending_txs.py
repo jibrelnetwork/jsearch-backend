@@ -12,8 +12,6 @@ from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.typing import AnyCoroutine
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 TIMESTAMP = int(time.time())
 URL = '/v1/accounts/address/pending_transactions?{params}'
 

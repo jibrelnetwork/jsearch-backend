@@ -1,12 +1,10 @@
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import ProcessPoolExecutor
 
 import pytest
 from aiohttp import web
 
 from jsearch.api.app import make_app
 from jsearch.common.rpc import eth_call_request
-
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
 
 
 @pytest.fixture

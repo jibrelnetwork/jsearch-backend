@@ -3,6 +3,7 @@ import logging
 
 import backoff
 import time
+from jsearch.api.helpers import ChainEvent
 from typing import Dict, Any, Optional
 
 from jsearch import settings
@@ -15,12 +16,6 @@ from jsearch.syncer.state import SyncerState
 logger = logging.getLogger(__name__)
 
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
-
-
-class ChainEvent:
-    INSERT = 'created'
-    REINSERT = 'reinserted'
-    SPLIT = 'split'
 
 
 async def process_insert_block_event(raw_db: RawDB,
@@ -250,8 +245,10 @@ class Manager:
     @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
     @async_timeit('Get and process chain event')
     async def get_and_process_chain_event(self):
-        block_range = await get_range_and_check_holes(self.main_db, self.sync_range, self.state)
+        if self.state.already_processed is None:
+            self.state.already_processed = self.sync_range.start
 
+        block_range = await get_range_and_check_holes(self.main_db, self.sync_range, self.state)
         logger.info("Try to find new event on", extra={"range": block_range})
         last_event = await self.main_db.get_last_chain_event(block_range, self.node_id)
         if last_event is None:
@@ -259,39 +256,24 @@ class Manager:
         else:
             next_event = await self.raw_db.get_next_chain_event(block_range, last_event['id'], self.node_id)
 
-        if self.state.hole and next_event is None:
-            self.state.checked_on_holes = self.state.hole
-            self.state.last_processed_block = self.state.hole.end
+        if self.sync_range.end != block_range.end and next_event is None:
+            logger.info("No more events in the range", extra={
+                "range": block_range,
+                'last': last_event and last_event['id']
+            })
             self.state.hole = None
-            logger.error(
-                "No events in the gap",
-                extra={"range": self.state.checked_on_holes}
-            )
-            return
+            self.state.already_processed = block_range.end + 1
+            self.state.checked_on_holes = block_range
 
-        there_is_no_gap_in_middle = not self.state.hole or block_range.end and self.state.hole.end >= block_range.end
-        is_sync_complete = (
-                there_is_no_gap_in_middle
-                and self.sync_range.end
-                and next_event is None
-        )
-        if is_sync_complete:
-            logger.info(
-                'Sync range complete',
-                extra={
-                    'from': self.sync_range.start,
-                    'to': self.sync_range.end
-                }
-            )
-            await asyncio.sleep(10)
+        elif self.sync_range.end and self.sync_range.end == block_range.end and next_event is None:
+            logger.info('Sync range complete', extra={'range': self.sync_range})
             self._running = False
-            return
 
-        if next_event is None:
+        elif next_event is None:
             await asyncio.sleep(self.sleep_on_no_blocks)
-            return
-
-        await self.process_chain_event(next_event)
+        else:
+            self.state.already_processed = max(self.state.already_processed, block_range.start)
+            await self.process_chain_event(next_event)
 
     async def try_lock_range(self):
         return await self.main_db.try_advisory_lock(self.sync_range.start, self.sync_range.end)
@@ -300,7 +282,7 @@ class Manager:
 async def get_range_and_check_holes(
         main_db: MainDB,
         sync_range: BlockRange,
-        state: SyncerState
+        state: SyncerState,
 ) -> BlockRange:
     """
     Get range until
@@ -337,24 +319,24 @@ async def get_range_and_check_holes(
           - hole
           - checked_on_holes
     """
-    end = sync_range.end
-    start = sync_range.start
-
+    sync_range = BlockRange(max(state.already_processed, sync_range.start), sync_range.end)
     if sync_range.end is None:
-        return BlockRange(start, end)
+        return sync_range
 
-    if state.hole and state.last_processed_block < state.hole.end:
-        start, end = state.hole
-    elif state.checked_on_holes and state.last_processed_block < state.checked_on_holes.end:
-        start, end = state.checked_on_holes
+    if state.hole and sync_range.start in state.hole:
+        sync_range = state.hole
+    elif state.checked_on_holes and sync_range.start in state.checked_on_holes:
+        sync_range = state.checked_on_holes
     else:
-        hole_left_border = (state.checked_on_holes and state.checked_on_holes.end + 1) or start
-        gap = await main_db.check_on_holes(hole_left_border, end)
+        left, right = sync_range
+
+        gap = await main_db.check_on_holes(left, right)
         if gap:
             state.hole = gap
-            start, end = gap
+            sync_range = gap
         else:
             state.hole = None
-            state.checked_on_holes = BlockRange(start, end)
+            state.checked_on_holes = BlockRange(left, right)
+            sync_range = state.checked_on_holes
 
-    return BlockRange(start, end)
+    return sync_range

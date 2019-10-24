@@ -2,6 +2,7 @@ import logging
 from unittest import mock
 
 import pytest
+from aiohttp.test_utils import TestClient
 from asynctest import CoroutineMock
 
 from jsearch import settings
@@ -9,8 +10,6 @@ from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.tests.entities import BlockFromDumpWrapper
 
 logger = logging.getLogger(__name__)
-
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
 
 
 async def test_get_block_404(cli):
@@ -570,3 +569,44 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
             'error_message': 'Too many addresses requested'
         }
     ]
+
+
+@pytest.mark.parametrize(
+    'url, status_code',
+    (
+        ('/v1/accounts/balances?addresses=0x0193d941b50d91be6567c7ee1c0fe7af498b4137', 200),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137', 404),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/transactions', 200),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/internal_transactions', 200),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/pending_transactions', 200),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/mined_blocks', 200),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/mined_uncles', 200),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/token_transfers', 200),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/token_balance/0x0193d941b50d91be6567c7ee1c0fe7af498b4137', 404),  # NOQA: E501
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/token_balances?contract_addresses=0x0193d941b50d91be6567c7ee1c0fe7af498b4137', 200),  # NOQA: E501
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/logs', 200),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/transaction_count', 200),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/eth_transfers', 200),
+        ('/v1/blocks', 200),
+        ('/v1/blocks/latest', 404),
+        ('/v1/blocks/latest/transactions', 200),
+        ('/v1/blocks/latest/uncles', 200),
+        ('/v1/blocks/latest/internal_transactions', 200),
+        ('/v1/transactions/0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e', 404),
+        ('/v1/transactions/0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e/internal_transactions', 200),  # NOQA: E501
+        ('/v1/receipts/0xae334d3879824f8ece42b16f161caaa77417787f779a05534b122de0aabe3f7e', 404),
+        ('/v1/uncles', 200),
+        ('/v1/uncles/latest', 404),
+        ('/v1/tokens/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/transfers', 200),
+        ('/v1/tokens/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/holders', 200),
+        ('/v1/blockchain_tip', 404),
+        ('/v1/wallet/assets_summary?addresses=0x0193d941b50d91be6567c7ee1c0fe7af498b4137&assets=0x0193d941b50d91be6567c7ee1c0fe7af498b4137', 200),  # NOQA: E501
+        ('/v1/wallet/events?blockchain_address=0x0193d941b50d91be6567c7ee1c0fe7af498b4137', 200),
+    ),
+)
+async def test_endpoint_does_not_fail_if_database_is_empty(cli: TestClient, url: str, status_code: int) -> None:
+    # when
+    response = await cli.get(url)
+
+    # then
+    assert response.status == status_code

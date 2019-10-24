@@ -8,6 +8,7 @@ from typing import NamedTuple, Dict, Any, List, Tuple, Optional
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
 from jsearch.common.processing.decimals_cache import decimals_cache
+from jsearch.common.processing.contracts_addresses_cache import contracts_addresses_cache
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.wallet import token_holders_from_token_balances
@@ -186,6 +187,11 @@ class SyncProcessor:
         for acc in accounts_data:
             if acc.get('code', '') != '':
                 contracts_set.add(acc['address'])
+
+        contracts_addresses_cache.add(contracts_set)
+
+        tx_recepients = set([tx['to'] for tx in transactions_data if tx['input'] != '0x'])
+        contracts_set |= await self.get_contracts_set(tx_recepients)
 
         contract_addresses = {item['address'] for item in logs_data} | {item.token for item in token_holder_balances}
         decimals = await decimals_cache.get_many(contract_addresses)
@@ -405,6 +411,19 @@ class SyncProcessor:
             data['parent_tx_index'] = tx_index_map[tx['parent_tx_hash']]
             items.append(data)
         return items
+
+    async def get_contracts_set(self, addresses):
+        misses = contracts_addresses_cache.get_misses(addresses)
+        hits = contracts_addresses_cache.get_hits(addresses)
+        start_t = time.time()
+        new_entries = set(await self.main_db.is_contract_address(misses))
+        end_t = time.time() - start_t
+        logger.debug("Contract Address Cache Summary: misses %s hits %s new_entries %s db_time %0.2fs",
+                     len(misses), len(hits), len(new_entries), end_t)
+        if end_t > 0.1:
+            logger.debug("Contract Misses: %s", misses)
+        contracts_addresses_cache.add(new_entries)
+        return hits | new_entries
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')

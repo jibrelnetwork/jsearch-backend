@@ -16,8 +16,6 @@ from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.usefixtures('disable_metrics_setup')
-
 
 def get_indexes(data: Dict[str, Any]) -> int:
     indexes = []
@@ -74,13 +72,11 @@ URL = '/v1/wallet/events?{params}'
                     (4, 0, 2),
                 ],
                 URL.format(params=urlencode({
-                    'block_number': 4,
                     'event_index': make_event_index(4, 0, 1),
                     'limit': 3,
                     'order': 'desc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 4,
                     'event_index': make_event_index(4, 1, 2),
                     'limit': 3,
                     'order': 'desc'
@@ -90,13 +86,11 @@ URL = '/v1/wallet/events?{params}'
                 URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 5, 'order': 'asc'})),
                 [(0, 0, 1), (0, 0, 2), (0, 1, 1), (0, 1, 2), (1, 0, 1)],
                 URL.format(params=urlencode({
-                    'timestamp': TIMESTAMP + 1,
                     'event_index': make_event_index(1, 0, 2),
                     'limit': 5,
                     'order': 'asc'
                 })),
                 URL.format(params=urlencode({
-                    'timestamp': TIMESTAMP,
                     'event_index': make_event_index(0, 0, 1),
                     'limit': 5,
                     'order': 'asc'
@@ -106,13 +100,11 @@ URL = '/v1/wallet/events?{params}'
                 URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
                 [(0, 0, 1), (0, 0, 2), (0, 1, 1)],
                 URL.format(params=urlencode({
-                    'block_number': 0,
                     'event_index': make_event_index(0, 1, 2),
                     'limit': 3,
                     'order': 'asc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 0,
                     'event_index': make_event_index(0, 0, 1),
                     'limit': 3,
                     'order': 'asc'
@@ -122,13 +114,11 @@ URL = '/v1/wallet/events?{params}'
                 URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
                 [(3, 1, 2), (3, 1, 1), (3, 0, 2)],
                 URL.format(params=urlencode({
-                    'block_number': 3,
                     'event_index': make_event_index(3, 0, 1),
                     'limit': 3,
                     'order': 'desc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 3,
                     'event_index': make_event_index(3, 1, 2),
                     'limit': 3,
                     'order': 'desc'
@@ -136,20 +126,17 @@ URL = '/v1/wallet/events?{params}'
         ),
         (
                 URL.format(params=urlencode({
-                    'block_number': 3,
                     'event_index': make_event_index(3, 0, 2),
                     'limit': 3
                 })),
                 [(3, 0, 2), (3, 0, 1), (2, 1, 2)],
                 URL.format(params=urlencode({
-                    'block_number': 2,
                     'event_index': make_event_index(2, 1, 1),
                     'limit': 3,
                     'order': 'desc'
                 })),
                 URL.format(params=urlencode({
                     'event_index': make_event_index(3, 0, 2),
-                    'block_number': 3,
                     'limit': 3,
                     'order': 'desc'
                 })),
@@ -158,13 +145,11 @@ URL = '/v1/wallet/events?{params}'
                 URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
                 [(4, 1, 2), (4, 1, 1), (4, 0, 2)],
                 URL.format(params=urlencode({
-                    'block_number': 4,
                     'event_index': make_event_index(4, 0, 1),
                     'limit': 3,
                     'order': 'desc'
                 })),
                 URL.format(params=urlencode({
-                    'block_number': 4,
                     'event_index': make_event_index(4, 1, 2),
                     'limit': 3,
                     'order': 'desc'
@@ -176,11 +161,7 @@ URL = '/v1/wallet/events?{params}'
         URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 5, 'order': 'asc'})),
         URL.format(params=urlencode({'order': 'asc', 'limit': 3})),
         URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
-        URL.format(params=urlencode({
-            'block_number': 3,
-            'event_index': make_event_index(3, 0, 1),
-            'limit': 3
-        })),
+        URL.format(params=urlencode({'event_index': make_event_index(3, 0, 1), 'limit': 3})),
         URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
     ]
 )
@@ -231,7 +212,21 @@ async def test_get_wallet_events_pagination(
         (URL.format(params=urlencode({'timestamp': 10, 'block_number': 10})), [
             {
                 "field": "__all__",
-                "message": "Filtration should be either by number or by timestamp",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        (URL.format(params=urlencode({'timestamp': 10, 'event_index': 10})), [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
+                "code": "VALIDATION_ERROR"
+            }
+        ]),
+        (URL.format(params=urlencode({'event_index': 10, 'block_number': 10})), [
+            {
+                "field": "__all__",
+                "message": "Filtration should be either by number, by timestamp or by event_index",
                 "code": "VALIDATION_ERROR"
             }
         ]),
@@ -253,7 +248,9 @@ async def test_get_wallet_events_pagination(
     ids=[
         "invalid_tag",
         "invalid_timestamp",
-        "either_number_or_timestamp",
+        "timestamp_and_block_number",
+        "timestamp_and_event_index",
+        "block_number_and_event_index",
         "invalid_limit",
         "invalid_order",
     ]
@@ -373,7 +370,6 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
         'paging': {
             'link': (
                 f'/v1/wallet/events?'
-                f'block_number={block.number}&'
                 f'event_index={event.event_index}'
                 f'&order=desc&'
                 f'limit=20&'
@@ -405,7 +401,7 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
                         'hash': tx.hash,
                         'input': tx.input,
                         'nonce': tx.nonce,
-                        'status': True,
+                        'status': 1,
                         'r': tx.r,
                         's': tx.s,
                         'to': tx.to,
@@ -554,6 +550,15 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
             'nonce': None,
             'block_number': 100
         },
+        {
+            'address': 'a2',
+            'asset_address': '',
+            'value': 0,
+            'decimals': 0,
+            'tx_number': 1,
+            'nonce': 2,
+            'block_number': 10
+        },
     ]
 
     for a in assets:
@@ -568,9 +573,9 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
     transfer_factory.create(address='a2', token_address='c1')
     transfer_factory.create(address='a2', token_address='c1', is_forked=True)
 
-    transaction_factory.create(address='a1')
-    transaction_factory.create(address='a1')
-    transaction_factory.create(address='a1')
+    transaction_factory.create(address='a1', value='0x0')
+    transaction_factory.create(address='a1', value='0x2')
+    transaction_factory.create(address='a1', value='0x4')
     transaction_factory.create(address='a1', is_forked=True)
 
     resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1,a2')
@@ -580,7 +585,7 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
         {
             'address': 'a1',
             'assetsSummary': [
-                {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 3},
+                {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 2},
                 {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 2},
                 {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 1}
             ],
@@ -590,7 +595,7 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
             'assetsSummary': [
                 {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 3}
             ],
-            'outgoingTransactionsNumber': "0"
+            'outgoingTransactionsNumber': "2"
         }
     ]
 

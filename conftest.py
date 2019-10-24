@@ -9,7 +9,6 @@ pytest_plugins = (
     "jsearch.tests.plugins.databases.dumps",
     "jsearch.tests.plugins.databases.factories.accounts",
     "jsearch.tests.plugins.databases.factories.assets_summary",
-    "jsearch.tests.plugins.databases.factories.assets_transfers",
     "jsearch.tests.plugins.databases.factories.blocks",
     "jsearch.tests.plugins.databases.factories.chain_events",
     "jsearch.tests.plugins.databases.factories.contracts",
@@ -28,7 +27,6 @@ pytest_plugins = (
     "jsearch.tests.plugins.geth.node",
     "jsearch.tests.plugins.geth.web3",
     "jsearch.tests.plugins.geth_scenarios.transfer_on_fuck_token_contract",
-    "jsearch.tests.plugins.metrics",
     "jsearch.tests.plugins.settings",
     "jsearch.tests.plugins.tokens.fuck_token",
 )

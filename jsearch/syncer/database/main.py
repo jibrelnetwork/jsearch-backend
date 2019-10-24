@@ -12,7 +12,6 @@ from jsearch.common.structs import BlockRange
 from jsearch.common.tables import (
     accounts_state_t,
     assets_summary_t,
-    assets_transfers_t,
     blocks_t,
     chain_events_t,
     internal_transactions_t,
@@ -32,6 +31,7 @@ from jsearch.typing import Blocks, Block
 from .wrapper import DBWrapper
 
 MAIN_DB_POOL_SIZE = 1
+NO_CODE_HASH = 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +127,6 @@ class MainDB(DBWrapper):
         affected_tables = (
             accounts_state_t,
             assets_summary_t,
-            assets_transfers_t,
             internal_transactions_t,
             logs_t,
             receipts_t,
@@ -187,13 +186,6 @@ class MainDB(DBWrapper):
         """
         result = await self.fetch_one(query, start, end + 1)
         if result:
-            logger.info(
-                'Gap was founded',
-                extra={
-                    'gap': BlockRange(start, result.gap_end),
-                    'range': BlockRange(start, end)
-                }
-            )
             return result.gap_end
 
     @async_timeit(name='Query to find gaps')
@@ -217,11 +209,19 @@ class MainDB(DBWrapper):
             # |x|x|x| | | | |x|x|
             blocks = await self.get_set_borders(start, gap_end)
             if blocks and blocks.end > start:
-                gap_start = blocks.end
+                gap_start = blocks.end + 1
             else:
                 gap_start = start
 
-            return BlockRange(gap_start, gap_end)
+            gap = BlockRange(gap_start, gap_end)
+            logger.info(
+                'Gap was founded',
+                extra={
+                    'gap': gap,
+                    'range': BlockRange(start, end)
+                }
+            )
+            return gap
 
     @async_timeit('[MAIN DB] Get last chain event')
     async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> None:
@@ -396,3 +396,12 @@ class MainDB(DBWrapper):
             res = await conn.execute(q)
             row = await res.fetchone()
             return row['hash']
+
+    async def is_contract_address(self, addresses):
+        contracts_addresses = []
+        q = """SELECT code_hash FROM accounts_base WHERE address = %s limit 1"""
+        for address in addresses:
+            row = await self.fetch_one(q, address)
+            if row is not None and row['code_hash'] != NO_CODE_HASH:
+                contracts_addresses.append(address)
+        return contracts_addresses

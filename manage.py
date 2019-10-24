@@ -1,150 +1,176 @@
 #!/usr/bin/env python
-
-import os
 import sys
 
-import argparse
-from pathlib import Path
+import click
+import subprocess
+from sqlalchemy import create_engine
+from typing import NamedTuple, Any
 
-import jsearch.common.alembic_utils as alembic
-from jsearch import settings
-from jsearch.utils import get_alembic_version
+from jsearch.utils import get_alembic_version, get_goose_version
+
+MIGRATIONS_FOLDER = './migrations'
 
 
-class Manage(object):
-    script_name = Path
+class GooseWrapper(NamedTuple):
+    dsn: str
+    dir: str
 
-    def __init__(self):
-        self.script_name = os.path.basename(__file__)
-        parser = argparse.ArgumentParser(
-            usage=(
-                '\n'
-                f'usage: {self.script_name} <command> [<args>]\n'
-                'Commands:\n'
-                'init\t\tInitialize a new scripts directory.\n'
-                'revision\tCreate a new revision file.\n'
-                'upgrade\t\tUpgrade to a later version.\n'
-                'downgrade\tRevert to a previous version.\n'
-                'merge\t\tMerge two revisions together. Creates a new migration file.'
-            )
-        )
-        parser.add_argument('command', help=argparse.SUPPRESS)
+    def _call(self, *args: Any) -> None:
+        cmd = f"goose -dir {self.dir} postgres {self.dsn}?sslmode=disable {' '.join(args)}"
+        sys.stdout.write('CMD: {cmd}\n'.format(cmd=cmd.replace(self.dsn, '*' * len(self.dsn))))
 
-        args = parser.parse_args(sys.argv[1:2])
-        if not hasattr(self, args.command):
-            sys.stderr.write('Unrecognized command')
-            parser.print_help()
-            exit(1)
-        getattr(self, args.command)()
+        result = subprocess.run(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
+        if result.returncode != 0:
+            sys.exit(1)
 
-    def init(self):
-        parser = argparse.ArgumentParser(
-            usage=(
-                '\n'
-                f'usage: {self.script_name} init <directory>\n'
-                'positional arguments:\n'
-                'directory\t\tlocation of scripts directory'
-            )
-        )
-        parser.add_argument('directory', help=argparse.SUPPRESS)
+    def create(self, message: str) -> None:
+        self._call("create", message, "sql")
 
-        args = parser.parse_args(sys.argv[2:])
-        sys.stdout.write('Running alembic init {}'.format(args.directory))
-        alembic.init(args.directory)
+    def up(self) -> None:
+        self._call("up")
 
-    def revision(self):
-        parser = argparse.ArgumentParser(
-            usage=(
-                '\n'
-                'usage: {} revision [-db connection_string] [-h] [-m MESSAGE]\n'
-                'Arguments:\n'
-                '-h, --help\t\tshow this help message and exit\n'
-                '-db connection_string\tConnection URL\n'
-                '-m MESSAGE, --message MESSAGE'
-            )
-        )
+    def up_by_one(self):
+        self._call("up-by-one")
 
-        parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
-        parser.add_argument('-m', action='store', help=argparse.SUPPRESS)
+    def up_to(self, version: str):
+        self._call("up-to", version)
 
-        args = parser.parse_args(sys.argv[2:])
-        sys.stdout.write(f'Running alembic revision --autogenerate -m "{args.m}"')
-        alembic.revision(args.db or os.environ['JSEARCH_MAIN_DB'], args.m, True)
+    def down(self) -> None:
+        self._call("down")
 
-    def upgrade(self):
-        parser = argparse.ArgumentParser(
-            usage=(
-                '\n'
-                f'usage: {self.script_name} upgrade [-h] revision\n'
-                'positional arguments:\n'
-                '  revision    revision identifier'
-            )
-        )
+    def down_by_one(self):
+        self._call("up-by-one")
 
-        parser.add_argument('revision', help=argparse.SUPPRESS)
-        parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
+    def down_to(self, version: str):
+        self._call("up-to", version)
 
-        args = parser.parse_args(sys.argv[2:])
-        sys.stdout.write(f'Running alembic upgrade {args.revision}')
-        alembic.upgrade(args.db or os.environ['JSEARCH_MAIN_DB'], args.revision)
+    def status(self) -> None:
+        self._call("status")
 
-    def downgrade(self):
-        parser = argparse.ArgumentParser(
-            usage=(
-                '\n'
-                f'usage: {self.script_name} [-h] revision\n'
-                'positional arguments:\n'
-                '  revision    revision identifier'
-            )
-        )
+    def version(self) -> None:
+        self._call("version")
 
-        parser.add_argument('revision', help=argparse.SUPPRESS)
-        parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
 
-        args = parser.parse_args(sys.argv[2:])
-        sys.stdout.write(f'Running alembic downgrade {args.revision}.')
-        alembic.downgrade(args.db or os.environ['JSEARCH_MAIN_DB'], args.revision)
+def init_goose(db_dsn: str) -> None:
+    query = """
+    CREATE TABLE IF NOT EXISTS goose_db_version (
+        id serial NOT NULL,
+        version_id bigint NOT NULL,
+        is_applied boolean NOT NULL,
+        tstamp timestamp NULL default now(),
+        PRIMARY KEY(id)
+    );
+    """
+    insert_query = """
+    INSERT INTO goose_db_version (version_id, is_applied) VALUES (%s, %s);
+    """
+    engine = create_engine(db_dsn)
+    engine.execute(query)
+    engine.execute(insert_query, "20191015163320", True)
 
-    def apply_if_db_is_empty(self):
-        parser = argparse.ArgumentParser(usage=f"{self.script_name}: Apply migrations if schema is empty.")
-        parser.add_argument('-db', default=settings.JSEARCH_MAIN_DB, action='store', help=argparse.SUPPRESS)
 
-        args = parser.parse_args(sys.argv[2:])
+@click.group()
+@click.option('--dsn', envvar='JSEARCH_MAIN_DB')
+@click.option('--dir', default=MIGRATIONS_FOLDER)
+@click.pass_context
+def cli(ctx, dsn, dir):
+    ctx.obj = GooseWrapper(dsn=dsn, dir=dir)
 
-        sys.stdout.write(f'Try to find migrations schema...\n')
-        version_num = get_alembic_version(args.db)
-        if version_num is None:
-            sys.stdout.write(f'Schema is empty, need to apply migrations...\n')
 
-            alembic.upgrade(args.db, 'head')
+@click.command()
+@click.option("-m", "--message", default="", help="migration title")
+@click.pass_context
+def create(ctx, message):
+    ctx.obj.create(message)
 
-            sys.stdout.write(f'Migrations is completed.\n')
-            version_num = get_alembic_version(args.db)
 
-        sys.stdout.write(f'Version num is [{version_num}].\n')
+@click.command()
+@click.pass_context
+def status(ctx):
+    ctx.obj.status()
 
-    def json_dump(self):
-        parser = argparse.ArgumentParser(usage=f"usage {self.script_name} [-h]")
-        parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
-        parser.add_argument('-out', action='store', default=None, help=argparse.SUPPRESS)
 
-        args = parser.parse_args(sys.argv[2:])
-        sys.stdout.write('Running json_dump')
-        alembic.json_dump(args.db or os.environ['JSEARCH_MAIN_DB'], args.out)
+@click.command()
+@click.pass_context
+def version(ctx):
+    ctx.obj.version()
 
-    def add_test_contract(self):
-        from jsearch.tests.utils import add_test_contract
-        from jsearch.tests.plugins.tokens.fuck_token import FuckTokenSource
 
-        parser = argparse.ArgumentParser(usage=f"usage: {self.script_name} [-h]")
-        parser.add_argument('-db', action='store', help=argparse.SUPPRESS)
-        parser.add_argument('-address', action='store', help=argparse.SUPPRESS)
+@click.command()
+@click.pass_context
+def up(ctx):
+    ctx.obj.up()
 
-        args = parser.parse_args(sys.argv[2:])
-        sys.stdout.write('Running add_test_contract')
 
-        add_test_contract(args.db, args.address, FuckTokenSource.load())
+@click.command()
+@click.pass_context
+def up_by_one(ctx):
+    ctx.obj.up_by_one()
 
+
+@click.command()
+@click.pass_context
+@click.option("-m", "--message", default="", help="migration title")
+def up_to(ctx, version: str):
+    ctx.obj.up_to(version)
+
+
+@click.command()
+@click.pass_context
+def down(ctx):
+    ctx.obj.down()
+
+
+@click.command()
+@click.pass_context
+def down_by_one(ctx):
+    ctx.obj.down_by_one()
+
+
+@click.command()
+@click.pass_context
+@click.option("-m", "--message", default="", help="migration title")
+def down_to(ctx, version: str):
+    ctx.obj.down_to(version)
+
+
+@click.command()
+@click.pass_context
+def init(ctx):
+    sys.stdout.write(f'Try to find migrations schema...\n')
+
+    alembic_version = get_alembic_version(ctx.obj.dsn)
+    goose_version = get_goose_version(ctx.obj.dsn)
+
+    if alembic_version and not goose_version:
+        sys.stdout.write(f'Alembic detected, switch to goose...\n')
+
+        init_goose(ctx.obj.dsn)
+        goose_version = get_goose_version(ctx.obj.dsn)
+        sys.stdout.write(f'Migrations is completed.\n')
+        sys.stdout.write(f'[GOOSE]: {goose_version}\n')
+    elif not goose_version:
+        sys.stdout.write(f'Alembic was not detected. Schema is empty, need to apply goose migrations...\n')
+        ctx.obj.up()
+
+        goose_version = get_goose_version(ctx.obj.dsn)
+        sys.stdout.write(f'Migrations is completed.\n')
+        sys.stdout.write(f'[GOOSE]: {goose_version}\n')
+    else:
+        sys.stdout.write(f'[GOOSE]: {goose_version}\n')
+        sys.stdout.write(f'[ALEMBIC]: {alembic_version}\n')
+
+
+cli.add_command(up)
+cli.add_command(up_by_one)
+cli.add_command(up_to)
+cli.add_command(down)
+cli.add_command(down_by_one)
+cli.add_command(down_to)
+cli.add_command(status)
+cli.add_command(version)
+cli.add_command(create)
+cli.add_command(init)
 
 if __name__ == '__main__':
-    Manage()
+    cli()
