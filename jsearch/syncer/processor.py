@@ -74,7 +74,7 @@ async def sync_block(
         return True
 
 
-@timeit('[CPU/GETH/MAIN DB] Process block')
+@timeit('[CPU/GETH/MAIN DB] Process block', accumulate=True)
 async def process_block(main_db: MainDB, data: RawBlockData) -> BlockData:
     block_reward, uncles_rewards = process_rewards(data.reward, data.block_number)
     uncles = process_uncles(data.uncles, uncles_rewards, data.block_number, data.block_hash, data.is_forked)
@@ -138,7 +138,6 @@ async def process_block(main_db: MainDB, data: RawBlockData) -> BlockData:
     )
 
 
-@timeit("[CPU] Process rewards")
 def process_rewards(
         reward: Dict[str, Any],
         block_number: int
@@ -157,7 +156,6 @@ def process_rewards(
     return block_reward, uncles_rewards
 
 
-@timeit("[CPU] Process headers")
 def process_header(
         header: Dict[str, Any],
         reward: Dict[str, Any],
@@ -185,7 +183,6 @@ def process_header(
     return data
 
 
-@timeit("[CPU] Process uncles")
 def process_uncles(
         uncles: List[Dict[str, Any]],
         rewards: List[Dict[str, Any]],
@@ -217,7 +214,6 @@ def process_uncles(
     return items
 
 
-@timeit("[CPU] Process transactions")
 def process_txs(
         transactions: List[Dict[str, Any]],
         block_number: int,
@@ -248,7 +244,7 @@ def process_txs(
     return items
 
 
-@timeit("[CPU] Process receipts")
+@timeit("[CPU] Process receipts and parse logs", accumulate=True)
 def process_receipts(
         receipts: Dict[str, Any],
         transactions: List[Dict[str, Any]],
@@ -307,7 +303,6 @@ def process_logs(logs: Logs, status: bool, is_forked: bool, timestamp: int) -> L
     return items
 
 
-@timeit("[CPU] Process accounts")
 def process_accounts(
         accounts: List[Dict[str, Any]],
         block_number: int,
@@ -325,7 +320,6 @@ def process_accounts(
     return items
 
 
-@timeit("[CPU] Process internal transactions")
 def process_internal_txs(internal_txs: List[Dict[str, Any]],
                          transactions: List[Dict[str, Any]],
                          is_forked: bool) -> List[Dict[str, Any]]:
