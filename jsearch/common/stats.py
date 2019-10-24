@@ -8,7 +8,7 @@ from jsearch import settings
 from jsearch.common import utils, prom_metrics
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.common.structs import DbStats, LoopStats, NodeStats, ChainStats, LagStats
-from jsearch.common.reference_data import get_lag_statistics
+from jsearch.common.reference_data import get_lag_statistics, get_lag_statistics_by_provider
 
 logger = logging.getLogger(__name__)
 
@@ -70,18 +70,10 @@ async def get_chain_stats(db_pool: asyncpg.pool.Pool) -> ChainStats:
     return DbStats(is_healthy=is_healthy)
 
 
-_lag_metrics = {}
-
-
 async def get_lag_stats() -> LagStats:
     is_healthy = False
-    lag_statistics = await get_lag_statistics()
 
-    if _lag_metrics:
-        _lag_metrics['etherscan'].set(lag_statistics['etherscan'])
-        _lag_metrics['infura'].set(lag_statistics['infura'])
-        _lag_metrics['jwallet'].set(lag_statistics['jwallet'])
-
+    lag_statistics = get_lag_statistics()
     lag = max(lag_statistics.values())
 
     if lag < settings.HEALTHCHECK_LAG_THRESHOLD:
@@ -107,10 +99,9 @@ def setup_api_metrics(app: web.Application) -> None:
 
 def setup_syncer_metrics() -> None:
     prom_metrics.METRIC_SYNCER_LOOP_TASKS_TOTAL.set_function(lambda: utils.get_loop_tasks_count())
-
-    _lag_metrics['etherscan'] = prom_metrics.METRIC_SYNCER_LAG_ETHERSCAN
-    _lag_metrics['infura'] = prom_metrics.METRIC_SYNCER_LAG_INFURA
-    _lag_metrics['jwallet'] = prom_metrics.METRIC_SYNCER_LAG_JWALLET
+    prom_metrics.METRIC_SYNCER_LAG_ETHERSCAN.set_function(lambda: get_lag_statistics_by_provider('etherscan'))
+    prom_metrics.METRIC_SYNCER_LAG_INFURA.set_function(lambda: get_lag_statistics_by_provider('infura'))
+    prom_metrics.METRIC_SYNCER_LAG_JWALLET.set_function(lambda: get_lag_statistics_by_provider('jwallet'))
 
 
 def setup_pending_syncer_metrics() -> None:
