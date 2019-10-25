@@ -10,7 +10,7 @@ from typing import List, Optional, Dict, Any
 
 from jsearch.api import models
 from jsearch.api.database_queries.account_bases import get_account_base_query
-from jsearch.api.database_queries.account_states import get_last_balances_query
+from jsearch.api.database_queries.account_states import get_last_balances_query, get_account_state_query
 from jsearch.api.database_queries.assets_summary import get_assets_summary_query
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
@@ -143,29 +143,10 @@ class Storage:
         return row is not None
 
     async def get_account(self, address, tag) -> Tuple[Optional[models.Account], Optional[LastAffectedBlock]]:
-        if tag.is_hash():
-            query = """
-                SELECT block_number, block_hash, address, nonce, balance FROM accounts_state
-                WHERE address=$1
-                    AND block_number<=(SELECT number FROM blocks WHERE hash=$2)
-                ORDER BY block_number DESC LIMIT 1;
-            """
-        elif tag.is_number():
-            query = """
-                SELECT block_number, block_hash, address, nonce, balance FROM accounts_state
-                WHERE address=$1 AND block_number<=$2
-                ORDER BY block_number DESC LIMIT 1;
-            """
-        else:
-            query = """
-                SELECT "block_number", "block_hash", "address", "nonce", "balance" FROM accounts_state
-                WHERE address=$1 ORDER BY block_number DESC LIMIT 1;
-            """
+        query = get_account_state_query(address, tag)
+
         async with self.pool.acquire() as conn:
-            if tag.is_latest():
-                state_row = await conn.fetchrow(query, address)
-            else:
-                state_row = await conn.fetchrow(query, address, tag.value)
+            state_row = await fetch_row(conn, query)
 
             if state_row is None:
                 return None, None

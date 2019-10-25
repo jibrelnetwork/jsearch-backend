@@ -1,5 +1,5 @@
 # Build Goose in a stock Go builder container
-FROM golang:1.13 as goose
+asdsfFROM golang:1.13 as goose
 
 # use pure go implementation to avoid dependency from glibc
 ENV CGO_ENABLED=0
