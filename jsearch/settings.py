@@ -6,10 +6,12 @@ import socket
 BASE_DIR = pathlib.Path(__file__).parent.parent
 
 VERSION_FILE = BASE_DIR / 'jsearch' / 'version.txt'
-VERSION = VERSION_FILE.read_text()
+VERSION = VERSION_FILE.read_text().strip()
 
 PID = os.getpid()
 
+
+UPDATE_LAG_STATISTICS_DELAY_SECONDS = int(os.environ['UPDATE_LAG_STATISTICS_DELAY_SECONDS'])
 
 JSEARCH_MAIN_DB = os.environ['JSEARCH_MAIN_DB']
 JSEARCH_RAW_DB = os.environ['JSEARCH_RAW_DB']

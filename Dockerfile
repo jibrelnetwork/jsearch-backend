@@ -31,7 +31,8 @@ ENV LOG_LEVEL="INFO" \
     SYNCER_API_PORT="8080" \
     SYNCER_PENDING_API_PORT="8080" \
     MONITOR_OFFSET="6" \
-    GUNICORN_WORKERS="5"
+    GUNICORN_WORKERS="5" \
+    UPDATE_LAG_STATISTICS_DELAY_SECONDS="60"
 
 RUN groupadd -g 999 app \
  && useradd -r -u 999 -g app app \
