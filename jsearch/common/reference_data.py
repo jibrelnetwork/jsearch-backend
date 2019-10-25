@@ -89,5 +89,9 @@ async def set_lag_statistics(latest_synced_block_number):
         lag_statistics[ref.name] = ref_block.number - latest_synced_block_number
 
 
-async def get_lag_statistics():
+def get_lag_statistics():
     return lag_statistics
+
+
+def get_lag_statistics_by_provider(name):
+    return lag_statistics[name]
