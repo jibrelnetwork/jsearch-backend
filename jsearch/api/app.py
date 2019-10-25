@@ -107,15 +107,17 @@ async def make_app() -> Application:
     enable_swagger_docs(app)
 
     stats.setup_api_metrics(app)
-    logs.configure(
-        log_level=settings.LOG_LEVEL,
-        formatter_class=logs.select_formatter_class(settings.NO_JSON_FORMATTER),
-    )
 
     return app
 
 
-if __name__ == '__main__':
+def run_api(port: int, log_level: str, no_json_formatter: bool) -> None:
     loop = asyncio.get_event_loop()
     application = loop.run_until_complete(make_app())
-    web.run_app(application)
+
+    logs.configure(
+        log_level=log_level,
+        formatter_class=logs.select_formatter_class(no_json_formatter),
+    )
+
+    web.run_app(application, port=port)
