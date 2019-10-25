@@ -8,7 +8,7 @@ from jsearch import settings
 from jsearch.common import utils, prom_metrics
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.common.structs import DbStats, LoopStats, NodeStats, ChainStats, LagStats
-from jsearch.common.reference_data import get_ref_blocks
+from jsearch.common.reference_data import get_lag_statistics, set_lag_statistics
 
 logger = logging.getLogger(__name__)
 
@@ -88,20 +88,21 @@ async def get_lag_stats(db_pool: asyncpg.pool.Pool) -> LagStats:
     except Exception as e:
         logger.warning('Cannot check the database', extra={'exception': e})
     else:
-        ref_blocks = await get_ref_blocks()
+        await set_lag_statistics(max_block)
+        lag_statistics = await get_lag_statistics()
 
         if _lag_metrics:
-            _lag_metrics['etherscan'].set(ref_blocks['etherscan'] - max_block)
-            _lag_metrics['infura'].set(ref_blocks['infura'] - max_block)
-            _lag_metrics['jwallet'].set(ref_blocks['jwallet'] - max_block)
+            _lag_metrics['etherscan'].set(lag_statistics['etherscan'])
+            _lag_metrics['infura'].set(lag_statistics['infura'])
+            _lag_metrics['jwallet'].set(lag_statistics['jwallet'])
 
-        max_ref_block = max(ref_blocks.values())
-        lag = max_ref_block - max_block
+        lag = max(lag_statistics.values())
+
         if lag < settings.HEALTHCHECK_LAG_THRESHOLD:
             is_healthy = True
         else:
             logger.critical("Chain Lag Health Error",
-                            extra={"lag": lag, "max_ref_block": max_ref_block})
+                            extra={"lag": lag, "max_ref_block": lag + max_block})
     return LagStats(is_healthy=is_healthy, lag=lag)
 
 
