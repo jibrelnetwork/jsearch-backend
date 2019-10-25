@@ -6,7 +6,7 @@ import socket
 BASE_DIR = pathlib.Path(__file__).parent.parent
 
 VERSION_FILE = BASE_DIR / 'jsearch' / 'version.txt'
-VERSION = VERSION_FILE.read_text()
+VERSION = VERSION_FILE.read_text().strip()
 
 PID = os.getpid()
 

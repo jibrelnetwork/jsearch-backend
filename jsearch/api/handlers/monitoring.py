@@ -4,6 +4,7 @@ import prometheus_client
 
 from aiohttp import web
 
+from jsearch import settings
 from jsearch.common import stats
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ async def healthcheck(request: web.Request) -> web.Response:
 
     data = {
         'healthy': healthy,
+        'version': settings.VERSION,
         'isMainDbHealthy': main_db_stats.is_healthy,
         'isNodeHealthy': node_stats.is_healthy,
         'isLoopHealthy': loop_stats.is_healthy,
