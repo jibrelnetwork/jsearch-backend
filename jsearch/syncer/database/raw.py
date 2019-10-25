@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from jsearch.common import contracts
 from jsearch.common.structs import BlockRange
-from jsearch.common.utils import async_timeit
+from jsearch.common.utils import timeit
 from jsearch.syncer.structs import TokenHolderBalances, TokenHolderBalance
 from .wrapper import DBWrapper
 
@@ -70,13 +70,13 @@ class RawDB(DBWrapper):
 
         return row and row['boundary_id'] or 0
 
-    @async_timeit('[RAW DB] Get parent hash')
+    @timeit('[RAW DB] Get parent hash')
     async def get_parent_hash(self, block_hash):
         q = """SELECT fields FROM headers WHERE block_hash=%s"""
         row = await self.fetch_one(q, block_hash)
         return row['fields']['parentHash']
 
-    @async_timeit('[RAW DB] Get next chain event')
+    @timeit('[RAW DB] Get next chain event')
     async def get_next_chain_event(self, block_range: BlockRange, event_id: int, node_id: str):
         params = [event_id, node_id]
         if block_range.end is not None:
@@ -94,7 +94,7 @@ class RawDB(DBWrapper):
 
         return await self.fetch_one(q, *params)
 
-    @async_timeit('[RAW DB] Get first chain event')
+    @timeit('[RAW DB] Get first chain event')
     async def get_first_chain_event_for_block_range(self, block_range: BlockRange, node_id):
         if block_range.end is not None:
             cond = """block_number >= %s AND block_number <= %s"""
@@ -111,7 +111,7 @@ class RawDB(DBWrapper):
         """
         return await self.fetch_one(q, *params)
 
-    @async_timeit('[RAW DB] Is it canonical block query')
+    @timeit('[RAW DB] Is it canonical block query')
     async def is_canonical_block(self, block_hash):
         q = """SELECT id, reinserted FROM reorgs WHERE block_hash=%s ORDER BY id DESC"""
 
