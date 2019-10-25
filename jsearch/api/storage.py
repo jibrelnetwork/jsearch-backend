@@ -9,6 +9,7 @@ from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
 from jsearch.api import models
+from jsearch.api.database_queries.account_bases import get_account_base_query
 from jsearch.api.database_queries.account_states import get_last_balances_query
 from jsearch.api.database_queries.assets_summary import get_assets_summary_query
 from jsearch.api.database_queries.blocks import (
@@ -142,9 +143,6 @@ class Storage:
         return row is not None
 
     async def get_account(self, address, tag) -> Tuple[Optional[models.Account], Optional[LastAffectedBlock]]:
-        """
-        Get account info by address
-        """
         if tag.is_hash():
             query = """
                 SELECT block_number, block_hash, address, nonce, balance FROM accounts_state
@@ -175,11 +173,8 @@ class Storage:
             state_row = dict(state_row)
             state_row['balance'] = int(state_row['balance'])
 
-            query = """
-                SELECT address, code, code_hash FROM accounts_base
-                WHERE address=$1 LIMIT 1;
-            """
-            base_row = dict(await conn.fetchrow(query, address))
+            query = get_account_base_query(address)
+            base_row = await fetch_row(conn, query)
 
             row = {}
             row.update(state_row)
