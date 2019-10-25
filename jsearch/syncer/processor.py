@@ -12,6 +12,7 @@ from jsearch.common.processing.contracts_addresses_cache import contracts_addres
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.wallet import token_holders_from_token_balances
+from jsearch.common.utils import timeit
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.structs import TokenHolderBalances
 from jsearch.typing import Logs
@@ -229,6 +230,7 @@ class SyncProcessor:
             assets_summary_updates=assets_summary_updates
         )
 
+    @timeit("[CPU] Process rewards")
     def process_rewards(self,
                         reward: Dict[str, Any],
                         block_number: int) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
@@ -245,6 +247,7 @@ class SyncProcessor:
             uncles_rewards = reward_data['Uncles']
         return block_reward, uncles_rewards
 
+    @timeit("[CPU] Process headers")
     def process_header(self,
                        header: Dict[str, Any],
                        reward: Dict[str, Any],
@@ -270,6 +273,7 @@ class SyncProcessor:
         )
         return data
 
+    @timeit("[CPU] Process uncles")
     def process_uncles(self,
                        uncles: List[Dict[str, Any]],
                        rewards: List[Dict[str, Any]],
@@ -294,6 +298,7 @@ class SyncProcessor:
             items.append(data)
         return items
 
+    @timeit("[CPU] Process transactions")
     def process_transactions(self,
                              transactions: List[Dict[str, Any]],
                              block_number: int,
@@ -322,6 +327,7 @@ class SyncProcessor:
 
         return items
 
+    @timeit("[CPU] Process receipts")
     def process_receipts(self,
                          receipts: Dict[str, Any],
                          transactions: List[Dict[str, Any]],
@@ -378,6 +384,7 @@ class SyncProcessor:
             items.append(data)
         return items
 
+    @timeit("[CPU] Process accounts")
     def process_accounts(self,
                          accounts: List[Dict[str, Any]],
                          block_number: int,
@@ -393,6 +400,7 @@ class SyncProcessor:
             items.append(data)
         return items
 
+    @timeit("[CPU] Process internal transactions")
     def process_internal_txs(self,
                              internal_txs: List[Dict[str, Any]],
                              transactions: List[Dict[str, Any]],

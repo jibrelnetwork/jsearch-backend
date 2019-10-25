@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 from jsearch import settings
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.pagination import Page
-from jsearch.common.utils import async_timeit
+from jsearch.common.utils import timeit
 from jsearch.typing import AnyCoroutine, ProgressPercent
 
 DEFAULT_LIMIT = 20
@@ -169,7 +169,7 @@ async def estimate_query(connection: Connection, query: Query) -> int:
     return 0
 
 
-@async_timeit(name='[MAIN DB] Pages left query')
+@timeit(name='[MAIN DB] Pages left query')
 async def get_cursor_percent(
         connection: Connection,
         query: Query,
