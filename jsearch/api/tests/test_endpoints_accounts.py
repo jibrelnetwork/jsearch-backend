@@ -7,6 +7,7 @@ from typing import Optional, List, Dict
 
 from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.common.wallet_events import WalletEventType
+from jsearch.tests.plugins.databases.factories.accounts import AccountFactory, AccountStateFactory
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
 from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.tests.plugins.databases.factories.wallet_events import WalletEventsFactory
@@ -736,3 +737,24 @@ async def test_get_eth_transfers_errors(
     assert resp.status == 400
     assert not resp_json['status']['success']
     assert resp_json['status']['errors'] == errors
+
+
+@pytest.mark.parametrize('tag', ('latest', '0x4c285ba67d33a3cd670f5c4decfb10a41b929e7c4139766abfd60a24ee1fa148', '14'))
+async def test_get_account_does_not_return_data_from_fork(
+        cli: TestClient,
+        account_factory: AccountFactory,
+        account_state_factory: AccountStateFactory,
+        tag: str,
+) -> None:
+    forked = {'hash': '0x4c285ba67d33a3cd670f5c4decfb10a41b929e7c4139766abfd60a24ee1fa148', 'number': '14'}
+    canonical = {'hash': '0x16cdf1707799c6655baac6e210f52b94b7cec08adcaf9ede7dfe8649da926146', 'number': '12'}
+
+    acc = account_factory.create()
+
+    account_state_factory.create(address=acc.address, block_hash=forked['hash'], block_number=forked['number'])
+    account_state_factory.create(address=acc.address, block_hash=canonical['hash'], block_number=canonical['number'])
+
+    resp = await cli.get(f'/v1/accounts/{acc.address}?tag={tag}')
+    resp_json = await resp.json()
+
+    assert resp_json["data"]["blockHash"] == canonical["hash"]
