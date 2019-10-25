@@ -8,7 +8,7 @@ from jsearch import settings
 from jsearch.common import utils, prom_metrics
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.common.structs import DbStats, LoopStats, NodeStats, ChainStats, LagStats
-from jsearch.common.reference_data import get_lag_statistics, set_lag_statistics
+from jsearch.common.reference_data import get_lag_statistics
 
 logger = logging.getLogger(__name__)
 
@@ -73,36 +73,22 @@ async def get_chain_stats(db_pool: asyncpg.pool.Pool) -> ChainStats:
 _lag_metrics = {}
 
 
-async def get_lag_stats(db_pool: asyncpg.pool.Pool) -> LagStats:
+async def get_lag_stats() -> LagStats:
     is_healthy = False
-    lag = None
-    try:
-        async with db_pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT max(number) max_number FROM blocks where is_forked=false;')
-            if not row:
-                max_block = 0
-            else:
-                max_block = row['max_number']
-    except asyncio.CancelledError:
-        raise
-    except Exception as e:
-        logger.warning('Cannot check the database', extra={'exception': e})
+    lag_statistics = await get_lag_statistics()
+
+    if _lag_metrics:
+        _lag_metrics['etherscan'].set(lag_statistics['etherscan'])
+        _lag_metrics['infura'].set(lag_statistics['infura'])
+        _lag_metrics['jwallet'].set(lag_statistics['jwallet'])
+
+    lag = max(lag_statistics.values())
+
+    if lag < settings.HEALTHCHECK_LAG_THRESHOLD:
+        is_healthy = True
     else:
-        await set_lag_statistics(max_block)
-        lag_statistics = await get_lag_statistics()
+        logger.critical("Chain Lag Health Error", extra={"lag": lag})
 
-        if _lag_metrics:
-            _lag_metrics['etherscan'].set(lag_statistics['etherscan'])
-            _lag_metrics['infura'].set(lag_statistics['infura'])
-            _lag_metrics['jwallet'].set(lag_statistics['jwallet'])
-
-        lag = max(lag_statistics.values())
-
-        if lag < settings.HEALTHCHECK_LAG_THRESHOLD:
-            is_healthy = True
-        else:
-            logger.critical("Chain Lag Health Error",
-                            extra={"lag": lag, "max_ref_block": lag + max_block})
     return LagStats(is_healthy=is_healthy, lag=lag)
 
 
