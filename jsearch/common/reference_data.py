@@ -69,7 +69,14 @@ class JwalletDataProvider(Web3ApiProvider):
     name = 'jwallet'
 
 
-async def get_ref_blocks():
+lag_statistics = {
+    EtherscanDataProvider.name: 0,
+    InfuraDataProvider.name: 0,
+    JwalletDataProvider.name: 0,
+}
+
+
+async def set_lag_statistics(latest_synced_block_number):
     refs = [
         EtherscanDataProvider(settings.ETHERSCAN_API_URL, settings.ETHERSCAN_API_KEY),
         InfuraDataProvider(settings.INFURA_API_URL, settings.INFURA_API_KEY),
@@ -77,4 +84,14 @@ async def get_ref_blocks():
     ]
     coros = [r.get_last_block() for r in refs]
     blocks = await asyncio.gather(*coros)
-    return {r.name: b.number for r, b in zip(refs, blocks)}
+
+    for ref, ref_block in zip(refs, blocks):
+        lag_statistics[ref.name] = ref_block.number - latest_synced_block_number
+
+
+def get_lag_statistics():
+    return lag_statistics
+
+
+def get_lag_statistics_by_provider(name):
+    return lag_statistics[name]

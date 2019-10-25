@@ -62,7 +62,7 @@ async def healthcheck(request: web.Request) -> web.Response:
         chain_stats = ChainStats(is_healthy=True, chain_holes=None)
 
     if request.app['settings']['check_lag']:
-        lag_stats = await stats.get_lag_stats(request.app['db_pool'])
+        lag_stats = await stats.get_lag_stats()
     else:
         lag_stats = LagStats(is_healthy=True, lag=None)
 

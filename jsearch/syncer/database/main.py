@@ -24,7 +24,7 @@ from jsearch.common.tables import (
     uncles_t,
     wallet_events_t,
 )
-from jsearch.common.utils import async_timeit
+from jsearch.common.utils import timeit
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.typing import Blocks, Block
@@ -151,7 +151,7 @@ class MainDB(DBWrapper):
                 },
             )
 
-    @async_timeit('[RAW DB] is block exists query')
+    @timeit('[RAW DB] is block exists query')
     async def is_block_number_exists(self, block_num):
         q = blocks_t.select().where(
             and_(
@@ -188,7 +188,7 @@ class MainDB(DBWrapper):
         if result:
             return result.gap_end
 
-    @async_timeit(name='Query to find gaps')
+    @timeit(name='Query to find gaps')
     async def check_on_holes(self, start: int, end: int) -> Optional[Tuple[int, int]]:
         gap_end = None
         # check blocks to prevent case:
@@ -223,7 +223,7 @@ class MainDB(DBWrapper):
             )
             return gap
 
-    @async_timeit('[MAIN DB] Get last chain event')
+    @timeit('[MAIN DB] Get last chain event')
     async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> None:
         if sync_range.end is not None:
             cond = """block_number >= %s AND block_number <= %s"""
@@ -243,7 +243,7 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             return dict(row) if row else None
 
-    @async_timeit('Insert chain event')
+    @timeit('Insert chain event')
     async def insert_chain_event(self, event):
         q = chain_events_t.insert().values(**event)
         async with self.engine.acquire() as conn:
