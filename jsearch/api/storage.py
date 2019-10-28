@@ -9,7 +9,8 @@ from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
 from jsearch.api import models
-from jsearch.api.database_queries.account_states import get_last_balances_query
+from jsearch.api.database_queries.account_bases import get_account_base_query
+from jsearch.api.database_queries.account_states import get_last_balances_query, get_account_state_query
 from jsearch.api.database_queries.assets_summary import get_assets_summary_query
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
@@ -142,51 +143,22 @@ class Storage:
         return row is not None
 
     async def get_account(self, address, tag) -> Tuple[Optional[models.Account], Optional[LastAffectedBlock]]:
-        """
-        Get account info by address
-        """
-        if tag.is_hash():
-            query = """
-                SELECT block_number, block_hash, address, nonce, balance FROM accounts_state
-                WHERE address=$1
-                    AND block_number<=(SELECT number FROM blocks WHERE hash=$2)
-                ORDER BY block_number DESC LIMIT 1;
-            """
-        elif tag.is_number():
-            query = """
-                SELECT block_number, block_hash, address, nonce, balance FROM accounts_state
-                WHERE address=$1 AND block_number<=$2
-                ORDER BY block_number DESC LIMIT 1;
-            """
-        else:
-            query = """
-                SELECT "block_number", "block_hash", "address", "nonce", "balance" FROM accounts_state
-                WHERE address=$1 ORDER BY block_number DESC LIMIT 1;
-            """
+        account_state_query = get_account_state_query(address, tag)
+        account_base_query = get_account_base_query(address)
+
         async with self.pool.acquire() as conn:
-            if tag.is_latest():
-                state_row = await conn.fetchrow(query, address)
-            else:
-                state_row = await conn.fetchrow(query, address, tag.value)
+            state_row = await fetch_row(conn, account_state_query)
 
             if state_row is None:
                 return None, None
 
-            state_row = dict(state_row)
-            state_row['balance'] = int(state_row['balance'])
+            base_row = await fetch_row(conn, account_base_query)
 
-            query = """
-                SELECT address, code, code_hash FROM accounts_base
-                WHERE address=$1 LIMIT 1;
-            """
-            base_row = dict(await conn.fetchrow(query, address))
+        state_row['balance'] = int(state_row['balance'])
 
-            row = {}
-            row.update(state_row)
-            row.update(base_row)
-
-            row['code'] = '0x' + row['code']
-            row['code_hash'] = '0x' + row['code_hash']
+        row = {**state_row, **base_row}
+        row['code'] = '0x' + row['code']
+        row['code_hash'] = '0x' + row['code_hash']
 
         account = models.Account(**row)
         last_affected_block = state_row['block_number']
