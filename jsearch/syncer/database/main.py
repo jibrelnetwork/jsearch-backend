@@ -181,7 +181,7 @@ class MainDB(DBWrapper):
         from (
           select number, lead(number) over (order by number asc) as next_number
           from blocks
-          where is_forked = false and blocks.number >= %s and blocks.number < %s
+          where is_forked = false and blocks.number >= %s and blocks.number <= %s
         ) numbers
         where number + 1 <> next_number limit 1;
         """
