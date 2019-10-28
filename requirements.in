@@ -18,7 +18,7 @@ ethereum<=2.3.1
 funcy
 hexbytes<=0.1.0
 lxml
-marshmallow
+marshmallow<3
 mode
 prometheus-client
 psycopg2-binary
@@ -26,7 +26,7 @@ python-dateutil
 python-json-logger
 raven
 requests
-rlp
+rlp<=0.6.0
 sentry-sdk
 SQLAlchemy
 web3<4.7
