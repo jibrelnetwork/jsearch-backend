@@ -186,6 +186,11 @@ class FindHoleCase(NamedTuple):
             ),
             FindHoleCase(
                 sync_range=BlockRange(10, 20),
+                synced_ranges=[BlockRange(10, 12), BlockRange(21, 21)],
+                gap=BlockRange(12, 20)
+            ),
+            FindHoleCase(
+                sync_range=BlockRange(10, 20),
                 synced_ranges=[BlockRange(12, 14), BlockRange(16, 18)],
                 gap=BlockRange(10, 11)
             ),
@@ -199,11 +204,15 @@ class FindHoleCase(NamedTuple):
 async def test_find_holes(
         main_db,
         sync_block_range,
+        sync_block,
         case
 ):
     # given
     for range_start, range_end in case.synced_ranges:
-        sync_block_range(range_start, range_end)
+        if range_start == range_end:
+            sync_block(range_start)
+        else:
+            sync_block_range(range_start, range_end)
 
     # then
     gap = await main_db.check_on_holes(case.sync_range.start, case.sync_range.end)
