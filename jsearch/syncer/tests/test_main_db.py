@@ -117,7 +117,7 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
     }
 
     async with MainDB(db_dsn) as async_db:
-        await block.write(async_db, chain_event)
+        await async_db.write_block(chain_event, block, rewrite=False)
 
     db_blocks = db.execute(t.blocks_t.select()).fetchall()
     db_transactions = db.execute(t.transactions_t.select()).fetchall()
@@ -225,7 +225,7 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
     }
 
     async with MainDB(db_dsn) as async_db:
-        await block.write(async_db, chain_event)
+        await async_db.write_block(chain_event, block, rewrite=False)
 
     db_assets = db.execute(t.assets_summary_t.select()).fetchall()
     assert len(db_assets) == 1
@@ -270,7 +270,7 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
     chain_event['id'] = 2
 
     async with MainDB(db_dsn) as async_db:
-        await block.write(async_db, chain_event)
+        await async_db.write_block(chain_event, block, rewrite=False)
 
     db_assets = db.execute(t.assets_summary_t.select().order_by(t.assets_summary_t.c.block_number)).fetchall()
 

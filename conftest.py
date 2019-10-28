@@ -1,8 +1,14 @@
+import asyncio
+import logging
+
 import pytest
+from aiohttp.test_utils import TestServer, TestClient
 from pathlib import Path
 
 from jsearch.api.app import make_app
 from jsearch.common import logs
+
+logger = logging.getLogger(__name__)
 
 pytest_plugins = (
     "jsearch.tests.plugins.cli",
@@ -37,21 +43,55 @@ def here() -> Path:
     return Path(__file__).parent / 'tests'
 
 
-@pytest.fixture
-def loop(event_loop):
-    '''Ensure usable event loop for everyone.
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.get_event_loop()
+    yield loop
+    loop.close()
 
-    If you comment this fixture out, default pytest-aiohttp one is used
-    and things start failing (when redis pool is in place).
-    '''
+
+@pytest.fixture(scope="session")
+def loop(event_loop):
     return event_loop
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 @pytest.mark.asyncio
-async def cli(event_loop, db_dsn, aiohttp_client):
-    app = await make_app()
-    return await aiohttp_client(app)
+async def aiohttp_client_session_wide(event_loop):
+    """Session-wide `aiohttp.pytest_plugin.aiohttp_client`.
+
+    Behaves same as the lib's fixture, but accepts only `web.Application` as an
+    argument.
+
+    Allows to make `cli` fixture below session-wide also. This speeds-up
+    unittest by a lot because `cli` fixture execution time is about 0.7 seconds.
+    """
+    clients = []
+
+    async def go(application):
+        server = TestServer(application, loop=event_loop)
+        client = TestClient(server, loop=event_loop)
+
+        await client.start_server()
+        clients.append(client)
+
+        return client
+
+    yield go
+
+    async def finalize():
+        while clients:
+            await clients.pop().close()
+
+    await finalize()
+
+
+@pytest.fixture(scope="session")
+def cli(loop, aiohttp_client_session_wide):
+    app = loop.run_until_complete(make_app())
+    client = loop.run_until_complete(aiohttp_client_session_wide(app))
+
+    return client
 
 
 @pytest.fixture(scope="session", autouse=True)

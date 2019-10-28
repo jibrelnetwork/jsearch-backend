@@ -24,9 +24,10 @@ from jsearch.common.tables import (
     uncles_t,
     wallet_events_t,
 )
-from jsearch.common.utils import async_timeit
+from jsearch.common.utils import timeit
 from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
 from jsearch.syncer.database_queries.reorgs import insert_reorg
+from jsearch.syncer.structs import BlockData
 from jsearch.typing import Blocks, Block
 from .wrapper import DBWrapper
 
@@ -151,7 +152,7 @@ class MainDB(DBWrapper):
                 },
             )
 
-    @async_timeit('[RAW DB] is block exists query')
+    @timeit('[RAW DB] is block exists query')
     async def is_block_number_exists(self, block_num):
         q = blocks_t.select().where(
             and_(
@@ -180,7 +181,7 @@ class MainDB(DBWrapper):
         from (
           select number, lead(number) over (order by number asc) as next_number
           from blocks
-          where is_forked = false and blocks.number >= %s and blocks.number < %s
+          where is_forked = false and blocks.number >= %s and blocks.number <= %s
         ) numbers
         where number + 1 <> next_number limit 1;
         """
@@ -188,7 +189,7 @@ class MainDB(DBWrapper):
         if result:
             return result.gap_end
 
-    @async_timeit(name='Query to find gaps')
+    @timeit(name='Query to find gaps')
     async def check_on_holes(self, start: int, end: int) -> Optional[Tuple[int, int]]:
         gap_end = None
         # check blocks to prevent case:
@@ -223,7 +224,7 @@ class MainDB(DBWrapper):
             )
             return gap
 
-    @async_timeit('[MAIN DB] Get last chain event')
+    @timeit('[MAIN DB] Get last chain event')
     async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> None:
         if sync_range.end is not None:
             cond = """block_number >= %s AND block_number <= %s"""
@@ -243,7 +244,7 @@ class MainDB(DBWrapper):
             row = await res.fetchone()
             return dict(row) if row else None
 
-    @async_timeit('Insert chain event')
+    @timeit('Insert chain event')
     async def insert_chain_event(self, event):
         q = chain_events_t.insert().values(**event)
         async with self.engine.acquire() as conn:
@@ -271,27 +272,17 @@ class MainDB(DBWrapper):
 
     async def write_block_data_proc(
             self,
-            block_data,
-            uncles_data,
-            transactions_data,
-            receipts_data,
-            logs_data,
-            accounts_data,
-            internal_txs_data,
-            transfers,
-            token_holders_updates,
-            wallet_events,
-            assets_summary_updates,
-            chain_event,
-            connection=None,
-    ):
+            chain_event: Dict[str, Any],
+            block_data: BlockData,
+            connection: SAConnection
+    ) -> None:
         """
         Insert block and all related items in main database
         """
-        accounts_state_data, accounts_base_data = accounts_to_state_and_base_data(accounts_data)
+        accounts_state_data, accounts_base_data = accounts_to_state_and_base_data(block_data.accounts)
 
-        token_holders_updates.sort(key=lambda u: (u['account_address'], u['token_address']))
-        assets_summary_updates.sort(key=lambda u: (u['address'], u['asset_address']))
+        block_data.token_holders_updates.sort(key=lambda u: (u['account_address'], u['token_address']))
+        block_data.assets_summary_updates.sort(key=lambda u: (u['address'], u['asset_address']))
 
         if chain_event is not None:
             chain_event = dict(chain_event)
@@ -302,65 +293,29 @@ class MainDB(DBWrapper):
         q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
 
         params = [
-            [block_data],
-            uncles_data,
-            transactions_data,
-            receipts_data,
-            logs_data,
+            [block_data.block],
+            block_data.uncles,
+            block_data.txs,
+            block_data.receipts,
+            block_data.logs,
             accounts_state_data,
             accounts_base_data,
-            internal_txs_data,
-            transfers,
-            token_holders_updates,
-            wallet_events,
-            assets_summary_updates,
+            block_data.internal_txs,
+            block_data.transfers,
+            block_data.token_holders_updates,
+            block_data.wallet_events,
+            block_data.assets_summary_updates,
             chain_event
         ]
+        await connection.execute(q, *[json.dumps(item) for item in params])
 
-        if connection is not None:
-            await connection.execute(q, *[json.dumps(item) for item in params])
-        else:
-            async with self.engine.acquire() as connection:
-                async with connection.begin():
-                    await connection.execute(q, *[json.dumps(item) for item in params])
-
-    async def rewrite_block_data_proc(
-            self,
-            block_data,
-            uncles_data,
-            transactions_data,
-            receipts_data,
-            logs_data,
-            accounts_data,
-            internal_txs_data,
-            transfers,
-            token_holders_updates,
-            wallet_events,
-            assets_summary_updates,
-            chain_event
-    ):
-        """
-        Rewrite block and all related items in main database
-        """
-
+    @timeit('[MAIN DB] Write block')
+    async def write_block(self, chain_event: Dict[str, Any], block_data: BlockData, rewrite: bool):
         async with self.engine.acquire() as connection:
             async with connection.begin():
-                await self.delete_block_data(block_data['hash'], connection)
-                await self.write_block_data_proc(
-                    block_data,
-                    uncles_data,
-                    transactions_data,
-                    receipts_data,
-                    logs_data,
-                    accounts_data,
-                    internal_txs_data,
-                    transfers,
-                    token_holders_updates,
-                    wallet_events,
-                    assets_summary_updates,
-                    chain_event,
-                    connection
-                )
+                if rewrite:
+                    await self.delete_block_data(block_data.block['hash'], connection)
+                await self.write_block_data_proc(chain_event, block_data, connection)
 
     async def delete_block_data(self, block_hash, connection):
         logger.info('deleting block %s', block_hash)
