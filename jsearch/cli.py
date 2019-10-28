@@ -2,16 +2,11 @@ import logging
 
 import click
 from click import Context
-from typing import NamedTuple
 
 from jsearch.api.cli import api
+from jsearch.structs import AppConfig
 
 logger = logging.getLogger(__name__)
-
-
-class AppConfig(NamedTuple):
-    log_level: str
-    no_json_formatter: bool
 
 
 @click.group()
