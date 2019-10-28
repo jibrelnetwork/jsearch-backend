@@ -2,8 +2,7 @@ import asyncio
 
 import pytest
 
-from jsearch.common.async_utils import chain_dependent_coros
-
+from jsearch.common.async_utils import chain_dependent_coros, aiosuppress
 
 pytestmark = pytest.mark.asyncio
 
@@ -72,3 +71,29 @@ async def test_chain_dependent_coros_preserves_order_of_dependent_coros() -> Non
         {'id': 'three', 'val': 14},
         {'id': 'three', 'val': 18},
     ]
+
+
+async def test_aiosuppress_propogates_cancelled_error() -> None:
+    async def func():
+        raise asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        with aiosuppress(Exception):
+            await func()
+
+
+async def test_aiosuppress_suppresses_specified_errors() -> None:
+    async def func():
+        raise OverflowError
+
+    with aiosuppress(OverflowError):
+        await func()
+
+
+async def test_aiosuppress_does_not_suppress_not_specified_errors() -> None:
+    async def func():
+        raise OverflowError
+
+    with pytest.raises(OverflowError):
+        with aiosuppress(ZeroDivisionError):
+            await func()
