@@ -36,7 +36,7 @@ fi
 
 if [[ "$@" = "app" ]]; then
     python manage.py init
-    gunicorn -c gunicorn-conf.py jsearch.api.app:make_app
+    jsearch api
 elif [[ "$@" = "migrate" ]]; then
     python manage.py up
 else
