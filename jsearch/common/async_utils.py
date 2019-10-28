@@ -1,6 +1,13 @@
+import asyncio
+import contextlib
+import logging
+
 from typing import Sequence, Mapping, List
 
 from jsearch.typing import AnyCoroutine, AnyCoroutineMaker
+
+
+logger = logging.getLogger(__name__)
 
 
 def chain_dependent_coros(
@@ -38,3 +45,19 @@ def chain_dependent_coros(
 async def _make_chain(task_before: AnyCoroutine, task: AnyCoroutine) -> None:
     await task_before
     await task
+
+
+class aiosuppress(contextlib.suppress):
+    """`contextlib.suppress` with always propagated `asyncio.CancelledError`."""
+
+    def __exit__(self, exctype, excinst, exctb):
+        if exctype is not None and issubclass(exctype, asyncio.CancelledError):
+            logger.debug("Propagating 'asyncio.CancelledError'...")
+            return False
+
+        will_suppress = super().__exit__(exctype, excinst, exctb)
+
+        if will_suppress:
+            logger.info('Suppressed an exception', exc_info=True)
+
+        return will_suppress
