@@ -609,6 +609,29 @@ def create_assets_summaries(db, transfer_factory: TokenTransferFactory, transact
                 ]
         ),
         (
+                {"addresses": "A1,A2", "assets": "C2"},
+                [
+                    {
+                        'address': 'a1',
+                        'assetsSummary': [
+                            {
+                                'address': '',
+                                'balance': "300",
+                                'decimals': "0",
+                                'transfersNumber': 2
+                            },
+                            {
+                                'address': 'c2',
+                                'balance': "20000",
+                                "decimals": "2",
+                                'transfersNumber': 1
+                            },
+                        ],
+                        'outgoingTransactionsNumber': "10"
+                    },
+                ]
+        ),
+        (
                 {"addresses": "a1,a2", "assets": "c2"},
                 [
                     {
@@ -634,7 +657,8 @@ def create_assets_summaries(db, transfer_factory: TokenTransferFactory, transact
     ],
     ids=(
             "only_by_addresses",
-            "by_addresses_and_assets"
+            "by_addresses_and_assets",
+            "by_upper_addresses_and_upper_assets"
     )
 )
 async def test_get_wallet_assets_summary(
