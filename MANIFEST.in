@@ -1,1 +1,4 @@
 include jsearch/version.txt
+include jsearch/data_checker/proxy.list
+
+recursive-include jsearch/api/swagger *
