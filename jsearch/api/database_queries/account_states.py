@@ -1,7 +1,5 @@
-from sqlalchemy import select, and_, false, tuple_, Column, desc
-from sqlalchemy.dialects.postgresql import array, Any
+from sqlalchemy import select, and_, false, Column, desc
 from sqlalchemy.orm import Query
-from sqlalchemy.sql.functions import max
 from typing import List, Optional
 
 from jsearch.api.helpers import Tag
@@ -16,34 +14,6 @@ def get_default_fields() -> List[Column]:
         accounts_state_t.c.block_hash,
         accounts_state_t.c.nonce
     ]
-
-
-def get_last_balances_query(addresses: List[str]) -> Query:
-    sub_query = select(
-        [
-            accounts_state_t.c.address,
-            max(accounts_state_t.c.block_number)
-        ]
-    ).where(
-        and_(
-            Any(accounts_state_t.c.address, array(tuple(addresses))),
-            accounts_state_t.c.is_forked == false()
-        )
-    ).group_by(
-        accounts_state_t.c.address
-    ).alias('latest_blocks')
-
-    return select(get_default_fields()).where(
-        and_(
-            tuple_(
-                accounts_state_t.c.address,
-                accounts_state_t.c.block_number
-            ).in_(
-                sub_query
-            ),
-            accounts_state_t.c.is_forked == false()
-        )
-    )
 
 
 def get_account_state_query(address: str, tag: Tag) -> Query:
