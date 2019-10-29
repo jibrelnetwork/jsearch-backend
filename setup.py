@@ -11,18 +11,10 @@ setup(
         exclude=('*.tests.*',),
         include=('jsearch', 'jsearch.*',)
     ),
-    data_files=[
-        (
-            '',
-            [
-                'jsearch/data_checker/proxy.list'
-            ],
-        )
-    ],
+    include_package_data=True,
     zip_safe=False,
     platforms='any',
     install_requires=[],
-    include_package_data=True,
     entry_points={
         'console_scripts': [
             'jsearch = jsearch.cli:cli',
