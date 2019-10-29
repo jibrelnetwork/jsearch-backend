@@ -51,6 +51,9 @@ class Tag:
         return self.type == self.LATEST
 
 
+TAG_LATEST = Tag(type_=Tag.LATEST, value='')
+
+
 def get_tag(request):
     tag_value = request.match_info.get('tag') or request.query.get('tag', Tag.LATEST)
     if tag_value.isdigit():
