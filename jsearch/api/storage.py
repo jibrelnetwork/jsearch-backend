@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from collections import defaultdict
@@ -10,7 +11,7 @@ from typing import List, Optional, Dict, Any
 
 from jsearch.api import models
 from jsearch.api.database_queries.account_bases import get_account_base_query
-from jsearch.api.database_queries.account_states import get_last_balances_query, get_account_state_query
+from jsearch.api.database_queries.account_states import get_account_state_query
 from jsearch.api.database_queries.assets_summary import get_assets_summary_query
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
@@ -63,7 +64,7 @@ from jsearch.api.database_queries.wallet_events import (
     get_wallet_events_query,
     get_eth_transfers_by_address_query,
 )
-from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent, ChainEvent
+from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent, ChainEvent, TAG_LATEST
 from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
@@ -547,12 +548,14 @@ class Storage:
         return logs, last_affected_block
 
     async def get_accounts_balances(self, addresses) -> Tuple[List[models.Balance], Optional[LastAffectedBlock]]:
-        if addresses:
-            query = get_last_balances_query(addresses)
-            async with self.pool.acquire() as conn:
-                rows = await fetch(conn, query)
-        else:
-            rows = []
+        queries = list()
+
+        for address in addresses:
+            queries.append(get_account_state_query(address, TAG_LATEST))
+
+        coros = [fetch_row(self.pool, query) for query in queries]
+        rows = await asyncio.gather(*coros)
+        rows = [r for r in rows if r is not None]
 
         addr_map = {r['address']: r for r in rows}
 
