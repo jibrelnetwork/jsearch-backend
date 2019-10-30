@@ -1,7 +1,7 @@
 import logging
 
 from aiohttp import web
-from typing import Optional
+from typing import Optional, List
 
 from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.error_code import ErrorCode
@@ -14,11 +14,10 @@ from jsearch.api.helpers import ApiError, maybe_orphan_request
 from jsearch.api.helpers import (
     api_success,
     api_error_response,
-    get_from_joined_string,
 )
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_page
-from jsearch.api.serializers.wallets import WalletEventsSchema
+from jsearch.api.serializers.wallets import WalletEventsSchema, WalletAssetsSchema
 from jsearch.api.structs.wallets import wallet_events_to_json
 from jsearch.api.utils import use_kwargs
 from jsearch.typing import IntOrStr, OrderScheme
@@ -129,22 +128,25 @@ async def get_blockchain_tip(request):
     })
 
 
-async def get_assets_summary(request):
+@ApiError.catch
+@use_kwargs(WalletAssetsSchema())
+async def get_assets_summary(
+        request: web.Request,
+        addresses: List[str],
+        assets: Optional[List[str]] = None,
+        tip_hash: Optional[str] = None,
+) -> web.Response:
     storage = request.app['storage']
     last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
-
-    addresses = get_from_joined_string(request.query.get('addresses'))
-    assets = get_from_joined_string(request.query.get('assets'))
-    tip_hash = request.query.get('blockchain_tip')
-
     if addresses:
         summary, last_affected_block = await storage.get_wallet_assets_summary(
-            addresses,
+            addresses=addresses,
             assets=assets
         )
     else:
         summary = []
         last_affected_block = None
+
     data, tip = await maybe_apply_tip(storage, tip_hash, summary, last_affected_block, empty=[])
 
     orphaned_request = await maybe_orphan_request(

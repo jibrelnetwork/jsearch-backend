@@ -7,11 +7,14 @@ from aiohttp.test_utils import TestClient
 from typing import Callable, Tuple, List, Dict, Any, Optional
 
 from jsearch.api.tests.utils import parse_url
+from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.tables import assets_summary_t
 from jsearch.common.wallet_events import make_event_index
 from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.tests.plugins.databases.factories.assets_summary import AssetsSummaryFactory
 from jsearch.tests.plugins.databases.factories.common import generate_address
+from jsearch.tests.plugins.databases.factories.token_transfers import TokenTransferFactory
+from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 from jsearch.typing import AnyCoroutine
 
 logger = logging.getLogger(__name__)
@@ -503,7 +506,8 @@ async def test_get_wallet_events_pending_txs_limit(cli,
     assert len(response_json['data']['pendingEvents']) == 100
 
 
-async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_factory):
+@pytest.fixture()
+def create_assets_summaries(db, transfer_factory: TokenTransferFactory, transaction_factory: TransactionFactory):
     assets = [
         {
             'address': 'a1',
@@ -575,64 +579,135 @@ async def test_get_wallet_assets_summary(cli, db, transfer_factory, transaction_
 
     transaction_factory.create(address='a1', value='0x0')
     transaction_factory.create(address='a1', value='0x2')
+
     transaction_factory.create(address='a1', value='0x4')
     transaction_factory.create(address='a1', is_forked=True)
 
-    resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1,a2')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [
-        {
-            'address': 'a1',
-            'assetsSummary': [
-                {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 2},
-                {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 2},
-                {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 1}
-            ],
-            'outgoingTransactionsNumber': "10"},
-        {
-            'address': 'a2',
-            'assetsSummary': [
-                {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 3}
-            ],
-            'outgoingTransactionsNumber': "2"
-        }
-    ]
 
-    resp = await cli.get(f'/v1/wallet/assets_summary?addresses=a1&assets=c2')
-    assert resp.status == 200
-    res = (await resp.json())['data']
-    assert res == [{'address': 'a1',
-                    'assetsSummary': [{'address': 'c2', 'balance': "20000", "decimals": "2", 'transfersNumber': 1}],
-                    'outgoingTransactionsNumber': "10"},
-                   ]
-
-
-@pytest.mark.parametrize("url_with_asset", [(True,), (False,)], ids=('without_assets', 'with_assets'))
-async def test_get_assets_summary_from_history(cli, assets_summary_factory: AssetsSummaryFactory, url_with_asset,
-                                               transfer_factory):
+@pytest.mark.parametrize(
+    "params, expected",
+    [
+        (
+                {"addresses": "a1,a2"},
+                [
+                    {
+                        'address': 'a1',
+                        'assetsSummary': [
+                            {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 2},
+                            {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 2},
+                            {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 1}
+                        ],
+                        'outgoingTransactionsNumber': "10"
+                    },
+                    {
+                        'address': 'a2',
+                        'assetsSummary': [
+                            {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 3}
+                        ],
+                        'outgoingTransactionsNumber': "2"
+                    }
+                ]
+        ),
+        (
+                {"addresses": "A1,A2", "assets": "C2"},
+                [
+                    {
+                        'address': 'a1',
+                        'assetsSummary': [
+                            {
+                                'address': '',
+                                'balance': "300",
+                                'decimals': "0",
+                                'transfersNumber': 2
+                            },
+                            {
+                                'address': 'c2',
+                                'balance': "20000",
+                                "decimals": "2",
+                                'transfersNumber': 1
+                            },
+                        ],
+                        'outgoingTransactionsNumber': "10"
+                    },
+                ]
+        ),
+        (
+                {"addresses": "a1,a2", "assets": "c2"},
+                [
+                    {
+                        'address': 'a1',
+                        'assetsSummary': [
+                            {
+                                'address': '',
+                                'balance': "300",
+                                'decimals': "0",
+                                'transfersNumber': 2
+                            },
+                            {
+                                'address': 'c2',
+                                'balance': "20000",
+                                "decimals": "2",
+                                'transfersNumber': 1
+                            },
+                        ],
+                        'outgoingTransactionsNumber': "10"
+                    },
+                ]
+        )
+    ],
+    ids=(
+            "only_by_addresses",
+            "by_addresses_and_assets",
+            "by_upper_addresses_and_upper_assets"
+    )
+)
+async def test_get_wallet_assets_summary(
+        cli: TestClient,
+        create_assets_summaries: None,
+        params: Dict[str, str],
+        expected: Dict[str, Any]
+) -> None:
     # given
-    token = generate_address()
-    token2 = generate_address()
+    params = "&".join([f"{key}={value}" for key, value in params.items()])
+    url = f"/v1/wallet/assets_summary?{params}"
+
+    # when
+    resp = await cli.get(url)
+    assert resp.status == 200
+
+    resp_json = await resp.json()
+    resp_data = resp_json['data']
+
+    # then
+    assert resp_data == expected
+
+
+async def test_get_assets_summary_from_history(
+        cli: TestClient,
+        assets_summary_factory: AssetsSummaryFactory,
+        transfer_factory: TokenTransferFactory,
+        transaction_factory: TransactionFactory,
+) -> None:
+    # given
     account = generate_address()
 
     data = {
         'address': account,
-        'asset_address': token,
+        'asset_address': ETHER_ASSET_ADDRESS,
+        'decimals': 0
     }
 
     # balances
     legacy_balance = assets_summary_factory.create(**data)
-    current_balance = assets_summary_factory.create(**{**data, 'block_number': legacy_balance.block_number + 1})
+    current_balance = assets_summary_factory.create(
+        **{
+            **data,
+            'block_number': legacy_balance.block_number + 1
+        }
+    )
 
-    transfer_factory.create(address=account, token_address=token2)
-    transfer_factory.create(address=account, token_address=token)
-    transfer_factory.create(address=account, token_address=token)
-    transfer_factory.create(address=account, token_address=token, is_forked=True)
-
+    transaction_factory.create(address=account, value=1)
     url = f'/v1/wallet/assets_summary?addresses={account}'
-    if url_with_asset:
-        url = f'{url}&assets={token}'
 
     # when
     resp = await cli.get(url)
@@ -644,11 +719,75 @@ async def test_get_assets_summary_from_history(cli, assets_summary_factory: Asse
         'address': account,
         'assetsSummary': [
             {
-                'address': token,
+                'address': ETHER_ASSET_ADDRESS,
+                'balance': f'{current_balance.value}',
+                'decimals': '0',
+                'transfersNumber': 1
+            },
+        ],
+        'outgoingTransactionsNumber': '1'
+    }]
+
+
+async def test_get_assets_summary_by_asset_from_history(
+        cli: TestClient,
+        assets_summary_factory: AssetsSummaryFactory,
+        transfer_factory: TokenTransferFactory,
+        transaction_factory: TransactionFactory,
+) -> None:
+    # given
+    asset = generate_address()
+    account = generate_address()
+
+    data = {
+        'address': account,
+        'asset_address': asset,
+    }
+
+    # balances
+    legacy_balance = assets_summary_factory.create(**data)
+    current_balance = assets_summary_factory.create(
+        **{
+            **data,
+            'block_number': legacy_balance.block_number + 1
+        }
+    )
+    ether_balance = assets_summary_factory.create(**{
+        'address': account,
+        'asset_address': ETHER_ASSET_ADDRESS,
+        'decimals': 0
+    })
+
+    transaction_factory.create(address=account, value=1)
+    transfer_factory.create(address=account, token_address=asset)
+    transfer_factory.create(address=account, token_address=asset)
+    transfer_factory.create(address=account, token_address=asset, is_forked=True)
+    transfer_factory.create(address=account, token_address=generate_address())
+
+    url = f'/v1/wallet/assets_summary?addresses={account}&assets={asset}'
+
+    # when
+    resp = await cli.get(url)
+    resp_json = await resp.json()
+
+    # then
+    assert resp.status == 200
+    assert resp_json['data'] == [{
+        'address': account,
+        'assetsSummary': [
+            {
+                'address': ETHER_ASSET_ADDRESS,
+                'balance': f'{ether_balance.value}',
+                'decimals': '0',
+                'transfersNumber': 1
+            },
+            {
+                'address': asset,
                 'balance': f'{current_balance.value}',
                 'decimals': f'{current_balance.decimals}',
                 'transfersNumber': 2
-            }
+            },
+
         ],
         'outgoingTransactionsNumber': '1'
     }]
