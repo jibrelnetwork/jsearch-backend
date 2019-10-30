@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS token_holders (
     token_address varchar(45) NOT NULL,
     holder_address varchar(45) NOT NULL,
     balance numeric NOT NULL,
-    UNIQUE(block_hash, token_address, holder_address)
+    decimals integer NOT NULL
 );
 
 
