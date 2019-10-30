@@ -1,4 +1,4 @@
-# Jsearch backend services
+# Jsearch backend services  [![Make release PR](https://img.shields.io/badge/make_release_PR-blue)](https://github.com/jibrelnetwork/jsearch-backend/compare/master...develop?template=release.md&title=Release+vX.Y.Z)
 
 This is the core of Jsearch. 
 
