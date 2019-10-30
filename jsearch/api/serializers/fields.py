@@ -1,8 +1,9 @@
 from datetime import datetime
-
 from marshmallow import fields
 from marshmallow.validate import Range
-from typing import Set
+from typing import Set, Any
+
+from jsearch.api.helpers import get_from_joined_string
 
 INT_MAX = 2147483647
 BIGINT_MAX = 9223372036854775807
@@ -65,7 +66,7 @@ class PositiveIntOrTagField(fields.Field):
 
 class StrLower(fields.String):
 
-    def _deserialize(self, value, attr, data):
+    def _deserialize(self, value, attr, data, **kwargs):
         value = super(StrLower, self)._deserialize(value, attr, data)
         if value:
             return value.lower()
@@ -76,10 +77,28 @@ class Timestamp(fields.Integer):
         'invalid': 'Not a valid timestamp.'
     }
 
-    def _deserialize(self, value, attr, data):
+    def _deserialize(self, value, attr, data, **kwargs) -> Any:
         value = super(Timestamp, self)._deserialize(value, attr, data)
         if value:
             try:
                 return datetime.fromtimestamp(value)
             except (ValueError, OverflowError):
                 self.fail('invalid')
+
+
+class JoinedString(fields.String):
+    to_lower: bool
+
+    def __init__(self, to_lower=False, *args, **kwargs):
+        self.to_lower = to_lower
+        super(JoinedString, self).__init__(*args, **kwargs)
+
+    def _deserialize(self, value, attr, data, **kwargs) -> Any:
+        value = super(JoinedString, self)._deserialize(value, attr, data)
+        if value:
+            value = get_from_joined_string(value)
+
+        if value and self.to_lower:
+            value = [v.lower() for v in value]
+
+        return value

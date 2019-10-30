@@ -4,7 +4,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
 from sqlalchemy.sql.functions import max
-from typing import Optional, List
+from typing import List, Optional
 
 from jsearch.common.tables import assets_summary_t
 
@@ -21,15 +21,12 @@ def get_default_fields():
     ]
 
 
-def get_assets_summary_query(addresses: List[str], assets: Optional[List[str]]) -> Query:
+def get_assets_summary_query(addresses: List[str], assets: Optional[List[str]] = None) -> Query:
     conditions = [
         Any(assets_summary_t.c.address, array(tuple(addresses))),
         assets_summary_t.c.is_forked == false()
     ]
     if assets:
-        # "outgoingTransactionsNumber" (nonce) can get only from ETH assest
-        # so adding ETH address ('') ot assets list
-        assets.append('')
         conditions.append(
             Any(assets_summary_t.c.asset_address, array(tuple(assets)))
         )

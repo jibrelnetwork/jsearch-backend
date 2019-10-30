@@ -1,13 +1,15 @@
 import logging
 
-from marshmallow import fields, validates_schema, ValidationError
+from marshmallow import fields, validates_schema, ValidationError, Schema, post_load
 from marshmallow.validate import Range, Length
+from typing import Dict, Any
 
 from jsearch.api.database_queries.wallet_events import get_events_ordering
 from jsearch.api.helpers import Tag
 from jsearch.api.ordering import Ordering
 from jsearch.api.serializers.common import BlockRelatedListSchema, is_less_than_two_values_provided
-from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower, IntField, BigIntField
+from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower, IntField, BigIntField, JoinedString
+from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.typing import OrderScheme, OrderDirection
 
 logger = logging.getLogger(__name__)
@@ -43,3 +45,18 @@ class WalletEventsSchema(BlockRelatedListSchema):
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         return get_events_ordering(scheme, direction)
+
+
+class WalletAssetsSchema(Schema):
+    tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
+
+    assets = JoinedString(to_lower=True)
+    addresses = JoinedString(to_lower=True)
+
+    @post_load
+    def insert_ether_assets(self, item: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+        # Always add ether to any assets query
+        assets = item.get('assets')
+        if assets and ETHER_ASSET_ADDRESS not in assets:
+            assets.append(ETHER_ASSET_ADDRESS)
+        return item
