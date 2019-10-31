@@ -2,7 +2,7 @@ import functools
 
 from functools import reduce
 from future.moves import itertools
-from sqlalchemy import false, tuple_
+from sqlalchemy import false, tuple_, union_all
 from sqlalchemy import select, and_
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
@@ -64,9 +64,8 @@ def get_assets_summary_query(addresses: List[str], assets: Optional[List[str]] =
 
 
 def get_assets_summary_unions_query(addresses: List[str], assets: List[str]) -> Query:
-    return functools.reduce(
-        lambda x, y: x.union(y),
-        [
+    return union_all(
+        *[
             get_assets_summary_one_query(address, asset)
             for address, asset in itertools.product(addresses, assets)
         ]
