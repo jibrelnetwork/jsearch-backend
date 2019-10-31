@@ -69,6 +69,7 @@ from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
+from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
 from jsearch.common.wallet_events import get_event_from_pending_tx
@@ -929,6 +930,7 @@ class Storage:
         SELECT count(*) as tx_number, address, token_address
             FROM token_transfers
             WHERE address = ANY($1::varchar[])
+                AND token_address = ANY($2::varchar[])
                 AND is_forked=false
             GROUP BY address, token_address
         UNION SELECT count(*) as tx_number, address, '' as token_address
@@ -938,10 +940,11 @@ class Storage:
                 AND value != '0x0'
             GROUP BY address;
         """
-        addresses = set([a['address'] for a in assets])
+        addresses = {a['address'] for a in assets}
+        assets_addresses = {a['asset_address'] for a in assets if a['asset_address'] != ETHER_ASSET_ADDRESS}
 
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(q, addresses)
+            rows = await conn.fetch(q, addresses, assets_addresses)
             return {(r['address'], r['token_address']): r['tx_number'] for r in rows}
 
     async def get_nonce(self, address):
