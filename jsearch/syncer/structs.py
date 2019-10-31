@@ -14,6 +14,7 @@ class TokenHolderBalance(NamedTuple):
     token: TokenAddress
     account: AccountAddress
     balance: int
+    decimals: int
     block_hash: str
     block_number: int
 

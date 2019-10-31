@@ -11,20 +11,13 @@ setup(
         exclude=('*.tests.*',),
         include=('jsearch', 'jsearch.*',)
     ),
-    data_files=[
-        (
-            '',
-            [
-                'jsearch/data_checker/proxy.list'
-            ],
-        )
-    ],
+    include_package_data=True,
     zip_safe=False,
     platforms='any',
     install_requires=[],
-    include_package_data=True,
     entry_points={
         'console_scripts': [
+            'jsearch = jsearch.cli:cli',
             'jsearch-syncer = jsearch.syncer.main:run',
             'jsearch-syncer-pending = jsearch.pending_syncer.main:run',
             'jsearch-token-holders-cleaner = jsearch.token_holders_cleaner.main:run',

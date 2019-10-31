@@ -8,7 +8,7 @@ from eth_abi import encode_abi as eth_abi_encode_abi
 from eth_abi.exceptions import EncodingError
 from eth_utils import to_hex
 from hexbytes import HexBytes
-from typing import Any, Tuple, List, Union, Optional, Dict
+from typing import Any, Tuple, List, Union, Optional
 from web3 import Web3
 from web3.utils.abi import map_abi_data, get_abi_input_types
 from web3.utils.normalizers import abi_bytes_to_bytes, abi_address_to_hex, abi_string_to_text
@@ -106,16 +106,6 @@ def get_balance_rpc_call(contract: str, owner: str, _id: int, block: Optional[in
     return value
 
 
-def get_decimals_rpc_call(contract, _id: int, block: Optional[int] = None):
-    value = {
-        "jsonrpc": "2.0",
-        "method": 'eth_call',
-        "params": get_params(contract, data='0x313ce5670000000000000000000000', block=block),
-        "id": _id,
-    }
-    return value
-
-
 async def eth_call_request(data):
     async with aiohttp.ClientSession() as session:
         async with session.post(settings.ETH_NODE_URL, json=data) as response:
@@ -197,31 +187,3 @@ async def get_balances(
             balance = int(hex_val, 16)
         balances.append((holder, balance))
     return balances
-
-
-async def get_decimals(addresses: List[str], batch_size: int) -> Dict[str, int]:
-    calls = []
-    gt = time.monotonic()
-    for i, addr in enumerate(addresses):
-        call = get_decimals_rpc_call(addr, i)
-        calls.append(call)
-
-    calls_chunks = chunks(calls, batch_size)
-
-    coros = [eth_call_batch(calls=c) for c in calls_chunks]
-    calls_results_list = await asyncio.gather(*coros)
-    calls_results = {}
-    for res in calls_results_list:
-        calls_results.update(res)
-
-    logger.info('decimals total time', extra={'time': time.monotonic() - gt, 'batch_size': batch_size})
-    decimals = {}
-    for i, addr in enumerate(addresses):
-        try:
-            value = int(to_hex(calls_results[i]), 16)
-        except ValueError:
-            value = 18
-        if value > 255:
-            value = 18
-        decimals[addr] = value
-    return decimals

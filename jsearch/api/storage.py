@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from collections import defaultdict
@@ -10,7 +11,7 @@ from typing import List, Optional, Dict, Any
 
 from jsearch.api import models
 from jsearch.api.database_queries.account_bases import get_account_base_query
-from jsearch.api.database_queries.account_states import get_last_balances_query, get_account_state_query
+from jsearch.api.database_queries.account_states import get_account_state_query
 from jsearch.api.database_queries.assets_summary import get_assets_summary_query
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
@@ -63,7 +64,7 @@ from jsearch.api.database_queries.wallet_events import (
     get_wallet_events_query,
     get_eth_transfers_by_address_query,
 )
-from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent, ChainEvent
+from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent, ChainEvent, TAG_LATEST
 from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
@@ -199,10 +200,10 @@ class Storage:
 
         if tag.is_hash():
             query = f"SELECT {fields} FROM transactions WHERE block_hash=$1 AND is_forked=false " \
-                f"ORDER BY transaction_index;"
+                    f"ORDER BY transaction_index;"
         elif tag.is_number():
             query = f"SELECT {fields} FROM transactions WHERE block_number=$1 AND is_forked=false " \
-                f"ORDER BY transaction_index;"
+                    f"ORDER BY transaction_index;"
         else:
             query = f"""
                 SELECT {fields} FROM transactions
@@ -547,12 +548,14 @@ class Storage:
         return logs, last_affected_block
 
     async def get_accounts_balances(self, addresses) -> Tuple[List[models.Balance], Optional[LastAffectedBlock]]:
-        if addresses:
-            query = get_last_balances_query(addresses)
-            async with self.pool.acquire() as conn:
-                rows = await fetch(conn, query)
-        else:
-            rows = []
+        queries = list()
+
+        for address in addresses:
+            queries.append(get_account_state_query(address, TAG_LATEST))
+
+        coros = [fetch_row(self.pool, query) for query in queries]
+        rows = await asyncio.gather(*coros)
+        rows = [r for r in rows if r is not None]
 
         addr_map = {r['address']: r for r in rows}
 
@@ -868,39 +871,36 @@ class Storage:
         last_affected_block = max([event['blockNumber'] for event in wallet_events], default=None)
         return wallet_events, progress, last_affected_block
 
-    async def get_wallet_assets_summary(self,
-                                        addresses: List[str],
-                                        assets: Optional[List[str]] = None) -> AddressesSummary:
+    async def get_wallet_assets_summary(
+            self,
+            addresses: List[str],
+            assets: Optional[List[str]] = None
+    ) -> Tuple[AddressesSummary, LastAffectedBlock]:
         query = get_assets_summary_query(addresses=addresses, assets=assets)
 
-        async with self.pool.acquire() as conn:
-            rows = await fetch(conn, query)
-
+        rows = await fetch(self.pool, query)
         tx_numbers = await self.get_wallet_assets_tx_numbers(rows)
 
         for asset in rows:
             asset['tx_number'] = tx_numbers.get((asset['address'], asset['asset_address']), 0)
 
-        addr_map = {}
-        for r in rows:
-            if r['address'] in addr_map:
-                addr_map[r['address']].append(r)
-            else:
-                addr_map[r['address']] = [r]
+        account_balances = defaultdict(list)
+        for asset in rows:
+            account_balances[asset['address']].append(asset)
 
         summary = []
-        for address in addresses:
+        for account in addresses:
             nonce = 0
-            assets_summary = []
-            for row in addr_map.get(address, []):
-                if row['nonce']:
-                    nonce = row['nonce']
-                if assets and row['asset_address'] == '':
+            account_summary: List[AssetSummary] = []
+            for asset in account_balances[account]:
+                if asset['nonce']:
+                    nonce = asset['nonce']
+
+                if not asset['value']:
                     continue
-                if not row['value']:
-                    continue
-                value = row['value'] or "0"
-                decimals = row['decimals'] or "0"
+
+                value = asset['value'] or "0"
+                decimals = asset['decimals'] or "0"
 
                 balance = value and int(value)
                 decimals = decimals and int(decimals)
@@ -908,17 +908,19 @@ class Storage:
                 asset_summary = AssetSummary(
                     balance=str(balance),
                     decimals=str(decimals),
-                    address=row['asset_address'],
-                    transfers_number=row['tx_number'],
+                    address=asset['asset_address'],
+                    transfers_number=asset['tx_number'],
                 )
-                assets_summary.append(asset_summary)
+                account_summary.append(asset_summary)
 
             item = AddressSummary(
-                address=address,
-                assets_summary=assets_summary,
+                address=account,
+                assets_summary=sorted(account_summary, key=lambda x: x.address),
                 outgoing_transactions_number=str(nonce)
             )
-            summary.append(item)
+            if item.assets_summary:
+                summary.append(item)
+
         last_affected_block_number = max([r['block_number'] or 0 for r in rows], default=None)
         return summary, last_affected_block_number
 
