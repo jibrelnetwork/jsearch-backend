@@ -20,8 +20,9 @@ async def test_raw_db_get_token_holder_balances_does_not_fail_if_balance_is_over
           "block_hash",
           "token_address",
           "holder_address",
-          "balance"
-        ) VALUES (%s, %s, %s, %s, %s, %s)
+          "balance",
+          "decimals"
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, [
             (
                 168735761,
@@ -30,6 +31,7 @@ async def test_raw_db_get_token_holder_balances_does_not_fail_if_balance_is_over
                 '0x07597255910a51509CA469568B048F2597E72504',
                 '0x847F13Aaac8a12fa3405B99Ad4304Bdc93D8382D',
                 301748400000000001500000,
+                18
             ),
         ]
     )
@@ -43,5 +45,6 @@ async def test_raw_db_get_token_holder_balances_does_not_fail_if_balance_is_over
             balance=301748400000000001500000,
             block_hash=target_block_hash,
             block_number=8496879,
+            decimals=18
         )
     ]
