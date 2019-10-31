@@ -35,20 +35,19 @@ class Worker:
         self._process = await create_subprocess_exec(*cmd, stdout=sys.stdout, stderr=sys.stderr)
 
     async def stop(self):
-        if self._process:
+        if self.is_working:
             self._process.send_signal(signal.SIGINT)
 
     async def wait(self):
-        if self._process:
-            process = self._process
-            await process.wait()
-
-            self._process = None
-            if process.returncode != 0:
-                raise RuntimeError(f'Worker ({" ".join(self._cmd)}) has stopped with exit code {process.returncode}')
+        logging.info(self.is_working)
+        if self.is_working:
+            await self._process.wait()
+            if self._process.returncode != 0:
+                raise RuntimeError(f'Worker ({" ".join(self._cmd)}) '
+                                   f'has finished with exit code {self._process.returncode}')
 
     async def check_healthy(self):
-        if self._process:
+        if self.is_working:
             return await request_healthcheck(port=self.port)
         return {'healthy': True}
 
@@ -57,20 +56,21 @@ class Worker:
         if self._process:
             try:
                 state = await request_state(self.port)
-            except ClientError:
+            except ClientError as e:
+                logging.warning(e)
                 state = {}
 
         return {
             'port': self.port,
             'range': self.sync_range,
-            'is_working': bool(self._process),
-            'range_synced': not bool(self._process),
+            'is_working': self.is_working,
+            'range_synced': not self.is_working,
             **state,
         }
 
     @property
     def is_working(self):
-        return bool(self._process)
+        return self._process is not None and self._process.returncode is None
 
 
 @dataclass
@@ -84,60 +84,51 @@ class WorkersPool:
     _workers: Optional[List[Worker]] = None
     _rescaling_in_progress: bool = False
 
+    _is_need_to_stop: bool = False
+
     async def run(self, last_block: int):
         self._workers = get_workers(self.sync_range, last_block, self.workers, **self.worker_kwargs)
 
         tasks = (worker.run() for worker in self._workers)
         await gather(*tasks)
 
-    async def stop(self, wait: bool = True):
+    async def terminate(self):
+        self._is_need_to_stop = True
+
+        await self.stop()
+        await self.wait()
+
+    async def stop(self):
         logger.info('Try to stop workers...')
 
         if self._workers:
             tasks = (worker.stop() for worker in self._workers)
             await gather(*tasks)
-            if wait:
-                await self.wait()
 
-        logger.info('Workers have stopped...')
-
-    async def wait(self, ignore_rescaling: bool = True):
-        """
-        We can wait:
-            - only once
-            - forever through rescaling
-        """
+    async def wait(self):
         while True:
-            if self._rescaling_in_progress:
-                logger.info('Wait rescaling..')
-                await asyncio.sleep(5)
+            logger.info(f'Wait...')
+            tasks = (worker.wait() for worker in self._workers)
+            await gather(*tasks)
+            await asyncio.sleep(5)
 
-            if self._workers:
-                logger.info('Workers waiting has started...')
-                tasks = (worker.wait() for worker in self._workers)
-                await gather(*tasks)
-
-            if not (ignore_rescaling and self._rescaling_in_progress):
-                logger.info('Workers waiting has stopped...')
+            if self._is_need_to_stop:
                 break
+
+    async def wait_until_workers_have_stopped(self):
+        while any(worker.is_working for worker in self._workers):
+            logger.info(f'Wait until workers have stopped...)')
+            await asyncio.sleep(5)
 
     async def scale(self, sync_range: BlockRange, workers: int, last_block: int):
         logging.info('[SCALE]: start')
-        try:
-            self._rescaling_in_progress = True
-            await self.stop(wait=False)
+        await self.stop()
+        await self.wait_until_workers_have_stopped()
 
-            while any(worker.is_working for worker in self._workers):
-                logging.info('[SCALE]: wait when workers will stop.')
-                await asyncio.sleep(5)
+        self.workers = workers
+        self.sync_range = sync_range
 
-            self.workers = workers
-            self.sync_range = sync_range
-
-            await self.run(last_block=last_block)
-        finally:
-            logging.info('[SCALE]: has finished')
-            self._rescaling_in_progress = False
+        await self.run(last_block=last_block)
 
     async def check_healthy(self) -> List[Dict[str, Any]]:
         tasks = (worker.check_healthy() for worker in self._workers)
@@ -234,7 +225,7 @@ def scale_range(sync_range: BlockRange, last_block, workers: int = 1) -> Generat
     """
     step = _get_sync_range_step(sync_range, last_block, workers)
 
-    for x in range(workers-1):
+    for x in range(workers - 1):
         yield BlockRange(
             start=sync_range.start + step * x,
             end=sync_range.start + step * (x + 1) - 1,

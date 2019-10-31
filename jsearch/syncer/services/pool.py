@@ -17,11 +17,11 @@ class WorkersPoolService(mode.Service):
         await self._pool.run(last_block)
 
     async def on_stop(self) -> None:
-        await self._pool.stop()
+        await self._pool.terminate()
 
     @mode.Service.task
     async def pool(self):
         try:
-            await self._pool.wait(ignore_rescaling=True)
+            await self._pool.wait()
         finally:
             await self.stop()
