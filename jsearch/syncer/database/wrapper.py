@@ -14,6 +14,7 @@ class DBWrapper:
     def __init__(self, connection_string, **params):
         self.connection_string = connection_string
         self.params = params
+        self.engine = None
 
     async def __aenter__(self):
         await self.connect()
@@ -35,8 +36,9 @@ class DBWrapper:
         )
 
     async def disconnect(self):
-        self.engine.close()
-        await self.engine.wait_closed()
+        if self.engine is not None:
+            self.engine.close()
+            await self.engine.wait_closed()
 
     @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
     async def execute(self, query, *params):
