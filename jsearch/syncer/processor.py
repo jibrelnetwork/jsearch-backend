@@ -12,7 +12,6 @@ from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.wallet import token_holders_from_token_balances
 from jsearch.common.utils import timeit
-from jsearch.common.wallet_events import TOKEN_DECIMALS_DEFAULT
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.structs import RawBlockData, BlockData
 from jsearch.typing import Logs
@@ -101,7 +100,7 @@ async def process_block(main_db: MainDB, data: RawBlockData) -> BlockData:
     tx_recipients = set([tx['to'] for tx in txs_data if tx['input'] != '0x'])
     contracts_set |= await get_contracts_set(main_db, tx_recipients)
 
-    decimals = {balance.token: balance.decimals or TOKEN_DECIMALS_DEFAULT for balance in data.token_balances}
+    decimals = {balance.token: balance.decimals or 0 for balance in data.token_balances}
     transfers = logs_to_transfers(logs, block_data, decimals)
 
     wallet_events = [
