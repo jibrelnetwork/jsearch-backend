@@ -3,7 +3,6 @@ from decimal import Decimal
 import datetime
 
 from jsearch.common import tables as t
-from jsearch.common.database import MainDBSync
 from jsearch.syncer.database import MainDB
 from jsearch.syncer.manager import process_chain_split_event
 
@@ -47,8 +46,6 @@ async def test_main_db_get_missed_blocks_limit2(db, db_dsn):
 async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
     from jsearch.syncer.processor import BlockData
 
-    main_db = MainDBSync(db_dsn)
-    main_db.connect()
     d = main_db_dump
     block = d['blocks'][2]
     block_num = block['number']
@@ -175,9 +172,6 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
 
 async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db_dsn):
     from jsearch.syncer.processor import BlockData
-
-    main_db = MainDBSync(db_dsn)
-    main_db.connect()
 
     block_data = main_db_dump['blocks'][2]
 
