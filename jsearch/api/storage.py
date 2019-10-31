@@ -12,7 +12,7 @@ from typing import List, Optional, Dict, Any
 from jsearch.api import models
 from jsearch.api.database_queries.account_bases import get_account_base_query
 from jsearch.api.database_queries.account_states import get_account_state_query
-from jsearch.api.database_queries.assets_summary import get_assets_summary_query
+from jsearch.api.database_queries.assets_summary import get_assets_summary_query, get_assets_summary_unions_query
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
@@ -876,7 +876,8 @@ class Storage:
             addresses: List[str],
             assets: Optional[List[str]] = None
     ) -> Tuple[AddressesSummary, LastAffectedBlock]:
-        query = get_assets_summary_query(addresses=addresses, assets=assets)
+        query = get_assets_summary_unions_query(addresses, assets)
+        # query = get_assets_summary_query(addresses=addresses, assets=assets)
 
         rows = await fetch(self.pool, query)
 

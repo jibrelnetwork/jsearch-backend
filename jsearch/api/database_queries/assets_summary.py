@@ -1,4 +1,7 @@
+import functools
+
 from functools import reduce
+from future.moves import itertools
 from sqlalchemy import false, tuple_
 from sqlalchemy import select, and_
 from sqlalchemy.dialects.postgresql import array, Any
@@ -58,3 +61,23 @@ def get_assets_summary_query(addresses: List[str], assets: Optional[List[str]] =
             assets_summary_t.c.is_forked == false()
         )
     )
+
+
+def get_assets_summary_unions_query(addresses: List[str], assets: List[str]) -> Query:
+    return functools.reduce(
+        lambda x, y: x.union(y),
+        [
+            get_assets_summary_one_query(address, asset)
+            for address, asset in itertools.product(addresses, assets)
+        ]
+    )
+
+
+def get_assets_summary_one_query(address: str, asset: str) -> Query:
+    return select(get_default_fields()).where(
+        and_(
+            assets_summary_t.c.is_forked == false(),
+            assets_summary_t.c.address == address,
+            assets_summary_t.c.asset_address == asset,
+        )
+    ).order_by(assets_summary_t.c.block_number).limit(1)
