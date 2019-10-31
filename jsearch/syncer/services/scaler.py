@@ -6,7 +6,8 @@ from aiohttp_apispec import (
     docs,
     request_schema,
     setup_aiohttp_apispec,
-    response_schema)
+    response_schema
+)
 from functools import partial
 from marshmallow import Schema, fields
 from marshmallow.fields import Int
