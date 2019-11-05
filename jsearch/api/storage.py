@@ -1,4 +1,7 @@
 import asyncio
+import operator
+
+import functools
 import json
 import logging
 from collections import defaultdict
@@ -876,10 +879,16 @@ class Storage:
             addresses: List[str],
             assets: Optional[List[str]] = None
     ) -> Tuple[AddressesSummary, LastAffectedBlock]:
-        query = get_assets_summary_unions_query(addresses, assets)
+        queries = get_assets_summary_unions_query(addresses, assets)
+        coros = []
         # query = get_assets_summary_query(addresses=addresses, assets=assets)
 
-        rows = await fetch(self.pool, query)
+        for query in queries:
+            coros.append(fetch(self.pool, query))
+
+        rows = await asyncio.gather(*coros)
+        rows = functools.reduce(operator.add, rows, [])
+        rows = [dict(r) for r in rows]
 
         account_balances = defaultdict(list)
         for asset in rows:

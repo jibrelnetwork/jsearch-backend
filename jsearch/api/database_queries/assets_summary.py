@@ -1,5 +1,3 @@
-import functools
-
 from functools import reduce
 from future.moves import itertools
 from sqlalchemy import false, tuple_, union_all
@@ -9,6 +7,7 @@ from sqlalchemy.orm import Query
 from sqlalchemy.sql.functions import max
 from typing import List, Optional
 
+from jsearch.common.processing.erc20_balances import chunks
 from jsearch.common.tables import assets_summary_t
 
 
@@ -63,13 +62,13 @@ def get_assets_summary_query(addresses: List[str], assets: Optional[List[str]] =
     )
 
 
-def get_assets_summary_unions_query(addresses: List[str], assets: List[str]) -> Query:
-    return union_all(
-        *[
-            get_assets_summary_one_query(address, asset)
-            for address, asset in itertools.product(addresses, assets)
-        ]
-    )
+def get_assets_summary_unions_query(addresses: List[str], assets: List[str]) -> List[Query]:
+    queries = []
+
+    for group in chunks(list(itertools.product(addresses, assets)), 5):
+        queries.append(union_all(*[get_assets_summary_one_query(*g) for g in group]))
+
+    return queries
 
 
 def get_assets_summary_one_query(address: str, asset: str) -> Query:
