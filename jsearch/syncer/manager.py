@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 import backoff
+import psycopg2
 import time
 from jsearch.api.helpers import ChainEvent
 from typing import Dict, Any, Optional
@@ -246,7 +247,11 @@ class Manager:
             'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
 
-    @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
+    @backoff.on_exception(
+        backoff.expo,
+        max_tries=settings.SYNCER_BACKOFF_MAX_TRIES,
+        exception=psycopg2.OperationalError  # retrying makes sense only if db connections was failed
+    )
     @timeit('[SYNCER] Get and process chain event')
     async def get_and_process_chain_event(self):
         if self.state.already_processed is None:
