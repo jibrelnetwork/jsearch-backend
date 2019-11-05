@@ -2,7 +2,6 @@ import decimal
 
 import datetime
 import pytest
-from typing import Dict, List
 
 from jsearch.common import contracts
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
@@ -439,15 +438,6 @@ async def test_sync_block_check_token_holders_in_assets_summary(
         assert summary['address'] == token_owner['account_address']
 
 
-@pytest.fixture
-def mock_get_decimals(mocker):
-    async def get_decimals(addresses: List[str]) -> Dict[str, int]:
-        return {address: 18 for address in addresses}
-
-    mocker.patch('jsearch.common.processing.decimals_cache.decimals_cache.get_many', get_decimals)
-
-
-@pytest.mark.usefixtures('mock_get_decimals')
 async def test_sync_block_check_holders(db, raw_db_split_sample, raw_db_dsn, db_dsn, block_hash):
     """
     We test on 6000001 block.
