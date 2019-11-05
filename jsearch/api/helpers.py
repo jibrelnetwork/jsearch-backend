@@ -7,7 +7,6 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Query
 from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 
-from jsearch import settings
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.pagination import Page
 from jsearch.common.utils import timeit
@@ -298,7 +297,7 @@ async def maybe_orphan_request(
     should_orphan = await storage.is_data_affected_by_chain_split(last_chain_insert_id, last_block)
 
     if should_orphan:
-        requests_orphaned_metric.labels(settings.PID, request.path).inc()
+        requests_orphaned_metric.labels(request.path).inc()
 
         return api_success(data={"isOrphaned": True})
 
