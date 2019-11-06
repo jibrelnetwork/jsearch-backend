@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+import aiopg
 import backoff
 import psycopg2
 import time
@@ -265,7 +266,7 @@ class Manager:
         backoff.expo,
         jitter=None,
         max_tries=settings.SYNCER_BACKOFF_MAX_TRIES,
-        exception=(psycopg2.OperationalError, psycopg2.InterfaceError),
+        exception=(psycopg2.OperationalError, psycopg2.InterfaceError, aiopg.sa.exc.InvalidRequestError),
         on_backoff=reconnect
     )
     @timeit('[SYNCER] Get and process chain event')
