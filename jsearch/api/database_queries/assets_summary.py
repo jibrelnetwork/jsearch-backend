@@ -20,7 +20,10 @@ def get_default_fields():
 
 
 def get_assets_summary_query(addresses: List[str], assets: List[str]) -> Query:
-    return select(['*']).select_from(get_assets_summaries_f(addresses, assets))
+    return select(['*']).select_from(get_assets_summaries_f(
+        addresses=array(tuple(addresses)),
+        assets=array(tuple(assets))),
+    )
 
 
 def get_assets_by_addresses_query(addresses: List[str]) -> Query:

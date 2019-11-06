@@ -1,6 +1,4 @@
 from sqlalchemy.dialects.postgresql import array
-from typing import List
-
 from sqlalchemy.sql.functions import GenericFunction
 
 
@@ -15,5 +13,5 @@ class GetAssetsSummaries(GenericFunction):
     name = 'get_assets_summaries'
 
 
-def get_assets_summaries_f(addresses: List[str], assets: List[str]) -> GetAssetsSummaries:
-    return GetAssetsSummaries(array(tuple(addresses)), array(tuple(assets)))
+def get_assets_summaries_f(addresses: array, assets: array) -> GetAssetsSummaries:
+    return GetAssetsSummaries(addresses, assets)
