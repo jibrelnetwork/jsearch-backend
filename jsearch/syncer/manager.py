@@ -175,7 +175,7 @@ class Manager:
         if exceptions:
             return exceptions[0]
 
-    async def stop(self, timeout=60):
+    async def stop(self, timeout=5):
         self._running = False
 
         if not self.tasks:
@@ -185,7 +185,10 @@ class Manager:
         done, pending = await asyncio.wait(self.tasks, timeout=timeout)
 
         for future in done:
-            future.result()
+            try:
+                future.result()
+            except asyncio.CancelledError:
+                pass
 
         if pending:
             logger.warning(

@@ -40,6 +40,9 @@ class SyncerService(mode.Service):
         await self.main_db.disconnect()
         await self.raw_db.disconnect()
 
+    async def stop(self):
+        await self.on_stop()
+
     @mode.Service.task
     async def syncer(self):
         await self.manager.start()
@@ -47,7 +50,6 @@ class SyncerService(mode.Service):
         if exception:
             await self.crash(exception)
 
-        await self.stop()
         # we schedule shutdown on root Worker
         self.beacon.root.data.schedule_shutdown()
 
