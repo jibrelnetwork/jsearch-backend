@@ -65,7 +65,7 @@ def event_from_tx(address: str, tx_data: Transaction, is_receiver_contract=False
             'block_hash': tx_data['block_hash'],
             'tx_hash': tx_data['hash'],
             'event_index': make_event_index_for_tx(tx_data['block_number'], tx_data['transaction_index']),
-            'tx_data': tx_data,
+            'tx_data': None,
             'event_data': {
                 'sender': tx_data['from'],
                 'recipient': tx_data['to'],
@@ -105,7 +105,7 @@ def event_from_token_transfer(address: str, transfer_data: Transfer, tx_data: Tr
             tx_data['transaction_index'],
             transfer_data['log_index']
         ),
-        'tx_data': tx_data,
+        'tx_data': None,
         'event_data': {
             'sender': transfer_data['from_address'],
             'recipient': transfer_data['to_address'],
@@ -153,7 +153,7 @@ def event_from_internal_tx(address: str,
             tx_data['transaction_index'],
             internal_tx_data['transaction_index']
         ),
-        'tx_data': tx_data,
+        'tx_data': None,
         'event_data': {
             'sender': internal_tx_data['from'],
             'recipient': internal_tx_data['to'],
@@ -208,7 +208,7 @@ def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> E
             'address': address,
             'type': event_type,
             'tx_hash': pending_tx['hash'],
-            'tx_data': pending_tx,
+            'tx_data': None,
             'event_index': 0,
             'event_data': {
                 'sender': sender,
