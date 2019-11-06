@@ -37,8 +37,7 @@ class DBWrapper:
 
     async def disconnect(self):
         if self.engine is not None:
-            self.engine.close()
-            await self.engine.wait_closed()
+            self.engine.terminate()
 
     @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
     async def execute(self, query, *params):
