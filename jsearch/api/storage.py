@@ -9,6 +9,7 @@ from collections import defaultdict
 import asyncpgsa
 from functools import partial
 from sqlalchemy import select, and_, desc, true
+from sqlalchemy.sql.functions import GenericFunction
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
 
@@ -879,16 +880,32 @@ class Storage:
             addresses: List[str],
             assets: Optional[List[str]] = None
     ) -> Tuple[AddressesSummary, LastAffectedBlock]:
-        queries = get_assets_summary_unions_query(addresses, assets)
-        coros = []
-        # query = get_assets_summary_query(addresses=addresses, assets=assets)
+        """
+        CREATE OR REPLACE FUNCTION get_assets_summaries(TEXT, TEXT) RETURNS SETOF assets_summary AS
+        $BODY$
+        DECLARE
+          addr TEXT;
+          asset_addr TEXT;
+        BEGIN
+          FOREACH addr in array regexp_split_to_array($1, ',')
+          LOOP
+            FOREACH asset_addr in array regexp_split_to_array($2, ',')
+            LOOP
+              RETURN QUERY SELECT * FROM assets_summary WHERE assets_summary.address = addr AND assets_summary.asset_address = asset_addr AND assets_summary.is_forked = false ORDER BY block_number DESC LIMIT 1;
+            END LOOP;
+          END LOOP;
+        END
+        $BODY$ language plpgsql;
+        """
 
-        for query in queries:
-            coros.append(fetch(self.pool, query))
+        async with self.pool.acquire() as conn:
+            raw_rows = await conn.fetch('SELECT get_assets_summaries($1, $2)', ','.join(addresses), ','.join(assets))
 
-        rows = await asyncio.gather(*coros)
-        rows = functools.reduce(operator.add, rows, [])
-        rows = [dict(r) for r in rows]
+        rows = []
+
+        for r in raw_rows:
+            rdict = dict(r)
+            rows += list(rdict.values())
 
         account_balances = defaultdict(list)
         for asset in rows:
