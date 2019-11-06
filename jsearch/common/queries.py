@@ -1,25 +1,8 @@
 import logging
 
-from asyncpg.pool import Pool
-
-import asyncpgsa
-from sqlalchemy.orm import Query
-
 from jsearch.common.types import Rows
 
 logger = logging.getLogger(__name__)
-
-
-async def fetch(pool: Pool, saquery: Query) -> Rows:
-    async with pool.acquire() as conn:
-        query, params = asyncpgsa.compile_query(saquery)
-
-        logger.debug('Compiled a query', extra={'query': query, 'params': params})
-
-        rows = await conn.fetch(query, *params)
-        rows = [dict(r) for r in rows]
-
-    return rows
 
 
 def in_app_distinct(rows: Rows) -> Rows:
