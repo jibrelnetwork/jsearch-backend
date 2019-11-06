@@ -876,7 +876,7 @@ class Storage:
             addresses: List[str],
             assets: Optional[List[str]] = None
     ) -> Tuple[AddressesSummary, LastAffectedBlock]:
-        query = get_assets_summary_query(addresses=addresses, assets=assets)
+        query = get_assets_summary_query(addresses=addresses, assets=assets or [] + [''])
 
         rows = await fetch(self.pool, query)
 
