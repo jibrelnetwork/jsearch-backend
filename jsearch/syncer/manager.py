@@ -1,13 +1,14 @@
 import asyncio
 import logging
 
+import aiopg
 import backoff
 import psycopg2
 import time
-from jsearch.api.helpers import ChainEvent
 from typing import Dict, Any, Optional
 
 from jsearch import settings
+from jsearch.api.helpers import ChainEvent
 from jsearch.common.structs import BlockRange
 from jsearch.common.utils import timeit
 from jsearch.syncer.database import MainDB, RawDB
@@ -17,6 +18,20 @@ from jsearch.syncer.state import SyncerState
 logger = logging.getLogger(__name__)
 
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
+
+
+async def reconnect(details: Dict[str, Any]) -> None:
+    manager: Manager = details['args'][0]
+
+    try:
+        await manager.raw_db.disconnect()
+    finally:
+        await manager.raw_db.connect()
+
+    try:
+        await manager.main_db.disconnect()
+    finally:
+        await manager.main_db.connect()
 
 
 async def process_insert_block_event(raw_db: RawDB,
@@ -249,8 +264,10 @@ class Manager:
 
     @backoff.on_exception(
         backoff.expo,
+        jitter=None,
         max_tries=settings.SYNCER_BACKOFF_MAX_TRIES,
-        exception=psycopg2.OperationalError  # retrying makes sense only if db connections was failed
+        exception=(psycopg2.OperationalError, psycopg2.InterfaceError, aiopg.sa.exc.InvalidRequestError),
+        on_backoff=reconnect
     )
     @timeit('[SYNCER] Get and process chain event')
     async def get_and_process_chain_event(self):
