@@ -26,7 +26,7 @@ def get_assets_summary_query(addresses: List[str], assets: List[str]) -> Query:
     )
 
 
-def get_assets_by_addresses_query(addresses: List[str]) -> Query:
+def get_distinct_assets_by_addresses_query(addresses: List[str]) -> Query:
     return select(
         [
             assets_summary_t.c.address,
