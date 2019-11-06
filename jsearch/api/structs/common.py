@@ -50,7 +50,7 @@ class AssetSummary(NamedTuple):
     address: str
     balance: str
     decimals: str
-    transfers_number: str
+    transfers_number: int
 
     def to_dict(self):
         return {
