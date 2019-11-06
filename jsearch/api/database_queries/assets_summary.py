@@ -1,4 +1,5 @@
-from sqlalchemy import select
+from sqlalchemy import select, and_, false
+from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
 from typing import List
 
@@ -20,3 +21,17 @@ def get_default_fields():
 
 def get_assets_summary_query(addresses: List[str], assets: List[str]) -> Query:
     return select(['*']).select_from(get_assets_summaries_f(addresses, assets))
+
+
+def get_assets_by_addresses_query(addresses: List[str]) -> Query:
+    return select(
+        [
+            assets_summary_t.c.address,
+            assets_summary_t.c.asset_address,
+        ]
+    ).where(
+        and_(
+            Any(assets_summary_t.c.address, array(tuple(addresses))),
+            assets_summary_t.c.is_forked == false(),
+        )
+    ).distinct()
