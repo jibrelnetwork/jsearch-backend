@@ -5,6 +5,7 @@ from asyncio import create_subprocess_exec, gather, Lock
 from dataclasses import dataclass
 
 import signal
+import time
 from aiohttp import ClientSession, ClientError
 from asyncio.subprocess import Process
 from typing import Generator, Optional, List, Dict, Any
@@ -34,12 +35,17 @@ class Worker:
         self._cmd = cmd
         self._process = await create_subprocess_exec(*cmd, stdout=sys.stdout, stderr=sys.stderr)
 
+    def kill(self):
+        try:
+            self._process.terminate()
+        except Exception as e:
+            logging.info(e)
+
     async def stop(self):
         if self.is_working:
             self._process.send_signal(signal.SIGINT)
 
     async def wait(self):
-        logging.info(self.is_working)
         if self.is_working:
             await self._process.wait()
             if self._process.returncode != 0:
@@ -71,6 +77,9 @@ class Worker:
     @property
     def is_working(self):
         return self._process is not None and self._process.returncode is None
+
+
+WAIT_PROCESS_TIMEOUT: int = 60
 
 
 @dataclass
@@ -106,19 +115,22 @@ class WorkersPool:
             await gather(*tasks)
 
     async def wait(self):
-        while True:
-            logger.info(f'Wait...')
-            tasks = (worker.wait() for worker in self._workers)
-            await gather(*tasks)
-            await asyncio.sleep(5)
-
-            if self._is_need_to_stop:
-                break
+        while not self._is_need_to_stop:
+            await asyncio.sleep(1)
 
     async def wait_until_workers_have_stopped(self):
+        start_time = time.monotonic()
+
         while any(worker.is_working for worker in self._workers):
-            logger.info(f'Wait until workers have stopped...)')
+            logger.info('Wait until workers have stopped...)')
             await asyncio.sleep(5)
+
+            if time.monotonic() - start_time > WAIT_PROCESS_TIMEOUT:
+                logger.info('Try to kill all workers...)')
+                for worker in self._workers:
+                    worker.kill()
+
+                await asyncio.sleep(5)
 
     async def scale(self, sync_range: BlockRange, workers: int, last_block: int):
         logging.info('[SCALE]: start')
