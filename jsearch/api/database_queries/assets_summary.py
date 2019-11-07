@@ -1,10 +1,10 @@
-from sqlalchemy import select, and_, false
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
 from typing import List
 
 from jsearch.common.functions import get_assets_summaries_f
-from jsearch.common.tables import assets_summary_t
+from jsearch.common.tables import assets_summary_t, assets_summary_pairs_t
 
 
 def get_default_fields():
@@ -27,14 +27,6 @@ def get_assets_summary_query(addresses: List[str], assets: List[str]) -> Query:
 
 
 def get_distinct_assets_by_addresses_query(addresses: List[str]) -> Query:
-    return select(
-        [
-            assets_summary_t.c.address,
-            assets_summary_t.c.asset_address,
-        ]
-    ).where(
-        and_(
-            Any(assets_summary_t.c.address, array(tuple(addresses))),
-            assets_summary_t.c.is_forked == false(),
-        )
+    return select([assets_summary_pairs_t.c.asset_address]).where(
+        Any(assets_summary_pairs_t.c.address, array(tuple(addresses))),
     ).distinct()
