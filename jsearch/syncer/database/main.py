@@ -59,8 +59,8 @@ class MainDB(DBWrapper):
     async def disconnect(self):
         if self.lock_conn:
             self.lock_conn.close()
-        self.engine.close()
-        await self.engine.wait_closed()
+        if self.engine is not None:
+            self.engine.terminate()
 
     async def get_latest_synced_block_number(self) -> int:
         """

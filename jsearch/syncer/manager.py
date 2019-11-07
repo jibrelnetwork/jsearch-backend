@@ -1,12 +1,14 @@
 import asyncio
 import logging
 
+import aiopg
 import backoff
+import psycopg2
 import time
-from jsearch.api.helpers import ChainEvent
 from typing import Dict, Any, Optional
 
 from jsearch import settings
+from jsearch.api.helpers import ChainEvent
 from jsearch.common.structs import BlockRange
 from jsearch.common.utils import timeit
 from jsearch.syncer.database import MainDB, RawDB
@@ -16,6 +18,20 @@ from jsearch.syncer.state import SyncerState
 logger = logging.getLogger(__name__)
 
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
+
+
+async def reconnect(details: Dict[str, Any]) -> None:
+    manager: Manager = details['args'][0]
+
+    try:
+        await manager.raw_db.disconnect()
+    finally:
+        await manager.raw_db.connect()
+
+    try:
+        await manager.main_db.disconnect()
+    finally:
+        await manager.main_db.connect()
 
 
 async def process_insert_block_event(raw_db: RawDB,
@@ -159,7 +175,7 @@ class Manager:
         if exceptions:
             return exceptions[0]
 
-    async def stop(self, timeout=60):
+    async def stop(self, timeout=5):
         self._running = False
 
         if not self.tasks:
@@ -169,7 +185,10 @@ class Manager:
         done, pending = await asyncio.wait(self.tasks, timeout=timeout)
 
         for future in done:
-            future.result()
+            try:
+                future.result()
+            except asyncio.CancelledError:
+                pass
 
         if pending:
             logger.warning(
@@ -246,7 +265,13 @@ class Manager:
             'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
 
-    @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
+    @backoff.on_exception(
+        backoff.expo,
+        jitter=None,
+        max_tries=settings.SYNCER_BACKOFF_MAX_TRIES,
+        exception=(psycopg2.OperationalError, psycopg2.InterfaceError, aiopg.sa.exc.InvalidRequestError),
+        on_backoff=reconnect
+    )
     @timeit('[SYNCER] Get and process chain event')
     async def get_and_process_chain_event(self):
         if self.state.already_processed is None:
