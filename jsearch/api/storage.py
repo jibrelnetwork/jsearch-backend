@@ -51,7 +51,8 @@ from jsearch.api.database_queries.token_transfers import (
 from jsearch.api.database_queries.transactions import (
     get_tx_by_hash,
     get_tx_by_address_and_block_query,
-    get_tx_by_address_and_timestamp_query
+    get_tx_by_address_and_timestamp_query,
+    get_transactions_by_hashes,
 )
 from jsearch.api.database_queries.uncles import (
     get_uncles_by_timestamp_query,
@@ -850,11 +851,17 @@ class Storage:
 
         events = in_app_distinct(events)[:limit]
 
+        tx_hashes = {e['tx_hash'] for e in events}
+        tx_query = get_transactions_by_hashes(tx_hashes)
+        async with self.pool.acquire() as connection:
+            transactions = await fetch(connection, tx_query)
+        transactions_map = {tx['hash']: tx for tx in transactions}
+
         wallet_events = []
         for event in events:
-            tx_data = event['tx_data']
+            tx_data = transactions_map.get(event['tx_hash'])
             if tx_data:
-                tx = models.Transaction(**json.loads(tx_data)).to_dict()
+                tx = models.Transaction(**tx_data).to_dict()
             else:
                 tx = {}
             event_data = json.loads(event['event_data'])
