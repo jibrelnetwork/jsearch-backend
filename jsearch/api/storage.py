@@ -886,10 +886,6 @@ class Storage:
         query = get_assets_summary_query(addresses=addresses, assets=assets)
 
         rows = await fetch(self.pool, query)
-        tx_numbers = await self.get_wallet_assets_tx_numbers(rows)
-
-        for asset in rows:
-            asset['tx_number'] = tx_numbers.get((asset['address'], asset['asset_address']), 0)
 
         account_balances = defaultdict(list)
         for asset in rows:
@@ -916,7 +912,7 @@ class Storage:
                     balance=str(balance),
                     decimals=str(decimals),
                     address=asset['asset_address'],
-                    transfers_number=asset['tx_number'],
+                    transfers_number=0,
                 )
                 account_summary.append(asset_summary)
 
@@ -930,26 +926,6 @@ class Storage:
 
         last_affected_block_number = max([r['block_number'] or 0 for r in rows], default=None)
         return summary, last_affected_block_number
-
-    async def get_wallet_assets_tx_numbers(self, assets):
-        q = """
-        SELECT count(*) as tx_number, address, token_address
-            FROM token_transfers
-            WHERE address = ANY($1::varchar[])
-                AND is_forked=false
-            GROUP BY address, token_address
-        UNION SELECT count(*) as tx_number, address, '' as token_address
-            FROM transactions
-            WHERE address = ANY($1::varchar[])
-                AND is_forked=false
-                AND value != '0x0'
-            GROUP BY address;
-        """
-        addresses = set([a['address'] for a in assets])
-
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(q, addresses)
-            return {(r['address'], r['token_address']): r['tx_number'] for r in rows}
 
     async def get_nonce(self, address):
         """

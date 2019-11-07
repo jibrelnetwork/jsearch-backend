@@ -593,16 +593,16 @@ def create_assets_summaries(db, transfer_factory: TokenTransferFactory, transact
                     {
                         'address': 'a1',
                         'assetsSummary': [
-                            {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 2},
-                            {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 2},
-                            {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 1}
+                            {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 0},
+                            {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 0},
+                            {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 0}
                         ],
                         'outgoingTransactionsNumber': "10"
                     },
                     {
                         'address': 'a2',
                         'assetsSummary': [
-                            {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 3}
+                            {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 0}
                         ],
                         'outgoingTransactionsNumber': "2"
                     }
@@ -618,13 +618,13 @@ def create_assets_summaries(db, transfer_factory: TokenTransferFactory, transact
                                 'address': '',
                                 'balance': "300",
                                 'decimals': "0",
-                                'transfersNumber': 2
+                                'transfersNumber': 0
                             },
                             {
                                 'address': 'c2',
                                 'balance': "20000",
                                 "decimals": "2",
-                                'transfersNumber': 1
+                                'transfersNumber': 0
                             },
                         ],
                         'outgoingTransactionsNumber': "10"
@@ -641,13 +641,13 @@ def create_assets_summaries(db, transfer_factory: TokenTransferFactory, transact
                                 'address': '',
                                 'balance': "300",
                                 'decimals': "0",
-                                'transfersNumber': 2
+                                'transfersNumber': 0
                             },
                             {
                                 'address': 'c2',
                                 'balance': "20000",
                                 "decimals": "2",
-                                'transfersNumber': 1
+                                'transfersNumber': 0
                             },
                         ],
                         'outgoingTransactionsNumber': "10"
@@ -722,7 +722,7 @@ async def test_get_assets_summary_from_history(
                 'address': ETHER_ASSET_ADDRESS,
                 'balance': f'{current_balance.value}',
                 'decimals': '0',
-                'transfersNumber': 1
+                'transfersNumber': 0
             },
         ],
         'outgoingTransactionsNumber': '1'
@@ -779,13 +779,13 @@ async def test_get_assets_summary_by_asset_from_history(
                 'address': ETHER_ASSET_ADDRESS,
                 'balance': f'{ether_balance.value}',
                 'decimals': '0',
-                'transfersNumber': 1
+                'transfersNumber': 0
             },
             {
                 'address': asset,
                 'balance': f'{current_balance.value}',
                 'decimals': f'{current_balance.decimals}',
-                'transfersNumber': 2
+                'transfersNumber': 0
             },
 
         ],
