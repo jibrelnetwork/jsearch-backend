@@ -16,7 +16,8 @@ from jsearch.common.tables import (
     internal_transactions_t,
     assets_summary_t,
     token_transfers_t,
-    token_holders_t
+    token_holders_t,
+    assets_summary_pairs_t,
 )
 from jsearch.common.wallet_events import WalletEventType
 from jsearch.syncer.database import RawDB, MainDB
@@ -391,6 +392,50 @@ async def test_sync_block_check_assets_summary(db, raw_db_sample, raw_db_dsn, db
     for summary, account_state in zip(ether_summary, accounts_stats):
         assert summary['address'] == account_state['address']
         assert int(summary['value']) == int(account_state['balance'])
+
+
+async def test_sync_block_check_assets_summary_pairs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_accounts):
+    """
+    We test on 6000001 block.
+    We can calculate assets summary pairs for test blocks.
+
+    In blocks 6000001 we have:
+        - 244 distinct assets updates:
+          - 208 token assets updates
+          - 36 token assets updates
+
+    `assets_summary_pairs` does not store ether updates to reduce table size, so
+    only 36 pairs will be written to the database.
+
+    It is historical data and we can freeze it.
+    """
+    # given
+
+    # Already present pairs in the table prior to block 6000001.
+    db.execute(assets_summary_pairs_t.insert().values(
+        [
+            ("0x04ab96c0c58ba42428c752f7d49d930df1e1a4b9", "0x71d01db8d6a2fbea7f8d434599c237980c234e4c"),
+            ("0x080f24b1bec4e6b1fe1761ee5c9a2e4cf48f2de4", "0x3883f5e181fccaf8410fa61e12b59bad963fb645"),
+            ("0x151151ed8d6174f7802baea9c7a4dbdbae569dfd", "0xfe5f141bf94fe84bc28ded0ab966c16b17490657"),
+            ("0x1b557854cb7663564c18c775457603ba9cc73115", "0x68aa3f232da9bdc2343465545794ef3eea5209bd"),
+            ("0x1c4b70a3968436b9a0a9cf5205c787eb81bb558c", "0x6fb3e0a217407efff7ca062d46c26e5d60a14d69"),
+        ]
+    ))
+
+    total_pairs = 36
+
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    summaries = db.execute(assets_summary_t.select().where(assets_summary_t.c.asset_address != '')).fetchall()
+    summaries_pairs = [(s['address'], s['asset_address']) for s in summaries]
+
+    pairs = db.execute(assets_summary_pairs_t.select()).fetchall()
+    pairs = [(s['address'], s['asset_address']) for s in pairs]
+
+    assert len(summaries_pairs) == len(pairs) == total_pairs
+    assert summaries_pairs == pairs
 
 
 async def test_sync_block_check_token_holders_in_assets_summary(
