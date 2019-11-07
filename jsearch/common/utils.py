@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import time
 from functools import wraps
-from typing import Optional
+from typing import Optional, TypeVar, List
 
 logger = logging.getLogger(__name__)
 
@@ -62,3 +62,10 @@ def timeit(name: Optional[str] = None, timeout: Optional[int] = None, precision:
 def get_loop_tasks_count(loop: Optional[AbstractEventLoop] = None) -> int:
     # TODO: Replace with `asyncio.all_tasks()` when migrating to `3.7`.
     return len(asyncio.Task.all_tasks(loop))
+
+
+T = TypeVar('T')
+
+
+def unique(list_: List[T]) -> List[T]:
+    return list(dict.fromkeys(list_))
