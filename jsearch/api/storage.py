@@ -5,6 +5,7 @@ from collections import defaultdict
 
 import asyncpgsa
 from functools import partial
+from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from sqlalchemy import select, and_, desc, true
 from typing import DefaultDict, Tuple
 from typing import List, Optional, Dict, Any
@@ -890,7 +891,7 @@ class Storage:
 
             assets = [row['asset_address'] for row in distinct_assets_rows]
 
-        assets = [''] + assets
+        assets = [ETHER_ASSET_ADDRESS] + assets
 
         query = get_assets_summary_query(addresses=unique(addresses), assets=unique(assets))
         rows = await fetch(self.pool, query)

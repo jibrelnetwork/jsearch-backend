@@ -3,7 +3,6 @@ from random import randint
 import factory
 import pytest
 from functools import partial
-from sqlalchemy.exc import IntegrityError
 
 from jsearch.common.tables import assets_summary_t, assets_summary_pairs_t
 from jsearch.tests.plugins.databases.factories.common import generate_address
