@@ -1,10 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE OR REPLACE FUNCTION get_assets_summaries(TEXT[], TEXT[]) RETURNS SETOF assets_summary AS
+CREATE OR REPLACE FUNCTION get_assets_summaries(addresses TEXT[], assets TEXT[]) RETURNS SETOF assets_summary AS
 $BODY$
 DECLARE
-  addresses ALIAS FOR $1;
-  assets ALIAS FOR $2;
   _address TEXT;
   _asset_address TEXT;
 BEGIN
@@ -28,5 +26,5 @@ $BODY$ LANGUAGE plpgsql;
 
 -- +goose Down
 -- +goose StatementBegin
-DROP FUNCTION IF EXISTS get_assets_summaries(TEXT[], TEXT[]);
+DROP FUNCTION IF EXISTS get_assets_summaries(addresses TEXT[], assets TEXT[]);
 -- +goose StatementEnd
