@@ -13,8 +13,12 @@ from jsearch import settings
 
 
 logger = logging.getLogger('index_manager')
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s -- %(message)s',
+                    handlers=[logging.StreamHandler()])
 
-INDEX_RE = 'CREATE\s?(UNIQUE)? INDEX (\w+) ON public.(\w+) USING (\w+) (\([^\)]*\))\s?(WHERE)?\s?(\([^\)]*\))?'
+
+INDEX_RE = r'CREATE\s?(UNIQUE)? INDEX (\w+) ON public.(\w+) USING (\w+) (\([^\)]*\))\s?(WHERE)?\s?(\([^\)]*\))?'
 DEFAULT_FILENAME = os.path.join(os.path.dirname(__file__), 'indexes.yaml')
 
 
@@ -82,7 +86,8 @@ class Index:
             if res is not None:
                 return {'name': self.name, 'status': 'EXISTS', 'size': index_size}
 
-        act_q = """SELECT now() - query_start, state, wait_event FROM pg_stat_activity WHERE query=%s AND state <> 'idle'"""
+        act_q = """SELECT now() - query_start, state, wait_event
+                       FROM pg_stat_activity WHERE query=%s AND state <> 'idle'"""
         async with conn.cursor(cursor_factory=DictCursor) as cur:
             await cur.execute(act_q, [self.get_create_statement()])
             res = await cur.fetchone()
@@ -101,7 +106,7 @@ class IndexManager:
     indexes = None
 
     def __init__(self, db_connection_string):
-        self.db_connection_string=db_connection_string
+        self.db_connection_string = db_connection_string
         self.load_indexes()
         self.queue = list()
 
@@ -115,25 +120,28 @@ class IndexManager:
 
     async def worker(self, n):
         conn = await self.connect()
-        print('Worker {} STARTED'.format(n))
+        logger.info('Worker %s STARTED', n)
         while True:
             try:
                 cmd = self.queue.pop()
             except IndexError:
-                print('Worker {} WORK FINISHED'.format(n))
+                logger.info('Worker %s WORK FINISHED', n)
                 break
             async with conn.cursor() as cur:
-                print('Worker {} EXECUTE: {} '.format(n, cmd))
+                logger.info('Worker %s EXECUTE: %s', n, cmd)
                 await cur.execute(cmd)
         conn.close()
 
-    async def drop_all(self):
+    async def drop_all(self, dry_run=False):
         conn = await self.connect()
         for idx in self.indexes:
             stmt = idx.get_drop_statement()
-            async with conn.cursor() as cur:
-                await cur.execute(stmt)
-            print(stmt)
+            if dry_run is False:
+                async with conn.cursor() as cur:
+                    await cur.execute(stmt)
+                logger.info(stmt)
+            else:
+                logger.info('/* dry run */ %s', stmt)
         conn.close()
 
     async def create_all(self, workers_number):
@@ -166,17 +174,12 @@ class IndexManager:
             for row in res:
                 definition = parse_indexdef(row['indexdef'])
                 indexes.append(definition)
-            print(yaml.dump(indexes, default_flow_style=False, sort_keys=False, line_break='\n\n'))
+            print(yaml.dump(indexes, default_flow_style=False, sort_keys=False, line_break='\n\n'))  # noqa: T001
         finally:
             conn.close()
 
 
 def parse_indexdef(indexdef):
-    """
-    (None, 'ix_logs_keyset_by_timestamp', 'logs', 'btree', '(address, "timestamp", transaction_index, log_index)', 'WHERE', '(is_forked = false)')
-    :param indexdef:
-    :return:
-    """
     m = re.match(INDEX_RE, indexdef)
     if m:
         g = m.groups()
@@ -217,11 +220,12 @@ def status(mgr):
 
 
 @cli.command()
+@click.option('--dry-run', is_flag=True, help='Dry run - just print DROP INDEX statements, not actually run them in DB')
 @click.pass_obj
-def drop_all(mgr):
-    click.echo('Dropping DB indexes:')
+def drop_all(mgr, dry_run):
+    click.echo('Indexes to drop:')
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(mgr.drop_all())
+    loop.run_until_complete(mgr.drop_all(dry_run))
 
 
 @cli.command()
@@ -233,5 +237,9 @@ def create_all(mgr, workers):
     loop.run_until_complete(mgr.create_all(workers))
 
 
-if __name__ == '__main__':
+def run():
     cli()
+
+
+if __name__ == '__main__':
+    run()

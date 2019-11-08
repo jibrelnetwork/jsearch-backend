@@ -23,6 +23,7 @@ setup(
             'jsearch-token-holders-cleaner = jsearch.token_holders_cleaner.main:run',
             'jsearch-data-checker = jsearch.data_checker.main:run',
             'jsearch-monitor-balance = jsearch.monitor_balance.__main__:main',
+            'jsearch-index-manager = jsearch.common.index_manager.main:run',
         ]
     }
 )
