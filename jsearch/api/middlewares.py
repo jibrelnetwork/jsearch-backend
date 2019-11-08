@@ -2,11 +2,11 @@ from typing import Callable, Awaitable
 
 from aiohttp import web
 
-Handler = Callable[[web.Request], Awaitable[web.Response]]
+Handler = Callable[[web.Request], Awaitable[web.StreamResponse]]
 
 
 @web.middleware
-async def cors_middleware(request: web.Request, handler: Handler) -> web.Response:
+async def cors_middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
     response = await handler(request)
 
     response.headers['Access-Control-Allow-Headers'] = '*'
@@ -17,7 +17,7 @@ async def cors_middleware(request: web.Request, handler: Handler) -> web.Respons
 
 
 @web.middleware
-async def prom_middleware(request: web.Request, handler: Handler) -> web.Response:
+async def prom_middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
     request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request.path, request.method).inc()
 
     with request.app['metrics']['REQUESTS_LATENCY'].labels(request.path).time():

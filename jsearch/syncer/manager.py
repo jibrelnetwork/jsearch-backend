@@ -1,11 +1,12 @@
 import asyncio
 import logging
+from asyncio import Future
 
 import aiopg
 import backoff
 import psycopg2
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from jsearch import settings
 from jsearch.api.helpers import ChainEvent
@@ -110,7 +111,8 @@ class Manager:
             - chain_splits
     """
 
-    def __init__(
+    # FIXME (nickgashkov): `state` should be `None` by default.
+    def __init__(  # type: ignore
             self,
             service,
             main_db,
@@ -131,7 +133,7 @@ class Manager:
         self.latest_available_block_num = None
         self.latest_synced_block_num = None
         self.blockchain_tip = None
-        self.tasks = []
+        self.tasks: List[Future] = []
         self.tip = None
         self.node_id = settings.ETH_NODE_ID
 
@@ -348,7 +350,8 @@ async def get_range_and_check_holes(
           - hole
           - checked_on_holes
     """
-    sync_range = BlockRange(max(state.already_processed, sync_range.start), sync_range.end)
+    # FIXME (nickgashkov): `state.already_processed` could be `None`.
+    sync_range = BlockRange(max(state.already_processed, sync_range.start), sync_range.end)  # type: ignore
     if sync_range.end is None:
         return sync_range
 

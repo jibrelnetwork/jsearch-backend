@@ -1,11 +1,11 @@
 from sqlalchemy import Column
-from typing import Any, Dict, NewType, Callable, Awaitable, Coroutine, List, Union
+from typing import Any, Dict, Callable, Awaitable, Coroutine, List, Union, Optional
 
 AnyDict = Dict[str, Any]
 AnyDicts = List[AnyDict]
 
 Abi = List[Dict[str, Any]]
-Abi_ERC20 = NewType('Abi_ERC20', Abi)
+Abi_ERC20 = Abi
 
 IntOrStr = Union[int, str]
 
@@ -59,6 +59,6 @@ Columns = List[Column]
 OrderDirection = str
 OrderScheme = str
 
-LastAffectedBlock = int
+LastAffectedBlock = Optional[int]
 ProgressPercent = float
 BlockchainTipAsDict = Dict[str, Any]

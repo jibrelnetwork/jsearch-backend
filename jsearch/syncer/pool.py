@@ -143,7 +143,8 @@ class WorkersPool:
         await self.run(last_block=last_block)
 
     async def check_healthy(self) -> List[Dict[str, Any]]:
-        tasks = (worker.check_healthy() for worker in self._workers)
+        # FIXME (nickgashkov): `self._workers` could be `None`.
+        tasks = (worker.check_healthy() for worker in self._workers)  # type: ignore
         return await gather(*tasks)
 
     async def describe(self):

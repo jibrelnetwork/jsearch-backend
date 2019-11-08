@@ -59,7 +59,7 @@ class WalletEventTransaction(NamedTuple):
 
 
 def wallet_events_to_json(events: List[WalletEvent]) -> List[Dict[str, Any]]:
-    txs = OrderedDict()
+    txs: 'OrderedDict[str, WalletEventTransaction]' = OrderedDict()
 
     for event in events:
         tx = txs.get(event.tx_hash)

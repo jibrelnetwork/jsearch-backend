@@ -2,7 +2,7 @@ import logging
 
 import click
 import time
-from typing import Any, Dict
+from typing import Any
 
 from jsearch import settings
 from jsearch.common import logs, stats
@@ -27,7 +27,7 @@ def run_worker(sync_range: BlockRange, api_port: int, check_lag: bool, check_hol
     worker.Worker(syncer).execute_from_commandline()
 
 
-def run_workers_pool(sync_range: BlockRange, workers: int, **kwargs: Dict[str, Any]):
+def run_workers_pool(sync_range: BlockRange, workers: int, **kwargs: Any):
     pool = WorkersPool(
         sync_range=sync_range,
         workers=workers,

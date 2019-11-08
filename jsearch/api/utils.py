@@ -6,5 +6,5 @@ class AIOHTTPParserWithOverridenErrorsHandler(AIOHTTPParser):
 
 
 parser = AIOHTTPParserWithOverridenErrorsHandler()
-use_args = parser.use_args  # type: typing.Callable
-use_kwargs = parser.use_kwargs  # type: typing.Callable
+use_args = parser.use_args
+use_kwargs = parser.use_kwargs

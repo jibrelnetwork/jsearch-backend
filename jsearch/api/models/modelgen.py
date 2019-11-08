@@ -92,7 +92,7 @@ def cc_to_underscore(name):
 
 if __name__ == '__main__':
     swagger_file = open(sys.argv[1], 'r')
-    sys.stdout.write('Processing Swagger file', swagger_file)
+    sys.stdout.write('Processing Swagger file', swagger_file)  # type: ignore
 
     code = generate(yaml.load(swagger_file))
     dir_ = os.path.dirname(__file__)

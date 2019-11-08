@@ -17,7 +17,7 @@ async def get_block_number_or_tag_from_timestamp(
 
     block_info = await storage.get_block_by_timestamp(timestamp, direction)
     if block_info:
-        block_number = block_info.number
+        block_number: Optional[int] = block_info.number
     else:
         if direction == ORDER_DESC:
             block_number, _ = await get_last_block_number_and_timestamp(Tag.LATEST, None, storage)
@@ -33,16 +33,16 @@ async def get_last_block_number_and_timestamp(
 ) -> Tuple[Optional[int], Optional[int]]:
     if {block_number, timestamp} & {Tag.LATEST}:
         last_block = await storage.get_latest_block_info()
-        block_number = block_number and last_block and last_block.number
-        timestamp = timestamp and last_block and last_block.timestamp
+        block_number = block_number and last_block and last_block.number  # type: ignore
+        timestamp = timestamp and last_block and last_block.timestamp  # type: ignore
 
-    return block_number, timestamp
+    return block_number, timestamp  # type: ignore
 
 
 async def get_tip_block_number_and_timestamp(
         block_number: Optional[IntOrStr],
         timestamp: Optional[IntOrStr],
-        tip_hash: str,
+        tip_hash: Optional[str],
         storage: Storage
 ) -> Tuple[Optional[int], Optional[int]]:
     if {block_number, timestamp} & {Tag.TIP}:
@@ -69,4 +69,4 @@ async def get_tip_block_number_and_timestamp(
         block_number = block_number and block_info.number
         timestamp = timestamp and block_info.timestamp
 
-    return block_number, timestamp
+    return block_number, timestamp  # type: ignore
