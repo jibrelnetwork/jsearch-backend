@@ -1,6 +1,7 @@
 import json
 import logging
 
+from sqlalchemy.dialects.postgresql import insert
 import aiopg
 from aiopg.sa import SAConnection
 from sqlalchemy import and_, Table, false
@@ -109,7 +110,7 @@ class MainDB(DBWrapper):
                 await self.update_fork_status([b['hash'] for b in new_chain_fragment], is_forked=False, conn=conn)
 
                 # write chain event
-                q = chain_events_t.insert().values(**chain_event)
+                q = insert(chain_events_t).values(**chain_event).on_conflict_do_nothing(index_elements=['id'])
                 await conn.execute(q)
 
                 for block in affected_chain:

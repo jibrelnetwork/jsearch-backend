@@ -214,7 +214,9 @@ class Manager:
                 logger.info("Leave ReSync Loop")
                 break
             await self.rewrite_block(block_number)
+            await self.reapply_split(block_number)
 
+    @timeit('[SYNCER] Rewrite block')
     async def rewrite_block(self, block_number):
         logger.info("Rewrite block", extra={'block_number': block_number})
         block_hash = await self.main_db.get_block_hash_by_number(block_number)
@@ -227,6 +229,19 @@ class Manager:
             chain_event=None,
             rewrite=True
         )
+
+    @timeit('[SYNCER] Reapply split')
+    async def reapply_split(self, block_number):
+        chain_splits = await self.raw_db.get_chain_splits_for_block(block_number, self.node_id)
+        for chain_split in chain_splits:
+            logger.info("Reapply chain split", extra={
+                'block_number': block_number,
+                'block_hash': chain_split['block_hash']
+            })
+            await process_chain_split_event(
+                main_db=self.main_db,
+                split_data=dict(chain_split)
+            )
 
     async def process_chain_event(self, event):
         start_time = time.monotonic()

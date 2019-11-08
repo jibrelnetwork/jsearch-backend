@@ -94,6 +94,18 @@ class RawDB(DBWrapper):
 
         return await self.fetch_one(q, *params)
 
+    @timeit('[RAW DB] Get chain splits')
+    async def get_chain_splits_for_block(self, block_number: int, node_id: str):
+        q = f"""
+            SELECT * FROM chain_events
+            WHERE
+                block_number = %s
+                AND node_id=%s
+                AND "type"='split'
+            ORDER BY id ASC
+        """
+        return await self.fetch_all(q, block_number, node_id)
+
     @timeit('[RAW DB] Get first chain event')
     async def get_first_chain_event_for_block_range(self, block_range: BlockRange, node_id):
         if block_range.end is not None:
