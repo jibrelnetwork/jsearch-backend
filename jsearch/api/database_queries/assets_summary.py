@@ -1,11 +1,9 @@
-from functools import reduce
-from sqlalchemy import false, tuple_
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, false
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
-from sqlalchemy.sql.functions import max
-from typing import List, Optional
+from typing import List
 
+from jsearch.common.functions import get_assets_summaries_f
 from jsearch.common.tables import assets_summary_t
 
 
@@ -21,40 +19,22 @@ def get_default_fields():
     ]
 
 
-def get_assets_summary_query(addresses: List[str], assets: Optional[List[str]] = None) -> Query:
-    conditions = [
-        Any(assets_summary_t.c.address, array(tuple(addresses))),
-        assets_summary_t.c.is_forked == false()
-    ]
-    if assets:
-        conditions.append(
-            Any(assets_summary_t.c.asset_address, array(tuple(assets)))
-        )
+def get_assets_summary_query(addresses: List[str], assets: List[str]) -> Query:
+    return select(['*']).select_from(get_assets_summaries_f(
+        addresses=array(tuple(addresses)),
+        assets=array(tuple(assets))),
+    )
 
-    conditions = reduce(and_, conditions)
 
-    sub_query = select(
+def get_distinct_assets_by_addresses_query(addresses: List[str]) -> Query:
+    return select(
         [
             assets_summary_t.c.address,
             assets_summary_t.c.asset_address,
-            max(assets_summary_t.c.block_number)
         ]
-    ).where(conditions).group_by(
-        assets_summary_t.c.address,
-        assets_summary_t.c.asset_address
-    ).alias('latest_blocks')
-
-    columns = get_default_fields()
-
-    return select(columns).where(
+    ).where(
         and_(
-            tuple_(
-                assets_summary_t.c.address,
-                assets_summary_t.c.asset_address,
-                assets_summary_t.c.block_number
-            ).in_(
-                sub_query
-            ),
-            assets_summary_t.c.is_forked == false()
+            Any(assets_summary_t.c.address, array(tuple(addresses))),
+            assets_summary_t.c.is_forked == false(),
         )
-    )
+    ).distinct()

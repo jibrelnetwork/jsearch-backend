@@ -86,7 +86,7 @@ async def get_lag_stats() -> LagStats:
 
 def setup_api_metrics(app: web.Application) -> None:
     # Automatic metrics, handled by state-less function.
-    prom_metrics.METRIC_API_LOOP_TASKS_TOTAL.labels(settings.PID).set_function(lambda: utils.get_loop_tasks_count())
+    prom_metrics.METRIC_API_LOOP_TASKS_TOTAL.set_function(lambda: utils.get_loop_tasks_count())
 
     # Non-automatic metrics, changeable inside a request.
     app['metrics'] = {

@@ -12,7 +12,7 @@ from typing import List, Optional, Dict, Any
 from jsearch.api import models
 from jsearch.api.database_queries.account_bases import get_account_base_query
 from jsearch.api.database_queries.account_states import get_account_state_query
-from jsearch.api.database_queries.assets_summary import get_assets_summary_query
+from jsearch.api.database_queries.assets_summary import get_assets_summary_query, get_distinct_assets_by_addresses_query
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
@@ -51,7 +51,8 @@ from jsearch.api.database_queries.token_transfers import (
 from jsearch.api.database_queries.transactions import (
     get_tx_by_hash,
     get_tx_by_address_and_block_query,
-    get_tx_by_address_and_timestamp_query
+    get_tx_by_address_and_timestamp_query,
+    get_transactions_by_hashes,
 )
 from jsearch.api.database_queries.uncles import (
     get_uncles_by_timestamp_query,
@@ -71,6 +72,7 @@ from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, 
 from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
+from jsearch.common.utils import unique
 from jsearch.common.wallet_events import get_event_from_pending_tx
 from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress, ProgressPercent
 
@@ -850,11 +852,17 @@ class Storage:
 
         events = in_app_distinct(events)[:limit]
 
+        tx_hashes = {e['tx_hash'] for e in events}
+        tx_query = get_transactions_by_hashes(tx_hashes)
+        async with self.pool.acquire() as connection:
+            transactions = await fetch(connection, tx_query)
+        transactions_map = {tx['hash']: tx for tx in transactions}
+
         wallet_events = []
         for event in events:
-            tx_data = event['tx_data']
+            tx_data = transactions_map.get(event['tx_hash'])
             if tx_data:
-                tx = models.Transaction(**json.loads(tx_data)).to_dict()
+                tx = models.Transaction(**tx_data).to_dict()
             else:
                 tx = {}
             event_data = json.loads(event['event_data'])
@@ -876,13 +884,16 @@ class Storage:
             addresses: List[str],
             assets: Optional[List[str]] = None
     ) -> Tuple[AddressesSummary, LastAffectedBlock]:
-        query = get_assets_summary_query(addresses=addresses, assets=assets)
+        if not assets:
+            distinct_assets_query = get_distinct_assets_by_addresses_query(addresses)
+            distinct_assets_rows = await fetch(self.pool, distinct_assets_query)
 
+            assets = [row['asset_address'] for row in distinct_assets_rows]
+
+        assets = [''] + assets
+
+        query = get_assets_summary_query(addresses=unique(addresses), assets=unique(assets))
         rows = await fetch(self.pool, query)
-        tx_numbers = await self.get_wallet_assets_tx_numbers(rows)
-
-        for asset in rows:
-            asset['tx_number'] = tx_numbers.get((asset['address'], asset['asset_address']), 0)
 
         account_balances = defaultdict(list)
         for asset in rows:
@@ -909,7 +920,7 @@ class Storage:
                     balance=str(balance),
                     decimals=str(decimals),
                     address=asset['asset_address'],
-                    transfers_number=asset['tx_number'],
+                    transfers_number=0,
                 )
                 account_summary.append(asset_summary)
 
@@ -923,26 +934,6 @@ class Storage:
 
         last_affected_block_number = max([r['block_number'] or 0 for r in rows], default=None)
         return summary, last_affected_block_number
-
-    async def get_wallet_assets_tx_numbers(self, assets):
-        q = """
-        SELECT count(*) as tx_number, address, token_address
-            FROM token_transfers
-            WHERE address = ANY($1::varchar[])
-                AND is_forked=false
-            GROUP BY address, token_address
-        UNION SELECT count(*) as tx_number, address, '' as token_address
-            FROM transactions
-            WHERE address = ANY($1::varchar[])
-                AND is_forked=false
-                AND value != '0x0'
-            GROUP BY address;
-        """
-        addresses = set([a['address'] for a in assets])
-
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(q, addresses)
-            return {(r['address'], r['token_address']): r['tx_number'] for r in rows}
 
     async def get_nonce(self, address):
         """

@@ -25,3 +25,6 @@ class ApiService(mode.Service):
 
     async def on_stop(self) -> None:
         await self.runner.cleanup()
+
+    async def stop(self):
+        await self.on_stop()
