@@ -1,0 +1,461 @@
+
+- name: accounts_state_pkey
+  table: accounts_state
+  fields: (block_hash, address)
+  type: btree
+  partial_condition: ''
+  unique: true
+  pk: true
+  indexdef: CREATE UNIQUE INDEX accounts_state_pkey ON public.accounts_state USING
+    btree (block_hash, address)
+- name: blocks_pkey
+  table: blocks
+  fields: (hash)
+  type: btree
+  partial_condition: ''
+  unique: true
+  pk: true
+  indexdef: CREATE UNIQUE INDEX blocks_pkey ON public.blocks USING btree (hash)
+- name: chain_events_pkey
+  table: chain_events
+  fields: (id)
+  type: btree
+  partial_condition: ''
+  unique: true
+  pk: true
+  indexdef: CREATE UNIQUE INDEX chain_events_pkey ON public.chain_events USING btree
+    (id)
+- name: logs_pkey
+  table: logs
+  fields: (transaction_hash, block_hash, log_index)
+  type: btree
+  partial_condition: ''
+  unique: true
+  pk: true
+  indexdef: CREATE UNIQUE INDEX logs_pkey ON public.logs USING btree (transaction_hash,
+    block_hash, log_index)
+- name: pending_transactions_pkey
+  table: pending_transactions
+  fields: (hash)
+  type: btree
+  partial_condition: ''
+  unique: true
+  pk: true
+  indexdef: CREATE UNIQUE INDEX pending_transactions_pkey ON public.pending_transactions
+    USING btree (hash)
+- name: receipts_pkey
+  table: receipts
+  fields: (block_hash, transaction_index)
+  type: btree
+  partial_condition: ''
+  unique: true
+  pk: true
+  indexdef: CREATE UNIQUE INDEX receipts_pkey ON public.receipts USING btree (block_hash,
+    transaction_index)
+- name: uncles_pkey
+  table: uncles
+  fields: (block_hash, hash)
+  type: btree
+  partial_condition: ''
+  unique: true
+  pk: true
+  indexdef: CREATE UNIQUE INDEX uncles_pkey ON public.uncles USING btree (block_hash,
+    hash)
+- name: assets_summary_by_block_hash
+  table: assets_summary
+  fields: (block_hash, asset_address, address)
+  type: btree
+  partial_condition: ''
+  unique: true
+  pk: false
+  indexdef: CREATE UNIQUE INDEX assets_summary_by_block_hash ON public.assets_summary
+    USING btree (block_hash, asset_address, address)
+- name: ix_accounts_base_address
+  table: accounts_base
+  fields: (address)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_accounts_base_address ON public.accounts_base USING btree
+    (address)
+- name: ix_accounts_state_address_block_number_partial
+  table: accounts_state
+  fields: (address, block_number)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_accounts_state_address_block_number_partial ON public.accounts_state
+    USING btree (address, block_number) WHERE (is_forked = false)
+- name: ix_accounts_state_block_number
+  table: accounts_state
+  fields: (block_number)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_accounts_state_block_number ON public.accounts_state USING
+    btree (block_number)
+- name: ix_asset_summary_address_asset_block_number_partial
+  table: assets_summary
+  fields: (address, block_number, asset_address)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_asset_summary_address_asset_block_number_partial ON public.assets_summary
+    USING btree (address, block_number, asset_address) WHERE (is_forked = false)
+- name: ix_blocks_miner
+  table: blocks
+  fields: (miner)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_blocks_miner ON public.blocks USING btree (miner)
+- name: ix_blocks_number
+  table: blocks
+  fields: (number)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_blocks_number ON public.blocks USING btree (number) WHERE
+    (is_forked = false)
+- name: ix_blocks_timestamp
+  table: blocks
+  fields: (number)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_blocks_timestamp ON public.blocks USING btree (number)
+    WHERE (is_forked = false)
+- name: ix_chain_events_by_block_node_and_id
+  table: chain_events
+  fields: (id, block_number)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_chain_events_by_block_node_and_id ON public.chain_events
+    USING btree (id, block_number)
+- name: ix_internal_transactions_block_hash_parent_tx_hash_transaction_
+  table: internal_transactions
+  fields: (block_hash, parent_tx_hash, transaction_index)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_internal_transactions_block_hash_parent_tx_hash_transaction_
+    ON public.internal_transactions USING btree (block_hash, parent_tx_hash, transaction_index)
+- name: ix_internal_transactions_block_number
+  table: internal_transactions
+  fields: (block_number)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_internal_transactions_block_number ON public.internal_transactions
+    USING btree (block_number)
+- name: ix_internal_transactions_parent_tx_hash
+  table: internal_transactions
+  fields: (parent_tx_hash)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_internal_transactions_parent_tx_hash ON public.internal_transactions
+    USING btree (parent_tx_hash)
+- name: ix_internal_transactions_tx_origin
+  table: internal_transactions
+  fields: (tx_origin)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_internal_transactions_tx_origin ON public.internal_transactions
+    USING btree (tx_origin) WHERE (is_forked = false)
+- name: ix_logs_address
+  table: logs
+  fields: (address)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_logs_address ON public.logs USING btree (address)
+- name: ix_logs_block_hash
+  table: logs
+  fields: (block_hash)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_logs_block_hash ON public.logs USING btree (block_hash)
+- name: ix_logs_block_number
+  table: logs
+  fields: (block_number)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_logs_block_number ON public.logs USING btree (block_number)
+- name: ix_logs_keyset_by_block
+  table: logs
+  fields: (address, block_number, transaction_index, log_index)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_logs_keyset_by_block ON public.logs USING btree (address,
+    block_number, transaction_index, log_index) WHERE (is_forked = false)
+- name: ix_logs_keyset_by_timestamp
+  table: logs
+  fields: (address, "timestamp", transaction_index, log_index)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_logs_keyset_by_timestamp ON public.logs USING btree (address,
+    "timestamp", transaction_index, log_index) WHERE (is_forked = false)
+- name: ix_logs_token_transfer_from
+  table: logs
+  fields: (token_transfer_from)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_logs_token_transfer_from ON public.logs USING btree (token_transfer_from)
+- name: ix_logs_token_transfer_to
+  table: logs
+  fields: (token_transfer_to)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_logs_token_transfer_to ON public.logs USING btree (token_transfer_to)
+- name: ix_pending_transactions_last_synced_id
+  table: pending_transactions
+  fields: (last_synced_id)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_pending_transactions_last_synced_id ON public.pending_transactions
+    USING btree (last_synced_id)
+- name: ix_pending_txs_from_partial
+  table: pending_transactions
+  fields: ("from", "timestamp", id)
+  type: btree
+  partial_condition: (removed = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_pending_txs_from_partial ON public.pending_transactions
+    USING btree ("from", "timestamp", id) WHERE (removed = false)
+- name: ix_pending_txs_to_partial
+  table: pending_transactions
+  fields: ("to", "timestamp", id)
+  type: btree
+  partial_condition: (removed = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_pending_txs_to_partial ON public.pending_transactions
+    USING btree ("to", "timestamp", id) WHERE (removed = false)
+- name: ix_receipts_block_number
+  table: receipts
+  fields: (block_number)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_receipts_block_number ON public.receipts USING btree (block_number)
+- name: ix_receipts_contract_address
+  table: receipts
+  fields: (contract_address)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_receipts_contract_address ON public.receipts USING btree
+    (contract_address)
+- name: ix_receipts_transaction_hash
+  table: receipts
+  fields: (transaction_hash)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_receipts_transaction_hash ON public.receipts USING btree
+    (transaction_hash)
+- name: ix_reorgs_hash_split_id_node_id
+  table: reorgs
+  fields: (block_hash, split_id, node_id)
+  type: btree
+  partial_condition: ''
+  unique: true
+  pk: false
+  indexdef: CREATE UNIQUE INDEX ix_reorgs_hash_split_id_node_id ON public.reorgs USING
+    btree (block_hash, split_id, node_id)
+- name: ix_reorgs_split_id
+  table: reorgs
+  fields: (split_id)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_reorgs_split_id ON public.reorgs USING btree (split_id)
+- name: ix_token_holders_by_token_block_number_and_address
+  table: token_holders
+  fields: (token_address, block_number, account_address)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_token_holders_by_token_block_number_and_address ON public.token_holders
+    USING btree (token_address, block_number, account_address) WHERE (is_forked =
+    false)
+- name: ix_token_transfers_address_block_number_log_index
+  table: token_transfers
+  fields: (address, block_number, transaction_index, log_index)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_token_transfers_address_block_number_log_index ON public.token_transfers
+    USING btree (address, block_number, transaction_index, log_index)
+- name: ix_token_transfers_block_hash
+  table: token_transfers
+  fields: (block_hash)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_token_transfers_block_hash ON public.token_transfers USING
+    btree (block_hash)
+- name: ix_token_transfers_token_address_block_number_log_index
+  table: token_transfers
+  fields: (token_address, block_number, transaction_index, log_index)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_token_transfers_token_address_block_number_log_index ON
+    public.token_transfers USING btree (token_address, block_number, transaction_index,
+    log_index)
+- name: ix_transactions_block_hash
+  table: transactions
+  fields: (block_hash)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_transactions_block_hash ON public.transactions USING btree
+    (block_hash)
+- name: ix_transactions_block_number
+  table: transactions
+  fields: (block_number)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_transactions_block_number ON public.transactions USING
+    btree (block_number)
+- name: ix_transactions_hash
+  table: transactions
+  fields: (hash)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_transactions_hash ON public.transactions USING btree (hash)
+- name: ix_transactions_keyset_by_block
+  table: internal_transactions
+  fields: (tx_origin, block_number, parent_tx_index, transaction_index)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_transactions_keyset_by_block ON public.internal_transactions
+    USING btree (tx_origin, block_number, parent_tx_index, transaction_index) WHERE
+    (is_forked = false)
+- name: ix_transactions_keyset_by_timestamp
+  table: internal_transactions
+  fields: (tx_origin, "timestamp", parent_tx_index, transaction_index)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_transactions_keyset_by_timestamp ON public.internal_transactions
+    USING btree (tx_origin, "timestamp", parent_tx_index, transaction_index) WHERE
+    (is_forked = false)
+- name: ix_transactions_timestamp_index
+  table: transactions
+  fields: (address, "timestamp", transaction_index)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_transactions_timestamp_index ON public.transactions USING
+    btree (address, "timestamp", transaction_index) WHERE (is_forked = false)
+- name: ix_uncles_block_hash
+  table: uncles
+  fields: (block_hash)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_uncles_block_hash ON public.uncles USING btree (block_hash)
+- name: ix_uncles_block_number
+  table: uncles
+  fields: (block_number)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_uncles_block_number ON public.uncles USING btree (block_number)
+- name: ix_uncles_number
+  table: uncles
+  fields: (number)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_uncles_number ON public.uncles USING btree (number)
+- name: ix_wallet_events_address_event_index_type_partial
+  table: wallet_events
+  fields: (address, event_index, type)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_wallet_events_address_event_index_type_partial ON public.wallet_events
+    USING btree (address, event_index, type) WHERE (is_forked = false)
+- name: ix_wallet_events_block_hash
+  table: wallet_events
+  fields: (block_hash)
+  type: btree
+  partial_condition: ''
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_wallet_events_block_hash ON public.wallet_events USING
+    btree (block_hash)
+- name: token_holders_by_block_hash
+  table: token_holders
+  fields: (block_hash, token_address, account_address)
+  type: btree
+  partial_condition: ''
+  unique: true
+  pk: false
+  indexdef: CREATE UNIQUE INDEX token_holders_by_block_hash ON public.token_holders
+    USING btree (block_hash, token_address, account_address)
+- name: transactions_address_idx_partial
+  table: transactions
+  fields: (address, block_number, transaction_index)
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX transactions_address_idx_partial ON public.transactions USING
+    btree (address, block_number, transaction_index) WHERE (is_forked = false)
+
