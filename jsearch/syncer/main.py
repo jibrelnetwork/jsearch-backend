@@ -48,8 +48,8 @@ def run_workers_pool(sync_range: BlockRange, workers: int, **kwargs: Dict[str, A
 async def wait_new_scheme() -> None:
     query = """
     SELECT *
-    FROM information_schema.tables
-    WHERE table_name = 'assets_summary_pairs';
+    FROM pg_indexes
+    WHERE indexname = 'ix_assets_summary_pairs_address_asset_address';
     """
 
     engine = await create_engine(dsn=settings.JSEARCH_MAIN_DB, maxsize=1)

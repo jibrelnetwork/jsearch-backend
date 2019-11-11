@@ -7,11 +7,9 @@ SELECT DISTINCT address, asset_address
 FROM assets_summary
 WHERE asset_address != ''
 ON CONFLICT DO NOTHING;
-
-CREATE UNIQUE INDEX ix_assets_summary_pairs_address_asset_address ON assets_summary_pairs USING btree (address, asset_address);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP INDEX ix_assets_summary_pairs_address_asset_address;
+SELECT 1;
 -- +goose StatementEnd

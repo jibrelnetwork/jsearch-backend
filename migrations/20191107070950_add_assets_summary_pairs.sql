@@ -103,6 +103,8 @@ CREATE TABLE assets_summary_pairs
     address       character varying NOT NULL,
     asset_address character varying NOT NULL
 );
+
+CREATE UNIQUE INDEX ix_assets_summary_pairs_address_asset_address ON assets_summary_pairs USING btree (address, asset_address);
 -- +goose StatementEnd
 
 -- +goose Down
