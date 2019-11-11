@@ -209,12 +209,12 @@ class Manager:
 
     async def resync_loop(self):
         logger.info("Entering ReSync Loop")
+        await self.reapply_splits(self.sync_range)
         for block_number in range(self.sync_range.end, self.sync_range.start, -1):
             if not self._running:
                 logger.info("Leave ReSync Loop")
                 break
             await self.rewrite_block(block_number)
-            await self.reapply_split(block_number)
 
     @timeit('[SYNCER] Rewrite block')
     async def rewrite_block(self, block_number):
@@ -230,18 +230,25 @@ class Manager:
             rewrite=True
         )
 
-    @timeit('[SYNCER] Reapply split')
-    async def reapply_split(self, block_number):
-        chain_splits = await self.raw_db.get_chain_splits_for_block(block_number, self.node_id)
-        for chain_split in chain_splits:
+    @timeit('[SYNCER] Reapply splits')
+    async def reapply_splits(self, block_range: BlockRange) -> None:
+        logger.info("Reapply chain splits on", extra={'block_range': block_range})
+        chain_splits = await self.raw_db.get_chain_splits_for_range(block_range, self.node_id)
+        async for chain_split in chain_splits:
             logger.info("Reapply chain split", extra={
-                'block_number': block_number,
+                'block_number': chain_split['block_number'],
                 'block_hash': chain_split['block_hash']
             })
+            from pprint import pprint
+            pprint(dict(chain_split))
             await process_chain_split_event(
                 main_db=self.main_db,
                 split_data=dict(chain_split)
             )
+
+            if not self._running:
+                logger.info("Stop reapplying chain splits")
+                break
 
     async def process_chain_event(self, event):
         start_time = time.monotonic()

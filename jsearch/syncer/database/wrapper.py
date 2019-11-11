@@ -2,6 +2,8 @@ import backoff
 import psycopg2
 from aiopg.sa import create_engine as async_create_engine, Engine
 from psycopg2.extras import DictCursor
+from sqlalchemy.orm import Query
+from typing import AsyncGenerator, Dict, Any
 
 TIMEOUT = 60
 
@@ -55,3 +57,17 @@ class DBWrapper:
         async with self.engine.acquire() as connection:
             cursor = await connection.execute(query, params)
             return await cursor.fetchone()
+
+    @backoff.on_exception(backoff.fibo, max_tries=10, exception=psycopg2.OperationalError)
+    async def fetch_all_async(self, query: Query, *params, size: int = 1) -> AsyncGenerator[Dict[str, Any], None]:
+        async with self.engine.acquire() as connection:
+            cursor = await connection.execute(query, params)
+            result = await cursor.fetchmany(size)
+
+            while result:
+                for item in result:
+                    yield item
+
+                result = await cursor.fetchmany(size)
+                if not result:
+                    break
