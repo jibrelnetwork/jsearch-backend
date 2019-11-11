@@ -7,8 +7,8 @@ from jsearch.api.ordering import Ordering
 
 
 class Page(NamedTuple):
-    link: str
-    next_link: str
+    link: Optional[str]
+    next_link: Optional[str]
 
     items: List[Any]
 
@@ -26,7 +26,7 @@ def get_link(
         params: Dict[str, Any],
         decimals_to_ints: bool,
         mapping: Optional[Dict[str, str]] = None,
-) -> str:
+) -> Optional[str]:
     query = dict()
 
     for field in fields:
@@ -42,6 +42,8 @@ def get_link(
     absolute_url = url.with_query({**query, **params})
     if absolute_url:
         return str(absolute_url)
+
+    return None
 
 
 def get_page(
@@ -68,7 +70,7 @@ def get_page(
 
     if len(items) > limit:
         next_chunk_item = items[-1]
-        next_link = get_link(
+        next_link: Optional[str] = get_link(
             url,
             key_set_fields or ordering.fields,
             next_chunk_item,
@@ -82,7 +84,7 @@ def get_page(
         next_link = None
 
     if items:
-        link = get_link(
+        link: Optional[str] = get_link(
             url,
             key_set_fields or ordering.fields,
             items[0],

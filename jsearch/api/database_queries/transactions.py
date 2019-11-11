@@ -97,7 +97,7 @@ def get_tx_by_address_and_block_query(
 
 
 def get_tx_by_address_and_timestamp_query(
-        limit: str,
+        limit: int,
         address: str,
         timestamp: int,
         ordering: Ordering,

@@ -1,4 +1,5 @@
 import logging
+from typing import Tuple, Set
 
 from jsearch.common.types import Rows
 
@@ -11,7 +12,7 @@ def in_app_distinct(rows: Rows) -> Rows:
     that removing duplicates in-app is faster, than in a DB.
     """
     rows_distinct = list()
-    distinct_keys = set()
+    distinct_keys: Set[Tuple] = set()
 
     for row in rows:
         distinct_key = tuple(row.values())

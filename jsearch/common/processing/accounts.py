@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Set
 
 from jsearch.typing import Accounts
 
@@ -6,7 +6,7 @@ from jsearch.typing import Accounts
 def accounts_to_state_and_base_data(accounts: Accounts) -> Tuple[Accounts, Accounts]:
     accounts_state_data = []
     accounts_base_data = []
-    address_set = set()
+    address_set: Set[str] = set()
 
     for account in accounts:
         if account['address'] not in address_set:
