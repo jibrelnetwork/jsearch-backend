@@ -243,8 +243,6 @@ class Manager:
                 'block_number': chain_split['block_number'],
                 'block_hash': chain_split['block_hash']
             })
-            from pprint import pprint
-            pprint(dict(chain_split))
             await process_chain_split_event(
                 main_db=self.main_db,
                 split_data=dict(chain_split)
