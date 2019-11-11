@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import logging
 
-from typing import Sequence, Mapping, List
+from typing import Sequence, Mapping, List, Dict
 
 from jsearch.typing import AnyCoroutine, AnyCoroutineMaker
 
@@ -26,7 +26,7 @@ def chain_dependent_coros(
          * Return value will be *unordered* and meant to be used exactly in
          asyncio.gather(*result).
     """
-    last_tasks = {}
+    last_tasks: Dict[str, AnyCoroutine] = {}
 
     for item in items:
         item_id = item[item_id_key]

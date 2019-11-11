@@ -201,6 +201,8 @@ async def fetch_row(connection: Connection, query: Union[Query, str]) -> Optiona
     if result is not None:
         return dict(result)
 
+    return None
+
 
 def get_positive_number(
         request: web.Request,
@@ -238,6 +240,8 @@ def get_positive_number(
             },
             status=400
         )
+
+    return None
 
 
 class ApiError(Exception):

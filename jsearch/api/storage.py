@@ -86,7 +86,7 @@ BLOCKS_IN_QUERY = 10
 
 
 def _group_by_block(items: List[Dict[str, Any]]) -> DefaultDict[str, List[Dict[str, Any]]]:
-    items_by_block = defaultdict(list)
+    items_by_block: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
     for item in items:
         item_hash = item['hash']
         block_hash = item['block_hash']
@@ -115,7 +115,7 @@ class Storage:
         async with self.pool.acquire() as conn:
             row = await fetch_row(conn, query)
 
-        return row and row['max_id']
+        return row and row['max_id']  # type: ignore
 
     async def is_data_affected_by_chain_split(
             self,
@@ -160,7 +160,7 @@ class Storage:
 
         state_row['balance'] = int(state_row['balance'])
 
-        row = {**state_row, **base_row}
+        row = {**state_row, **base_row}  # type: ignore
         row['code'] = '0x' + row['code']
         row['code_hash'] = '0x' + row['code_hash']
 
@@ -271,11 +271,11 @@ class Storage:
 
             uncles = row['uncles'] or []
             if uncles:
-                uncles = json.loads(uncles)
+                uncles = json.loads(uncles)  # type: ignore
 
             txs = row['transactions'] or []
             if txs:
-                txs = json.loads(txs)
+                txs = json.loads(txs)  # type: ignore
 
             # TODO: int transformation should do serializer
             data = dict(row)
@@ -342,7 +342,12 @@ class Storage:
             query = get_blocks_query(limit=limit, order=order, miner=address)
         else:
             if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-                query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order, miner=address)
+                query = get_blocks_by_timestamp_query(  # type: ignore
+                    limit=limit,
+                    timestamp=timestamp,
+                    order=order,
+                    miner=address,
+                )
             elif order.scheme == ORDER_SCHEME_BY_NUMBER:
                 query = get_blocks_by_number_query(limit=limit, number=number, order=order, miner=address)
             else:
@@ -405,7 +410,7 @@ class Storage:
             query = get_uncles_query(limit=limit, order=order)
         else:
             if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-                query = get_uncles_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)
+                query = get_uncles_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)  # type: ignore
 
             elif order.scheme == ORDER_SCHEME_BY_NUMBER:
                 query = get_uncles_by_number_query(limit, number=number, order=order)
@@ -438,7 +443,7 @@ class Storage:
             query = get_uncles_query(limit=limit, order=order, address=address)
         else:
             if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
-                query = get_uncles_by_miner_address_and_timestamp_query(
+                query = get_uncles_by_miner_address_and_timestamp_query(  # type: ignore
                     address=address,
                     limit=limit,
                     timestamp=timestamp,
@@ -729,6 +734,8 @@ class Storage:
                 timestamp=last_block['timestamp']
             )
 
+        return None
+
     async def get_block_info(self, block_hash: str) -> Optional[BlockInfo]:
         query = get_block_number_by_hash_query(block_hash)
         async with self.pool.acquire() as conn:
@@ -742,6 +749,8 @@ class Storage:
                 is_forked=block['is_forked']
             )
 
+        return None
+
     async def get_block_by_timestamp(self, timestamp: int, order_direction: OrderDirection) -> Optional[BlockInfo]:
         query = get_block_number_by_timestamp_query(timestamp, order_direction)
         async with self.pool.acquire() as conn:
@@ -754,9 +763,11 @@ class Storage:
                 timestamp=block['timestamp']
             )
 
+        return None
+
     async def get_blockchain_tip(self,
                                  tip_block: Optional[BlockInfo],
-                                 last_block: Optional[BlockInfo] = None) -> Optional[BlockchainTip]:
+                                 last_block: Optional[BlockInfo] = None) -> BlockchainTip:
         """
         Return status of client's last known block
         """
@@ -771,7 +782,8 @@ class Storage:
             ]
         ).where(
             and_(
-                blocks_t.c.hash == tip_block.hash,
+                # FIXME (nickgashkov): `tip_block` could be `None`.
+                blocks_t.c.hash == tip_block.hash,  # type: ignore
                 blocks_t.c.is_forked == true()
             )
         ).order_by(
@@ -809,13 +821,15 @@ class Storage:
                 if chain_split:
                     last_unchanged = chain_split and chain_split['block_number']
                 else:
-                    last_unchanged = tip_block.number - 1 if tip_block.number > 1 else 0
+                    # FIXME (nickgashkov): `tip_block` could be `None`.
+                    last_unchanged = tip_block.number - 1 if tip_block.number > 1 else 0  # type: ignore
 
-        return BlockchainTip(
+        return BlockchainTip(  # type: ignore
             tip_hash=tip_block and tip_block.hash,
             tip_number=tip_block and tip_block.number,
-            last_hash=last_block.hash,
-            last_number=last_block.number,
+            # FIXME (nickgashkov): `last_block` could be `None`.
+            last_hash=last_block.hash,  # type: ignore
+            last_number=last_block.number,  # type: ignore
             is_in_fork=is_in_fork,
             last_unchanged_block=last_unchanged
         )
@@ -868,7 +882,8 @@ class Storage:
                 tx = {}
             event_data = json.loads(event['event_data'])
             direction = WalletEventDirection.IN if event_data['recipient'] == address else WalletEventDirection.OUT
-            wallet_event = WalletEvent(
+            # FIXME (nickgashkov): Consider using `__getitem__` or handle `None` values.
+            wallet_event = WalletEvent(  # type: ignore
                 type=event.get('type'),
                 event_index=event.get('event_index'),
                 event_data=event.get('event_data'),
@@ -877,7 +892,7 @@ class Storage:
             )
             wallet_events.append(wallet_event)
 
-        last_affected_block = max([event['blockNumber'] for event in wallet_events], default=None)
+        last_affected_block = max([event['blockNumber'] for event in wallet_events], default=None)  # type: ignore
         return wallet_events, progress, last_affected_block
 
     async def get_wallet_assets_summary(
@@ -896,7 +911,7 @@ class Storage:
         query = get_assets_summary_query(addresses=unique(addresses), assets=unique(assets))
         rows = await fetch(self.pool, query)
 
-        account_balances = defaultdict(list)
+        account_balances: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
         for asset in rows:
             account_balances[asset['address']].append(asset)
 
@@ -1019,6 +1034,8 @@ class Storage:
             value = row['timestamp']
             return value and value
 
+        return None
+
     async def get_account_pending_events(self, account: str, limit: int) -> List[Dict[str, Any]]:
         ordering = get_pending_txs_ordering(scheme=ORDER_SCHEME_NONE, direction=ORDER_DESC)
         query = get_pending_txs_by_account(account, limit, ordering, )
@@ -1034,7 +1051,8 @@ class Storage:
             if event:
                 event_data = event['event_data']
                 direction = WalletEventDirection.IN if event_data['recipient'] == account else WalletEventDirection.OUT
-                event = WalletEvent(
+                # FIXME (nickgashkov): Consider using `__getitem__` or handle `None` values.
+                event = WalletEvent(  # type: ignore
                     type=event.get('type'),
                     event_index=event.get('event_index'),
                     event_data=event.get('event_data'),
@@ -1043,7 +1061,7 @@ class Storage:
                 )
             tx_data = {
                 'transaction': models.PendingTransaction(**tx).to_dict(),
-                'events': [event.to_dict()] if event is not None else None
+                'events': [event.to_dict()] if event is not None else None  # type: ignore
             }
             result.append(tx_data)
 

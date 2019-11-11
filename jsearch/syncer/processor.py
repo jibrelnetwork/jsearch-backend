@@ -65,12 +65,14 @@ async def sync_block(
         is_forked: bool = False,
         chain_event: Optional[Dict[str, Any]] = None,
         rewrite: Optional[bool] = False
-) -> bool:
+) -> Optional[bool]:
     data = await load_block(raw_db, block_hash=block_hash, block_number=block_number, is_forked=is_forked)
     if data:
         block = await process_block(main_db, data)
         await main_db.write_block(chain_event, block, rewrite)
         return True
+
+    return None
 
 
 @timeit('[CPU/GETH/MAIN DB] Process block')
@@ -150,7 +152,7 @@ def process_rewards(
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     if block_number == 0:
         block_reward = {'static_reward': 0, 'uncle_inclusion_reward': 0, 'tx_fees': 0}
-        uncles_rewards = []
+        uncles_rewards: List[Dict[str, Any]] = []
     else:
         reward_data = reward['fields']
         block_reward = {
