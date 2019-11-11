@@ -117,7 +117,8 @@ class Manager:
             raw_db,
             sync_range: BlockRange,
             state: Optional[SyncerState] = False,
-            resync: bool = False
+            resync: bool = False,
+            resync_chain_splits: bool = False
     ):
         self.service = service
         self.main_db = main_db
@@ -126,6 +127,7 @@ class Manager:
         self._running = False
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
         self.resync = resync
+        self.resync_chain_splits = resync_chain_splits
         self.state = state or SyncerState(started_at=int(time.time()))
 
         self.latest_available_block_num = None
@@ -209,7 +211,9 @@ class Manager:
 
     async def resync_loop(self):
         logger.info("Entering ReSync Loop")
-        await self.reapply_splits(self.sync_range)
+        if self.resync_chain_splits:
+            await self.reapply_splits(self.sync_range)
+
         for block_number in range(self.sync_range.end, self.sync_range.start, -1):
             if not self._running:
                 logger.info("Leave ReSync Loop")
