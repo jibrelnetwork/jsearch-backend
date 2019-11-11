@@ -10,8 +10,9 @@ from typing import Dict, Any, Optional, List
 
 from jsearch import settings
 from jsearch.api.helpers import ChainEvent
+from jsearch.common.prom_metrics import METRIC_SYNCER_EVENT_SYNC_DURATION
 from jsearch.common.structs import BlockRange
-from jsearch.common.utils import timeit
+from jsearch.common.utils import timeit, safe_get
 from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.processor import sync_block
 from jsearch.syncer.state import SyncerState
@@ -276,6 +277,8 @@ class Manager:
     )
     @timeit('[SYNCER] Get and process chain event')
     async def get_and_process_chain_event(self):
+        started_at = time.perf_counter()
+
         if self.state.already_processed is None:
             self.state.already_processed = self.sync_range.start
 
@@ -305,6 +308,12 @@ class Manager:
         else:
             self.state.already_processed = max(self.state.already_processed, block_range.start)
             await self.process_chain_event(next_event)
+
+        next_event_type = next_event and safe_get(next_event, 'type')
+
+        if next_event_type is not None:
+            ended_at = time.perf_counter()
+            METRIC_SYNCER_EVENT_SYNC_DURATION.labels(next_event_type).observe(ended_at - started_at)
 
     async def try_lock_range(self):
         return await self.main_db.try_advisory_lock(self.sync_range.start, self.sync_range.end)
