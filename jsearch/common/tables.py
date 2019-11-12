@@ -4,6 +4,8 @@ import sqlalchemy as sa
 import sqlalchemy.types as types
 from sqlalchemy.dialects import postgresql
 
+logger = logging.getLogger(__name__)
+
 
 class HexInteger(types.TypeDecorator):
     """
@@ -43,7 +45,7 @@ class HexToDecString(types.TypeDecorator):
     impl = types.String
 
     def process_bind_param(self, value, dialect):
-        logging.debug({'value': value})
+        logger.debug({'value': value})
 
         if value is None:
             return None
