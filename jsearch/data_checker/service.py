@@ -1,8 +1,10 @@
 import asyncio
 import logging
+from asyncio import Task
+
 import re
 from decimal import Decimal
-from typing import NamedTuple
+from typing import NamedTuple, Dict, Any, List
 import itertools
 import json
 
@@ -43,11 +45,13 @@ class DataChecker(mode.Service):
     def __init__(self, main_db_dsn: str, use_proxy: bool, *args, **kwargs) -> None:
         self.main_db_dsn = main_db_dsn
         self.total = 0
-        self.check_queue = asyncio.Queue()
-        self.workers = []
+        self.check_queue: 'asyncio.Queue[Dict[str, Any]]' = asyncio.Queue()
+        self.workers: List[Task] = []
         self.use_proxy = use_proxy
         self.db_pool = None
-        super().__init__(*args, **kwargs)
+
+        # FIXME (nickgashkov): `mode.Service` does not support `*args`
+        super().__init__(*args, **kwargs)  # type: ignore
 
     async def on_start(self) -> None:
         await self.connect()
@@ -63,8 +67,9 @@ class DataChecker(mode.Service):
                                                maxsize=settings.WORKERS)
 
     async def disconnect(self) -> None:
-        self.db_pool.close()
-        await self.db_pool.wait_closed()
+        # FIXME (nickgashkov): `self.db_pool` is `None` upon `__init__`.
+        self.db_pool.close()  # type: ignore
+        await self.db_pool.wait_closed()  # type: ignore
 
     async def worker(self, number):
         logger.info('Worker %s started', number)

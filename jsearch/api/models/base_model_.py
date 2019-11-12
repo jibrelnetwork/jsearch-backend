@@ -1,27 +1,27 @@
 import pprint
 from decimal import Decimal
+from typing import TypeVar, Dict, Any, Set
 
 import six
-import typing
 from datetime import datetime
 
-T = typing.TypeVar('T')
+T = TypeVar('T')
 
 
 class Model(object):
     # swaggerTypes: The key is attribute name and the
     # value is attribute type.
-    swagger_types = {}
+    swagger_types: Dict[str, Any] = {}
 
     # attributeMap: The key is attribute name and the
     # value is json key in definition.
-    attribute_map = {}
+    attribute_map: Dict[str, str] = {}
 
     # integer fields that will be converted to hex for representation
-    int_to_hex = set()
+    int_to_hex: Set[str] = set()
 
     # integer fields that will be converted to string for representation
-    int_to_str = set()
+    int_to_str: Set[str] = set()
 
     def __init__(self, **fields):
         self._keys = list(fields.keys())

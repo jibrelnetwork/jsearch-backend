@@ -13,7 +13,7 @@ builder(
                                 'pip install --no-cache-dir -r requirements-test.txt',
                                 'mkdir -p /junit-reports',
                                 'flake8 -v --format junit-xml --output-file=/junit-reports/flake8-junit-report.xml',
-                                // 'mypy --junit-xml=/junit-reports/mypy-junit-report.xml .',
+                                'mypy --junit-xml=/junit-reports/mypy-junit-report.xml .',
                         ],
                 ],
                 [

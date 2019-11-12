@@ -13,7 +13,8 @@ class BlockReferenceData(NamedTuple):
 
 
 class ReferenceDataProvider:
-    name = None
+    # FIXME (nickgashkov): Set to `NotImplemented` or `...` by default.
+    name: str = None  # type: ignore
 
     def __init__(self, root_url: str, api_key: str):
         self.root_url = root_url

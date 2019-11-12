@@ -3,7 +3,6 @@ from decimal import Decimal
 import datetime
 
 from jsearch.common import tables as t
-from jsearch.common.database import MainDBSync
 from jsearch.syncer.database import MainDB
 from jsearch.syncer.manager import process_chain_split_event
 
@@ -47,8 +46,6 @@ async def test_main_db_get_missed_blocks_limit2(db, db_dsn):
 async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
     from jsearch.syncer.processor import BlockData
 
-    main_db = MainDBSync(db_dsn)
-    main_db.connect()
     d = main_db_dump
     block = d['blocks'][2]
     block_num = block['number']
@@ -95,6 +92,7 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
         accounts=accounts,
         internal_txs=internal_txs,
         assets_summary_updates=[],
+        assets_summary_pairs=[],
         token_holders_updates=[],
         transfers=[],
         wallet_events=[],
@@ -176,9 +174,6 @@ async def test_maindb_write_block_data(db, main_db_dump, db_dsn):
 async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db_dsn):
     from jsearch.syncer.processor import BlockData
 
-    main_db = MainDBSync(db_dsn)
-    main_db.connect()
-
     block_data = main_db_dump['blocks'][2]
 
     assets_summary_updates = [
@@ -193,6 +188,9 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
             'block_hash': "0x01"
         }
     ]
+    assets_summary_pairs = [
+        {'address': '0x1', 'asset_address': '0xc1'}
+    ]
 
     block = BlockData(
         block=block_data,
@@ -203,6 +201,7 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
         accounts=[],
         internal_txs=[],
         assets_summary_updates=assets_summary_updates,
+        assets_summary_pairs=assets_summary_pairs,
         token_holders_updates=[],
         transfers=[],
         wallet_events=[],
@@ -228,6 +227,8 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
         await async_db.write_block(chain_event, block, rewrite=False)
 
     db_assets = db.execute(t.assets_summary_t.select()).fetchall()
+    db_pairs = db.execute(t.assets_summary_pairs_t.select()).fetchall()
+
     assert len(db_assets) == 1
     assert dict(db_assets[0]) == {
         'address': '0x1',
@@ -239,6 +240,12 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
         'block_number': 1,
         'block_hash': "0x01",
         'is_forked': False
+    }
+
+    assert len(db_pairs) == 1
+    assert dict(db_pairs[0]) == {
+        'address': '0x1',
+        'asset_address': '0xc1',
     }
 
     assets_summary_updates = [
@@ -253,6 +260,9 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
             'block_hash': "0x02"
         }
     ]
+    assets_summary_pairs = [
+        {'address': '0x1', 'asset_address': '0xc1'}
+    ]
     block_data = main_db_dump['blocks'][3]
     block = BlockData(
         block=block_data,
@@ -263,6 +273,7 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
         accounts=[],
         internal_txs=[],
         assets_summary_updates=assets_summary_updates,
+        assets_summary_pairs=assets_summary_pairs,
         token_holders_updates=[],
         transfers=[],
         wallet_events=[],
@@ -273,6 +284,7 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
         await async_db.write_block(chain_event, block, rewrite=False)
 
     db_assets = db.execute(t.assets_summary_t.select().order_by(t.assets_summary_t.c.block_number)).fetchall()
+    db_pairs = db.execute(t.assets_summary_pairs_t.select()).fetchall()
 
     assert len(db_assets) == 2
     assert [dict(item) for item in db_assets] == [
@@ -299,6 +311,12 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, db
             'is_forked': False
         },
     ]
+
+    assert len(db_pairs) == 1
+    assert dict(db_pairs[0]) == {
+        'address': '0x1',
+        'asset_address': '0xc1',
+    }
 
 
 async def test_apply_chain_split(db, db_dsn):

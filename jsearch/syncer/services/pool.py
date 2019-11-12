@@ -10,7 +10,9 @@ class WorkersPoolService(mode.Service):
 
     def __init__(self, pool: WorkersPool, *args: Any, **kwargs: Any):
         self._pool = pool
-        super(WorkersPoolService, self).__init__(*args, **kwargs)
+
+        # FIXME (nickgashkov): `mode.Service` does not support `*args`
+        super(WorkersPoolService, self).__init__(*args, **kwargs)  # type: ignore
 
     async def on_start(self) -> None:
         last_block = get_last_block()

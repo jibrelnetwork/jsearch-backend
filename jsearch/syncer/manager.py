@@ -1,14 +1,18 @@
 import asyncio
 import logging
+from asyncio import Future
 
+import aiopg
 import backoff
+import psycopg2
 import time
-from jsearch.api.helpers import ChainEvent
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from jsearch import settings
+from jsearch.api.helpers import ChainEvent
+from jsearch.common.prom_metrics import METRIC_SYNCER_EVENT_SYNC_DURATION
 from jsearch.common.structs import BlockRange
-from jsearch.common.utils import timeit
+from jsearch.common.utils import timeit, safe_get
 from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.processor import sync_block
 from jsearch.syncer.state import SyncerState
@@ -16,6 +20,20 @@ from jsearch.syncer.state import SyncerState
 logger = logging.getLogger(__name__)
 
 SLEEP_ON_NO_BLOCKS_DEFAULT = 1
+
+
+async def reconnect(details: Dict[str, Any]) -> None:
+    manager: Manager = details['args'][0]
+
+    try:
+        await manager.raw_db.disconnect()
+    finally:
+        await manager.raw_db.connect()
+
+    try:
+        await manager.main_db.disconnect()
+    finally:
+        await manager.main_db.connect()
 
 
 async def process_insert_block_event(raw_db: RawDB,
@@ -94,14 +112,16 @@ class Manager:
             - chain_splits
     """
 
-    def __init__(
+    # FIXME (nickgashkov): `state` should be `None` by default.
+    def __init__(  # type: ignore
             self,
             service,
             main_db,
             raw_db,
             sync_range: BlockRange,
             state: Optional[SyncerState] = False,
-            resync: bool = False
+            resync: bool = False,
+            resync_chain_splits: bool = False
     ):
         self.service = service
         self.main_db = main_db
@@ -110,12 +130,13 @@ class Manager:
         self._running = False
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
         self.resync = resync
+        self.resync_chain_splits = resync_chain_splits
         self.state = state or SyncerState(started_at=int(time.time()))
 
         self.latest_available_block_num = None
         self.latest_synced_block_num = None
         self.blockchain_tip = None
-        self.tasks = []
+        self.tasks: List[Future] = []
         self.tip = None
         self.node_id = settings.ETH_NODE_ID
 
@@ -159,7 +180,7 @@ class Manager:
         if exceptions:
             return exceptions[0]
 
-    async def stop(self, timeout=60):
+    async def stop(self, timeout=5):
         self._running = False
 
         if not self.tasks:
@@ -169,7 +190,10 @@ class Manager:
         done, pending = await asyncio.wait(self.tasks, timeout=timeout)
 
         for future in done:
-            future.result()
+            try:
+                future.result()
+            except asyncio.CancelledError:
+                pass
 
         if pending:
             logger.warning(
@@ -190,12 +214,16 @@ class Manager:
 
     async def resync_loop(self):
         logger.info("Entering ReSync Loop")
+        if self.resync_chain_splits:
+            await self.reapply_splits(self.sync_range)
+
         for block_number in range(self.sync_range.end, self.sync_range.start, -1):
             if not self._running:
                 logger.info("Leave ReSync Loop")
                 break
             await self.rewrite_block(block_number)
 
+    @timeit('[SYNCER] Rewrite block')
     async def rewrite_block(self, block_number):
         logger.info("Rewrite block", extra={'block_number': block_number})
         block_hash = await self.main_db.get_block_hash_by_number(block_number)
@@ -208,6 +236,24 @@ class Manager:
             chain_event=None,
             rewrite=True
         )
+
+    @timeit('[SYNCER] Reapply splits')
+    async def reapply_splits(self, block_range: BlockRange) -> None:
+        logger.info("Reapply chain splits on", extra={'block_range': block_range})
+        chain_splits = await self.raw_db.get_chain_splits_for_range(block_range, self.node_id)
+        async for chain_split in chain_splits:
+            logger.info("Reapply chain split", extra={
+                'block_number': chain_split['block_number'],
+                'block_hash': chain_split['block_hash']
+            })
+            await process_chain_split_event(
+                main_db=self.main_db,
+                split_data=dict(chain_split)
+            )
+
+            if not self._running:
+                logger.info("Stop reapplying chain splits")
+                break
 
     async def process_chain_event(self, event):
         start_time = time.monotonic()
@@ -246,9 +292,17 @@ class Manager:
             'time': '{:0.2f}s'.format(time.monotonic() - start_time),
         })
 
-    @backoff.on_exception(backoff.expo, max_tries=settings.SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
+    @backoff.on_exception(
+        backoff.expo,
+        jitter=None,
+        max_tries=settings.SYNCER_BACKOFF_MAX_TRIES,
+        exception=(psycopg2.OperationalError, psycopg2.InterfaceError, aiopg.sa.exc.InvalidRequestError),
+        on_backoff=reconnect
+    )
     @timeit('[SYNCER] Get and process chain event')
     async def get_and_process_chain_event(self):
+        started_at = time.perf_counter()
+
         if self.state.already_processed is None:
             self.state.already_processed = self.sync_range.start
 
@@ -278,6 +332,12 @@ class Manager:
         else:
             self.state.already_processed = max(self.state.already_processed, block_range.start)
             await self.process_chain_event(next_event)
+
+        next_event_type = next_event and safe_get(next_event, 'type')
+
+        if next_event_type is not None:
+            ended_at = time.perf_counter()
+            METRIC_SYNCER_EVENT_SYNC_DURATION.labels(next_event_type).observe(ended_at - started_at)
 
     async def try_lock_range(self):
         return await self.main_db.try_advisory_lock(self.sync_range.start, self.sync_range.end)
@@ -323,7 +383,8 @@ async def get_range_and_check_holes(
           - hole
           - checked_on_holes
     """
-    sync_range = BlockRange(max(state.already_processed, sync_range.start), sync_range.end)
+    # FIXME (nickgashkov): `state.already_processed` could be `None`.
+    sync_range = BlockRange(max(state.already_processed, sync_range.start), sync_range.end)  # type: ignore
     if sync_range.end is None:
         return sync_range
 

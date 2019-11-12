@@ -8,10 +8,9 @@ from typing import Callable, Tuple, List, Dict, Any, Optional
 
 from jsearch.api.tests.utils import parse_url
 from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
-from jsearch.common.tables import assets_summary_t
 from jsearch.common.wallet_events import make_event_index
 from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
-from jsearch.tests.plugins.databases.factories.assets_summary import AssetsSummaryFactory
+from jsearch.tests.plugins.databases.factories.assets_summary import AssetsSummaryFactory, AssetsSummaryPairFactory
 from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.tests.plugins.databases.factories.token_transfers import TokenTransferFactory
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
@@ -507,7 +506,13 @@ async def test_get_wallet_events_pending_txs_limit(cli,
 
 
 @pytest.fixture()
-def create_assets_summaries(db, transfer_factory: TokenTransferFactory, transaction_factory: TransactionFactory):
+def create_assets_summaries(
+        db,
+        transfer_factory: TokenTransferFactory,
+        transaction_factory: TransactionFactory,
+        assets_summary_factory: AssetsSummaryFactory,
+        assets_summary_pair_factory: AssetsSummaryPairFactory,
+):
     assets = [
         {
             'address': 'a1',
@@ -566,7 +571,7 @@ def create_assets_summaries(db, transfer_factory: TokenTransferFactory, transact
     ]
 
     for a in assets:
-        db.execute(assets_summary_t.insert().values(**a))
+        assets_summary_factory.create_with_pair(assets_summary_pair_factory, **a)
 
     transfer_factory.create(address='a1', token_address='c100')
     transfer_factory.create(address='a1', token_address='c1')
@@ -593,16 +598,16 @@ def create_assets_summaries(db, transfer_factory: TokenTransferFactory, transact
                     {
                         'address': 'a1',
                         'assetsSummary': [
-                            {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 2},
-                            {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 2},
-                            {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 1}
+                            {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 0},
+                            {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 0},
+                            {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 0}
                         ],
                         'outgoingTransactionsNumber': "10"
                     },
                     {
                         'address': 'a2',
                         'assetsSummary': [
-                            {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 3}
+                            {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 0}
                         ],
                         'outgoingTransactionsNumber': "2"
                     }
@@ -618,13 +623,13 @@ def create_assets_summaries(db, transfer_factory: TokenTransferFactory, transact
                                 'address': '',
                                 'balance': "300",
                                 'decimals': "0",
-                                'transfersNumber': 2
+                                'transfersNumber': 0
                             },
                             {
                                 'address': 'c2',
                                 'balance': "20000",
                                 "decimals": "2",
-                                'transfersNumber': 1
+                                'transfersNumber': 0
                             },
                         ],
                         'outgoingTransactionsNumber': "10"
@@ -641,13 +646,13 @@ def create_assets_summaries(db, transfer_factory: TokenTransferFactory, transact
                                 'address': '',
                                 'balance': "300",
                                 'decimals': "0",
-                                'transfersNumber': 2
+                                'transfersNumber': 0
                             },
                             {
                                 'address': 'c2',
                                 'balance': "20000",
                                 "decimals": "2",
-                                'transfersNumber': 1
+                                'transfersNumber': 0
                             },
                         ],
                         'outgoingTransactionsNumber': "10"
@@ -685,6 +690,7 @@ async def test_get_wallet_assets_summary(
 async def test_get_assets_summary_from_history(
         cli: TestClient,
         assets_summary_factory: AssetsSummaryFactory,
+        assets_summary_pair_factory: AssetsSummaryPairFactory,
         transfer_factory: TokenTransferFactory,
         transaction_factory: TransactionFactory,
 ) -> None:
@@ -698,7 +704,7 @@ async def test_get_assets_summary_from_history(
     }
 
     # balances
-    legacy_balance = assets_summary_factory.create(**data)
+    legacy_balance = assets_summary_factory.create_with_pair(assets_summary_pair_factory, **data)
     current_balance = assets_summary_factory.create(
         **{
             **data,
@@ -722,7 +728,7 @@ async def test_get_assets_summary_from_history(
                 'address': ETHER_ASSET_ADDRESS,
                 'balance': f'{current_balance.value}',
                 'decimals': '0',
-                'transfersNumber': 1
+                'transfersNumber': 0
             },
         ],
         'outgoingTransactionsNumber': '1'
@@ -732,6 +738,7 @@ async def test_get_assets_summary_from_history(
 async def test_get_assets_summary_by_asset_from_history(
         cli: TestClient,
         assets_summary_factory: AssetsSummaryFactory,
+        assets_summary_pair_factory: AssetsSummaryPairFactory,
         transfer_factory: TokenTransferFactory,
         transaction_factory: TransactionFactory,
 ) -> None:
@@ -745,14 +752,14 @@ async def test_get_assets_summary_by_asset_from_history(
     }
 
     # balances
-    legacy_balance = assets_summary_factory.create(**data)
+    legacy_balance = assets_summary_factory.create_with_pair(assets_summary_pair_factory, **data)
     current_balance = assets_summary_factory.create(
         **{
             **data,
             'block_number': legacy_balance.block_number + 1
         }
     )
-    ether_balance = assets_summary_factory.create(**{
+    ether_balance = assets_summary_factory.create_with_pair(assets_summary_pair_factory, **{
         'address': account,
         'asset_address': ETHER_ASSET_ADDRESS,
         'decimals': 0
@@ -779,13 +786,13 @@ async def test_get_assets_summary_by_asset_from_history(
                 'address': ETHER_ASSET_ADDRESS,
                 'balance': f'{ether_balance.value}',
                 'decimals': '0',
-                'transfersNumber': 1
+                'transfersNumber': 0
             },
             {
                 'address': asset,
                 'balance': f'{current_balance.value}',
                 'decimals': f'{current_balance.decimals}',
-                'transfersNumber': 2
+                'transfersNumber': 0
             },
 
         ],

@@ -1,25 +1,9 @@
 import logging
-
-from asyncpg.pool import Pool
-
-import asyncpgsa
-from sqlalchemy.orm import Query
+from typing import Tuple, Set
 
 from jsearch.common.types import Rows
 
 logger = logging.getLogger(__name__)
-
-
-async def fetch(pool: Pool, saquery: Query) -> Rows:
-    async with pool.acquire() as conn:
-        query, params = asyncpgsa.compile_query(saquery)
-
-        logger.debug('Compiled a query', extra={'query': query, 'params': params})
-
-        rows = await conn.fetch(query, *params)
-        rows = [dict(r) for r in rows]
-
-    return rows
 
 
 def in_app_distinct(rows: Rows) -> Rows:
@@ -28,7 +12,7 @@ def in_app_distinct(rows: Rows) -> Rows:
     that removing duplicates in-app is faster, than in a DB.
     """
     rows_distinct = list()
-    distinct_keys = set()
+    distinct_keys: Set[Tuple] = set()
 
     for row in rows:
         distinct_key = tuple(row.values())

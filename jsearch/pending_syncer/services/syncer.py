@@ -24,7 +24,8 @@ class PendingSyncerService(mode.Service):
         self.main_db = MainDB(main_db_dsn)
         self.sync_range = sync_range
 
-        super().__init__(*args, **kwargs)
+        # FIXME (nickgashkov): `mode.Service` does not support `*args`
+        super().__init__(*args, **kwargs)  # type: ignore
 
     async def on_start(self) -> None:
         await self.raw_db.connect()
@@ -36,7 +37,7 @@ class PendingSyncerService(mode.Service):
 
     @mode.Service.task
     async def syncer(self) -> None:
-        pending_txs = []
+        pending_txs: List[Dict[str, Any]] = []
         last_sync_id = None
 
         can_run = await self.try_lock()

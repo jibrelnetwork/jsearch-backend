@@ -24,10 +24,16 @@ class BlockRange(NamedTuple):
     def __str__(self):
         return f"{self.start}-{self.end if self.end is not None else ''}"
 
-    def __gt__(self, other: 'BlockRange'):
-        return other.end > self.end
+    # FIXME (nickgashkov):
+    #   * `other` could be something else than `BlockRange`.
+    #   * `BlockRange.end` could be `None`.
+    def __gt__(self, other: 'BlockRange'):  # type: ignore
+        return other.end > self.end  # type: ignore
 
-    def __contains__(self, item: int) -> bool:
+    # FIXME (nickgashkov):
+    #   * `item` could be `Any`.
+    #   * `BlockRange.end` could be `None`.
+    def __contains__(self, item: int) -> bool:  # type: ignore
         """
         >>> 5 in BlockRange(0, 10)
         True
@@ -40,7 +46,7 @@ class BlockRange(NamedTuple):
         >>> 11 in BlockRange(5, 10)
         False
         """
-        return self.start <= item <= self.end
+        return self.start <= item <= self.end  # type: ignore
 
 
 class ChainStats(NamedTuple):

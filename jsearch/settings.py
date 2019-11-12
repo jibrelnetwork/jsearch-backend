@@ -8,8 +8,6 @@ BASE_DIR = pathlib.Path(__file__).parent.parent
 VERSION_FILE = BASE_DIR / 'jsearch' / 'version.txt'
 VERSION = VERSION_FILE.read_text().strip()
 
-PID = os.getpid()
-
 
 UPDATE_LAG_STATISTICS_DELAY_SECONDS = int(os.environ['UPDATE_LAG_STATISTICS_DELAY_SECONDS'])
 
@@ -47,19 +45,6 @@ SYNCER_PENDING_API_PORT = int(os.environ['SYNCER_PENDING_API_PORT'])
 
 SYNCER_BACKOFF_MAX_TRIES = int(os.environ['SYNCER_BACKOFF_MAX_TRIES'])
 PENDING_SYNCER_BACKOFF_MAX_TRIES = int(os.environ['PENDING_SYNCER_BACKOFF_MAX_TRIES'])
-
-
-METRIC_API_LOOP_TASKS_TOTAL = 'jsearch_api_loop_tasks_total'
-METRIC_API_REQUESTS_ORPHANED_TOTAL = 'jsearch_api_requests_orphaned_total'
-METRIC_API_REQUESTS_LATENCY_SECONDS = 'jsearch_api_requests_latency_seconds'
-METRIC_API_REQUESTS_IN_PROGRESS_TOTAL = 'jsearch_api_requests_in_progress_total'
-METRIC_API_REQUESTS_TOTAL = 'jsearch_api_requests_total'
-
-METRIC_SYNCER_LOOP_TASKS_TOTAL = 'jsearch_syncer_loop_tasks_total'
-METRIC_SYNCER_PENDING_LOOP_TASKS_TOTAL = 'jsearch_syncer_pending_loop_tasks_total'
-METRIC_LAG_ETHERSCAN = 'jsearch_syncer_lag_etherscan'
-METRIC_LAG_INFURA = 'jsearch_syncer_lag_infura'
-METRIC_LAG_JWALLET = 'jsearch_syncer_lag_jwallet'
 
 
 ETHERSCAN_API_URL = os.environ['ETHERSCAN_API_URL']

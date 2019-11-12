@@ -2,7 +2,7 @@ import logging
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import ProgrammingError
-from typing import List, Any, Tuple, Optional, Iterable
+from typing import Tuple, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -19,12 +19,6 @@ class Singleton(object):
         return cls._instance
 
 
-def split(iterable: Iterable[Any], size: int) -> List[List[Any]]:
-    if isinstance(iterable, set):
-        iterable = list(iterable)
-    return [iterable[i:i + size] for i in range(0, len(iterable), size)]
-
-
 def safe_query(db_dsn: str, query: str, key: str) -> Optional[str]:
     engine = create_engine(db_dsn)
     try:
@@ -35,6 +29,8 @@ def safe_query(db_dsn: str, query: str, key: str) -> Optional[str]:
 
     if row:
         return row[key]
+
+    return None
 
 
 def get_alembic_version(db_dsn: str) -> Optional[str]:
