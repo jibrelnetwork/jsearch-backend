@@ -26,7 +26,7 @@ from jsearch.common.tables import (
     wallet_events_t,
 )
 from jsearch.common.utils import timeit
-from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
+from jsearch.pending_syncer.database_queries.pending_txs import insert_or_update_pending_txs_q
 from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.syncer.structs import BlockData
 from jsearch.typing import Blocks, Block
@@ -270,8 +270,8 @@ class MainDB(DBWrapper):
 
         return row['last_synced_id'] if row else None
 
-    async def insert_or_update_pending_tx(self, pending_tx: Dict[str, Any]) -> None:
-        query = insert_or_update_pending_tx_q(pending_tx)
+    async def insert_or_update_pending_txs(self, pending_txs: List[Dict[str, Any]]) -> None:
+        query = insert_or_update_pending_txs_q(pending_txs)
         await self.execute(query)
 
     async def is_block_exist(self, block_hash):

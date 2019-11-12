@@ -5,11 +5,10 @@ import backoff
 import mode
 from typing import Any, Dict, List, Optional
 
-from jsearch.syncer.database_queries.pending_transactions import prepare_pending_tx
-
 from jsearch import settings
-from jsearch.common import metrics, async_utils
+from jsearch.common import metrics
 from jsearch.common.structs import BlockRange
+from jsearch.pending_syncer.utils.processing import prepare_pending_txs
 from jsearch.syncer.database import MainDB, RawDB
 
 logger = logging.getLogger(__name__)
@@ -24,8 +23,7 @@ class PendingSyncerService(mode.Service):
         self.main_db = MainDB(main_db_dsn)
         self.sync_range = sync_range
 
-        # FIXME (nickgashkov): `mode.Service` does not support `*args`
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(**kwargs)
 
     async def on_start(self) -> None:
         await self.raw_db.connect()
@@ -62,7 +60,7 @@ class PendingSyncerService(mode.Service):
 
     @metrics.with_metrics('pending_transactions')
     @backoff.on_exception(backoff.expo, max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
-    async def sync_pending_txs(self, pending_txs) -> int:
+    async def sync_pending_txs(self, pending_txs: List[Dict[str, Any]]) -> int:
         """
         We load history of pending transactions
         and want to save it in another storage.
@@ -71,15 +69,13 @@ class PendingSyncerService(mode.Service):
 
         We must strictly follow for history order.
         """
+        if not pending_txs:
+            return 0
 
-        tasks = async_utils.chain_dependent_coros(
-            items=[prepare_pending_tx(tx) for tx in pending_txs],
-            item_id_key='hash',
-            create_task=self.main_db.insert_or_update_pending_tx,
-        )
+        prepared_txs = prepare_pending_txs(pending_txs)
+        prepared_txs_as_dicts = [tx.to_dict() for tx in prepared_txs]
 
-        await asyncio.gather(*tasks)
-
+        await self.main_db.insert_or_update_pending_txs(prepared_txs_as_dicts)
         return len(pending_txs)
 
     @backoff.on_exception(backoff.expo, max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
