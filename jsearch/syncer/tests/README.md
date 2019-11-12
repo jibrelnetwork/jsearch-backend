@@ -99,4 +99,4 @@ Desing of syncer unit tests:
       - [ ] worker returns own state 
       - [ ] worker returns healthcheck 
       - [ ] worker returns metrics
- 
+   2. Check canonical chain.
