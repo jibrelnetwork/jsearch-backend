@@ -120,7 +120,8 @@ class Manager:
             raw_db,
             sync_range: BlockRange,
             state: Optional[SyncerState] = False,
-            resync: bool = False
+            resync: bool = False,
+            resync_chain_splits: bool = False
     ):
         self.service = service
         self.main_db = main_db
@@ -129,6 +130,7 @@ class Manager:
         self._running = False
         self.sleep_on_no_blocks = SLEEP_ON_NO_BLOCKS_DEFAULT
         self.resync = resync
+        self.resync_chain_splits = resync_chain_splits
         self.state = state or SyncerState(started_at=int(time.time()))
 
         self.latest_available_block_num = None
@@ -212,12 +214,16 @@ class Manager:
 
     async def resync_loop(self):
         logger.info("Entering ReSync Loop")
+        if self.resync_chain_splits:
+            await self.reapply_splits(self.sync_range)
+
         for block_number in range(self.sync_range.end, self.sync_range.start, -1):
             if not self._running:
                 logger.info("Leave ReSync Loop")
                 break
             await self.rewrite_block(block_number)
 
+    @timeit('[SYNCER] Rewrite block')
     async def rewrite_block(self, block_number):
         logger.info("Rewrite block", extra={'block_number': block_number})
         block_hash = await self.main_db.get_block_hash_by_number(block_number)
@@ -230,6 +236,24 @@ class Manager:
             chain_event=None,
             rewrite=True
         )
+
+    @timeit('[SYNCER] Reapply splits')
+    async def reapply_splits(self, block_range: BlockRange) -> None:
+        logger.info("Reapply chain splits on", extra={'block_range': block_range})
+        chain_splits = await self.raw_db.get_chain_splits_for_range(block_range, self.node_id)
+        async for chain_split in chain_splits:
+            logger.info("Reapply chain split", extra={
+                'block_number': chain_split['block_number'],
+                'block_hash': chain_split['block_hash']
+            })
+            await process_chain_split_event(
+                main_db=self.main_db,
+                split_data=dict(chain_split)
+            )
+
+            if not self._running:
+                logger.info("Stop reapplying chain splits")
+                break
 
     async def process_chain_event(self, event):
         start_time = time.monotonic()
