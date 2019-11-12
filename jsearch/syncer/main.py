@@ -18,12 +18,24 @@ from jsearch.utils import parse_range
 logger = logging.getLogger("syncer")
 
 
-def run_worker(sync_range: BlockRange, api_port: int, check_lag: bool, check_holes: bool, resync: bool) -> None:
+def run_worker(
+        sync_range: BlockRange,
+        api_port: int,
+        check_lag: bool,
+        check_holes: bool,
+        resync: bool,
+        resync_chain_splits: bool
+) -> None:
     syncer_state = SyncerState(started_at=int(time.time()))
-
     api_worker = services.ApiService(check_lag=check_lag, check_holes=check_holes, port=api_port, state=syncer_state)
 
-    syncer = services.SyncerService(sync_range=sync_range, resync=resync, state=syncer_state, check_lag=check_lag)
+    syncer = services.SyncerService(
+        sync_range=sync_range,
+        resync=resync,
+        resync_chain_splits=resync_chain_splits,
+        state=syncer_state,
+        check_lag=check_lag
+    )
     syncer.add_dependency(api_worker)
 
     worker.Worker(syncer).execute_from_commandline()
@@ -84,11 +96,13 @@ def wait() -> None:
 @click.option('--check-lag', type=bool, default=True)
 @click.option('--check-holes', type=bool, default=True)
 @click.option('--resync', type=bool, default=False)
+@click.option('--resync-chain-splits', type=bool, default=False)
 @click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
 def run(
         log_level: str,
         sync_range: str,
         resync: bool,
+        resync_chain_splits: bool,
         workers: int,
         port: int,
         check_lag: bool,
@@ -111,12 +125,13 @@ def run(
                 'check_lag': 0,
                 'check_holes': 0,
                 'resync': resync,
+                'resync_chain_splits': resync_chain_splits,
                 'log_level': log_level,
                 'no_json_formatter': no_json_formatter,
             }
         )
     else:
-        run_worker(block_range, port, check_lag, check_holes, resync)
+        run_worker(block_range, port, check_lag, check_holes, resync, resync_chain_splits)
 
 
 if __name__ == '__main__':

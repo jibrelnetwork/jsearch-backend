@@ -1,6 +1,8 @@
 import logging
 from decimal import Decimal
 
+from typing import AsyncGenerator, Any, Dict
+
 from jsearch.common import contracts
 from jsearch.common.structs import BlockRange
 from jsearch.common.utils import timeit
@@ -93,6 +95,22 @@ class RawDB(DBWrapper):
                   ORDER BY id ASC LIMIT 1"""
 
         return await self.fetch_one(q, *params)
+
+    @timeit('[RAW DB] Get chain splits')
+    async def get_chain_splits_for_range(
+            self,
+            block_range: BlockRange,
+            node_id: str
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        q = f"""
+            SELECT * FROM chain_events
+            WHERE
+                block_number BETWEEN %s and %s
+                AND node_id=%s
+                AND "type"='split'
+            ORDER BY id ASC
+        """
+        return self.fetch_all_async(q, block_range.start, block_range.end, node_id)
 
     @timeit('[RAW DB] Get first chain event')
     async def get_first_chain_event_for_block_range(self, block_range: BlockRange, node_id):
