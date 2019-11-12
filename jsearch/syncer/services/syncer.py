@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 import mode
-from typing import Any, Optional
+from typing import Any
 
 from jsearch import settings
 from jsearch.common.async_utils import aiosuppress
@@ -19,8 +19,8 @@ class SyncerService(mode.Service):
     def __init__(self,
                  state: SyncerState,
                  sync_range: BlockRange,
-                 resync: Optional[bool] = False,
-                 resync_chain_splits: Optional[bool] = False,
+                 resync: bool = False,
+                 resync_chain_splits: bool = False,
                  check_lag: bool = False,
                  *args: Any,
                  **kwargs: Any) -> None:
@@ -37,7 +37,8 @@ class SyncerService(mode.Service):
         )
         self.check_lag = check_lag
 
-        super(SyncerService, self).__init__(*args, **kwargs)
+        # FIXME (nickgashkov): `mode.Service` does not support `*args`
+        super(SyncerService, self).__init__(*args, **kwargs)  # type: ignore
 
     async def on_start(self) -> None:
         await self.raw_db.connect()

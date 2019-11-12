@@ -16,7 +16,8 @@ from jsearch.common.tables import (
     internal_transactions_t,
     assets_summary_t,
     token_transfers_t,
-    token_holders_t
+    token_holders_t,
+    assets_summary_pairs_t,
 )
 from jsearch.common.wallet_events import WalletEventType
 from jsearch.syncer.database import RawDB, MainDB
@@ -391,6 +392,38 @@ async def test_sync_block_check_assets_summary(db, raw_db_sample, raw_db_dsn, db
     for summary, account_state in zip(ether_summary, accounts_stats):
         assert summary['address'] == account_state['address']
         assert int(summary['value']) == int(account_state['balance'])
+
+
+async def test_sync_block_check_assets_summary_pairs(db, raw_db_sample, raw_db_dsn, db_dsn, block_hash, block_accounts):
+    """
+    We test on 6000001 block.
+    We can calculate assets summary pairs for test blocks.
+
+    In blocks 6000001 we have:
+        - 244 distinct assets updates:
+          - 208 token assets updates
+          - 36 token assets updates
+
+    `assets_summary_pairs` does not store ether updates to reduce table size, so
+    only 36 pairs will be written to the database.
+
+    It is historical data and we can freeze it.
+    """
+    # given
+    total_pairs = 36
+
+    # when
+    await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
+
+    # then
+    summaries = db.execute(assets_summary_t.select().where(assets_summary_t.c.asset_address != '')).fetchall()
+    summaries_pairs = [(s['address'], s['asset_address']) for s in summaries]
+
+    pairs = db.execute(assets_summary_pairs_t.select()).fetchall()
+    pairs = [(s['address'], s['asset_address']) for s in pairs]
+
+    assert len(summaries_pairs) == len(pairs) == total_pairs
+    assert sorted(summaries_pairs) == sorted(pairs)
 
 
 async def test_sync_block_check_token_holders_in_assets_summary(
