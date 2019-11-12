@@ -11,7 +11,7 @@ from jsearch.common.processing.contracts_addresses_cache import contracts_addres
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.wallet import token_holders_from_token_balances
-from jsearch.common.utils import timeit
+from jsearch.common.utils import timeit, unique
 from jsearch.syncer.database import RawDB, MainDB
 from jsearch.syncer.structs import RawBlockData, BlockData
 from jsearch.typing import Logs
@@ -113,11 +113,18 @@ async def process_block(main_db: MainDB, data: RawBlockData) -> BlockData:
     wallet_events = [event for event in wallet_events if event is not None]
     wallet_events = update_is_forked_state(wallet_events, data.is_forked)
 
-    assets_summary_updates = [
-        *wallet.assets_from_accounts(accounts),
-        *wallet.asset_records_from_token_balances(data.token_balances, decimals_map=decimals)
-    ]
+    # `assets_summary_pairs_updates` are fetched from token balances only by
+    # design. Ether pairs are not stored in the `assets_summary_pairs` table.
+    assets_summary_updates, assets_summary_pairs = wallet.assets_and_pairs_from_token_balances(
+        token_holder_balances=data.token_balances,
+        decimals_map=decimals,
+    )
+
+    assets_summary_updates = wallet.assets_from_accounts(accounts) + assets_summary_updates
     assets_summary_updates = update_is_forked_state(assets_summary_updates, is_forked=data.is_forked)
+
+    assets_summary_pairs = unique(assets_summary_pairs)
+    assets_summary_pairs = [pair.to_dict() for pair in assets_summary_pairs]
 
     token_holders_balances = token_holders_from_token_balances(data.token_balances, decimals_map=decimals)
     token_holders_balances = update_is_forked_state(token_holders_balances, is_forked=data.is_forked)
@@ -133,7 +140,8 @@ async def process_block(main_db: MainDB, data: RawBlockData) -> BlockData:
         transfers=transfers,
         token_holders_updates=token_holders_balances,
         wallet_events=wallet_events,
-        assets_summary_updates=assets_summary_updates
+        assets_summary_updates=assets_summary_updates,
+        assets_summary_pairs=assets_summary_pairs,
     )
 
 
