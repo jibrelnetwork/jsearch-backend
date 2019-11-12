@@ -309,6 +309,13 @@ assets_summary_t = sa.Table(
     sa.Column('is_forked', sa.Boolean, default=False),
 )
 
+assets_summary_pairs_t = sa.Table(
+    'assets_summary_pairs',
+    metadata,
+    sa.Column('address', sa.String),
+    sa.Column('asset_address', sa.String),
+)
+
 wallet_events_t = sa.Table(
     'wallet_events',
     metadata,
@@ -355,6 +362,7 @@ TABLES = (
     reorgs_t,
     token_transfers_t,
     assets_summary_t,
+    assets_summary_pairs_t,
     wallet_events_t,
     chain_events_t,
 )

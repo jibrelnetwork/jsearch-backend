@@ -64,6 +64,7 @@ class RawBlockData(NamedTuple):
 class BlockData(NamedTuple):
     accounts: AnyDicts
     assets_summary_updates: AnyDicts
+    assets_summary_pairs: AnyDicts
     block: AnyDict
     internal_txs: AnyDicts
     logs: AnyDicts
@@ -73,3 +74,14 @@ class BlockData(NamedTuple):
     txs: AnyDicts
     uncles: AnyDicts
     wallet_events: AnyDicts
+
+
+class AddressAssetPair(NamedTuple):
+    address: str
+    asset_address: str
+
+    def to_dict(self) -> Dict[str, str]:
+        return {'address': self.address, 'asset_address': self.asset_address}
+
+
+AddressAssetPairs = List[AddressAssetPair]

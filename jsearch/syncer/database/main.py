@@ -298,7 +298,7 @@ class MainDB(DBWrapper):
         else:
             chain_event = ''
 
-        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
 
         params = [
             [block_data.block],
@@ -313,7 +313,8 @@ class MainDB(DBWrapper):
             block_data.token_holders_updates,
             block_data.wallet_events,
             block_data.assets_summary_updates,
-            chain_event
+            block_data.assets_summary_pairs,
+            chain_event,
         ]
         await connection.execute(q, *[json.dumps(item) for item in params])
 
