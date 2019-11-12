@@ -15,8 +15,40 @@ Desing of syncer unit tests:
       - [ ] token transfers
       - [ ] wallet events
       - [ ] assets summary
-   2. Split chain event
-      - [ ] old blocks are forked and new blocks are canonical
+   2. Split chain event. 
+      - [ ] All parts of forked blocks was marked as forked
+          - [ ] a block data
+          - [ ] an uncles
+          - [ ] transactions
+          - [ ] receipts
+          - [ ] logs
+          - [ ] accounts states
+          - [ ] accounts base
+          - [ ] internal transactions
+          - [ ] token holders
+          - [ ] token transfers
+          - [ ] wallet events
+          - [ ] assets summary
+      - [ ] All parts of canonical blocks was marked as not forked
+          - [ ] a block data
+          - [ ] an uncles
+          - [ ] transactions
+          - [ ] receipts
+          - [ ] logs
+          - [ ] accounts states
+          - [ ] accounts base
+          - [ ] internal transactions
+          - [ ] token holders
+          - [ ] token transfers
+          - [ ] wallet events
+          - [ ] assets summary
+      - [ ] Check splits processing can find block chains
+        - [ ] Check old chain
+        - [ ] Check new chain
+      - [ ] Check splits applying
+        - [ ] Check drop chain case
+        - [ ] Check add chain case
+        - [ ] Check drop and add chains case
    3. Resync mode
       - [ ] block rewriting 
       - [ ] split re-applying
@@ -37,6 +69,7 @@ Desing of syncer unit tests:
       - [ ] Scaler returns state for all workers.
    3. Behavior:
       - [ ] if one worker stops without exit code 0 - scaler will stops with exit code 1
+      - [ ] if worker have completed sync range - scaler should keep working
 4. Behavior
    1. Exit
        - [ ] Error have occurred, then worker should exits with code 1.
@@ -47,19 +80,16 @@ Desing of syncer unit tests:
        - [ ] Error raises due to insert procedure calling.
 5. Processing.
    1. Wallet events 
-      - [ ] types recognitions 
+      - [ ] wallet event types recognitions 
+      - [ ] transitions from transactions
+      - [ ] transitions from internal transactions
    2. Logs
-      - [ ] transition to transfers
-   3. Transactions
-      - [ ] transition to wallet events
-   4. Internal transactions
-      - [ ] transition to wallet events
-   6. Token transfers
-      - [ ] transition to wallet events 
-   7. Token holders
-      - [ ] transition to assets summary
-   8. Accounts states
-      - [ ] transition to assets summary
+      - [ ] decode ERC-20 
+   3. Token transfers
+      - [ ] transition from logs 
+   4. Assets summary
+      - [ ] transition from token holder balances
+      - [ ] transition from accounts states
 6. Monitoring.
    1. Lags.
       - [ ] lag to etherscan
