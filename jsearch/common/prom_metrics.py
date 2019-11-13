@@ -58,3 +58,7 @@ METRIC_SYNCER_PENDING_LOOP_TASKS_TOTAL = Gauge(
     'jsearch_syncer_pending_loop_tasks_total',
     'Total amount of tasks in the event loop.',
 )
+METRIC_SYNCER_PENDING_TXS_BATCH_SYNC_SPEED = Histogram(
+    'jsearch_syncer_pending_txs_per_second',
+    'Syncing speed of pending TXs.',
+)
