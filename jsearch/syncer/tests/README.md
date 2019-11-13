@@ -15,6 +15,7 @@ Desing of syncer unit tests:
       - [ ] token transfers
       - [ ] wallet events
       - [ ] assets summary
+      - [ ] chain event with type 'created'
    2. Split chain event. 
       - [ ] All parts of forked blocks was marked as forked
           - [ ] a block data
@@ -49,6 +50,7 @@ Desing of syncer unit tests:
         - [ ] Check drop chain case
         - [ ] Check add chain case
         - [ ] Check drop and add chains case
+        - [ ] Chech chain event with type 'split'
    3. Resync mode
       - [ ] block rewriting 
       - [ ] split re-applying
