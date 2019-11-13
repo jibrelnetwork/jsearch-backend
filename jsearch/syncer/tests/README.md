@@ -51,7 +51,10 @@ Desing of syncer unit tests:
         - [ ] Check add chain case
         - [ ] Check drop and add chains case
         - [ ] Chech chain event with type 'split'
-   3. Resync mode
+   3. Reinserted events
+      - [ ] Reinserted events writes to db
+      - [ ] Reinserted events don't affected any data
+   4. Resync mode
       - [ ] block rewriting 
       - [ ] split re-applying
       - [ ] resync-chain-splits mode on/off
