@@ -328,6 +328,7 @@ class Manager:
             self._running = False
 
         elif next_event is None:
+            logger.info('No blocks, sleeping')
             await asyncio.sleep(self.sleep_on_no_blocks)
         else:
             self.state.already_processed = max(self.state.already_processed, block_range.start)
