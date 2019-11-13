@@ -18,12 +18,14 @@ async def cors_middleware(request: web.Request, handler: Handler) -> web.StreamR
 
 @web.middleware
 async def prom_middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
-    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request.path, request.method).inc()
+    request_canonical_path = request.match_info.route.resource.canonical
 
-    with request.app['metrics']['REQUESTS_LATENCY'].labels(request.path).time():
+    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request_canonical_path, request.method).inc()
+
+    with request.app['metrics']['REQUESTS_LATENCY'].labels(request_canonical_path).time():
         response = await handler(request)
 
-    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request.path, request.method).dec()
-    request.app['metrics']['REQUESTS_TOTAL'].labels(request.path, request.method, response.status).inc()
+    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request_canonical_path, request.method).dec()
+    request.app['metrics']['REQUESTS_TOTAL'].labels(request_canonical_path, request.method, response.status).inc()
 
     return response
