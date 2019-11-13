@@ -4,6 +4,7 @@ import logging
 import time
 import backoff
 import mode
+import psycopg2
 
 from jsearch.common.prom_metrics import METRIC_SYNCER_PENDING_TXS_BATCH_SYNC_SPEED
 from jsearch.common.utils import timeit
@@ -80,7 +81,11 @@ class PendingSyncerService(mode.Service):
 
         return last_sync_id, pending_txs
 
-    @backoff.on_exception(backoff.expo, max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
+    @backoff.on_exception(
+        backoff.expo,
+        max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES,
+        exception=psycopg2.OperationalError
+    )
     @timeit('[CPU/MAIN DB] Sync pending TXs')
     async def sync_pending_txs(self, pending_txs) -> None:
         """
@@ -100,7 +105,11 @@ class PendingSyncerService(mode.Service):
 
         await asyncio.gather(*tasks)
 
-    @backoff.on_exception(backoff.expo, max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
+    @backoff.on_exception(
+        backoff.expo,
+        max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES,
+        exception=psycopg2.OperationalError
+    )
     @timeit('[RAW DB] Get pending TXs to sync')
     async def get_pending_txs_to_sync(self, last_synced_id: Optional[int]) -> List[Dict[str, Any]]:
         last_synced_id = last_synced_id or await self.main_db.get_pending_tx_last_synced_id()
