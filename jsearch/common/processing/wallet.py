@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Tuple
 
 from jsearch.common.wallet_events import (
     event_from_internal_tx,
@@ -6,8 +6,14 @@ from jsearch.common.wallet_events import (
     event_from_tx,
     WalletEventType,
 )
-from jsearch.syncer.structs import TokenHolderBalances
-from jsearch.typing import Accounts, AssetUpdates, TokenHolderUpdates, TokenHolderUpdate, AssetUpdate
+from jsearch.syncer.structs import TokenHolderBalances, AddressAssetPairs, AddressAssetPair
+from jsearch.typing import (
+    Accounts,
+    AssetUpdates,
+    TokenHolderUpdates,
+    TokenHolderUpdate,
+    AssetUpdate,
+)
 
 ETHER_ASSET_ADDRESS = ''
 
@@ -91,13 +97,22 @@ def token_holders_from_token_balances(
     return updates
 
 
-def asset_records_from_token_balances(
+def assets_and_pairs_from_token_balances(
         token_holder_balances: TokenHolderBalances,
         decimals_map: Dict[str, int]
-) -> AssetUpdates:
+) -> Tuple[AssetUpdates, AddressAssetPairs]:
+    """
+    `updates` is the whole history for `assets_summary` table.
+    `pairs` is the cache for `assets_summary_pairs` table.
+    """
     updates = []
+    pairs = []
     for token_holder_balance in token_holder_balances:
         decimals = decimals_map[token_holder_balance.token]
+        pair_data = AddressAssetPair(
+            address=token_holder_balance.account,
+            asset_address=token_holder_balance.token,
+        )
         update_data: AssetUpdate = {
             'decimals': decimals,
             'address': token_holder_balance.account,
@@ -107,5 +122,7 @@ def asset_records_from_token_balances(
             'block_hash': token_holder_balance.block_hash,
             'tx_number': 1,
         }
+        pairs.append(pair_data)
         updates.append(update_data)
-    return updates
+
+    return updates, pairs
