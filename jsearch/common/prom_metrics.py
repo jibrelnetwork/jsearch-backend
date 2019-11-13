@@ -1,6 +1,5 @@
 from prometheus_client import Counter, Gauge, Histogram
 
-
 METRIC_API_LOOP_TASKS_TOTAL = Gauge(
     'jsearch_api_loop_tasks_total',
     'Total amount of tasks in the event loop.',
@@ -61,4 +60,8 @@ METRIC_SYNCER_PENDING_LOOP_TASKS_TOTAL = Gauge(
 METRIC_SYNCER_PENDING_TXS_BATCH_SYNC_SPEED = Histogram(
     'jsearch_syncer_pending_txs_per_second',
     'Syncing speed of pending TXs.',
+)
+METRIC_SYNCER_PENDING_LAG_RAW_DB = Gauge(
+    'jsearch_syncer_pending_txs_lag',
+    'Left to load pending transactions'
 )

@@ -1,23 +1,20 @@
 import asyncio
 import logging
 
-import time
 import backoff
 import mode
-
-from jsearch.common.prom_metrics import METRIC_SYNCER_PENDING_TXS_BATCH_SYNC_SPEED
-from jsearch.common.utils import timeit
+import time
 from typing import Any, Dict, List, Optional, Tuple
-
-from jsearch.syncer.database_queries.pending_transactions import prepare_pending_tx
 
 from jsearch import settings
 from jsearch.common import async_utils
+from jsearch.common.prom_metrics import METRIC_SYNCER_PENDING_TXS_BATCH_SYNC_SPEED, METRIC_SYNCER_PENDING_LAG_RAW_DB
 from jsearch.common.structs import BlockRange
+from jsearch.common.utils import timeit
 from jsearch.syncer.database import MainDB, RawDB
+from jsearch.syncer.database_queries.pending_transactions import prepare_pending_tx
 
 logger = logging.getLogger(__name__)
-
 
 ADVISORY_LOCK_ID = -1
 
@@ -130,6 +127,7 @@ class PendingSyncerService(mode.Service):
         if need_to_sync < 0:
             need_to_sync = 0
 
+        METRIC_SYNCER_PENDING_LAG_RAW_DB.set(need_to_sync)
         logger.info(
             "Fetched pending txs",
             extra={
