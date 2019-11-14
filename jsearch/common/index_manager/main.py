@@ -88,7 +88,7 @@ class Index:
 
         act_q = """SELECT now() - query_start, state, wait_event
                        FROM pg_stat_activity WHERE (query like %s OR query like %s) AND state <> 'idle'"""
-        term = 'CREATE % INDEX % {} %'.format(self.name)
+        term = 'CREATE % INDEX% {} %'.format(self.name)
         term2 = 'ALTER TABLE {} ADD CONSTRAINT % {} %'.format(self.table, self.name)
         async with conn.cursor(cursor_factory=DictCursor) as cur:
             await cur.execute(act_q, [term, term2])
