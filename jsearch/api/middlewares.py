@@ -18,14 +18,20 @@ async def cors_middleware(request: web.Request, handler: Handler) -> web.StreamR
 
 @web.middleware
 async def prom_middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
-    request_canonical_path = request.match_info.route.resource.canonical
+    request_path = request.path
 
-    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request_canonical_path, request.method).inc()
+    if request.match_info.route.resource is not None:
+        # If route is well-known for the server, e.g. `/v1/blocks/{tag}`,
+        # replace request's path with request's canonical path. This allows to
+        # show metrics by specific endpoint.
+        request_path = request.match_info.route.resource.canonical
 
-    with request.app['metrics']['REQUESTS_LATENCY'].labels(request_canonical_path).time():
+    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request_path, request.method).inc()
+
+    with request.app['metrics']['REQUESTS_LATENCY'].labels(request_path).time():
         response = await handler(request)
 
-    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request_canonical_path, request.method).dec()
-    request.app['metrics']['REQUESTS_TOTAL'].labels(request_canonical_path, request.method, response.status).inc()
+    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request_path, request.method).dec()
+    request.app['metrics']['REQUESTS_TOTAL'].labels(request_path, request.method, response.status).inc()
 
     return response
