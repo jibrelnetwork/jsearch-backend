@@ -17,6 +17,11 @@ async def test_get_block_404(cli):
     await assert_not_404_response(resp)
 
 
+async def test_unknown_url_404(cli):
+    resp = await cli.get('/9a18d3d2-fdd6-4450-961e-a02fb8d4a50e')
+    assert resp.status == 404
+
+
 async def test_get_block_by_number(cli, db, link_txs_with_block, block_factory, transaction_factory):
     # given
     block = block_factory.create()

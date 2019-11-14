@@ -97,7 +97,7 @@ def get_tx_by_address_and_block_query(
 
 
 def get_tx_by_address_and_timestamp_query(
-        limit: str,
+        limit: int,
         address: str,
         timestamp: int,
         ordering: Ordering,
@@ -135,3 +135,10 @@ def get_txs_for_events_query(events_query: Query, order: str, columns: Optional[
     columns = columns or get_default_fields()
     query = select(columns).where(transactions_t.c.hash.in_(events_query))
     return _order_tx_query(query, order)
+
+
+def get_transactions_by_hashes(hashes):
+    columns = get_default_fields()
+    query = select(columns).where(and_(transactions_t.c.hash.in_(hashes),
+                                       transactions_t.c.is_forked == false()))
+    return query

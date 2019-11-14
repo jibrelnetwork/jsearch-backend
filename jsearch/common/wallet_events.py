@@ -43,7 +43,7 @@ def get_event_type(tx_data: Transaction, is_receiver_contract=False, is_pending=
     return None
 
 
-def event_from_tx(address: str, tx_data: Transaction, is_receiver_contract=False) -> Event:
+def event_from_tx(address: str, tx_data: Transaction, is_receiver_contract=False) -> Optional[Event]:
     """
     Make wallet event object from TX data
 
@@ -73,6 +73,8 @@ def event_from_tx(address: str, tx_data: Transaction, is_receiver_contract=False
                 'status': tx_data['status']
             }
         }
+
+    return None
 
 
 def event_from_token_transfer(address: str, transfer_data: Transfer, tx_data: Transaction) -> Event:
@@ -164,18 +166,20 @@ def event_from_internal_tx(address: str,
     return event_data
 
 
-def get_token_transfer_args_from_pending_tx(pending_tx: PendingTransaction) -> Tuple[str, str, str]:
+def get_token_transfer_args_from_pending_tx(
+        pending_tx: PendingTransaction,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     try:
         tx_input = pending_tx['input']
         method_id = tx_input[:10]
         body = tx_input[10:]
 
-        amount = str(int(body[-64:], 16))
+        amount: Optional[str] = str(int(body[-64:], 16))
         if method_id == ERC20_METHODS_IDS['transferFrom']:
             # signature is `function transferFrom(address from, address to, uint tokens)`
 
-            sender = f"0x{body[:64][-40:]}"
-            receiver = f"0x{body[64:][-40:]}"
+            sender: Optional[str] = f"0x{body[:64][-40:]}"
+            receiver: Optional[str] = f"0x{body[64:][-40:]}"
 
         elif method_id == ERC20_METHODS_IDS['transfer']:
             # signature is `function transfer(address to, uint tokens)`
@@ -192,7 +196,7 @@ def get_token_transfer_args_from_pending_tx(pending_tx: PendingTransaction) -> T
     return sender, receiver, amount
 
 
-def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> Event:
+def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> Optional[Event]:
     event_type = get_event_type(pending_tx, is_pending=True)
 
     if event_type == WalletEventType.ERC20_TRANSFER:
@@ -216,6 +220,8 @@ def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> E
                 'amount': amount,
             }
         }
+
+    return None
 
 
 # Logs, TXs and internal TXs share last four digits of the event index:

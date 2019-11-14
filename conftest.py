@@ -21,6 +21,7 @@ pytest_plugins = (
     "jsearch.tests.plugins.databases.factories.internal_transactions",
     "jsearch.tests.plugins.databases.factories.logs",
     "jsearch.tests.plugins.databases.factories.pending_transactions",
+    "jsearch.tests.plugins.databases.factories.raw.pending_transactions",
     "jsearch.tests.plugins.databases.factories.receipts",
     "jsearch.tests.plugins.databases.factories.reorgs",
     "jsearch.tests.plugins.databases.factories.token_holder",

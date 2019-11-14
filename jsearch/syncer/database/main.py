@@ -1,11 +1,12 @@
 import json
 import logging
 
+from sqlalchemy.dialects.postgresql import insert
 import aiopg
 from aiopg.sa import SAConnection
 from sqlalchemy import and_, Table, false
 from sqlalchemy.orm import Query
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
 from jsearch.common.structs import BlockRange
@@ -25,7 +26,7 @@ from jsearch.common.tables import (
     wallet_events_t,
 )
 from jsearch.common.utils import timeit
-from jsearch.syncer.database_queries.pending_transactions import insert_or_update_pending_tx_q
+from jsearch.pending_syncer.database_queries.pending_txs import insert_or_update_pending_txs_q
 from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.syncer.structs import BlockData
 from jsearch.typing import Blocks, Block
@@ -109,7 +110,7 @@ class MainDB(DBWrapper):
                 await self.update_fork_status([b['hash'] for b in new_chain_fragment], is_forked=False, conn=conn)
 
                 # write chain event
-                q = chain_events_t.insert().values(**chain_event)
+                q = insert(chain_events_t).values(**chain_event).on_conflict_do_nothing(index_elements=['id'])
                 await conn.execute(q)
 
                 for block in affected_chain:
@@ -175,6 +176,8 @@ class MainDB(DBWrapper):
         if result and (result.left or result.right):
             return BlockRange(result.left, result.right)
 
+        return None
+
     async def get_gap_right_border(self, start: int, end: int) -> Optional[int]:
         query = """
         select next_number - 1 as gap_end
@@ -189,8 +192,10 @@ class MainDB(DBWrapper):
         if result:
             return result.gap_end
 
+        return None
+
     @timeit(name='Query to find gaps')
-    async def check_on_holes(self, start: int, end: int) -> Optional[Tuple[int, int]]:
+    async def check_on_holes(self, start: int, end: int) -> Optional[BlockRange]:
         gap_end = None
         # check blocks to prevent case:
         # | | | |x|x|x|
@@ -209,8 +214,10 @@ class MainDB(DBWrapper):
             # let's find left border
             # |x|x|x| | | | |x|x|
             blocks = await self.get_set_borders(start, gap_end)
-            if blocks and blocks.end > start:
-                gap_start = blocks.end + 1
+
+            # FIXME (nickgashkov): `BlockRange.end` could be `None`.
+            if blocks and blocks.end > start:  # type: ignore
+                gap_start = blocks.end + 1  # type: ignore
             else:
                 gap_start = start
 
@@ -224,8 +231,10 @@ class MainDB(DBWrapper):
             )
             return gap
 
+        return None
+
     @timeit('[MAIN DB] Get last chain event')
-    async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> None:
+    async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> Optional[Dict[str, Any]]:
         if sync_range.end is not None:
             cond = """block_number >= %s AND block_number <= %s"""
             params = list(sync_range)
@@ -233,7 +242,7 @@ class MainDB(DBWrapper):
             cond = """block_number >= %s"""
             params = [sync_range.start]
 
-        params.insert(0, node_id)
+        params.insert(0, node_id)  # type: ignore
         q = f"""
             SELECT * FROM chain_events
             WHERE node_id=%s AND ({cond})
@@ -261,8 +270,8 @@ class MainDB(DBWrapper):
 
         return row['last_synced_id'] if row else None
 
-    async def insert_or_update_pending_tx(self, pending_tx: Dict[str, Any]) -> None:
-        query = insert_or_update_pending_tx_q(pending_tx)
+    async def insert_or_update_pending_txs(self, pending_txs: List[Dict[str, Any]]) -> None:
+        query = insert_or_update_pending_txs_q(pending_txs)
         await self.execute(query)
 
     async def is_block_exist(self, block_hash):
@@ -290,7 +299,7 @@ class MainDB(DBWrapper):
         else:
             chain_event = ''
 
-        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
 
         params = [
             [block_data.block],
@@ -305,7 +314,8 @@ class MainDB(DBWrapper):
             block_data.token_holders_updates,
             block_data.wallet_events,
             block_data.assets_summary_updates,
-            chain_event
+            block_data.assets_summary_pairs,
+            chain_event,
         ]
         await connection.execute(q, *[json.dumps(item) for item in params])
 

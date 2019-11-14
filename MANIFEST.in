@@ -1,4 +1,5 @@
 include jsearch/version.txt
 include jsearch/data_checker/proxy.list
+include jsearch/common/index_manager/indexes.yaml
 
 recursive-include jsearch/api/swagger *

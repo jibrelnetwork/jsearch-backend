@@ -4,8 +4,8 @@ from jsearch.syncer.services.scaler import ScalerWebService
 from jsearch.syncer.services.syncer import SyncerService
 
 __all__ = (
-    ApiService,
-    ScalerWebService,
-    SyncerService,
-    WorkersPoolService,
+    'ApiService',
+    'ScalerWebService',
+    'SyncerService',
+    'WorkersPoolService',
 )
