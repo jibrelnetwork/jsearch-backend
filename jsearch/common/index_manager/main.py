@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import re
@@ -11,12 +10,10 @@ import click
 
 from jsearch import settings
 
-
 logger = logging.getLogger('index_manager')
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s -- %(message)s',
                     handlers=[logging.StreamHandler()])
-
 
 INDEX_RE = r'CREATE\s?(UNIQUE)? INDEX (\w+) ON public.(\w+) USING (\w+) (\([^\)]*\))\s?(WHERE)?\s?(\([^\)]*\))?'
 DEFAULT_FILENAME = os.path.join(os.path.dirname(__file__), 'indexes.yaml')
@@ -49,7 +46,7 @@ class Index:
             stmt = """ALTER TABLE {} DROP CONSTRAINT IF EXISTS {}""".format(self.table, self.name)
         return stmt
 
-    def get_create_statement(self):
+    def get_create_statement(self, concurrently):
         if self.pk is False:
             options = {
                 'name': self.name,
@@ -57,15 +54,18 @@ class Index:
                 'fields': self.fields,
                 'type': self.type,
                 'unique': 'UNIQUE' if self.unique else '',
+                'concurrently': 'CONCURRENTLY' if concurrently else '',
                 'where': 'WHERE {}'.format(self.partial_condition) if self.partial_condition else '',
             }
-            stmt = """CREATE {unique} INDEX IF NOT EXISTS {name} ON {table} USING {type} {fields} {where}""".format(
+            stmt = """CREATE {unique} INDEX {concurrently}
+                      IF NOT EXISTS {name} ON {table} USING {type} {fields} {where}""".format(
                 **options)
         else:
             stmt = """ALTER TABLE {} ADD CONSTRAINT {} PRIMARY KEY {};""".format(self.table, self.name, self.fields)
         return stmt
 
     async def get_status(self, conn):
+
         size_q = """SELECT nspname || '.' || relname AS "relation",
                             pg_size_pretty(pg_relation_size(C.oid)) AS "size"
                     FROM pg_class C
@@ -75,7 +75,7 @@ class Index:
             await cur.execute(size_q, [self.name])
             res = await cur.fetchone()
             if res is None:
-                return {'name': self.name, 'status': 'NOT EXISTS', 'size': '0 bytes'}
+                index_size = None
             else:
                 index_size = res['size']
 
@@ -87,9 +87,11 @@ class Index:
                 return {'name': self.name, 'status': 'EXISTS', 'size': index_size}
 
         act_q = """SELECT now() - query_start, state, wait_event
-                       FROM pg_stat_activity WHERE query=%s AND state <> 'idle'"""
+                       FROM pg_stat_activity WHERE (query like %s OR query like %s) AND state <> 'idle'"""
+        term = 'CREATE % INDEX % {} %'.format(self.name)
+        term2 = 'ALTER TABLE {} ADD CONSTRAINT % {} %'.format(self.table, self.name)
         async with conn.cursor(cursor_factory=DictCursor) as cur:
-            await cur.execute(act_q, [self.get_create_statement()])
+            await cur.execute(act_q, [term, term2])
             res = await cur.fetchone()
             if res is not None:
                 return {'name': self.name,
@@ -97,12 +99,14 @@ class Index:
                         'query_duration': res[0],
                         'query_state': res[1],
                         'query_wait': res[2],
-                        'current_size': index_size}
+                        'current_size': index_size or '0 bytes'}
+
+        if index_size is None:
+            return {'name': self.name, 'status': 'NOT EXISTS', 'size': 'N/A'}
         assert False, 'Index Status miss'
 
 
 class IndexManager:
-
     indexes = None
 
     def __init__(self, db_connection_string):
@@ -144,10 +148,18 @@ class IndexManager:
                 logger.info('/* dry run */ %s', stmt)
         conn.close()
 
-    async def create_all(self, workers_number):
-        for idx in self.indexes:
-            stmt = idx.get_create_statement()
+    async def create_all(self, workers_number, dry_run, concurrently, tables):
+        if tables:
+            indexes = [i for i in self.indexes if i.table in tables]
+        else:
+            indexes = self.indexes
+        for idx in indexes:
+            stmt = idx.get_create_statement(concurrently)
+            if dry_run is True:
+                logger.info('/* dry run */ %s', stmt)
             self.queue.append(stmt)
+        if dry_run is True:
+            return
         tasks = []
         for n in range(workers_number):
             task = self.worker(n)
@@ -217,6 +229,12 @@ def status(mgr):
     statuses = loop.run_until_complete(mgr.get_indexes_status())
     for status in statuses:
         click.echo('{name:70} {status:10} [{size}]'.format(**status))
+    click.echo('=' * 80)
+    click.echo('EXISTS {}, CREATING {}, NOT EXISTS {}'.format(
+        len([s for s in statuses if s['status'] == 'EXISTS']),
+        len([s for s in statuses if s['status'] == 'CREATING']),
+        len([s for s in statuses if s['status'] == 'NOT EXISTS']),
+    ))
 
 
 @cli.command()
@@ -230,11 +248,17 @@ def drop_all(mgr, dry_run):
 
 @cli.command()
 @click.option('--workers', '-w', default=2, help='Number of parallel workers - create your indexes faster!!!*')
+@click.option('--dry-run', is_flag=True, help='Dry run - just print CREATE INDEX statements,'
+                                              'not actually run them in DB')
+@click.option('--concurrently', is_flag=True, help='use CREATE INDEX CONCURRENTLY PostgreSQL feature')
+@click.option('--tables', '-t', default=None, help='Create index only for specified tables (comma separated list)')
 @click.pass_obj
-def create_all(mgr, workers):
+def create_all(mgr, workers, dry_run, concurrently, tables):
     click.echo('Creating DB indexes ({} workers):'.format(workers))
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(mgr.create_all(workers))
+    if tables:
+        tables = [t.strip() for t in tables.split(',')]
+    loop.run_until_complete(mgr.create_all(workers, dry_run, concurrently, tables))
 
 
 def run():
