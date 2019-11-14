@@ -4,6 +4,7 @@ import logging
 import backoff
 import mode
 import time
+import psycopg2
 from typing import Any, Dict, List, Optional, Tuple
 
 from jsearch import settings
@@ -75,7 +76,11 @@ class PendingSyncerService(mode.Service):
 
         return last_sync_id, pending_txs
 
-    @backoff.on_exception(backoff.expo, max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
+    @backoff.on_exception(
+        backoff.expo,
+        max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES,
+        exception=psycopg2.OperationalError
+    )
     @timeit('[CPU/MAIN DB] Sync pending TXs')
     async def sync_pending_txs(self, pending_txs: List[Dict[str, Any]]) -> None:
         """
@@ -94,7 +99,11 @@ class PendingSyncerService(mode.Service):
 
         await self.main_db.insert_or_update_pending_txs(prepared_txs_as_dicts)
 
-    @backoff.on_exception(backoff.expo, max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES, exception=Exception)
+    @backoff.on_exception(
+        backoff.expo,
+        max_tries=settings.PENDING_SYNCER_BACKOFF_MAX_TRIES,
+        exception=psycopg2.OperationalError
+    )
     @timeit('[RAW DB] Get pending TXs to sync')
     async def get_pending_txs_to_sync(self, last_synced_id: Optional[int]) -> List[Dict[str, Any]]:
         last_synced_id = last_synced_id or await self.main_db.get_pending_tx_last_synced_id()
