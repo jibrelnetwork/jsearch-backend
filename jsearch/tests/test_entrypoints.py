@@ -1,7 +1,7 @@
 import click.testing
 import pytest
 from pytest_mock import MockFixture
-from typing import List
+from typing import List, Dict
 
 import jsearch.cli
 import jsearch.common.worker
@@ -106,6 +106,30 @@ async def test_pending_syncer_entrypoint(
 ) -> None:
     result = cli_runner.invoke(jsearch.pending_syncer.main.run, call_args)
     assert result.exit_code == exit_code
+
+
+@pytest.mark.usefixtures('_mock_loop_runners')
+@pytest.mark.parametrize(
+    'env, expected',
+    [
+        ({'SYNC_RANGE': '1000-2000'}, {'sync_range': '1000-2000'}),
+    ],
+    ids=[
+        "sync-range",
+    ]
+)
+async def test_pending_syncer_env_kwargs(
+        cli_runner: click.testing.CliRunner,
+        mocker: MockFixture,
+        env: Dict[str, str],
+        expected: Dict[str, str],
+) -> None:
+    kwargs = {}
+    mocker.patch('jsearch.pending_syncer.main.run.invoke', lambda ctx: kwargs.update(ctx.params))
+    result = cli_runner.invoke(jsearch.pending_syncer.main.run, env=env)
+
+    assert {key: value for key, value in kwargs.items() if key in expected} == expected
+    assert result.exit_code == CODE_OK
 
 
 @pytest.mark.usefixtures('_mock_loop_runners')
