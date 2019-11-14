@@ -87,7 +87,7 @@ class Index:
                 return {'name': self.name, 'status': 'EXISTS', 'size': index_size}
 
         act_q = """SELECT now() - query_start, state, wait_event
-                       FROM pg_stat_activity WHERE (query like %s OR query like %s) AND state <> 'idle'"""
+                       FROM pg_stat_activity WHERE (query like '%s' OR query like '%s') AND state <> 'idle'"""
         term = 'CREATE % INDEX% {} %'.format(self.name)
         term2 = 'ALTER TABLE {} ADD CONSTRAINT % {} %'.format(self.table, self.name)
         async with conn.cursor(cursor_factory=DictCursor) as cur:
@@ -190,6 +190,24 @@ class IndexManager:
         finally:
             conn.close()
 
+    async def get_vacuum_status(self):
+        conn = await self.connect()
+        try:
+            progress_q = """select p.pid, t.relname, p.phase, p.heap_blks_scanned/p.heap_blks_total::real
+                            from pg_stat_progress_vacuum p inner join pg_stat_user_tables t on p.relid = t.relid;"""
+            async with conn.cursor(cursor_factory=DictCursor) as cur:
+                await cur.execute(progress_q)
+                progress_result = await cur.fetchall()
+
+            history_q = """SELECT relname, last_vacuum, last_autovacuum FROM pg_stat_user_tables;"""
+            async with conn.cursor(cursor_factory=DictCursor) as cur:
+                await cur.execute(history_q)
+                history_result = await cur.fetchall()
+
+
+        finally:
+            conn.close()
+
 
 def parse_indexdef(indexdef):
     m = re.match(INDEX_RE, indexdef)
@@ -259,6 +277,13 @@ def create_all(mgr, workers, dry_run, concurrently, tables):
     if tables:
         tables = [t.strip() for t in tables.split(',')]
     loop.run_until_complete(mgr.create_all(workers, dry_run, concurrently, tables))
+
+
+@cli.command()
+@click.pass_obj
+def vacuum_status(mgr):
+    loop = asyncio.get_event_loop()
+    status = loop.run_until_complete(mgr.get_vacuum_status())
 
 
 def run():
