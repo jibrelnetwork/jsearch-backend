@@ -57,8 +57,8 @@ class Index:
                 'concurrently': 'CONCURRENTLY' if concurrently else '',
                 'where': 'WHERE {}'.format(self.partial_condition) if self.partial_condition else '',
             }
-            stmt = """CREATE {unique} INDEX {concurrently}
-                      IF NOT EXISTS {name} ON {table} USING {type} {fields} {where}""".format(
+            stmt = """CREATE {unique} INDEX {concurrently}\
+ IF NOT EXISTS {name} ON {table} USING {type} {fields} {where}""".format(
                 **options)
         else:
             stmt = """ALTER TABLE {} ADD CONSTRAINT {} PRIMARY KEY {};""".format(self.table, self.name, self.fields)
@@ -79,16 +79,9 @@ class Index:
             else:
                 index_size = res['size']
 
-        stat_q = """SELECT * from pg_stat_user_indexes WHERE indexrelname=%s"""
-        async with conn.cursor(cursor_factory=DictCursor) as cur:
-            await cur.execute(stat_q, [self.name])
-            res = await cur.fetchone()
-            if res is not None:
-                return {'name': self.name, 'status': 'EXISTS', 'size': index_size}
-
         act_q = """SELECT now() - query_start, state, wait_event
-                       FROM pg_stat_activity WHERE (query like '%s' OR query like '%s') AND state <> 'idle'"""
-        term = 'CREATE % INDEX% {} %'.format(self.name)
+                       FROM pg_stat_activity WHERE (query like %s OR query like %s) AND state <> 'idle'"""
+        term = 'CREATE % INDEX % {} %'.format(self.name)
         term2 = 'ALTER TABLE {} ADD CONSTRAINT % {} %'.format(self.table, self.name)
         async with conn.cursor(cursor_factory=DictCursor) as cur:
             await cur.execute(act_q, [term, term2])
@@ -99,7 +92,14 @@ class Index:
                         'query_duration': res[0],
                         'query_state': res[1],
                         'query_wait': res[2],
-                        'current_size': index_size or '0 bytes'}
+                        'size': index_size or '0 bytes'}
+
+        stat_q = """SELECT * from pg_stat_user_indexes WHERE indexrelname=%s"""
+        async with conn.cursor(cursor_factory=DictCursor) as cur:
+            await cur.execute(stat_q, [self.name])
+            res = await cur.fetchone()
+            if res is not None:
+                return {'name': self.name, 'status': 'EXISTS', 'size': index_size}
 
         if index_size is None:
             return {'name': self.name, 'status': 'NOT EXISTS', 'size': 'N/A'}
@@ -204,7 +204,31 @@ class IndexManager:
                 await cur.execute(history_q)
                 history_result = await cur.fetchall()
 
+            counter_q = """
+            WITH max_age AS ( 
+                SELECT 2000000000 as max_old_xid
+                    , setting AS autovacuum_freeze_max_age 
+                    FROM pg_catalog.pg_settings 
+                    WHERE name = 'autovacuum_freeze_max_age' ), per_database_stats AS ( 
+                SELECT datname
+                    , m.max_old_xid::int
+                    , m.autovacuum_freeze_max_age::int
+                    , age(d.datfrozenxid) AS oldest_current_xid 
+                FROM pg_catalog.pg_database d 
+                JOIN max_age m ON (true) 
+                WHERE d.datallowconn ) 
+            SELECT max(oldest_current_xid) AS oldest_current_xid,
+                    max(ROUND(100*(oldest_current_xid/max_old_xid::float))) AS percent_towards_wraparound,
+                    max(ROUND(100*(oldest_current_xid/autovacuum_freeze_max_age::float))) AS percent_towards_emergency_autovac 
+            FROM per_database_stats;   
+            """
+            async with conn.cursor(cursor_factory=DictCursor) as cur:
+                await cur.execute(counter_q)
+                counter_result = await cur.fetchone()
 
+            return {'progress': progress_result,
+                    'history': history_result,
+                    'counter': counter_result}
         finally:
             conn.close()
 
@@ -284,6 +308,28 @@ def create_all(mgr, workers, dry_run, concurrently, tables):
 def vacuum_status(mgr):
     loop = asyncio.get_event_loop()
     status = loop.run_until_complete(mgr.get_vacuum_status())
+
+    click.echo('==== VACUUMING STATUS ====\n')
+
+    click.echo('XID status: {} {} {}'.format(*status['counter']))
+
+    click.echo('\n\nVacuuming history:')
+    click.echo('-' * 80)
+    click.echo('table                            last_vacuum         last_autovacuum')
+    click.echo('-' * 80)
+    for item in status['history']:
+        click.echo('{:32} {:20} {}'.format(item[0],
+                                           item[1].strftime('%Y-%m-%d %H:%M') if item[1] else '',
+                                           item[2].strftime('%Y-%m-%d %H:%M') if item[2] else ''))
+
+    click.echo('\n\nVacuuming current progress:')
+    click.echo('-' * 80)
+    click.echo('table                            phase                       progress')
+    click.echo('-' * 80)
+    for item in status['progress']:
+        click.echo('{:32} {:28} {}'.format(item[0],
+                                               item[1],
+                                               item[2]))
 
 
 def run():
