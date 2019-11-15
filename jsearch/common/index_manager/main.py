@@ -328,9 +328,9 @@ def vacuum_status(mgr):
     click.echo('table                            phase                       progress')
     click.echo('-' * 80)
     for item in status['progress']:
-        click.echo('{:32} {:28} {}'.format(item[0],
-                                           item[1],
-                                           item[2]))
+        click.echo('{:32} {:28} {}'.format(item[1],
+                                           item[2],
+                                           item[3]))
 
 
 def run():
