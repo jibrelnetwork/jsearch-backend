@@ -26,12 +26,10 @@ async def prom_middleware(request: web.Request, handler: Handler) -> web.StreamR
         # show metrics by specific endpoint.
         request_path = request.match_info.route.resource.canonical
 
-    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request_path, request.method).inc()
-
     with request.app['metrics']['REQUESTS_LATENCY'].labels(request_path).time():
-        response = await handler(request)
+        with request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request_path, request.method).track_inprogress():
+            response = await handler(request)
 
-    request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request_path, request.method).dec()
     request.app['metrics']['REQUESTS_TOTAL'].labels(request_path, request.method, response.status).inc()
 
     return response
