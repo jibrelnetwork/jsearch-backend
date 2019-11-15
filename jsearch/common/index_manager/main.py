@@ -205,22 +205,23 @@ class IndexManager:
                 history_result = await cur.fetchall()
 
             counter_q = """
-            WITH max_age AS ( 
+            WITH max_age AS (
                 SELECT 2000000000 as max_old_xid
-                    , setting AS autovacuum_freeze_max_age 
-                    FROM pg_catalog.pg_settings 
-                    WHERE name = 'autovacuum_freeze_max_age' ), per_database_stats AS ( 
+                    , setting AS autovacuum_freeze_max_age
+                    FROM pg_catalog.pg_settings
+                    WHERE name = 'autovacuum_freeze_max_age' ), per_database_stats AS (
                 SELECT datname
                     , m.max_old_xid::int
                     , m.autovacuum_freeze_max_age::int
-                    , age(d.datfrozenxid) AS oldest_current_xid 
-                FROM pg_catalog.pg_database d 
-                JOIN max_age m ON (true) 
-                WHERE d.datallowconn ) 
+                    , age(d.datfrozenxid) AS oldest_current_xid
+                FROM pg_catalog.pg_database d
+                JOIN max_age m ON (true)
+                WHERE d.datallowconn )
             SELECT max(oldest_current_xid) AS oldest_current_xid,
                     max(ROUND(100*(oldest_current_xid/max_old_xid::float))) AS percent_towards_wraparound,
-                    max(ROUND(100*(oldest_current_xid/autovacuum_freeze_max_age::float))) AS percent_towards_emergency_autovac 
-            FROM per_database_stats;   
+                    max(ROUND(100*(oldest_current_xid/autovacuum_freeze_max_age::float)))
+                        AS percent_towards_emergency_autovac
+            FROM per_database_stats;
             """
             async with conn.cursor(cursor_factory=DictCursor) as cur:
                 await cur.execute(counter_q)
@@ -328,8 +329,8 @@ def vacuum_status(mgr):
     click.echo('-' * 80)
     for item in status['progress']:
         click.echo('{:32} {:28} {}'.format(item[0],
-                                               item[1],
-                                               item[2]))
+                                           item[1],
+                                           item[2]))
 
 
 def run():
