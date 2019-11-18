@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import re
@@ -11,12 +10,10 @@ import click
 
 from jsearch import settings
 
-
 logger = logging.getLogger('index_manager')
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s -- %(message)s',
                     handlers=[logging.StreamHandler()])
-
 
 INDEX_RE = r'CREATE\s?(UNIQUE)? INDEX (\w+) ON public.(\w+) USING (\w+) (\([^\)]*\))\s?(WHERE)?\s?(\([^\)]*\))?'
 DEFAULT_FILENAME = os.path.join(os.path.dirname(__file__), 'indexes.yaml')
@@ -49,7 +46,7 @@ class Index:
             stmt = """ALTER TABLE {} DROP CONSTRAINT IF EXISTS {}""".format(self.table, self.name)
         return stmt
 
-    def get_create_statement(self):
+    def get_create_statement(self, concurrently):
         if self.pk is False:
             options = {
                 'name': self.name,
@@ -57,15 +54,18 @@ class Index:
                 'fields': self.fields,
                 'type': self.type,
                 'unique': 'UNIQUE' if self.unique else '',
+                'concurrently': 'CONCURRENTLY' if concurrently else '',
                 'where': 'WHERE {}'.format(self.partial_condition) if self.partial_condition else '',
             }
-            stmt = """CREATE {unique} INDEX IF NOT EXISTS {name} ON {table} USING {type} {fields} {where}""".format(
+            stmt = """CREATE {unique} INDEX {concurrently}\
+ IF NOT EXISTS {name} ON {table} USING {type} {fields} {where}""".format(
                 **options)
         else:
             stmt = """ALTER TABLE {} ADD CONSTRAINT {} PRIMARY KEY {};""".format(self.table, self.name, self.fields)
         return stmt
 
     async def get_status(self, conn):
+
         size_q = """SELECT nspname || '.' || relname AS "relation",
                             pg_size_pretty(pg_relation_size(C.oid)) AS "size"
                     FROM pg_class C
@@ -75,9 +75,24 @@ class Index:
             await cur.execute(size_q, [self.name])
             res = await cur.fetchone()
             if res is None:
-                return {'name': self.name, 'status': 'NOT EXISTS', 'size': '0 bytes'}
+                index_size = None
             else:
                 index_size = res['size']
+
+        act_q = """SELECT now() - query_start, state, wait_event
+                       FROM pg_stat_activity WHERE (query like %s OR query like %s) AND state <> 'idle'"""
+        term = 'CREATE % INDEX % {} %'.format(self.name)
+        term2 = 'ALTER TABLE {} ADD CONSTRAINT % {} %'.format(self.table, self.name)
+        async with conn.cursor(cursor_factory=DictCursor) as cur:
+            await cur.execute(act_q, [term, term2])
+            res = await cur.fetchone()
+            if res is not None:
+                return {'name': self.name,
+                        'status': 'CREATING',
+                        'query_duration': res[0],
+                        'query_state': res[1],
+                        'query_wait': res[2],
+                        'size': index_size or '0 bytes'}
 
         stat_q = """SELECT * from pg_stat_user_indexes WHERE indexrelname=%s"""
         async with conn.cursor(cursor_factory=DictCursor) as cur:
@@ -86,23 +101,12 @@ class Index:
             if res is not None:
                 return {'name': self.name, 'status': 'EXISTS', 'size': index_size}
 
-        act_q = """SELECT now() - query_start, state, wait_event
-                       FROM pg_stat_activity WHERE query=%s AND state <> 'idle'"""
-        async with conn.cursor(cursor_factory=DictCursor) as cur:
-            await cur.execute(act_q, [self.get_create_statement()])
-            res = await cur.fetchone()
-            if res is not None:
-                return {'name': self.name,
-                        'status': 'CREATING',
-                        'query_duration': res[0],
-                        'query_state': res[1],
-                        'query_wait': res[2],
-                        'current_size': index_size}
+        if index_size is None:
+            return {'name': self.name, 'status': 'NOT EXISTS', 'size': 'N/A'}
         assert False, 'Index Status miss'
 
 
 class IndexManager:
-
     indexes = None
 
     def __init__(self, db_connection_string):
@@ -129,7 +133,10 @@ class IndexManager:
                 break
             async with conn.cursor() as cur:
                 logger.info('Worker %s EXECUTE: %s', n, cmd)
-                await cur.execute(cmd)
+                try:
+                    await cur.execute(cmd)
+                except Exception as e:
+                    logger.error(e)
         conn.close()
 
     async def drop_all(self, dry_run=False):
@@ -144,10 +151,24 @@ class IndexManager:
                 logger.info('/* dry run */ %s', stmt)
         conn.close()
 
-    async def create_all(self, workers_number):
-        for idx in self.indexes:
-            stmt = idx.get_create_statement()
-            self.queue.append(stmt)
+    async def create_all(self, workers_number, dry_run, concurrently, tables):
+        conn = await self.connect()
+        if tables:
+            indexes = [i for i in self.indexes if i.table in tables]
+        else:
+            indexes = self.indexes
+        for idx in indexes:
+            stmt = idx.get_create_statement(concurrently)
+            if dry_run is True:
+                logger.info('/* dry run */ %s', stmt)
+            status = await idx.get_status(conn)
+            if status['status'] == 'NOT EXISTS':
+                self.queue.append(stmt)
+            else:
+                logger.info('Skipping %s [%s]', idx.name, status['status'])
+        if dry_run is True:
+            return
+        conn.close()
         tasks = []
         for n in range(workers_number):
             task = self.worker(n)
@@ -175,6 +196,49 @@ class IndexManager:
                 definition = parse_indexdef(row['indexdef'])
                 indexes.append(definition)
             print(yaml.dump(indexes, default_flow_style=False, sort_keys=False, line_break='\n\n'))  # noqa: T001
+        finally:
+            conn.close()
+
+    async def get_vacuum_status(self):
+        conn = await self.connect()
+        try:
+            progress_q = """select p.pid, t.relname, p.phase, p.heap_blks_scanned/p.heap_blks_total::real
+                            from pg_stat_progress_vacuum p inner join pg_stat_user_tables t on p.relid = t.relid;"""
+            async with conn.cursor(cursor_factory=DictCursor) as cur:
+                await cur.execute(progress_q)
+                progress_result = await cur.fetchall()
+
+            history_q = """SELECT relname, last_vacuum, last_autovacuum FROM pg_stat_user_tables;"""
+            async with conn.cursor(cursor_factory=DictCursor) as cur:
+                await cur.execute(history_q)
+                history_result = await cur.fetchall()
+
+            counter_q = """
+            WITH max_age AS (
+                SELECT 2000000000 as max_old_xid
+                    , setting AS autovacuum_freeze_max_age
+                    FROM pg_catalog.pg_settings
+                    WHERE name = 'autovacuum_freeze_max_age' ), per_database_stats AS (
+                SELECT datname
+                    , m.max_old_xid::int
+                    , m.autovacuum_freeze_max_age::int
+                    , age(d.datfrozenxid) AS oldest_current_xid
+                FROM pg_catalog.pg_database d
+                JOIN max_age m ON (true)
+                WHERE d.datallowconn )
+            SELECT max(oldest_current_xid) AS oldest_current_xid,
+                    max(ROUND(100*(oldest_current_xid/max_old_xid::float))) AS percent_towards_wraparound,
+                    max(ROUND(100*(oldest_current_xid/autovacuum_freeze_max_age::float)))
+                        AS percent_towards_emergency_autovac
+            FROM per_database_stats;
+            """
+            async with conn.cursor(cursor_factory=DictCursor) as cur:
+                await cur.execute(counter_q)
+                counter_result = await cur.fetchone()
+
+            return {'progress': progress_result,
+                    'history': history_result,
+                    'counter': counter_result}
         finally:
             conn.close()
 
@@ -217,6 +281,12 @@ def status(mgr):
     statuses = loop.run_until_complete(mgr.get_indexes_status())
     for status in statuses:
         click.echo('{name:70} {status:10} [{size}]'.format(**status))
+    click.echo('=' * 80)
+    click.echo('EXISTS {}, CREATING {}, NOT EXISTS {}'.format(
+        len([s for s in statuses if s['status'] == 'EXISTS']),
+        len([s for s in statuses if s['status'] == 'CREATING']),
+        len([s for s in statuses if s['status'] == 'NOT EXISTS']),
+    ))
 
 
 @cli.command()
@@ -230,11 +300,46 @@ def drop_all(mgr, dry_run):
 
 @cli.command()
 @click.option('--workers', '-w', default=2, help='Number of parallel workers - create your indexes faster!!!*')
+@click.option('--dry-run', is_flag=True, help='Dry run - just print CREATE INDEX statements,'
+                                              'not actually run them in DB')
+@click.option('--concurrently', is_flag=True, help='use CREATE INDEX CONCURRENTLY PostgreSQL feature')
+@click.option('--tables', '-t', default=None, help='Create index only for specified tables (comma separated list)')
 @click.pass_obj
-def create_all(mgr, workers):
+def create_all(mgr, workers, dry_run, concurrently, tables):
     click.echo('Creating DB indexes ({} workers):'.format(workers))
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(mgr.create_all(workers))
+    if tables:
+        tables = [t.strip() for t in tables.split(',')]
+    loop.run_until_complete(mgr.create_all(workers, dry_run, concurrently, tables))
+
+
+@cli.command()
+@click.pass_obj
+def vacuum_status(mgr):
+    loop = asyncio.get_event_loop()
+    status = loop.run_until_complete(mgr.get_vacuum_status())
+
+    click.echo('==== VACUUMING STATUS ====\n')
+
+    click.echo('XID status: {} {} {}'.format(*status['counter']))
+
+    click.echo('\n\nVacuuming history:')
+    click.echo('-' * 80)
+    click.echo('table                            last_vacuum         last_autovacuum')
+    click.echo('-' * 80)
+    for item in status['history']:
+        click.echo('{:32} {:20} {}'.format(item[0],
+                                           item[1].strftime('%Y-%m-%d %H:%M') if item[1] else '',
+                                           item[2].strftime('%Y-%m-%d %H:%M') if item[2] else ''))
+
+    click.echo('\n\nVacuuming current progress:')
+    click.echo('-' * 80)
+    click.echo('table                            phase                       progress')
+    click.echo('-' * 80)
+    for item in status['progress']:
+        click.echo('{:32} {:28} {}'.format(item[1],
+                                           item[2],
+                                           item[3]))
 
 
 def run():
