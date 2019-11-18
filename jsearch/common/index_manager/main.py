@@ -133,7 +133,10 @@ class IndexManager:
                 break
             async with conn.cursor() as cur:
                 logger.info('Worker %s EXECUTE: %s', n, cmd)
-                await cur.execute(cmd)
+                try:
+                    await cur.execute(cmd)
+                except Exception as e:
+                    logger.error(e)
         conn.close()
 
     async def drop_all(self, dry_run=False):
@@ -149,6 +152,7 @@ class IndexManager:
         conn.close()
 
     async def create_all(self, workers_number, dry_run, concurrently, tables):
+        conn = await self.connect()
         if tables:
             indexes = [i for i in self.indexes if i.table in tables]
         else:
@@ -157,9 +161,14 @@ class IndexManager:
             stmt = idx.get_create_statement(concurrently)
             if dry_run is True:
                 logger.info('/* dry run */ %s', stmt)
-            self.queue.append(stmt)
+            status = await idx.get_status(conn)
+            if status['status'] == 'NOT EXISTS':
+                self.queue.append(stmt)
+            else:
+                logger.info('Skipping %s [%s]', idx.name, status['status'])
         if dry_run is True:
             return
+        conn.close()
         tasks = []
         for n in range(workers_number):
             task = self.worker(n)
