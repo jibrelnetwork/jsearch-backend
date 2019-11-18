@@ -30,6 +30,8 @@ def safe_query(db_dsn: str, query: str, key: str) -> Optional[str]:
     if row:
         return row[key]
 
+    return None
+
 
 def get_alembic_version(db_dsn: str) -> Optional[str]:
     query = """

@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 import mode
-from typing import Any, Optional
+from typing import Any
 
 from jsearch import settings
 from jsearch.common.async_utils import aiosuppress
@@ -19,16 +19,26 @@ class SyncerService(mode.Service):
     def __init__(self,
                  state: SyncerState,
                  sync_range: BlockRange,
-                 resync: Optional[bool] = False,
+                 resync: bool = False,
+                 resync_chain_splits: bool = False,
                  check_lag: bool = False,
                  *args: Any,
                  **kwargs: Any) -> None:
         self.raw_db = RawDB(settings.JSEARCH_RAW_DB)
         self.main_db = MainDB(settings.JSEARCH_MAIN_DB)
-        self.manager = Manager(self, self.main_db, self.raw_db, sync_range=sync_range, resync=resync, state=state)
+        self.manager = Manager(
+            service=self,
+            main_db=self.main_db,
+            raw_db=self.raw_db,
+            sync_range=sync_range,
+            resync_chain_splits=resync_chain_splits,
+            resync=resync,
+            state=state
+        )
         self.check_lag = check_lag
 
-        super(SyncerService, self).__init__(*args, **kwargs)
+        # FIXME (nickgashkov): `mode.Service` does not support `*args`
+        super(SyncerService, self).__init__(*args, **kwargs)  # type: ignore
 
     async def on_start(self) -> None:
         await self.raw_db.connect()

@@ -1,11 +1,11 @@
 from sqlalchemy import Column
-from typing import Any, Dict, NewType, Callable, Awaitable, Coroutine, List, TypeVar, Union
+from typing import Any, Dict, Callable, Awaitable, Coroutine, List, Union, Optional
 
 AnyDict = Dict[str, Any]
 AnyDicts = List[AnyDict]
 
 Abi = List[Dict[str, Any]]
-Abi_ERC20 = NewType('Abi_ERC20', Abi)
+Abi_ERC20 = Abi
 
 IntOrStr = Union[int, str]
 
@@ -42,23 +42,23 @@ AssetTransfer = Dict[str, Any]
 AnyCoroutine = Coroutine[Any, Any, Any]
 AnyCoroutineMaker = Callable[..., AnyCoroutine]
 
-BlockHash = TypeVar('BlockHash', bound=str)
+BlockHash = str
 BlockHashes = List[BlockHash]
 
-TokenAddress = TypeVar('TokenAddress', bound=str)
+TokenAddress = str
 TokenAddresses = List[TokenAddress]
 
 TokenHolderUpdate = Dict[str, Any]
 TokenHolderUpdates = List[TokenHolderUpdate]
 
-AccountAddress = TypeVar('AccountAddress', bound=str)
+AccountAddress = str
 AccountAddresses = List[AccountAddress]
 
 Columns = List[Column]
 
-OrderDirection = TypeVar('OrderDirection', bound=str)
-OrderScheme = TypeVar('OrderScheme', bound=str)
+OrderDirection = str
+OrderScheme = str
 
-LastAffectedBlock = TypeVar('LastAffectedBlock', bound=int)
-ProgressPercent = TypeVar('ProgressPercent', bound=float)
+LastAffectedBlock = Optional[int]
+ProgressPercent = float
 BlockchainTipAsDict = Dict[str, Any]

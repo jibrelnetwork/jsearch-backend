@@ -10,7 +10,10 @@ build:
 	docker-compose build dev
 
 lint:
-	docker-compose run --rm dev flake8 .
+	docker-compose run --rm dev_shell flake8 .
+
+mypy:
+	docker-compose run --rm dev_shell mypy .
 
 test:
 	docker-compose run --rm dev pytest

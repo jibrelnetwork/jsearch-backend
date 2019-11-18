@@ -19,7 +19,8 @@ class TokenHoldersCleaner(mode.Service):
     def __init__(self, main_db_dsn: str, *args, **kwargs) -> None:
         self.main_db_dsn = main_db_dsn
         self.total = 0
-        super().__init__(*args, **kwargs)
+        # FIXME (nickgashkov): `mode.Service` does not support `*args`
+        super().__init__(*args, **kwargs)  # type: ignore
 
     async def on_start(self) -> None:
         await self.connect()

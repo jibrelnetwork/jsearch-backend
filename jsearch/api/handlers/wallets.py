@@ -1,7 +1,7 @@
 import logging
 
 from aiohttp import web
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.error_code import ErrorCode
@@ -52,7 +52,8 @@ async def get_wallet_events(
     last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
 
     if timestamp:
-        block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
+        # FIXME (nickgashkov): If `timestamp` is `latest` -> 500 will be raised.
+        block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)  # type: ignore
         timestamp = None
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
@@ -83,7 +84,7 @@ async def get_wallet_events(
         mapping={'blockNumber': 'block_number'}
     )
 
-    pending_events = []
+    pending_events: List[Dict[str, Any]] = []
     if include_pending_txs:
         pending_events = await storage.get_account_pending_events(
             account=address,

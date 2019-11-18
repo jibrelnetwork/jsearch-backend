@@ -67,7 +67,7 @@ async def get_chain_stats(db_pool: asyncpg.pool.Pool) -> ChainStats:
         raise
     except Exception as e:
         logger.warning('Cannot check the database', extra={'exception': e})
-    return DbStats(is_healthy=is_healthy)
+    return ChainStats(is_healthy=is_healthy, chain_holes=holes)
 
 
 async def get_lag_stats() -> LagStats:

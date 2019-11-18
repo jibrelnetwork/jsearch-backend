@@ -83,8 +83,8 @@ class ListSchema(Schema):
     # with fields in database. When we need a mapping.
     # On left side: field name for outer HTTP interface
     # On right side: field name for table
-    mapping = {}
-    default_values = {}
+    mapping: Dict[str, str] = {}
+    default_values: Dict[str, Any] = {}
 
     class Meta:
         strict = True
