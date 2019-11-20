@@ -13,23 +13,18 @@ from typing import Any, Dict, List, NamedTuple
 from aiopg import sa
 
 
-class QueryWithParams(NamedTuple):
-    query: str
-    params: Dict[str, Any]
-
-
-async def bench_once(db: sa.Engine, query: QueryWithParams) -> int:
+async def bench_once(db: sa.Engine, query: str) -> int:
     started_at = time.perf_counter_ns()
 
     async with db.acquire() as conn:
-        await conn.execute(query.query, query.params)
+        await conn.execute(query)
 
     ended_at = time.perf_counter_ns()
 
     return ended_at - started_at
 
 
-async def bench(dsn: str, queries: List[QueryWithParams], times: int) -> None:
+async def bench(dsn: str, queries: List[str], times: int) -> None:
     db = await sa.create_engine(dsn)
 
     coros = []
@@ -60,7 +55,12 @@ def main(dsn: str, data_filename: str, times: int) -> None:
     with open(data_filename) as data:
         queries_raw: List[Dict[str, Any]] = yaml.safe_load(data)
 
-    queries = [QueryWithParams(**q) for q in queries_raw]
+    queries = []
+
+    for q in queries_raw:
+        for q_params in q['params']:
+            query = q['query'].format(**q_params)
+            queries.append(query)
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(bench(dsn, queries, times))
