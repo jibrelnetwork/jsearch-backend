@@ -1,22 +1,5 @@
 - query: SELECT uc.address, uc.asset_address, x.value FROM assets_summary_pairs AS uc CROSS JOIN LATERAL ( SELECT ub.value FROM assets_summary AS ub WHERE ub.address = uc.address AND ub.asset_address = uc.asset_address AND ub.is_forked = false ORDER BY ub.block_number DESC LIMIT 1) AS x WHERE uc.address = '{account_address}';
   params:
-    - account_address: 0x0000000000000000000000000000000000000000
-    - account_address: 0x5b67871c3a857de81a1ca0f9f7945e5670d986dc
-    - account_address: 0xceda8318522d348f1d1aca48b24629b8fbf09020
-    - account_address: 0x6357dbaea899ea3533e1fa57c4670bd00f8f96b5
-    - account_address: 0x80a280d0cb81042080feed8a167796682187bb9c
-    - account_address: 0x14bb3fdceff163a64d70c73dab01d992dfadd459
-    - account_address: 0x7243fada342d9c3fb1ca6a97f300db713fa78bd3
-    - account_address: 0x83e240d1cbc6ec7f394cd6ba5ed01b7fcdf44ed5
-    - account_address: 0x4cc440f9c86d18912889e650c31fb485a4cfb8bb
-    - account_address: 0x2d33b3eb7f2e079601104f6483a8a42f63d815d9
-    - account_address: 0xb7d0b98df86227574df3bfc6a94be27443f83fa1
-    - account_address: 0xdae476b53ca3bd62264b3b6d70630975d4b4271a
-    - account_address: 0xed26cb603443e6a9879507c407bdedc7c20404c8
-    - account_address: 0x216b147b1e0c675cfa6b9b5543c02030ef6e097c
-    - account_address: 0x863308b9b05f2679d15d408483e1dc1a059d8e22
-    - account_address: 0x87143998c73957145a3ec99453a5f9d7f5c4c48a
-    - account_address: 0x5da096beb0b5c50960e207974d3bc46d72e10109
-    - account_address: 0xe409fa621e6ad8398dce0207a8685aa23e83cbb5
-    - account_address: 0x521550e569bc80f1b4957c4f3fd3d677d9ca31f1
-    - account_address: 0x634883c03b28047dbe165ea8fb0ec61c231c1baf
+    - account_address: ANY(ARRAY['0x0000000000000000000000000000000000000000','0x5b67871c3a857de81a1ca0f9f7945e5670d986dc','0xceda8318522d348f1d1aca48b24629b8fbf09020','0x7243fada342d9c3fb1ca6a97f300db713fa78bd3','0x2d33b3eb7f2e079601104f6483a8a42f63d815d9'])
+    - account_address: ANY(ARRAY['0x9a27f8e819207b06e662a3f0f92010f11e5361b5','0xfbc71b4670a5afb239ccd6a1ef3fe6cea593442d','0x71b8f095bc8a8b7b421521247c713c79b65ef635','0x1b5a3172c4445ca29a321bdb8f6582795cf7455e','0x46705dfff24256421a05d056c29e81bdc09723b8'])
+    - account_address: ANY(ARRAY['0xa6cdb9e4e4c1c3c2342f5cf03498f8fd0646cfc5','0xa778dbe0cb6846e2b25ddfb9da2ef50564d4000f','0xa91b16202f6134c65531e065398d1f3f5f74ddec','0xaadd311a2c9b200e104749f2e0f79fb5d312e8bc','0xac64257f91718c933a28dae3c841c7058663d285'])
