@@ -8,7 +8,7 @@ import time
 import statistics
 import click
 import yaml
-from typing import Any, Dict, List, NamedTuple
+from typing import Any, Dict, List
 
 from aiopg import sa
 
@@ -40,7 +40,6 @@ async def bench(dsn: str, queries: List[str], times: int) -> None:
     sys.stdout.write(f'- mean: {statistics.mean(results) // 1000000} ms' + os.linesep)
     sys.stdout.write(f'- median: {statistics.median(results) // 1000000} ms' + os.linesep)
     sys.stdout.write(f'- total: {sum(results) // 1000000} ms' + os.linesep)
-    sys.stdout.write(f'- all: {", ".join(map(lambda r: str(r // 1000000), results))} ms' + os.linesep)
 
     db.close()
     await db.wait_closed()
