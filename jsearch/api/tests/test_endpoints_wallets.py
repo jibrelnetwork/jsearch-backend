@@ -571,7 +571,7 @@ def create_assets_summaries(
     ]
 
     for a in assets:
-        assets_summary_factory.create_with_pair(assets_summary_pair_factory, **a)
+        assets_summary_factory.maybe_create_with_pair(assets_summary_pair_factory, **a)
 
     transfer_factory.create(address='a1', token_address='c100')
     transfer_factory.create(address='a1', token_address='c1')
@@ -704,7 +704,7 @@ async def test_get_assets_summary_from_history(
     }
 
     # balances
-    legacy_balance = assets_summary_factory.create_with_pair(assets_summary_pair_factory, **data)
+    legacy_balance = assets_summary_factory.maybe_create_with_pair(assets_summary_pair_factory, **data)
     current_balance = assets_summary_factory.create(
         **{
             **data,
@@ -749,20 +749,22 @@ async def test_get_assets_summary_by_asset_from_history(
     data = {
         'address': account,
         'asset_address': asset,
+        'nonce': None,
     }
 
     # balances
-    legacy_balance = assets_summary_factory.create_with_pair(assets_summary_pair_factory, **data)
+    legacy_balance = assets_summary_factory.maybe_create_with_pair(assets_summary_pair_factory, **data)
     current_balance = assets_summary_factory.create(
         **{
             **data,
             'block_number': legacy_balance.block_number + 1
         }
     )
-    ether_balance = assets_summary_factory.create_with_pair(assets_summary_pair_factory, **{
+    ether_balance = assets_summary_factory.maybe_create_with_pair(assets_summary_pair_factory, **{
         'address': account,
         'asset_address': ETHER_ASSET_ADDRESS,
-        'decimals': 0
+        'decimals': 0,
+        'nonce': 1,
     })
 
     transaction_factory.create(address=account, value=1)

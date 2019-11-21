@@ -49,9 +49,12 @@ class AssetsSummaryFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session_persistence = 'flush'
 
     @classmethod
-    def create_with_pair(cls, assets_summary_pair_factory: 'AssetsSummaryPairFactory', **kwargs):
+    def maybe_create_with_pair(cls, assets_summary_pair_factory: 'AssetsSummaryPairFactory', **kwargs):
         instance = cls.create(**kwargs)
-        assets_summary_pair_factory.create(address=instance.address, asset_address=instance.asset_address)
+
+        if instance.asset_address != '':
+            # WTF: Ether assets pairs are not stored in `assets_summary_pairs`.
+            assets_summary_pair_factory.create(address=instance.address, asset_address=instance.asset_address)
 
         return instance
 
