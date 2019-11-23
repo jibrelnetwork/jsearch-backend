@@ -31,7 +31,7 @@ async def get_blocks(
     Get blocks list
     """
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     # Notes: we need to query limit + 1 items to get link on next page
@@ -49,7 +49,7 @@ async def get_blocks(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )

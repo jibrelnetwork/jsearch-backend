@@ -289,7 +289,7 @@ async def load_json_or_raise_api_error(request: web.Request) -> Json:
 
 async def maybe_orphan_request(
         request: web.Request,
-        last_chain_insert_id: Optional[int],
+        last_chain_event_id: Optional[int],
         last_data_block: Optional[int],
         last_tip_block: Optional[int],
 ) -> Optional[web.Response]:
@@ -298,7 +298,7 @@ async def maybe_orphan_request(
     requests_orphaned_metric = request.app['metrics']['REQUESTS_ORPHANED']
 
     last_block = max((last_data_block, last_tip_block), key=lambda x: x or 0)
-    should_orphan = await storage.is_data_affected_by_chain_split(last_chain_insert_id, last_block)
+    should_orphan = await storage.is_data_affected_by_chain_split(last_chain_event_id, last_block)
 
     if should_orphan:
         requests_orphaned_metric.labels(request.path).inc()
