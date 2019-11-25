@@ -42,7 +42,7 @@ async def get_accounts_balances(request):
     Get ballances for list of accounts
     """
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
     addresses = get_from_joined_string(request.query.get('addresses'))
     tip_hash = request.query.get('blockchain_tip') or None
 
@@ -61,7 +61,7 @@ async def get_accounts_balances(request):
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -78,7 +78,7 @@ async def get_account(request):
     Get account by address
     """
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     address = request.match_info.get('address').lower()
     tag = get_tag(request)
@@ -94,7 +94,7 @@ async def get_account(request):
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -121,7 +121,7 @@ async def get_account_transactions(
     Get account transactions
     """
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
 
@@ -141,7 +141,7 @@ async def get_account_transactions(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -169,7 +169,7 @@ async def get_account_internal_txs(
     Get account internal transactions
     """
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     txs, last_affected_block = await storage.get_account_internal_transactions(
@@ -188,7 +188,7 @@ async def get_account_internal_txs(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -248,7 +248,7 @@ async def get_account_logs(
     Get contract logs
     """
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     logs, last_affected_block = await storage.get_account_logs(
@@ -267,7 +267,7 @@ async def get_account_logs(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -293,7 +293,7 @@ async def get_account_mined_blocks(
     Get account mined blocks
     """
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     blocks, last_affected_block = await storage.get_account_mined_blocks(
@@ -311,7 +311,7 @@ async def get_account_mined_blocks(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -337,7 +337,7 @@ async def get_account_mined_uncles(
     Get account mined uncles
     """
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     block_number, timestamp = await get_last_block_number_and_timestamp(uncle_number, timestamp, storage)
 
@@ -357,7 +357,7 @@ async def get_account_mined_uncles(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -382,7 +382,7 @@ async def get_account_token_transfers(
         log_index: Optional[int] = None,
 ):
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     if timestamp is not None:
         block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
@@ -404,7 +404,7 @@ async def get_account_token_transfers(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -418,7 +418,7 @@ async def get_account_token_transfers(
 @ApiError.catch
 async def get_account_token_balance(request):
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     token_address = request.match_info['token_address'].lower()
     account_address = request.match_info['address'].lower()
@@ -437,7 +437,7 @@ async def get_account_token_balance(request):
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -451,7 +451,7 @@ async def get_account_token_balance(request):
 @ApiError.catch
 async def get_account_token_balances_multi(request):
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     account_address = request.match_info['address'].lower()
     tokens_addresses = get_from_joined_string(request.query.get('contract_addresses'))
@@ -471,7 +471,7 @@ async def get_account_token_balances_multi(request):
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -507,7 +507,7 @@ async def get_account_eth_transfers(request,
                                     order=None,
                                     limit=None):
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     if timestamp:
         block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
@@ -533,7 +533,7 @@ async def get_account_eth_transfers(request,
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
