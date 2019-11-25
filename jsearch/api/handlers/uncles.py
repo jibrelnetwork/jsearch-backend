@@ -30,7 +30,7 @@ async def get_uncles(
     Get uncles list
     """
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     block_number, timestamp = await get_last_block_number_and_timestamp(uncle_number, timestamp, storage)
 
@@ -49,7 +49,7 @@ async def get_uncles(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )

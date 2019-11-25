@@ -49,7 +49,7 @@ async def get_wallet_events(
         event_index: Optional[int] = None,
 ) -> web.Response:
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     if timestamp:
         # FIXME (nickgashkov): If `timestamp` is `latest` -> 500 will be raised.
@@ -93,7 +93,7 @@ async def get_wallet_events(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -138,7 +138,7 @@ async def get_assets_summary(
         tip_hash: Optional[str] = None,
 ) -> web.Response:
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
     if addresses:
         summary, last_affected_block = await storage.get_wallet_assets_summary(
             addresses=addresses,
@@ -152,7 +152,7 @@ async def get_assets_summary(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )

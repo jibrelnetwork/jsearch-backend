@@ -65,7 +65,7 @@ from jsearch.api.database_queries.wallet_events import (
     get_wallet_events_query,
     get_eth_transfers_by_address_query,
 )
-from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent, ChainEvent, TAG_LATEST
+from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent, TAG_LATEST
 from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
@@ -108,8 +108,8 @@ class Storage:
     def __init__(self, pool):
         self.pool = pool
 
-    async def get_latest_chain_insert_id(self) -> Optional[int]:
-        query = select_latest_chain_event_id(type_=ChainEvent.INSERT)
+    async def get_latest_chain_event_id(self) -> Optional[int]:
+        query = select_latest_chain_event_id()
 
         async with self.pool.acquire() as conn:
             row = await fetch_row(conn, query)
@@ -118,7 +118,7 @@ class Storage:
 
     async def is_data_affected_by_chain_split(
             self,
-            last_known_chain_insert_id: Optional[int],
+            last_known_chain_event_id: Optional[int],
             last_affected_block: Optional[int],
     ) -> bool:
         """
@@ -132,11 +132,11 @@ class Storage:
         there's a chain split involving last figured block in any database
         request.
         """
-        if last_known_chain_insert_id is None or last_affected_block is None:
+        if last_known_chain_event_id is None or last_affected_block is None:
             return False
 
         query = select_closest_chain_split(
-            last_known_chain_insert_id=last_known_chain_insert_id,
+            last_known_chain_event_id=last_known_chain_event_id,
             last_affected_block=last_affected_block,
         )
 
@@ -1074,10 +1074,16 @@ class Storage:
         rows = await fetch(self.pool, query)
         last_affected_block_number = max([r['block_number'] for r in rows], default=None)
 
+        tx_hashes = {r['tx_hash'] for r in rows}
+        tx_query = get_transactions_by_hashes(tx_hashes)
+        async with self.pool.acquire() as connection:
+            transactions = await fetch(connection, tx_query)
+        transactions_map = {tx['hash']: tx for tx in transactions}
+
         res = []
         for r in rows:
             event_data = json.loads(r['event_data'])
-            tx_data = json.loads(r['tx_data'])
+            tx_data = transactions_map[r['tx_hash']]
             t = models.EthTransfer(**{
                 # NOTE: As of now, older wallet events have no
                 # `tx_data['timestamp']` because it was added after the start of

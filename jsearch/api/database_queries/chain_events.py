@@ -25,21 +25,19 @@ def get_default_fields() -> List[Column]:
     ]
 
 
-def select_latest_chain_event_id(type_: str) -> Query:
-    return select([func.max(chain_events_t.c.id).label('max_id')]).where(
-        chain_events_t.c.type == type_
-    )
+def select_latest_chain_event_id() -> Query:
+    return select([func.max(chain_events_t.c.id).label('max_id')])
 
 
 def select_closest_chain_split(
-        last_known_chain_insert_id: int,
+        last_known_chain_event_id: int,
         last_affected_block: int,
         fields: Optional[List[Column]] = None,
 ) -> Query:
     fields = fields or get_default_fields()
 
     return select(fields).where(
-        (chain_events_t.c.id > last_known_chain_insert_id) &
+        (chain_events_t.c.id > last_known_chain_event_id) &
         (chain_events_t.c.block_number < last_affected_block) &
         (chain_events_t.c.type == ChainEvent.SPLIT)
     ).limit(1)
