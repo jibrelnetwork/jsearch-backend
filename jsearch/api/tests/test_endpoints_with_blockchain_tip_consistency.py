@@ -47,6 +47,15 @@ class DataConsistencyCase(NamedTuple):
     does_chain_split_affect_data_consistency: bool
 
 
+# If chain split's block number is equal to 15, therefore data all the way up to
+# block `15` is considered not forked:
+#
+#     --[15]---[16]-- Canonical branch
+#           \
+#            \
+#             -[16]-- Forked branch
+
+
 cases = [
     DataConsistencyCase(
         block_number_of_data=10,
@@ -367,18 +376,15 @@ async def test_get_account_token_balance_orphaned_requests(
 
     _patch_maybe_apply_tip('jsearch.api.handlers.accounts.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
-    url = 'v1/tokens/{address}/holders?{query_params}'.format(
-        address=token_holder.token_address,
+    url = 'v1/accounts/{address}/token_balance/{token_address}?{query_params}'.format(
+        address=address,
+        token_address=token_address,
         query_params=urlencode({
             'block_number': token_holder.block_number,
             'limit': 1,
             'blockchain_tip': block_of_tip.hash,
         })
     )
-
-    response = await cli.get(f'/v1/accounts/{address}/token_balance/{token_address}?blockchain_tip={block_of_tip.hash}')
-    response_json = await response.json()
-    response_json.pop('paging', None)
 
     # when
     response = await cli.get(url)
@@ -611,3 +617,40 @@ async def test_get_wallet_events_checks_data_consistency(
         assert response_json['data'] == {'isOrphaned': True}
     else:
         assert response_json['data'] != {'isOrphaned': True}
+
+
+@pytest.mark.parametrize('event_type', ('split', 'reinserted', 'created'))
+async def test_get_blocks_do_not_orphans_if_last_event_in_db_is_any_type(
+        cli: TestClient,
+        chain_events_factory: ChainEventFactory,
+        block_factory: BlockFactory,
+        event_type: str,
+        _patch_maybe_apply_tip: MaybeApplyTipPatcher,
+) -> None:
+    """
+    The latest event in the database is split
+    """
+    # given
+    block_of_tip = block_factory.create_with_event(chain_events_factory, number=10)
+    block_of_data = block_factory.create_with_event(chain_events_factory, number=10)
+
+    # I.e., there can be an event, affecting clients' data *before* its
+    # requests, but data should not be orphaned because it happened *before*
+    # request and not in the middle of it.
+    chain_events_factory.create(block_number=9, type=event_type)
+    _patch_maybe_apply_tip('jsearch.api.handlers.wallets.maybe_apply_tip', [])
+
+    url = 'v1/blocks?{query_params}'.format(
+        query_params=urlencode({
+            'block_number': block_of_data.number,
+            'limit': 1,
+            'blockchain_tip': block_of_tip.hash,
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    assert response_json['data'] != {'isOrphaned': True}
