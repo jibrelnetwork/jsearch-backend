@@ -835,3 +835,40 @@ async def test_get_wallet_events_filter_by_big_value(
 
     # then
     assert status == resp.status
+
+
+async def test_get_assets_summaries_returns_ether_balance_even_if_there_s_no_in_db(cli: TestClient) -> None:
+    # given
+    a1, a2 = generate_address(), generate_address()
+
+    # when
+    response = await cli.get(f'/v1/wallet/assets_summary?addresses={a1},{a2}')
+    response_json = await response.json()
+
+    # then
+    assert response_json["data"] == [
+        {
+            "address": a1,
+            "assetsSummary": [
+                {
+                    "address": "",
+                    "balance": "0",
+                    "decimals": "0",
+                    "transfersNumber": 0,
+                },
+            ],
+            "outgoingTransactionsNumber": "0",
+        },
+        {
+            "address": a2,
+            "assetsSummary": [
+                {
+                    "address": "",
+                    "balance": "0",
+                    "decimals": "0",
+                    "transfersNumber": 0,
+                },
+            ],
+            "outgoingTransactionsNumber": "0",
+        },
+    ]

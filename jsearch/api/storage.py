@@ -6,7 +6,7 @@ from collections import defaultdict
 import asyncpgsa
 from functools import partial
 from sqlalchemy import select, and_, desc, true
-from typing import DefaultDict, Tuple
+from typing import DefaultDict, Tuple, Set
 from typing import List, Optional, Dict, Any
 
 from jsearch.api import models
@@ -903,8 +903,13 @@ class Storage:
         rows = await fetch(self.pool, query)
 
         account_balances: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
+        accounts_with_ether: Set[str] = set()
+
         for asset in rows:
             account_balances[asset['address']].append(asset)
+
+            if asset['asset_address'] == '':
+                accounts_with_ether.add(asset['address'])
 
         summary = []
         for account in addresses:
@@ -930,6 +935,22 @@ class Storage:
                     transfers_number=0,
                 )
                 account_summary.append(asset_summary)
+
+            if account not in accounts_with_ether:
+                # Return fake Ether balance for an account even if there's no
+                # such summary for an account. This allows simplifying
+                # client-side logic.
+                #
+                # This can happen if account has been created, but never mined a
+                # blocks and received/sent Ether.
+                account_summary.append(
+                    AssetSummary(
+                        balance="0",
+                        decimals="0",
+                        address="",
+                        transfers_number=0,
+                    ),
+                )
 
             item = AddressSummary(
                 address=account,
