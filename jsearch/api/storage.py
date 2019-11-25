@@ -1074,10 +1074,16 @@ class Storage:
         rows = await fetch(self.pool, query)
         last_affected_block_number = max([r['block_number'] for r in rows], default=None)
 
+        tx_hashes = {r['tx_hash'] for r in rows}
+        tx_query = get_transactions_by_hashes(tx_hashes)
+        async with self.pool.acquire() as connection:
+            transactions = await fetch(connection, tx_query)
+        transactions_map = {tx['hash']: tx for tx in transactions}
+
         res = []
         for r in rows:
             event_data = json.loads(r['event_data'])
-            tx_data = json.loads(r['tx_data'])
+            tx_data = transactions_map[r['tx_hash']]
             t = models.EthTransfer(**{
                 # NOTE: As of now, older wallet events have no
                 # `tx_data['timestamp']` because it was added after the start of
