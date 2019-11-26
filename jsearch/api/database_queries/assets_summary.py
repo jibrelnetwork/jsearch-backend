@@ -4,6 +4,7 @@ from sqlalchemy.orm import Query
 from typing import List
 
 from jsearch.common.clauses import values
+from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.tables import assets_summary_t, assets_summary_pairs_t
 
 
@@ -34,7 +35,7 @@ def get_assets_summary_query(addresses: List[str], assets: List[str]) -> Query:
                 column('asset_address', String),
             ],
             *[
-                (address, '') for address in addresses
+                (address, ETHER_ASSET_ADDRESS) for address in addresses
             ]
         )
     ).alias('subquery')
