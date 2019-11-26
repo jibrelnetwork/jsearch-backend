@@ -5,15 +5,14 @@ from collections import defaultdict
 
 import asyncpgsa
 from functools import partial
-from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from sqlalchemy import select, and_, desc, true
-from typing import DefaultDict, Tuple
+from typing import DefaultDict, Tuple, Set
 from typing import List, Optional, Dict, Any
 
 from jsearch.api import models
 from jsearch.api.database_queries.account_bases import get_account_base_query
 from jsearch.api.database_queries.account_states import get_account_state_query
-from jsearch.api.database_queries.assets_summary import get_assets_summary_query, get_distinct_assets_by_addresses_query
+from jsearch.api.database_queries.assets_summary import get_assets_summary_query
 from jsearch.api.database_queries.blocks import (
     get_block_by_hash_query,
     get_block_by_number_query,
@@ -66,11 +65,12 @@ from jsearch.api.database_queries.wallet_events import (
     get_wallet_events_query,
     get_eth_transfers_by_address_query,
 )
-from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent, ChainEvent, TAG_LATEST
+from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent, TAG_LATEST
 from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
+from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
 from jsearch.common.utils import unique
@@ -109,8 +109,8 @@ class Storage:
     def __init__(self, pool):
         self.pool = pool
 
-    async def get_latest_chain_insert_id(self) -> Optional[int]:
-        query = select_latest_chain_event_id(type_=ChainEvent.INSERT)
+    async def get_latest_chain_event_id(self) -> Optional[int]:
+        query = select_latest_chain_event_id()
 
         async with self.pool.acquire() as conn:
             row = await fetch_row(conn, query)
@@ -119,7 +119,7 @@ class Storage:
 
     async def is_data_affected_by_chain_split(
             self,
-            last_known_chain_insert_id: Optional[int],
+            last_known_chain_event_id: Optional[int],
             last_affected_block: Optional[int],
     ) -> bool:
         """
@@ -133,11 +133,11 @@ class Storage:
         there's a chain split involving last figured block in any database
         request.
         """
-        if last_known_chain_insert_id is None or last_affected_block is None:
+        if last_known_chain_event_id is None or last_affected_block is None:
             return False
 
         query = select_closest_chain_split(
-            last_known_chain_insert_id=last_known_chain_insert_id,
+            last_known_chain_event_id=last_known_chain_event_id,
             last_affected_block=last_affected_block,
         )
 
@@ -900,20 +900,17 @@ class Storage:
             addresses: List[str],
             assets: Optional[List[str]] = None
     ) -> Tuple[AddressesSummary, LastAffectedBlock]:
-        if not assets:
-            distinct_assets_query = get_distinct_assets_by_addresses_query(addresses)
-            distinct_assets_rows = await fetch(self.pool, distinct_assets_query)
-
-            assets = [row['asset_address'] for row in distinct_assets_rows]
-
-        assets = [ETHER_ASSET_ADDRESS] + assets
-
-        query = get_assets_summary_query(addresses=unique(addresses), assets=unique(assets))
+        query = get_assets_summary_query(addresses=unique(addresses), assets=unique(assets or []))
         rows = await fetch(self.pool, query)
 
         account_balances: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
+        accounts_with_ether: Set[str] = set()
+
         for asset in rows:
             account_balances[asset['address']].append(asset)
+
+            if asset['asset_address'] == ETHER_ASSET_ADDRESS:
+                accounts_with_ether.add(asset['address'])
 
         summary = []
         for account in addresses:
@@ -939,6 +936,22 @@ class Storage:
                     transfers_number=0,
                 )
                 account_summary.append(asset_summary)
+
+            if account not in accounts_with_ether:
+                # Return fake Ether balance for an account even if there's no
+                # such summary for an account. This allows simplifying
+                # client-side logic.
+                #
+                # This can happen if account has been created, but never mined a
+                # blocks and received/sent Ether.
+                account_summary.append(
+                    AssetSummary(
+                        balance="0",
+                        decimals="0",
+                        address=ETHER_ASSET_ADDRESS,
+                        transfers_number=0,
+                    ),
+                )
 
             item = AddressSummary(
                 address=account,
@@ -1083,10 +1096,16 @@ class Storage:
         rows = await fetch(self.pool, query)
         last_affected_block_number = max([r['block_number'] for r in rows], default=None)
 
+        tx_hashes = {r['tx_hash'] for r in rows}
+        tx_query = get_transactions_by_hashes(tx_hashes)
+        async with self.pool.acquire() as connection:
+            transactions = await fetch(connection, tx_query)
+        transactions_map = {tx['hash']: tx for tx in transactions}
+
         res = []
         for r in rows:
             event_data = json.loads(r['event_data'])
-            tx_data = json.loads(r['tx_data'])
+            tx_data = transactions_map[r['tx_hash']]
             t = models.EthTransfer(**{
                 # NOTE: As of now, older wallet events have no
                 # `tx_data['timestamp']` because it was added after the start of

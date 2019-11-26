@@ -96,6 +96,10 @@ class MainDB(DBWrapper):
 
         return {b['hash']: dict(b) for b in blocks}
 
+    async def get_block_by_hash(self, block_hash: str) -> Block:
+        query = blocks_t.select().where(blocks_t.c.hash == block_hash)
+        return await self.fetch_one(query)
+
     async def apply_chain_split(
             self,
             old_chain_fragment: Blocks,

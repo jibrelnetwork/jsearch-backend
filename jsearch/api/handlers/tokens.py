@@ -29,7 +29,7 @@ async def get_token_transfers(
         log_index: Optional[int] = None,
 ):
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     if timestamp is not None:
         block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
@@ -51,7 +51,7 @@ async def get_token_transfers(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )
@@ -74,7 +74,7 @@ async def get_token_holders(
         _id: Optional[int] = None
 ):
     storage = request.app['storage']
-    last_known_chain_insert_id = await storage.get_latest_chain_insert_id()
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     # Notes: we need to query limit + 1 items to get link on next page
     holders, last_affected_block = await storage.get_tokens_holders(
@@ -92,7 +92,7 @@ async def get_token_holders(
 
     orphaned_request = await maybe_orphan_request(
         request,
-        last_known_chain_insert_id,
+        last_known_chain_event_id,
         last_affected_block,
         tip and tip.last_number,
     )

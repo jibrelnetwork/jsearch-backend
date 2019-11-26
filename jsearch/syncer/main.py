@@ -90,13 +90,13 @@ def wait() -> None:
 
 @click.command()
 @click.option('--log-level', default=settings.LOG_LEVEL, help="Log level")
-@click.option('--sync-range', default=None, help="Blocks range to sync")
-@click.option('--workers', type=int, default=1)
+@click.option('--sync-range', envvar='SYNC_RANGE', help="Blocks range to sync")
+@click.option('--workers', type=int, envvar='SYNCER_WORKERS')
 @click.option('--port', type=int, default=settings.SYNCER_API_PORT)
-@click.option('--check-lag', type=bool, default=True)
-@click.option('--check-holes', type=bool, default=True)
-@click.option('--resync', type=bool, default=False)
-@click.option('--resync-chain-splits', type=bool, default=False)
+@click.option('--check-lag', type=bool, envvar='SYNCER_CHECK_LAG')
+@click.option('--check-holes', type=bool, envvar='SYNCER_CHECK_HOLES')
+@click.option('--resync', type=bool, envvar='SYNCER_RESYNC')
+@click.option('--resync-chain-splits', type=bool, envvar='SYNCER_RESYNC_CHAIN_SPLITS')
 @click.option('--no-json-formatter', is_flag=True, default=settings.NO_JSON_FORMATTER, help='Use default formatter')
 def run(
         log_level: str,

@@ -543,7 +543,7 @@ def create_assets_summaries(
         },
         {
             'address': 'a1',
-            'asset_address': '',
+            'asset_address': ETHER_ASSET_ADDRESS,
             'value': 300,
             'decimals': 0,
             'tx_number': 3,
@@ -561,7 +561,7 @@ def create_assets_summaries(
         },
         {
             'address': 'a2',
-            'asset_address': '',
+            'asset_address': ETHER_ASSET_ADDRESS,
             'value': 0,
             'decimals': 0,
             'tx_number': 1,
@@ -571,7 +571,7 @@ def create_assets_summaries(
     ]
 
     for a in assets:
-        assets_summary_factory.create_with_pair(assets_summary_pair_factory, **a)
+        assets_summary_factory.maybe_create_with_pair(assets_summary_pair_factory, **a)
 
     transfer_factory.create(address='a1', token_address='c100')
     transfer_factory.create(address='a1', token_address='c1')
@@ -598,7 +598,7 @@ def create_assets_summaries(
                     {
                         'address': 'a1',
                         'assetsSummary': [
-                            {'address': '', 'balance': "300", 'decimals': "0", 'transfersNumber': 0},
+                            {'address': ETHER_ASSET_ADDRESS, 'balance': "300", 'decimals': "0", 'transfersNumber': 0},
                             {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 0},
                             {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 0}
                         ],
@@ -620,7 +620,7 @@ def create_assets_summaries(
                         'address': 'a1',
                         'assetsSummary': [
                             {
-                                'address': '',
+                                'address': ETHER_ASSET_ADDRESS,
                                 'balance': "300",
                                 'decimals': "0",
                                 'transfersNumber': 0
@@ -643,7 +643,7 @@ def create_assets_summaries(
                         'address': 'a1',
                         'assetsSummary': [
                             {
-                                'address': '',
+                                'address': ETHER_ASSET_ADDRESS,
                                 'balance': "300",
                                 'decimals': "0",
                                 'transfersNumber': 0
@@ -704,7 +704,7 @@ async def test_get_assets_summary_from_history(
     }
 
     # balances
-    legacy_balance = assets_summary_factory.create_with_pair(assets_summary_pair_factory, **data)
+    legacy_balance = assets_summary_factory.maybe_create_with_pair(assets_summary_pair_factory, **data)
     current_balance = assets_summary_factory.create(
         **{
             **data,
@@ -749,20 +749,22 @@ async def test_get_assets_summary_by_asset_from_history(
     data = {
         'address': account,
         'asset_address': asset,
+        'nonce': None,
     }
 
     # balances
-    legacy_balance = assets_summary_factory.create_with_pair(assets_summary_pair_factory, **data)
+    legacy_balance = assets_summary_factory.maybe_create_with_pair(assets_summary_pair_factory, **data)
     current_balance = assets_summary_factory.create(
         **{
             **data,
             'block_number': legacy_balance.block_number + 1
         }
     )
-    ether_balance = assets_summary_factory.create_with_pair(assets_summary_pair_factory, **{
+    ether_balance = assets_summary_factory.maybe_create_with_pair(assets_summary_pair_factory, **{
         'address': account,
         'asset_address': ETHER_ASSET_ADDRESS,
-        'decimals': 0
+        'decimals': 0,
+        'nonce': 1,
     })
 
     transaction_factory.create(address=account, value=1)
@@ -833,3 +835,40 @@ async def test_get_wallet_events_filter_by_big_value(
 
     # then
     assert status == resp.status
+
+
+async def test_get_assets_summaries_returns_ether_balance_even_if_there_s_no_in_db(cli: TestClient) -> None:
+    # given
+    a1, a2 = generate_address(), generate_address()
+
+    # when
+    response = await cli.get(f'/v1/wallet/assets_summary?addresses={a1},{a2}')
+    response_json = await response.json()
+
+    # then
+    assert response_json["data"] == [
+        {
+            "address": a1,
+            "assetsSummary": [
+                {
+                    "address": ETHER_ASSET_ADDRESS,
+                    "balance": "0",
+                    "decimals": "0",
+                    "transfersNumber": 0,
+                },
+            ],
+            "outgoingTransactionsNumber": "0",
+        },
+        {
+            "address": a2,
+            "assetsSummary": [
+                {
+                    "address": ETHER_ASSET_ADDRESS,
+                    "balance": "0",
+                    "decimals": "0",
+                    "transfersNumber": 0,
+                },
+            ],
+            "outgoingTransactionsNumber": "0",
+        },
+    ]

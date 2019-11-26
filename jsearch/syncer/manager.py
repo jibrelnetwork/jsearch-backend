@@ -6,7 +6,8 @@ import aiopg
 import backoff
 import psycopg2
 import time
-from typing import Dict, Any, Optional, List
+from functools import partial
+from typing import Dict, Any, Optional, List, Coroutine, Callable
 
 from jsearch import settings
 from jsearch.api.helpers import ChainEvent
@@ -34,6 +35,13 @@ async def reconnect(details: Dict[str, Any]) -> None:
         await manager.main_db.disconnect()
     finally:
         await manager.main_db.connect()
+
+
+async def sync_block_by_hash(raw_db: RawDB, main_db: MainDB, block_hash: str, node_id: str) -> Dict[str, Any]:
+    logging.info('Load and insert block', extra={'hash': block_hash})
+    insert_event = await raw_db.get_insert_chain_event_by_block_hash(block_hash, node_id)
+    await process_insert_block_event(raw_db, main_db, block_hash, insert_event['block_number'], insert_event)
+    return await main_db.get_block_by_hash(block_hash)
 
 
 async def process_insert_block_event(raw_db: RawDB,
@@ -68,25 +76,53 @@ async def process_insert_block_event(raw_db: RawDB,
         )
 
 
-async def process_chain_split_event(main_db: MainDB, split_data: Dict[str, Any]) -> None:
-    from_block = split_data['block_number']
-    to_block = split_data['block_number'] + split_data['add_length']
+async def safe_get_block_and_maybe_load(
+        block_hash: str,
+        blocks: Dict[str, Dict[str, Any]],
+        load_missed=Optional[Callable[[str], Coroutine[Any, Any, None]]],
+) -> Dict[str, Any]:
+    try:
+        block = blocks[block_hash]
+    except KeyError:
+        if load_missed is None:
+            raise
 
+        block = await load_missed(block_hash)
+    return block
+
+
+async def get_split_chain(
+        blocks: Dict[str, Dict[str, Any]],
+        split: Dict[str, Any],
+        load_missed=Optional[Callable[[str], Coroutine[Any, Any, None]]],
+        *, direction: str
+) -> List[Dict[str, Any]]:
+    assert direction in ('add', 'drop')
+
+    depth: int = split[f'{direction}_length']
+    head: str = split[f'{direction}_block_hash']
+
+    chain = [await safe_get_block_and_maybe_load(head, blocks, load_missed)]
+
+    while len(chain) < depth:
+        last_link = chain[-1]['parent_hash']
+        next_block = await safe_get_block_and_maybe_load(last_link, blocks, load_missed)
+        chain.append(next_block)
+    return chain
+
+
+def get_split_range(split_data: Dict[str, Any]):
+    from_block: int = split_data['block_number']
+    to_block = from_block + max(split_data['add_length'] or 0, split_data['drop_length'] or 0)
+    return from_block, to_block
+
+
+async def process_chain_split_event(main_db: MainDB, split_data: Dict[str, Any], load_missed=None) -> None:
+    from_block, to_block = get_split_range(split_data)
     hash_map = await main_db.get_hash_map_from_block_range(from_block, to_block)
 
-    # get chains
-    new_head = hash_map[split_data['add_block_hash']]
-    new_chain_fragment = [new_head]
-
-    while len(new_chain_fragment) < split_data['add_length']:
-        next_block = hash_map[new_chain_fragment[-1]['parent_hash']]
-        new_chain_fragment.append(next_block)
-
-    old_head = hash_map[split_data['drop_block_hash']]
-    old_chain_fragment = [old_head]
-    while len(old_chain_fragment) < split_data['drop_length']:
-        next_block = hash_map[old_chain_fragment[-1]['parent_hash']]
-        old_chain_fragment.append(next_block)
+    new_chain_fragment = await get_split_chain(hash_map, split_data, load_missed, direction='add')
+    old_chain_fragment = await get_split_chain(hash_map, split_data, load_missed, direction='drop')
 
     await main_db.apply_chain_split(
         new_chain_fragment=new_chain_fragment,
@@ -246,9 +282,11 @@ class Manager:
                 'block_number': chain_split['block_number'],
                 'block_hash': chain_split['block_hash']
             })
+
             await process_chain_split_event(
                 main_db=self.main_db,
-                split_data=dict(chain_split)
+                split_data=dict(chain_split),
+                load_missed=partial(sync_block_by_hash, self.raw_db, self.main_db, node_id=self.node_id)
             )
 
             if not self._running:

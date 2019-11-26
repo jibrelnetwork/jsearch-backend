@@ -97,15 +97,15 @@
   pk: false
   indexdef: CREATE INDEX ix_accounts_state_block_number ON public.accounts_state USING
     btree (block_number)
-- name: ix_asset_summary_address_asset_block_number_partial
+- name: ix_asset_summary_address_asset_address_block_number_partial
   table: assets_summary
-  fields: (address, block_number, asset_address)
+  fields: (address, asset_address, block_number)
   type: btree
   partial_condition: (is_forked = false)
   unique: false
   pk: false
-  indexdef: CREATE INDEX ix_asset_summary_address_asset_block_number_partial ON public.assets_summary
-    USING btree (address, block_number, asset_address) WHERE (is_forked = false)
+  indexdef: CREATE INDEX ix_asset_summary_address_asset_address_block_number_partial ON public.assets_summary
+    USING btree (address, asset_address, block_number) WHERE (is_forked = false)
 - name: ix_blocks_miner
   table: blocks
   fields: (miner)
