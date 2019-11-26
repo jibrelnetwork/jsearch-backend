@@ -70,6 +70,7 @@ from jsearch.api.helpers import fetch
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
+from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
 from jsearch.common.utils import unique
@@ -908,7 +909,7 @@ class Storage:
         for asset in rows:
             account_balances[asset['address']].append(asset)
 
-            if asset['asset_address'] == '':
+            if asset['asset_address'] == ETHER_ASSET_ADDRESS:
                 accounts_with_ether.add(asset['address'])
 
         summary = []
@@ -947,7 +948,7 @@ class Storage:
                     AssetSummary(
                         balance="0",
                         decimals="0",
-                        address="",
+                        address=ETHER_ASSET_ADDRESS,
                         transfers_number=0,
                     ),
                 )

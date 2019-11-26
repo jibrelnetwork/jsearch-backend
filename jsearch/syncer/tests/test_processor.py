@@ -5,6 +5,7 @@ import pytest
 
 from jsearch.common import contracts
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
+from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.tables import (
     blocks_t,
     transactions_t,
@@ -416,7 +417,9 @@ async def test_sync_block_check_assets_summary_pairs(db, raw_db_sample, raw_db_d
     await call_system_under_test(raw_db_dsn, db_dsn, block_hash)
 
     # then
-    summaries = db.execute(assets_summary_t.select().where(assets_summary_t.c.asset_address != '')).fetchall()
+    summaries = db.execute(
+        assets_summary_t.select().where(assets_summary_t.c.asset_address != ETHER_ASSET_ADDRESS)
+    ).fetchall()
     summaries_pairs = [(s['address'], s['asset_address']) for s in summaries]
 
     pairs = db.execute(assets_summary_pairs_t.select()).fetchall()
@@ -459,7 +462,7 @@ async def test_sync_block_check_token_holders_in_assets_summary(
 
     # then - left
     token_summary = db.execute(
-        assets_summary_t.select().where(assets_summary_t.c.asset_address != '')
+        assets_summary_t.select().where(assets_summary_t.c.asset_address != ETHER_ASSET_ADDRESS)
     ).fetchall()
     token_summary = [dict(item) for item in token_summary]
     token_summary = sorted(token_summary, key=lambda x: (x['asset_address'], x['address']))
