@@ -21,7 +21,6 @@ def _mock_loop_runners(mocker: MockFixture):
     mocker.patch.object(jsearch.common.worker.Worker, 'execute_from_commandline')
     mocker.patch.object(jsearch.monitor_balance.__main__, 'main')
     mocker.patch('jsearch.api.cli.run_api')
-    mocker.patch('jsearch.syncer.main.wait')
 
 
 @pytest.mark.usefixtures('_mock_loop_runners')
