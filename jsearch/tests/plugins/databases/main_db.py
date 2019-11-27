@@ -5,13 +5,19 @@ from asyncio import AbstractEventLoop
 import aiopg
 import asyncpg
 import pytest
-from aiopg.sa import Engine
+from pathlib import Path
+from sqlalchemy import MetaData
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from typing import Optional, Callable, Any
 
 from jsearch.api.storage import Storage
 from manage import GooseWrapper, MIGRATIONS_FOLDER
+from .utils import load_json_dump, truncate, TableDescription
 
 logger = logging.getLogger(__name__)
+
+DUMPS_FOLDER = Path(__file__).parent / "dumps" / "main_db"
 
 
 def get_db_name(db_dsn: str) -> str:
@@ -43,24 +49,22 @@ def goose(db_dsn):
 
 
 @pytest.fixture(scope='session', autouse=True)
-def apply_migrations(goose, db_dsn, pytestconfig):
+def apply_migrations(goose, db_dsn):
     goose.up()
     yield
     reset_postgres_activities(db_dsn)
     goose.down()
 
 
-@pytest.fixture(scope='function', autouse=True)
-def truncate_tables(db):
-    yield
+@pytest.fixture(scope='session')
+def main_db_meta(db, apply_migrations):
+    meta = MetaData()
+    meta.reflect(bind=db)
 
-    from jsearch.common.tables import TABLES
-
-    tables = ",".join([table.name for table in TABLES])
-    db.execute(f"TRUNCATE {tables};")
+    return meta
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='session')
 def db(db_dsn):
     engine = create_engine(db_dsn)
     conn = engine.connect()
@@ -74,6 +78,19 @@ async def sa_engine(db_dsn, loop: AbstractEventLoop) -> Engine:
     return await aiopg.sa.create_engine(db_dsn)
 
 
+@pytest.fixture(scope="module")
+async def main_db_wrapper(db_dsn):
+    from jsearch.syncer.database import MainDB
+
+    main_db = MainDB(db_dsn)
+    await main_db.connect()
+
+    try:
+        yield main_db
+    finally:
+        await main_db.disconnect()
+
+
 @pytest.mark.asyncio
 @pytest.fixture()
 async def storage(db_dsn: str, loop: AbstractEventLoop) -> Storage:
@@ -83,3 +100,25 @@ async def storage(db_dsn: str, loop: AbstractEventLoop) -> Storage:
     yield storage
 
     await db_pool.close()
+
+
+@pytest.fixture(autouse=True)
+def truncate_main_db(db: Engine, main_db_meta: MetaData):
+    yield
+    return truncate(db, main_db_meta, exclude='goose_db_version')
+
+
+@pytest.fixture()
+def get_main_db_dump() -> Callable[..., Any]:
+    def load(block_start: int, table: str, block_end: Optional[int] = None) -> TableDescription:
+        block_end = block_end or block_start
+        dump: Path = DUMPS_FOLDER / f'{block_start}-{block_end}.json'
+
+        dumps = load_json_dump(dump)
+        for table_dump in dumps:
+            if table_dump.name == table:
+                return table_dump
+        else:
+            raise ValueError(f'Dump is missed {table}')
+
+    yield load

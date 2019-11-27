@@ -1,35 +1,29 @@
-import json
 import logging
 import os
 
+import dsnparse
 import pytest
-from functools import partial
-from jsearch.syncer.database import RawDB
 from pathlib import Path
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import MetaData
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from typing import Optional, Callable, Any
+
+from .utils import apply_dump, load_json_dump, truncate
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 SQL_FOLDER = Path(__file__).parent / "sql"
-DUMPS_FOLDER = Path(__file__).parent / "dumps"
-
-tables = [
-    "headers",
-    "bodies",
-    "pending_transactions",
-    "receipts",
-    "accounts",
-    "rewards",
-    "reorgs",
-    "chain_splits",
-    "chain_events",
-    "internal_transactions",
-    "token_holders"
-]
+DUMPS_FOLDER = Path(__file__).parent / "dumps" / "raw_db"
 
 
 def setup_database(connection_string):
+    dsn = dsnparse.parse(connection_string)
+    engine = create_engine(f'postgres://{dsn.netloc}', execution_options={'isolation_level': 'AUTOCOMMIT'})
+    engine.execute(f'DROP DATABASE IF EXISTS "{dsn.dbname}";')
+    engine.execute(f'CREATE DATABASE "{dsn.dbname}";')
+
     engine = create_engine(connection_string)
     with engine.connect() as db:
         sql = SQL_FOLDER / "raw_db_initial.sql"
@@ -37,15 +31,17 @@ def setup_database(connection_string):
 
 
 def teardown_database(connection_string):
-    engine = create_engine(connection_string)
-    with engine.connect() as db:
-        for table in tables:
-            db.execute(f"DROP TABLE IF EXISTS {table}")
-
-
-def truncate(db):
-    for table in tables:
-        db.execute(f"TRUNCATE {table};")
+    dsn = dsnparse.parse(connection_string)
+    engine = create_engine(f'postgres://{dsn.netloc}', execution_options={'isolation_level': 'AUTOCOMMIT'})
+    engine.execute(
+        f"""
+        SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE pg_stat_activity.datname = '{dsn.dbname}'
+            AND pid <> pg_backend_pid()
+        """
+    )
+    engine.execute(f'DROP DATABASE IF EXISTS "{dsn.dbname}";')
 
 
 @pytest.fixture(scope="session")
@@ -54,19 +50,21 @@ def raw_db_dsn():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def raw_db_create_tables(request, raw_db_dsn):
+def raw_db_create_tables(raw_db_dsn):
     setup_database(connection_string=raw_db_dsn)
-
-    finalizer = partial(teardown_database, raw_db_dsn)
-    request.addfinalizer(finalizer)
-
-
-@pytest.fixture(scope="function")
-def raw_db_name(raw_db_dsn):
-    return raw_db_dsn.split('/')[-1]
+    yield
+    teardown_database(raw_db_dsn)
 
 
-@pytest.fixture()
+@pytest.fixture(scope='session', autouse=True)
+def raw_db_meta(raw_db):
+    meta = MetaData()
+    meta.reflect(bind=raw_db)
+
+    return meta
+
+
+@pytest.fixture(scope="session")
 def raw_db(raw_db_dsn):
     engine = create_engine(raw_db_dsn)
     conn = engine.connect()
@@ -74,8 +72,10 @@ def raw_db(raw_db_dsn):
     conn.close()
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 async def raw_db_wrapper(raw_db_dsn):
+    from jsearch.syncer.database import RawDB
+
     raw_db_wrapper = RawDB(raw_db_dsn)
 
     await raw_db_wrapper.connect()
@@ -83,39 +83,25 @@ async def raw_db_wrapper(raw_db_dsn):
     await raw_db_wrapper.disconnect()
 
 
-@pytest.fixture
-def clean_test_raw_db(db):
-    return partial(truncate, db)
+@pytest.fixture(scope="function", autouse=True)
+def truncate_raw_db(raw_db: Engine, raw_db_meta: MetaData):
+    yield
+    return truncate(raw_db, raw_db_meta)
 
 
-def load_sample(engine, path):
-    meta = MetaData()
-    meta.reflect(bind=engine)
-    sample_data = {}
-    for t in meta.sorted_tables:
-        p = path / f'{t}.json'
-        if not p.exists():
-            continue
-        table_data = json.load(p.open())
-        engine.execute(t.insert(), *table_data)
-        sample_data[t.name] = table_data
-    return sample_data
+@pytest.fixture(scope="module")
+def load_blocks(
+        raw_db: Engine,
+        raw_db_meta: MetaData,
+        raw_db_create_tables: None
+) -> Callable[..., Any]:
+    def load(block_start, block_end: Optional[int] = None) -> None:
+        block_end = block_end or block_start
+        dump: Path = DUMPS_FOLDER / f'{block_start}-{block_end}.json'
 
+        tables = load_json_dump(dump)
+        apply_dump(raw_db, tables)
 
-@pytest.fixture
-def raw_db_sample(raw_db_dsn):
-    engine = create_engine(raw_db_dsn)
-    yield load_sample(engine, DUMPS_FOLDER / 'raw_db_sample')
-    truncate(engine)
+    yield load
 
-
-@pytest.fixture
-def raw_db_split_sample(raw_db_dsn):
-    engine = create_engine(raw_db_dsn)
-    yield load_sample(engine, DUMPS_FOLDER / 'raw_db_split_sample')
-    truncate(engine)
-
-
-@pytest.fixture(scope='function', autouse=True)
-def truncate_raw_db(raw_db):
-    truncate(raw_db)
+    truncate(raw_db, raw_db_meta)

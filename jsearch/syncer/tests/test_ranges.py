@@ -2,22 +2,10 @@ import pytest
 from typing import List, NamedTuple, Optional
 
 from jsearch.common.structs import BlockRange
-from jsearch.syncer.database import MainDB
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
 from jsearch.tests.plugins.databases.factories.chain_events import ChainEventFactory
 
 pytestmark = pytest.mark.asyncio
-
-
-@pytest.fixture
-async def main_db(db_dsn):
-    main_db = MainDB(db_dsn)
-    await main_db.connect()
-
-    try:
-        yield main_db
-    finally:
-        await main_db.disconnect()
 
 
 @pytest.fixture
@@ -114,7 +102,7 @@ class RawDBMock(NamedTuple):
     )
 )
 async def test_fills_holes(
-        main_db,
+        main_db_wrapper,
         sync_block_range,
         sync_block,
         db,
@@ -135,7 +123,12 @@ async def test_fills_holes(
     for range_start, range_end in case.synced_ranges:
         sync_block_range(range_start, range_end)
 
-    manager = Manager(service=None, main_db=main_db, raw_db=RawDBMock(case.raw_db_events), sync_range=case.sync_range)
+    manager = Manager(
+        service=None,
+        main_db=main_db_wrapper,
+        raw_db=RawDBMock(case.raw_db_events),
+        sync_range=case.sync_range
+    )
     manager._running = True
     manager.node_id = node_id
 
@@ -151,7 +144,7 @@ async def test_fills_holes(
         assert n == numbers[i].number
 
     # check - there are no holes
-    assert not await main_db.check_on_holes(*case.sync_range)
+    assert not await main_db_wrapper.check_on_holes(*case.sync_range)
 
 
 class FindHoleCase(NamedTuple):
@@ -202,7 +195,7 @@ class FindHoleCase(NamedTuple):
     )
 )
 async def test_find_holes(
-        main_db,
+        main_db_wrapper,
         sync_block_range,
         sync_block,
         case
@@ -215,7 +208,7 @@ async def test_find_holes(
             sync_block_range(range_start, range_end)
 
     # then
-    gap = await main_db.check_on_holes(case.sync_range.start, case.sync_range.end)
+    gap = await main_db_wrapper.check_on_holes(case.sync_range.start, case.sync_range.end)
 
     # when
     assert gap == case.gap

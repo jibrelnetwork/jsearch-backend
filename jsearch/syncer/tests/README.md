@@ -3,61 +3,60 @@ Desing of syncer unit tests:
 
 1. Sync the chain event
    1. Create chain event
-      - [ ] a block data
-      - [ ] an uncles
-      - [ ] transactions
-      - [ ] receipts
-      - [ ] logs
-      - [ ] accounts states
-      - [ ] accounts base
-      - [ ] internal transactions
-      - [ ] token holders
-      - [ ] token transfers
-      - [ ] wallet events
-      - [ ] assets summary
-      - [ ] chain event with type 'created'
+      - [x] Block was recorded to db. 
+          - [x] a block data
+          - [x] uncles
+          - [x] transactions
+          - [x] receipts
+          - [x] logs
+          - [x] accounts states
+          - [x] accounts base
+          - [x] internal transactions
+          - [x] token holders
+          - [x] token transfers
+          - [x] wallet events
+          - [x] assets summary
+          - [x] assets summary pairs
+          - [x] chain event with type 'created'
+      - [ ] Block can't be replaces without re-sync mode 
    2. Split chain event. 
-      - [ ] All parts of forked blocks was marked as forked
-          - [ ] a block data
-          - [ ] an uncles
-          - [ ] transactions
-          - [ ] receipts
-          - [ ] logs
-          - [ ] accounts states
-          - [ ] accounts base
-          - [ ] internal transactions
-          - [ ] token holders
-          - [ ] token transfers
-          - [ ] wallet events
-          - [ ] assets summary
-      - [ ] All parts of canonical blocks was marked as not forked
-          - [ ] a block data
-          - [ ] an uncles
-          - [ ] transactions
-          - [ ] receipts
-          - [ ] logs
-          - [ ] accounts states
-          - [ ] accounts base
-          - [ ] internal transactions
-          - [ ] token holders
-          - [ ] token transfers
-          - [ ] wallet events
-          - [ ] assets summary
-      - [ ] Check splits processing can find block chains
-        - [ ] Check old chain
-        - [ ] Check new chain
+      - [x] All parts of forked blocks was marked as forked
+          - [x] a block data
+          - [x] uncles
+          - [x] transactions
+          - [x] receipts
+          - [x] logs
+          - [x] accounts states
+          - [x] internal transactions
+          - [x] token holders
+          - [x] token transfers
+          - [x] wallet events
+          - [x] assets summary
+      - [x] All parts of canonical blocks was marked as not forked
+          - [x] a block data
+          - [x] uncles
+          - [x] transactions
+          - [x] receipts
+          - [x] logs
+          - [x] accounts states
+          - [x] internal transactions
+          - [x] token holders
+          - [x] token transfers
+          - [x] wallet events
+          - [x] assets summary
       - [ ] Check splits applying
-        - [ ] Check drop chain case
-        - [ ] Check add chain case
-        - [ ] Check drop and add chains case
-        - [ ] Chech chain event with type 'split'
+        - [ ] Check new chain are in canonical chain
+        - [ ] Check old chain are not in canonical chain  
+        - [ ] Check chain event with type 'split' is recorded 
    3. Reinserted events
       - [ ] Reinserted events writes to db
       - [ ] Reinserted events don't affected any data
    4. Resync mode
       - [ ] block rewriting 
       - [ ] split re-applying
-      - [ ] resync-chain-splits mode on/off
+        - [ ] Check all missed create events are synced
+        - [ ] Check all missed splits events are synced
+        - [ ] resync-chain-splits mode on/off
 2. Test the cli 
    1 One worker entrypoints
      - [ ] sync range validation
@@ -85,13 +84,13 @@ Desing of syncer unit tests:
        - [ ] Error raises due to insert procedure calling.
 5. Processing.
    1. Wallet events 
-      - [ ] wallet event types recognitions 
+      - [x] wallet event types recognitions 
       - [ ] transitions from transactions
       - [ ] transitions from internal transactions
    2. Logs
       - [ ] decode ERC-20 
    3. Token transfers
-      - [ ] transition from logs 
+      - [x] transition from logs 
    4. Assets summary
       - [ ] transition from token holder balances
       - [ ] transition from accounts states
