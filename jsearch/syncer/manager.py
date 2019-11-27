@@ -177,10 +177,6 @@ class Manager:
         self.node_id = settings.ETH_NODE_ID
 
     async def start(self):
-        can_run = await self.try_lock_range()
-        if can_run is not True:
-            logger.error("Syncer instance already exists, exit now", extra={'sync range': self.sync_range})
-            return
         logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
         self._running = True
 
@@ -377,9 +373,6 @@ class Manager:
         if next_event_type is not None:
             ended_at = time.perf_counter()
             METRIC_SYNCER_EVENT_SYNC_DURATION.labels(next_event_type).observe(ended_at - started_at)
-
-    async def try_lock_range(self):
-        return await self.main_db.try_advisory_lock(self.sync_range.start, self.sync_range.end)
 
 
 async def get_range_and_check_holes(

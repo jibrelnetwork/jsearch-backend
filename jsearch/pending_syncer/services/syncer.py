@@ -16,8 +16,6 @@ from jsearch.syncer.database import MainDB, RawDB
 
 logger = logging.getLogger(__name__)
 
-ADVISORY_LOCK_ID = -1
-
 
 class PendingSyncerService(mode.Service):
     def __init__(self, raw_db_dsn: str, main_db_dsn: str, sync_range: BlockRange, *args: Any, **kwargs: Any) -> None:
@@ -39,13 +37,6 @@ class PendingSyncerService(mode.Service):
     async def syncer(self) -> None:
         pending_txs: List[Dict[str, Any]] = []
         last_sync_id = None
-
-        can_run = await self.try_lock()
-        if can_run is not True:
-            logger.error("Pending Syncer instance already exists, exit now")
-            await self.stop()
-            # we schedule shutdown on root Worker
-            self.beacon.root.data.schedule_shutdown()
 
         while not self.should_stop:
             last_sync_id, pending_txs = await self.get_and_process_pending_txs(last_sync_id, pending_txs)
@@ -144,6 +135,3 @@ class PendingSyncerService(mode.Service):
         )
 
         return pending_txs
-
-    async def try_lock(self):
-        return await self.main_db.try_advisory_lock(ADVISORY_LOCK_ID, None)
