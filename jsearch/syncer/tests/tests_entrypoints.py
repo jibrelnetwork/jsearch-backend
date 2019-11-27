@@ -1,6 +1,6 @@
 import click.testing
 import pytest
-from typing import List
+from typing import List, Dict
 
 import jsearch.syncer.main
 from jsearch.tests.common import CODE_OK, CODE_ERROR_FROM_CLICK
@@ -36,3 +36,50 @@ async def test_syncer_entrypoint(
 ) -> None:
     result = cli_runner.invoke(jsearch.syncer.main.run, call_args)
     assert result.exit_code == exit_code
+
+
+class MockFixture(object):
+    pass
+
+
+@pytest.mark.usefixtures('_mock_loop_runners')
+@pytest.mark.parametrize(
+    'env, expected',
+    [
+        ({'SYNC_RANGE': '1000-2000'}, {'sync_range': '1000-2000'}),
+        ({'SYNCER_WORKERS': '15'}, {'workers': 15}),
+        ({'SYNCER_CHECK_LAG': '0'}, {'check_lag': False}),
+        ({'SYNCER_CHECK_LAG': '1'}, {'check_lag': True}),
+        ({'SYNCER_CHECK_HOLES': '0'}, {'check_holes': False}),
+        ({'SYNCER_CHECK_HOLES': '1'}, {'check_holes': True}),
+        ({'SYNCER_RESYNC': '0'}, {'resync': False}),
+        ({'SYNCER_RESYNC': '1'}, {'resync': True}),
+        ({'SYNCER_RESYNC_CHAIN_SPLITS': '0'}, {'resync_chain_splits': False}),
+        ({'SYNCER_RESYNC_CHAIN_SPLITS': '1'}, {'resync_chain_splits': True}),
+
+    ],
+    ids=[
+        "sync-range",
+        "syncer-workers",
+        "syncer-check-lag-false",
+        "syncer-check-lag-true",
+        "syncer-check-holes-false",
+        "syncer-check-holes-true",
+        "syncer-resync-false",
+        "syncer-resync-true",
+        "syncer-resync-chain-splits-false",
+        "syncer-resync-chain-splits-true",
+    ]
+)
+async def test_syncer_env_kwargs(
+        cli_runner: click.testing.CliRunner,
+        mocker: MockFixture,
+        env: Dict[str, str],
+        expected: Dict[str, str],
+) -> None:
+    kwargs = {}
+    mocker.patch('jsearch.syncer.main.run.invoke', lambda ctx: kwargs.update(ctx.params))
+    result = cli_runner.invoke(jsearch.syncer.main.run, env=env)
+
+    assert {key: value for key, value in kwargs.items() if key in expected} == expected
+    assert result.exit_code == CODE_OK

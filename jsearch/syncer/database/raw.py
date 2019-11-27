@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 GENESIS_BLOCK_NUMBER = 0
 
-RAWDB_POOL_SIZE = 1
+RAWDB_POOL_SIZE = 2
 
 
 class RawDB(DBWrapper):
@@ -120,6 +120,18 @@ class RawDB(DBWrapper):
             ORDER BY id ASC LIMIT 1
         """
         return await self.fetch_one(q, *params)
+
+    @timeit('[RAW DB] Get insert chain event')
+    async def get_insert_chain_event_by_block_hash(self, block_hash: str, node_id: str) -> Dict[str, Any]:
+        query = """
+        SELECT * FROM chain_events
+        WHERE
+            block_hash = %s
+            AND node_id = %s
+            AND "type" = 'created'
+        LIMIT 1;
+        """
+        return await self.fetch_one(query, block_hash, node_id)
 
     @timeit('[RAW DB] Is it canonical block query')
     async def is_canonical_block(self, block_hash):

@@ -2,6 +2,8 @@ from typing import Callable, Awaitable
 
 from aiohttp import web
 
+from jsearch.api.helpers import get_request_canonical_path
+
 Handler = Callable[[web.Request], Awaitable[web.StreamResponse]]
 
 
@@ -18,13 +20,7 @@ async def cors_middleware(request: web.Request, handler: Handler) -> web.StreamR
 
 @web.middleware
 async def prom_middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
-    request_path = request.path
-
-    if request.match_info.route.resource is not None:
-        # If route is well-known for the server, e.g. `/v1/blocks/{tag}`,
-        # replace request's path with request's canonical path. This allows to
-        # show metrics by specific endpoint.
-        request_path = request.match_info.route.resource.canonical
+    request_path = get_request_canonical_path(request)
 
     with request.app['metrics']['REQUESTS_LATENCY'].labels(request_path).time():
         with request.app['metrics']['REQUESTS_IN_PROGRESS'].labels(request_path, request.method).track_inprogress():

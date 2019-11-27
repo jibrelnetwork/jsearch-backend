@@ -4,6 +4,7 @@ import factory
 import pytest
 from functools import partial
 
+from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.tables import assets_summary_t, assets_summary_pairs_t
 from jsearch.tests.plugins.databases.factories.common import generate_address
 from .common import session, Base
@@ -49,9 +50,12 @@ class AssetsSummaryFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session_persistence = 'flush'
 
     @classmethod
-    def create_with_pair(cls, assets_summary_pair_factory: 'AssetsSummaryPairFactory', **kwargs):
+    def maybe_create_with_pair(cls, assets_summary_pair_factory: 'AssetsSummaryPairFactory', **kwargs):
         instance = cls.create(**kwargs)
-        assets_summary_pair_factory.create(address=instance.address, asset_address=instance.asset_address)
+
+        if instance.asset_address != ETHER_ASSET_ADDRESS:
+            # WTF: Ether assets pairs are not stored in `assets_summary_pairs`.
+            assets_summary_pair_factory.create(address=instance.address, asset_address=instance.asset_address)
 
         return instance
 

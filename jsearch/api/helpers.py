@@ -287,21 +287,34 @@ async def load_json_or_raise_api_error(request: web.Request) -> Json:
         )
 
 
+def get_request_canonical_path(request: web.Request) -> str:
+    request_path = request.path
+
+    if request.match_info.route.resource is not None:
+        # If route is well-known for the server, e.g. `/v1/blocks/{tag}`,
+        # replace request's path with request's canonical path. This allows to
+        # show metrics by specific endpoint.
+        request_path = request.match_info.route.resource.canonical
+
+    return request_path
+
+
 async def maybe_orphan_request(
         request: web.Request,
-        last_chain_insert_id: Optional[int],
+        last_chain_event_id: Optional[int],
         last_data_block: Optional[int],
         last_tip_block: Optional[int],
 ) -> Optional[web.Response]:
     """Orphans request if data consistency was affected by a chain split."""
     storage = request.app['storage']
     requests_orphaned_metric = request.app['metrics']['REQUESTS_ORPHANED']
+    request_path = get_request_canonical_path(request)
 
     last_block = max((last_data_block, last_tip_block), key=lambda x: x or 0)
-    should_orphan = await storage.is_data_affected_by_chain_split(last_chain_insert_id, last_block)
+    should_orphan = await storage.is_data_affected_by_chain_split(last_chain_event_id, last_block)
 
     if should_orphan:
-        requests_orphaned_metric.labels(request.path).inc()
+        requests_orphaned_metric.labels(request_path).inc()
 
         return api_success(data={"isOrphaned": True})
 
