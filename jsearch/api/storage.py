@@ -876,7 +876,7 @@ class Storage:
         wallet_events = []
         for event in events:
             tx_data = transactions_map.get(event['tx_hash'])
-            tx_data['value'] = str(int(tx_data['value'], 16))
+            tx_data['value'] = str(int(tx_data['value'], 16))  # type: ignore
             if tx_data:
                 tx = models.Transaction(**tx_data).to_dict()
             else:
