@@ -9,18 +9,12 @@ CREATE TABLE public.accounts (
 );
 
 
-ALTER TABLE public.accounts OWNER TO postgres;
-
-
 CREATE SEQUENCE public.accounts_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
-ALTER TABLE public.accounts_id_seq OWNER TO postgres;
 
 
 ALTER SEQUENCE public.accounts_id_seq OWNED BY public.accounts.id;
@@ -33,9 +27,6 @@ CREATE TABLE public.bodies (
     fields jsonb,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
-
-
-ALTER TABLE public.bodies OWNER TO postgres;
 
 
 CREATE TABLE public.chain_events (
@@ -55,18 +46,12 @@ CREATE TABLE public.chain_events (
 );
 
 
-ALTER TABLE public.chain_events OWNER TO postgres;
-
-
 CREATE SEQUENCE public.chain_events_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
-ALTER TABLE public.chain_events_id_seq OWNER TO postgres;
 
 
 ALTER SEQUENCE public.chain_events_id_seq OWNED BY public.chain_events.id;
@@ -86,18 +71,12 @@ CREATE TABLE public.chain_splits (
 );
 
 
-ALTER TABLE public.chain_splits OWNER TO postgres;
-
-
 CREATE SEQUENCE public.chain_splits_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
-ALTER TABLE public.chain_splits_id_seq OWNER TO postgres;
 
 
 ALTER SEQUENCE public.chain_splits_id_seq OWNED BY public.chain_splits.id;
@@ -112,9 +91,6 @@ CREATE TABLE public.goose_db_version (
 );
 
 
-ALTER TABLE public.goose_db_version OWNER TO postgres;
-
-
 CREATE SEQUENCE public.goose_db_version_id_seq
     AS integer
     START WITH 1
@@ -122,9 +98,6 @@ CREATE SEQUENCE public.goose_db_version_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
-ALTER TABLE public.goose_db_version_id_seq OWNER TO postgres;
 
 
 ALTER SEQUENCE public.goose_db_version_id_seq OWNED BY public.goose_db_version.id;
@@ -137,9 +110,6 @@ CREATE TABLE public.headers (
     fields jsonb,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
-
-
-ALTER TABLE public.headers OWNER TO postgres;
 
 
 CREATE TABLE public.internal_transactions (
@@ -156,9 +126,6 @@ CREATE TABLE public.internal_transactions (
 );
 
 
-ALTER TABLE public.internal_transactions OWNER TO postgres;
-
-
 CREATE SEQUENCE public.internal_transactions_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -167,11 +134,7 @@ CREATE SEQUENCE public.internal_transactions_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.internal_transactions_id_seq OWNER TO postgres;
-
-
 ALTER SEQUENCE public.internal_transactions_id_seq OWNED BY public.internal_transactions.id;
-
 
 
 CREATE TABLE public.pending_transactions (
@@ -186,18 +149,12 @@ CREATE TABLE public.pending_transactions (
 );
 
 
-ALTER TABLE public.pending_transactions OWNER TO postgres;
-
-
 CREATE SEQUENCE public.pending_transactions_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
-ALTER TABLE public.pending_transactions_id_seq OWNER TO postgres;
 
 
 ALTER SEQUENCE public.pending_transactions_id_seq OWNED BY public.pending_transactions.id;
@@ -212,9 +169,6 @@ CREATE TABLE public.receipts (
 );
 
 
-ALTER TABLE public.receipts OWNER TO postgres;
-
-
 CREATE TABLE public.reorgs (
     id bigint NOT NULL,
     block_number bigint NOT NULL,
@@ -227,18 +181,12 @@ CREATE TABLE public.reorgs (
 );
 
 
-ALTER TABLE public.reorgs OWNER TO postgres;
-
-
 CREATE SEQUENCE public.reorgs_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
-ALTER TABLE public.reorgs_id_seq OWNER TO postgres;
 
 
 ALTER SEQUENCE public.reorgs_id_seq OWNED BY public.reorgs.id;
@@ -255,18 +203,12 @@ CREATE TABLE public.rewards (
 );
 
 
-ALTER TABLE public.rewards OWNER TO postgres;
-
-
 CREATE SEQUENCE public.rewards_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
-ALTER TABLE public.rewards_id_seq OWNER TO postgres;
 
 
 ALTER SEQUENCE public.rewards_id_seq OWNED BY public.rewards.id;
@@ -284,18 +226,12 @@ CREATE TABLE public.token_holders (
 );
 
 
-ALTER TABLE public.token_holders OWNER TO postgres;
-
-
 CREATE SEQUENCE public.token_holders_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
-ALTER TABLE public.token_holders_id_seq OWNER TO postgres;
 
 
 ALTER SEQUENCE public.token_holders_id_seq OWNED BY public.token_holders.id;

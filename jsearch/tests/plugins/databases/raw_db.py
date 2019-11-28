@@ -20,7 +20,10 @@ DUMPS_FOLDER = Path(__file__).parent / "dumps" / "raw_db"
 
 def setup_database(connection_string):
     dsn = dsnparse.parse(connection_string)
-    engine = create_engine(f'postgres://{dsn.netloc}', execution_options={'isolation_level': 'AUTOCOMMIT'})
+    engine = create_engine(
+        f'postgres://{dsn.netloc}/postgres',
+        execution_options={'isolation_level': 'AUTOCOMMIT'}
+    )
     engine.execute(f'DROP DATABASE IF EXISTS "{dsn.dbname}";')
     engine.execute(f'CREATE DATABASE "{dsn.dbname}";')
 
@@ -32,7 +35,10 @@ def setup_database(connection_string):
 
 def teardown_database(connection_string):
     dsn = dsnparse.parse(connection_string)
-    engine = create_engine(f'postgres://{dsn.netloc}', execution_options={'isolation_level': 'AUTOCOMMIT'})
+    engine = create_engine(
+        f'postgres://{dsn.netloc}/postgres',
+        execution_options={'isolation_level': 'AUTOCOMMIT'}
+    )
     engine.execute(
         f"""
         SELECT pg_terminate_backend(pg_stat_activity.pid)
