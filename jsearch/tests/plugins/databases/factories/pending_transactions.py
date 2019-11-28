@@ -59,4 +59,5 @@ class PendingTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
 
 @pytest.fixture()
 def pending_transaction_factory():
-    return PendingTransactionFactory
+    yield PendingTransactionFactory
+    PendingTransactionFactory.reset_sequence()

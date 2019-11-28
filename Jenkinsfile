@@ -47,7 +47,7 @@ builder(
                                         environment: [
                                                 POSTGRES_USER: 'app',
                                                 POSTGRES_PASSWORD: 'pass',
-                                                POSTGRES_DB: 'jsearch-rawdb',
+                                                POSTGRES_DB: 'postgres',
                                         ],
                                 ],
                         ],

@@ -22,14 +22,6 @@ class RawDB(DBWrapper):
     """
     pool_size: int = RAWDB_POOL_SIZE
 
-    async def get_latest_available_block_number(self):
-        q = """SELECT block_number FROM "bodies" order by block_number desc limit 1"""
-
-        row = await self.fetch_one(q)
-
-        if row:
-            return row['block_number']
-
     async def get_pending_txs(self, start_id, end_id):
         q = """
         SELECT
