@@ -912,7 +912,7 @@ async def test_get_wallet_events_with_tip(
                     'to': tx.to,
                     'transactionIndex': tx.transaction_index,
                     'v': tx.v,
-                    'value': tx.value
+                    'value': str(int(tx.value, 16))
                 }
             }
         ]
