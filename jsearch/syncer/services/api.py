@@ -1,6 +1,6 @@
 import json
 
-import asyncpg
+import aiopg
 from aiohttp import web
 from functools import partial
 from typing import Any
@@ -90,10 +90,10 @@ async def healthcheck(request: web.Request) -> web.Response:
 
 
 async def on_startup(app: web.Application) -> None:
-    app['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB, min_size=1, max_size=1)
-    app['db_pool_raw'] = await asyncpg.create_pool(settings.JSEARCH_RAW_DB, min_size=1, max_size=1)
+    app['db_pool'] = await aiopg.sa.create_engine(settings.JSEARCH_MAIN_DB, min_size=1, max_size=1)
+    app['db_pool_raw'] = await aiopg.sa.create_engine(settings.JSEARCH_RAW_DB, min_size=1, max_size=1)
 
 
 async def on_shutdown(app: web.Application) -> None:
-    await app['db_pool'].close()
+    app['db_pool'].close()
     await app['db_pool_raw'].close()

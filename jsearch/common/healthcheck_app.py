@@ -6,13 +6,12 @@ Common functionality for the CLI workers:
   * worker
   * wallet_worker
 """
-import asyncpg
+import aiopg
 from aiohttp import web
 
+from jsearch import settings
 from jsearch.api.handlers import monitoring
 from jsearch.api.middlewares import cors_middleware
-
-from jsearch import settings
 from jsearch.common import stats
 
 
@@ -50,8 +49,8 @@ async def healthcheck(request: web.Request) -> web.Response:
 
 
 async def on_startup(app: web.Application) -> None:
-    app['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB)
+    app['db_pool'] = await aiopg.sa.create_engine(settings.JSEARCH_MAIN_DB)
 
 
 async def on_shutdown(app: web.Application) -> None:
-    await app['db_pool'].close()
+    app['db_pool'].close()

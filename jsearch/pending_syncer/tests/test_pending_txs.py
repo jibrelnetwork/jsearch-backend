@@ -2,6 +2,7 @@ import asyncio
 
 import datetime
 import pytest
+from aiopg.sa import Engine
 from psycopg2._json import Json
 from sqlalchemy import select
 from sqlalchemy.engine import Engine

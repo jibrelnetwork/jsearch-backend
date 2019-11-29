@@ -62,7 +62,7 @@ class DataChecker(mode.Service):
         await self.disconnect()
 
     async def connect(self) -> None:
-        self.db_pool = await aiopg.create_pool(self.main_db_dsn,
+        self.db_pool = await aiopg.sa.create_engine(self.main_db_dsn,
                                                cursor_factory=DictCursor,
                                                maxsize=settings.WORKERS)
 

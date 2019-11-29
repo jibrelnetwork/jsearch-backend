@@ -6,7 +6,7 @@ from jsearch.common.types import Rows
 logger = logging.getLogger(__name__)
 
 
-def in_app_distinct(rows: Rows) -> Rows:
+def in_app_distinct(rows: Rows, exclude=(dict, )) -> Rows:
     """
     There're cases when `SELECT DISTINCT` slows down DB performance so much,
     that removing duplicates in-app is faster, than in a DB.
@@ -15,7 +15,7 @@ def in_app_distinct(rows: Rows) -> Rows:
     distinct_keys: Set[Tuple] = set()
 
     for row in rows:
-        distinct_key = tuple(row.values())
+        distinct_key = tuple([value for value in row.values() if not isinstance(value, exclude)])
 
         if distinct_key in distinct_keys:
             continue

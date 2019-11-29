@@ -1,9 +1,8 @@
 import asyncio
-import json
 import logging
 from collections import defaultdict
 
-import asyncpgsa
+from aiopg.sa import Engine
 from functools import partial
 from sqlalchemy import select, and_, desc, true
 from typing import DefaultDict, Tuple, Set
@@ -65,11 +64,11 @@ from jsearch.api.database_queries.wallet_events import (
     get_wallet_events_query,
     get_eth_transfers_by_address_query,
 )
-from jsearch.api.helpers import Tag, fetch_row, get_cursor_percent, TAG_LATEST
-from jsearch.api.helpers import fetch
+from jsearch.api.helpers import Tag, get_cursor_percent, TAG_LATEST
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
+from jsearch.common.db import DbActionsMixin
 from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
@@ -83,6 +82,17 @@ DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
 MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
 
 BLOCKS_IN_QUERY = 10
+
+
+def process_block(row: Dict[str, Any]) -> Dict[str, Any]:
+    row.update({
+        'uncles': row['uncles'] or [],
+        'transactions': row['transactions'] or [],
+        'static_reward': int(row['static_reward']),
+        'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
+        'tx_fees': int(row['tx_fees']),
+    })
+    return row
 
 
 def _group_by_block(items: List[Dict[str, Any]]) -> DefaultDict[str, List[Dict[str, Any]]]:
@@ -104,18 +114,15 @@ def _rows_to_token_transfers(rows: List[Dict[str, Any]]) -> List[models.TokenTra
     return token_transfers
 
 
-class Storage:
+class Storage(DbActionsMixin):
 
-    def __init__(self, pool):
-        self.pool = pool
+    def __init__(self, engine: Engine) -> None:
+        self.engine = engine
 
     async def get_latest_chain_event_id(self) -> Optional[int]:
         query = select_latest_chain_event_id()
-
-        async with self.pool.acquire() as conn:
-            row = await fetch_row(conn, query)
-
-        return row and row['max_id']  # type: ignore
+        row = await self.fetch_one(query)
+        return row and row['max_id']
 
     async def is_data_affected_by_chain_split(
             self,
@@ -141,22 +148,19 @@ class Storage:
             last_affected_block=last_affected_block,
         )
 
-        async with self.pool.acquire() as conn:
-            row = await fetch_row(conn, query)
-
+        row = await self.fetch_one(query)
         return row is not None
 
     async def get_account(self, address, tag) -> Tuple[Optional[models.Account], Optional[LastAffectedBlock]]:
         account_state_query = get_account_state_query(address, tag)
         account_base_query = get_account_base_query(address)
 
-        async with self.pool.acquire() as conn:
-            state_row = await fetch_row(conn, account_state_query)
+        state_row = await self.fetch_one(account_state_query)
 
-            if state_row is None:
-                return None, None
+        if state_row is None:
+            return None, None
 
-            base_row = await fetch_row(conn, account_base_query)
+        base_row = await self.fetch_one(account_base_query)
 
         state_row['balance'] = int(state_row['balance'])
 
@@ -188,9 +192,7 @@ class Storage:
         else:
             query = get_tx_by_address_and_timestamp_query(query_limit, address, timestamp, ordering, tx_index)
 
-        async with self.pool.acquire() as connection:
-            rows = await fetch(connection, query)
-
+        rows = await self.fetch_all(query)
         rows = in_app_distinct(rows)[:limit]
 
         txs = [models.Transaction(**r) for r in rows]
@@ -200,12 +202,11 @@ class Storage:
 
     async def get_block_transactions(self, tag):
         fields = models.Transaction.select_fields()
-
         if tag.is_hash():
-            query = f"SELECT {fields} FROM transactions WHERE block_hash=$1 AND is_forked=false " \
+            query = f"SELECT {fields} FROM transactions WHERE block_hash=%s AND is_forked=false " \
                     f"ORDER BY transaction_index;"
         elif tag.is_number():
-            query = f"SELECT {fields} FROM transactions WHERE block_number=$1 AND is_forked=false " \
+            query = f"SELECT {fields} FROM transactions WHERE block_number=%s AND is_forked=false " \
                     f"ORDER BY transaction_index;"
         else:
             query = f"""
@@ -213,44 +214,42 @@ class Storage:
                 WHERE block_number=(SELECT max(number) FROM blocks) AND is_forked=false ORDER BY transaction_index;
         """
 
-        async with self.pool.acquire() as conn:
-            if tag.is_latest():
-                rows = await conn.fetch(query)
-            else:
-                rows = await conn.fetch(query, tag.value)
+        if tag.is_latest():
+            rows = await self.fetch_all(query)
+        else:
+            rows = await self.fetch_all(query, tag.value)
 
-            # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
-            # `in_app_distinct` instead.
-            rows = in_app_distinct([dict(row) for row in rows])
+        # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
+        # `in_app_distinct` instead.
+        rows = in_app_distinct(rows)
 
-            return [models.Transaction(**r) for r in rows]
+        return [models.Transaction(**r) for r in rows]
 
     async def get_block_internal_transactions(self, tag, parent_tx_hash=None):
         fields = models.InternalTransaction.select_fields()
         params = [tag.value]
 
         if tag.is_hash():
-            condition = "block_hash=$1 AND is_forked=false"
+            condition = "block_hash=%s AND is_forked=false"
         elif tag.is_number():
-            condition = "block_number=$1 AND is_forked=false"
+            condition = "block_number=%s AND is_forked=false"
         else:
             condition = "block_number=(SELECT max(number) FROM blocks) AND is_forked=false"
             params = []
 
         if parent_tx_hash:
-            condition += " AND parent_tx_hash=$2"
+            condition += " AND parent_tx_hash=%s"
             params.append(parent_tx_hash)
 
         q = f"""SELECT {fields} FROM internal_transactions
                     WHERE {condition} AND is_forked=false
                     ORDER BY transaction_index;"""
 
-        async with self.pool.acquire() as conn:
-            if tag.is_latest():
-                rows = await conn.fetch(q)
-            else:
-                rows = await conn.fetch(q, *params)
-            return [models.InternalTransaction(**r) for r in rows]
+        if tag.is_latest():
+            rows = await self.fetch_all(q)
+        else:
+            rows = await self.fetch_all(q, *params)
+        return [models.InternalTransaction(**r) for r in rows]
 
     async def get_block(self, tag: Tag):
         if tag.is_hash():
@@ -262,32 +261,12 @@ class Storage:
         else:
             query = get_last_block_query()
 
-        async with self.pool.acquire() as conn:
-            query, params = asyncpgsa.compile_query(query)
-            row = await conn.fetchrow(query, *params)
+        row = await self.fetch_one(query)
+        if row is None:
+            return None
 
-            if row is None:
-                return None
-
-            uncles = row['uncles'] or []
-            if uncles:
-                uncles = json.loads(uncles)  # type: ignore
-
-            txs = row['transactions'] or []
-            if txs:
-                txs = json.loads(txs)  # type: ignore
-
-            # TODO: int transformation should do serializer
-            data = dict(row)
-            data.update(
-                transactions=txs,
-                uncles=uncles,
-                tx_fees=int(data['tx_fees']),
-                static_reward=int(data['static_reward']),
-                uncle_inclusion_reward=int(data['uncle_inclusion_reward']),
-            )
-
-            return models.Block(**data)
+        row = process_block(row)
+        return models.Block(**row)
 
     async def get_blocks(
             self,
@@ -300,30 +279,15 @@ class Storage:
 
         query = get_query(order=order)
         reverse_query = get_query(order=order.reverse())
-        async with self.pool.acquire() as connection:
-            rows = await fetch(connection=connection, query=query)
-            progress = await get_cursor_percent(
-                connection=connection,
-                query=query,
-                reverse_query=reverse_query
-            )
 
-        for row in rows:
-            uncles = row.get('uncles')
-            if uncles:
-                uncles = json.loads(uncles)
+        rows = await self.fetch_all(query=query)
+        rows = [process_block(row) for row in rows]
 
-            txs = row.get('transactions')
-            if txs:
-                txs = json.loads(txs)
-
-            row.update({
-                'uncles': uncles,
-                'transactions': txs,
-                'static_reward': int(row['static_reward']),
-                'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
-                'tx_fees': int(row['tx_fees']),
-            })
+        progress = await get_cursor_percent(
+            engine=self.engine,
+            query=query,
+            reverse_query=reverse_query
+        )
 
         blocks = [models.Block(**row) for row in rows]
         last_affected_block = max((r['number'] for r in rows), default=None)
@@ -353,25 +317,8 @@ class Storage:
             else:
                 raise ValueError('Invalid scheme: {scheme}')
 
-        async with self.pool.acquire() as connection:
-            rows = await fetch(connection=connection, query=query)
-
-            for row in rows:
-                uncles = row.get('uncles')
-                if uncles:
-                    uncles = json.loads(uncles)
-
-                txs = row.get('transactions')
-                if txs:
-                    txs = json.loads(txs)
-
-                row.update({
-                    'uncles': uncles,
-                    'transactions': txs,
-                    'static_reward': int(row['static_reward']),
-                    'uncle_inclusion_reward': int(row['uncle_inclusion_reward']),
-                    'tx_fees': int(row['tx_fees']),
-                })
+        rows = await self.fetch_all(query)
+        rows = [process_block(row) for row in rows]
 
         blocks = [models.Block(**row) for row in rows]
         last_affected_block = max((r['number'] for r in rows), default=None)
@@ -380,24 +327,24 @@ class Storage:
 
     async def get_uncle(self, tag):
         if tag.is_hash():
-            query = "SELECT * FROM uncles WHERE hash=$1"
+            query = "SELECT * FROM uncles WHERE hash=%s"
         elif tag.is_number():
-            query = "SELECT * FROM uncles WHERE number=$1"
+            query = "SELECT * FROM uncles WHERE number=%s"
         else:
             query = "SELECT * FROM uncles WHERE number=(SELECT max(number) FROM uncles)"
 
-        async with self.pool.acquire() as conn:
-            if tag.is_latest():
-                row = await conn.fetchrow(query)
-            else:
-                row = await conn.fetchrow(query, tag.value)
-            if row is None:
-                return None
-            data = dict(row)
-            del data['block_hash']
-            del data['is_forked']
-            data['reward'] = int(data['reward'])
-            return models.Uncle(**data)
+        if tag.is_latest():
+            row = await self.fetch_one(query)
+        else:
+            row = await self.fetch_one(query, tag.value)
+
+        if row is None:
+            return None
+
+        del row['block_hash']
+        del row['is_forked']
+        row['reward'] = int(row['reward'])
+        return models.Uncle(**row)
 
     async def get_uncles(
             self,
@@ -418,13 +365,11 @@ class Storage:
             else:
                 raise ValueError('Invalid scheme: {scheme}')
 
-        async with self.pool.acquire() as connection:
-            rows = await fetch(connection=connection, query=query)
-
-            for row in rows:
-                row.update({
-                    'reward': int(row['reward']),
-                })
+        rows = await self.fetch_all(query=query)
+        for row in rows:
+            row.update({
+                'reward': int(row['reward']),
+            })
 
         uncles = [models.Uncle(**row) for row in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
@@ -461,13 +406,11 @@ class Storage:
             else:
                 raise ValueError('Invalid scheme: {scheme}')
 
-        async with self.pool.acquire() as connection:
-            rows = await fetch(connection=connection, query=query)
-
-            for row in rows:
-                row.update({
-                    'reward': int(row['reward']),
-                })
+        rows = await self.fetch_all(query=query)
+        for row in rows:
+            row.update({
+                'reward': int(row['reward']),
+            })
 
         uncles = [models.Uncle(**row) for row in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
@@ -476,47 +419,45 @@ class Storage:
 
     async def get_block_uncles(self, tag):
         if tag.is_hash():
-            query = "SELECT * FROM uncles WHERE block_hash=$1"
+            query = "SELECT * FROM uncles WHERE block_hash=%s"
         elif tag.is_number():
-            query = "SELECT * FROM uncles WHERE block_number=$1"
+            query = "SELECT * FROM uncles WHERE block_number=%s"
         else:
             query = "SELECT * FROM uncles WHERE block_number=(SELECT max(number) FROM blocks)"
 
-        async with self.pool.acquire() as conn:
-            if tag.is_latest():
-                rows = await conn.fetch(query)
-            else:
-                rows = await conn.fetch(query, tag.value)
-            rows = [dict(r) for r in rows]
-            for r in rows:
-                del r['block_hash']
-                del r['is_forked']
-                r['reward'] = int(r['reward'])
-            return [models.Uncle(**r) for r in rows]
+        if tag.is_latest():
+            rows = await self.fetch_all(query)
+        else:
+            rows = await self.fetch_all(query, tag.value)
+
+        for r in rows:
+            del r['block_hash']
+            del r['is_forked']
+            r['reward'] = int(r['reward'])
+
+        return [models.Uncle(**r) for r in rows]
 
     async def get_transaction(self, tx_hash):
         query = get_tx_by_hash(tx_hash)
-        async with self.pool.acquire() as conn:
-            row = await fetch_row(conn, query)
-            if row:
-                return models.Transaction(**row)
+        row = await self.fetch_one(query)
+        if row:
+            return models.Transaction(**row)
 
     async def get_receipt(self, tx_hash):
-        query = "SELECT * FROM receipts WHERE transaction_hash=$1 AND is_forked=false"
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(query, tx_hash)
-            if row is None:
-                return None
-            row = dict(row)
-            del row['is_forked']
-            row['logs'] = await self.get_logs(conn, row['transaction_hash'])
-            return models.Receipt(**row)
+        query = "SELECT * FROM receipts WHERE transaction_hash=%s AND is_forked=false"
+        row = await self.fetch_one(query, tx_hash)
+        if row is None:
+            return None
+        row = dict(row)
+        del row['is_forked']
+        row['logs'] = await self.get_logs(row['transaction_hash'])
+        return models.Receipt(**row)
 
-    async def get_logs(self, conn, tx_hash: str) -> List[models.Log]:
+    async def get_logs(self, tx_hash: str) -> List[models.Log]:
         fields = models.Log.select_fields()
-        query = f"SELECT {fields} FROM logs WHERE transaction_hash=$1 AND is_forked=false ORDER BY log_index"
+        query = f"SELECT {fields} FROM logs WHERE transaction_hash=%s AND is_forked=false ORDER BY log_index"
 
-        rows = await conn.fetch(query, tx_hash)
+        rows = await self.fetch_all(query, tx_hash)
         return [models.Log(**r) for r in rows]
 
     async def get_account_logs(
@@ -548,8 +489,7 @@ class Storage:
                 log_index=log_index,
             )
 
-        async with self.pool.acquire() as conn:
-            rows = await fetch(conn, query)
+        rows = await self.fetch_all(query)
 
         logs = [models.Log(**r) for r in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
@@ -561,7 +501,7 @@ class Storage:
         for address in addresses:
             queries.append(get_account_state_query(address, TAG_LATEST))
 
-        coros = [fetch_row(self.pool, query) for query in queries]
+        coros = [self.fetch_one(query) for query in queries]
         rows = await asyncio.gather(*coros)
         rows = [r for r in rows if r is not None]
 
@@ -601,7 +541,7 @@ class Storage:
             log_index=log_index
         )
 
-        rows = await fetch(self.pool, query)
+        rows = await self.fetch_all(query)
         # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
         # `in_app_distinct` instead.
         rows_distinct = in_app_distinct(rows)[:limit]
@@ -635,7 +575,7 @@ class Storage:
             log_index=log_index
         )
 
-        rows = await fetch(self.pool, query)
+        rows = await self.fetch_all(query)
         # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
         # `in_app_distinct` instead.
         rows_distinct = in_app_distinct(rows)[:limit]
@@ -650,10 +590,9 @@ class Storage:
         SELECT input FROM transactions t
           INNER JOIN receipts r
            ON t.hash = r.transaction_hash
-           AND r.contract_address = $1
+           AND r.contract_address = %s
         """
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(query, address)
+        row = await self.fetch_one(query, address)
         return row['input']
 
     async def get_tokens_holders(
@@ -664,7 +603,6 @@ class Storage:
             balance: Optional[int],
             _id: Optional[int] = None
     ) -> Tuple[List[models.TokenHolderWithId], Optional[LastAffectedBlock]]:
-
         query = get_token_holders_query(
             limit=limit,
             ordering=ordering,
@@ -672,8 +610,7 @@ class Storage:
             balance=balance,
             _id=_id
         )
-        async with self.pool.acquire() as connection:
-            rows = await fetch(connection, query)
+        rows = await self.fetch_all(query)
 
         holders = [models.TokenHolderWithId(**r) for r in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
@@ -690,9 +627,7 @@ class Storage:
             token_addresses=[token_address]
         )
 
-        async with self.pool.acquire() as conn:
-            row = await fetch_row(conn, query)
-
+        row = await self.fetch_one(query)
         if not row:
             return None, None
 
@@ -714,8 +649,7 @@ class Storage:
             token_addresses=tokens_addresses
         )
 
-        async with self.pool.acquire() as conn:
-            rows = await fetch(conn, query)
+        rows = await self.fetch_all(query)
 
         last_affected_block = max([r['block_number'] for r in rows], default=None)
         balances = [models.TokenBalance(**row) for row in rows]
@@ -724,8 +658,7 @@ class Storage:
 
     async def get_latest_block_info(self) -> Optional[BlockInfo]:
         last_block_query = get_last_block_query()
-        async with self.pool.acquire() as conn:
-            last_block = await fetch_row(conn, query=last_block_query)
+        last_block = await self.fetch_one(query=last_block_query)
 
         if last_block is not None:
             return BlockInfo(
@@ -738,8 +671,7 @@ class Storage:
 
     async def get_block_info(self, block_hash: str) -> Optional[BlockInfo]:
         query = get_block_number_by_hash_query(block_hash)
-        async with self.pool.acquire() as conn:
-            block = await fetch_row(conn, query=query)
+        block = await self.fetch_one(query=query)
 
         if block is not None:
             return BlockInfo(
@@ -753,8 +685,7 @@ class Storage:
 
     async def get_block_by_timestamp(self, timestamp: int, order_direction: OrderDirection) -> Optional[BlockInfo]:
         query = get_block_number_by_timestamp_query(timestamp, order_direction)
-        async with self.pool.acquire() as conn:
-            block = await fetch_row(conn, query=query)
+        block = await self.fetch_one(query=query)
 
         if block is not None:
             return BlockInfo(
@@ -809,8 +740,7 @@ class Storage:
                 chain_events_t.c.id == get_chain_events_id_query
             ).order_by(chain_events_t.c.block_number)
 
-            async with self.pool.acquire() as conn:
-                chain_split = await fetch_row(conn, query=split_query)
+            chain_split = await self.fetch_one(query=split_query)
 
             is_in_fork = tip_block.is_forked or chain_split is not None
             if is_in_fork:
@@ -857,20 +787,18 @@ class Storage:
 
         query = get_query(ordering=ordering)
         reverse_query = get_query(ordering=ordering.reverse())
-        async with self.pool.acquire() as connection:
-            events = await fetch(connection, query)
-            progress = await get_cursor_percent(
-                connection=connection,
-                query=query,
-                reverse_query=reverse_query
-            )
+        events = await self.fetch_all(query)
+        progress = await get_cursor_percent(
+            engine=self.engine,
+            query=query,
+            reverse_query=reverse_query
+        )
 
         events = in_app_distinct(events)[:limit]
 
         tx_hashes = {e['tx_hash'] for e in events}
         tx_query = get_transactions_by_hashes(tx_hashes)
-        async with self.pool.acquire() as connection:
-            transactions = await fetch(connection, tx_query)
+        transactions = await self.fetch_all(tx_query)
         transactions_map = {tx['hash']: tx for tx in transactions}
 
         wallet_events = []
@@ -880,7 +808,7 @@ class Storage:
                 tx = models.Transaction(**tx_data).to_dict()
             else:
                 tx = {}
-            event_data = json.loads(event['event_data'])
+            event_data = event['event_data']
             direction = WalletEventDirection.IN if event_data['recipient'] == address else WalletEventDirection.OUT
             # FIXME (nickgashkov): Consider using `__getitem__` or handle `None` values.
             wallet_event = WalletEvent(  # type: ignore
@@ -901,7 +829,7 @@ class Storage:
             assets: Optional[List[str]] = None
     ) -> Tuple[AddressesSummary, LastAffectedBlock]:
         query = get_assets_summary_query(addresses=unique(addresses), assets=unique(assets or []))
-        rows = await fetch(self.pool, query)
+        rows = await self.fetch_all(query)
 
         account_balances: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
         accounts_with_ether: Set[str] = set()
@@ -968,20 +896,18 @@ class Storage:
         """
         Get account nonce
         """
-
         query = """
             SELECT "nonce" FROM accounts_state
-            WHERE address=$1 AND is_forked=false ORDER BY block_number DESC LIMIT 1;
+            WHERE address=%s AND is_forked=false ORDER BY block_number DESC LIMIT 1;
         """
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(query, address)
-            if row:
-                return row['nonce']
-            return 0
+        row = await self.fetch_one(query, address)
+        if row:
+            return row['nonce']
+        return 0
 
     async def get_internal_transactions(self, parent_tx_hash: str, order: str):
         query = get_internal_txs_by_parent(parent_tx_hash, order)
-        rows = await fetch(self.pool, query)
+        rows = await self.fetch_all(query)
         internal_txs = [models.InternalTransaction(**r) for r in rows]
         return internal_txs
 
@@ -1015,8 +941,7 @@ class Storage:
                 parent_tx_index=parent_tx_index,
             )
 
-        async with self.pool.acquire() as connection:
-            rows = await fetch(connection, query)
+        rows = await self.fetch_all(query)
 
         txs = [models.InternalTransaction(**r) for r in rows]
         last_affected_block = max((r['block_number'] for r in rows), default=None)
@@ -1031,7 +956,7 @@ class Storage:
             id: Optional[int],
     ) -> List[models.PendingTransaction]:
         query = get_pending_txs_by_account(account, limit, ordering, timestamp, id)
-        rows = await fetch(self.pool, query)
+        rows = await self.fetch_all(query)
         for row in rows:
             row['timestamp'] = row['timestamp'] and int(row['timestamp'].timestamp())
         return [models.PendingTransaction(**r) for r in rows]
@@ -1042,7 +967,7 @@ class Storage:
             ordering: Ordering,
     ) -> Optional[int]:
         query = get_account_pending_txs_timestamp(account, ordering)
-        row = await fetch_row(self.pool, query)
+        row = await self.fetch_one(query)
         if row:
             value = row['timestamp']
             return value and value
@@ -1056,7 +981,7 @@ class Storage:
         if limit:
             query = query.limit(limit)
 
-        rows = await fetch(self.pool, query)
+        rows = await self.fetch_all(query)
 
         result = []
         for tx in rows:
@@ -1084,7 +1009,7 @@ class Storage:
         res = await self.get_nonce(account_address)
         if include_pending_txs:
             query = get_outcoming_pending_txs_count(account_address)
-            rows = await fetch(self.pool, query)
+            rows = await self.fetch_all(query)
             res += rows[0]['count_1']
         return res
 
@@ -1093,30 +1018,29 @@ class Storage:
         query = get_eth_transfers_by_address_query(address=account_address, block_number=block_number,
                                                    event_index=event_index,
                                                    ordering=order, limit=limit)
-        rows = await fetch(self.pool, query)
+        rows = await self.fetch_all(query)
         last_affected_block_number = max([r['block_number'] for r in rows], default=None)
 
         tx_hashes = {r['tx_hash'] for r in rows}
         tx_query = get_transactions_by_hashes(tx_hashes)
-        async with self.pool.acquire() as connection:
-            transactions = await fetch(connection, tx_query)
+        transactions = await self.fetch_all(tx_query)
         transactions_map = {tx['hash']: tx for tx in transactions}
 
         res = []
-        for r in rows:
-            event_data = json.loads(r['event_data'])
-            tx_data = transactions_map[r['tx_hash']]
+        for row in rows:
+            event_data = row['event_data']
+            tx_data = transactions_map[row['tx_hash']]
             t = models.EthTransfer(**{
                 # NOTE: As of now, older wallet events have no
                 # `tx_data['timestamp']` because it was added after the start of
                 # the sync (See #288).
                 'timestamp': tx_data.get('timestamp'),
-                'tx_hash': r['tx_hash'],
+                'tx_hash': row['tx_hash'],
                 'amount': event_data['amount'],
                 'from': event_data['sender'],
                 'to': event_data['recipient'],
-                'block_number': r['block_number'],
-                'event_index': r['event_index'],
+                'block_number': row['block_number'],
+                'event_index': row['event_index'],
             })
             res.append(t)
 
