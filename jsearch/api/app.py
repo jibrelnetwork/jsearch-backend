@@ -2,6 +2,7 @@ import asyncio
 import os
 
 import aiopg.sa
+import uvloop
 from aiohttp import web
 from aiohttp.web_app import Application
 from aiohttp_swagger import setup_swagger
@@ -32,6 +33,8 @@ from jsearch.common import logs, stats
 
 swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
 swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
+
+uvloop.install()
 
 
 async def on_shutdown(app):
@@ -102,6 +105,8 @@ async def make_app() -> Application:
     app['db_pool'] = await aiopg.sa.create_engine(
         dsn=settings.JSEARCH_MAIN_DB,
         cursor_factory=DictCursor,
+        minsize=1,
+        maxsize=99
     )
     app['storage'] = Storage(app['db_pool'])
     app['node_proxy'] = NodeProxy(settings.ETH_NODE_URL)
