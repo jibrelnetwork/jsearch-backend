@@ -106,7 +106,7 @@ async def make_app() -> Application:
         dsn=settings.JSEARCH_MAIN_DB,
         cursor_factory=DictCursor,
         minsize=1,
-        maxsize=50
+        maxsize=150
     )
     app['storage'] = Storage(app['db_pool'])
     app['node_proxy'] = NodeProxy(settings.ETH_NODE_URL)
