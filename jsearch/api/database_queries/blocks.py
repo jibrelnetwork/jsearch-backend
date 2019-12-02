@@ -159,14 +159,14 @@ def generate_blocks_query(
         timestamp: Optional[int] = None,
         limit: Optional[int] = None,
 ) -> Query:
-    if number is None:
+    if number is None and timestamp is None:
         query = get_blocks_query(limit=limit, order=order)
     else:
         if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
             query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)  # type: ignore
 
         elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_blocks_by_number_query(limit=limit, number=number, order=order)
+            query = get_blocks_by_number_query(limit=limit, number=number, order=order)  # type: ignore
         else:
             raise ValueError('Invalid scheme: {scheme}')
     return query

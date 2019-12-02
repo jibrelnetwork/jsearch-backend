@@ -167,6 +167,24 @@ URL = '/v1/accounts/<address>/eth_transfers?{params}'
                     'order': 'desc'
                 })),
         ),
+        (
+                URL.format(params=urlencode({'timestamp': 'latest', 'limit': 3})),
+                [
+                    (4, 3, 0),
+                    (4, 2, 0),
+                    (4, 1, 0),
+                ],
+                URL.format(params=urlencode({
+                    'event_index': make_event_index(4, 0, 0),
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+                URL.format(params=urlencode({
+                    'event_index': make_event_index(4, 3, 0),
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+        ),
     ],
     ids=[
         URL.format(params=urlencode({'limit': 3})),
@@ -175,6 +193,7 @@ URL = '/v1/accounts/<address>/eth_transfers?{params}'
         URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
         URL.format(params=urlencode({'event_index': make_event_index(3, 1, 0), 'limit': 3})),
         URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
+        URL.format(params=urlencode({'timestamp': 'latest', 'limit': 3})),
     ]
 )
 async def test_get_wallet_events_pagination(

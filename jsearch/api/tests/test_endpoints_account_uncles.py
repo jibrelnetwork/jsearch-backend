@@ -2,6 +2,7 @@ import logging
 from urllib.parse import parse_qs
 from urllib.parse import urlencode
 
+import factory
 import pytest
 from aiohttp.test_utils import TestClient
 from typing import List, Dict, Any, Tuple, Optional
@@ -16,6 +17,9 @@ def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
     if url:
         path, params = url.split("?")
         return path, parse_qs(params)
+
+
+TIMESTAMP = 1575289040
 
 
 URL = '/v1/accounts/address/mined_uncles?{params}'
@@ -77,6 +81,24 @@ URL = '/v1/accounts/address/mined_uncles?{params}'
         ),
         (
                 URL.format(params=urlencode({
+                    'limit': 5,
+                    'timestamp': 1575289047
+                })),
+                10,
+                [7, 6, 5, 4, 3],
+                URL.format(params=urlencode({
+                    'limit': 5,
+                    'timestamp': 1575289042,
+                    'order': 'desc'
+                })),
+                URL.format(params=urlencode({
+                    'limit': 5,
+                    'timestamp': 1575289047,
+                    'order': 'desc'
+                })),
+        ),
+        (
+                URL.format(params=urlencode({
                     'limit': 3,
                     'uncle_number': 'latest',
                 })),
@@ -93,12 +115,32 @@ URL = '/v1/accounts/address/mined_uncles?{params}'
                     'order': 'desc'
                 })),
         ),
+        (
+                URL.format(params=urlencode({
+                    'limit': 3,
+                    'timestamp': 'latest',
+                })),
+                10,
+                [9, 8, 7],
+                URL.format(params=urlencode({
+                    'limit': 3,
+                    'timestamp': 1575289046,
+                    'order': 'desc'
+                })),
+                URL.format(params=urlencode({
+                    'limit': 3,
+                    'timestamp': 1575289049,
+                    'order': 'desc'
+                })),
+        ),
     ],
     ids=[
         "/v1/accounts/address/mined_uncles?limit=3",
         "/v1/accounts/address/mined_uncles?limit=3&order=asc",
         "/v1/accounts/address/mined_uncles?limit=3&uncle_number=5",
+        "/v1/accounts/address/mined_uncles?limit=5&timestamp=1575289047",
         "/v1/accounts/address/mined_uncles?limit=3&uncle_number=latest",
+        "/v1/accounts/address/mined_uncles?limit=3&timestamp=latest",
     ]
 )
 async def test_get_uncles(cli,
@@ -112,7 +154,7 @@ async def test_get_uncles(cli,
     # given
     miner = '0x1111111111111111111111111111111111111111'
     block_factory.create_batch(uncles)
-    uncle_factory.create_batch(uncles, miner=miner)
+    uncle_factory.create_batch(uncles, miner=miner, timestamp=factory.Sequence(lambda x: x + TIMESTAMP))
 
     resp = await cli.get(url.replace('/address/', f'/{miner}/'))
     resp_json = await resp.json()
