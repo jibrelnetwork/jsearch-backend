@@ -5,7 +5,7 @@ import pytest
 
 from jsearch.common.tables import wallet_events_t
 from jsearch.common.wallet_events import make_event_index_for_internal_tx, make_event_index_for_log, \
-    WalletEventType
+    WalletEventType, make_event_index_for_tx
 from jsearch.tests.plugins.databases.factories.common import generate_address
 from .common import session, Base
 
@@ -67,6 +67,23 @@ class WalletEventsFactory(factory.alchemy.SQLAlchemyModelFactory):
                 block_hash=block.hash,
                 block_number=block.number
             )
+
+        return cls.create(**defaults)
+
+    @classmethod
+    def create_eth_transfer(cls, tx, **kwargs):
+        defaults = dict(
+            address=getattr(tx, 'from'),
+            type='eth-transfer',
+            event_data={'sender': getattr(tx, 'from'), 'recipient': tx.to, 'amount': randint(0, 10 * 18)},
+            event_index=make_event_index_for_tx(tx.block_number, tx.transaction_index),
+            tx_hash=tx.hash,
+            tx_data=None,
+            block_hash=tx.block_hash,
+            block_number=tx.block_number,
+        )
+
+        defaults.update(**kwargs)
 
         return cls.create(**defaults)
 
