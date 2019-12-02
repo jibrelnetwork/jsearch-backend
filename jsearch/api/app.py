@@ -105,7 +105,7 @@ async def make_app() -> Application:
     app['db_pool'] = await aiopg.sa.create_engine(
         dsn=settings.JSEARCH_MAIN_DB,
         cursor_factory=DictCursor,
-        minsize=99,
+        minsize=10,
         maxsize=99
     )
     app['storage'] = Storage(app['db_pool'])
