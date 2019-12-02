@@ -5,7 +5,7 @@ import psycopg2
 from aiopg.sa import Engine, SAConnection
 from aiopg.sa.result import ResultProxy
 from sqlalchemy.orm import Query
-from typing import Any, Union, AsyncGenerator, Dict, Awaitable, List, Optional
+from typing import Any, Union, AsyncGenerator, Dict, List, Optional
 
 
 @contextlib.asynccontextmanager
