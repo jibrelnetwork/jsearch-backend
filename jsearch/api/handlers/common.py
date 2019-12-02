@@ -15,7 +15,7 @@ async def get_block_number_or_tag_from_timestamp(
     if {timestamp} & {None, Tag.TIP, Tag.LATEST}:
         return timestamp
 
-    block_info = await storage.get_block_by_timestamp(timestamp, direction)
+    block_info = await storage.get_block_by_timestamp(timestamp, direction)  # type: ignore
     if block_info:
         block_number: Optional[int] = block_info.number
     else:

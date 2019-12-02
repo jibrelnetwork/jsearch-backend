@@ -3,7 +3,6 @@ from urllib.parse import parse_qs, urlencode
 
 import factory
 import pytest
-import time
 from aiohttp.test_utils import TestClient
 from typing import List, Dict, Any, Tuple, Optional
 
