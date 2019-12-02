@@ -829,8 +829,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Transaction'
-              paging:
-                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
@@ -865,8 +863,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/InternalTransaction'
-              paging:
-                $ref: '#/definitions/paging'
         400:
           description: bad input parameter
           schema:
