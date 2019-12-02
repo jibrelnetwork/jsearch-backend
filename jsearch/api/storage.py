@@ -122,7 +122,7 @@ class Storage(DbActionsMixin):
     async def get_latest_chain_event_id(self) -> Optional[int]:
         query = select_latest_chain_event_id()
         row = await self.fetch_one(query)
-        return row and row['max_id']
+        return row['max_id'] if row else None
 
     async def is_data_affected_by_chain_split(
             self,

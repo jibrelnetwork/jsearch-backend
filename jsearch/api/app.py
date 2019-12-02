@@ -99,7 +99,7 @@ async def make_app() -> Application:
     app = web.Application(middlewares=(prom_middleware, cors_middleware))
     app.on_shutdown.append(on_shutdown)
 
-    app['db_pool']: aiopg.sa.Engine = await aiopg.sa.create_engine(
+    app['db_pool'] = await aiopg.sa.create_engine(
         dsn=settings.JSEARCH_MAIN_DB,
         cursor_factory=DictCursor,
     )
