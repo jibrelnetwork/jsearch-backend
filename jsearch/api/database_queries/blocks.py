@@ -149,7 +149,10 @@ def get_block_number_by_timestamp_query(timestamp: int, order_direction: OrderDi
     operator_or_equal = DIRECTIONS_OPERATOR_OR_EQUAL_MAPS[order_direction]
 
     return select([blocks_t.c.number, blocks_t.c.hash, blocks_t.c.timestamp]).where(
-        operator_or_equal(blocks_t.c.timestamp, timestamp)
+        and_(
+            operator_or_equal(blocks_t.c.timestamp, timestamp),
+            blocks_t.c.is_forked == false(),
+        )
     ).order_by(direction_func(blocks_t.c.timestamp))
 
 
