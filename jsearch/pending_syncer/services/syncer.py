@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class PendingSyncerService(mode.Service):
-    def __init__(self, raw_db_dsn: str, main_db_dsn: str, sync_range: BlockRange, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, raw_db_dsn: str, main_db_dsn: str, sync_range: BlockRange, **kwargs: Any) -> None:
         self.raw_db = RawDB(raw_db_dsn)
         self.main_db = MainDB(main_db_dsn)
         self.sync_range = sync_range
@@ -33,8 +33,7 @@ class PendingSyncerService(mode.Service):
         await self.raw_db.disconnect()
         await self.main_db.disconnect()
 
-    @mode.Service.task
-    async def syncer(self) -> None:
+    async def on_started(self) -> None:
         pending_txs: List[Dict[str, Any]] = []
         last_sync_id = None
 
