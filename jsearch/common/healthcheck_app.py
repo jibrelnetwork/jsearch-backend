@@ -54,3 +54,4 @@ async def on_startup(app: web.Application) -> None:
 
 async def on_shutdown(app: web.Application) -> None:
     app['db_pool'].close()
+    await app['db_pool'].wait_closed()

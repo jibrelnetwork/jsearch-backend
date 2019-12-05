@@ -36,6 +36,7 @@ swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
 
 async def on_shutdown(app):
     app['db_pool'].close()
+    await app['db_pool'].wait_closed()
 
 
 def define_routes(app: Application):
