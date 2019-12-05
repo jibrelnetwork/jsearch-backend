@@ -11,6 +11,7 @@ from jsearch import settings
 from jsearch.common.prom_metrics import METRIC_SYNCER_PENDING_TXS_BATCH_SYNC_SPEED, METRIC_SYNCER_PENDING_LAG_RAW_DB
 from jsearch.common.structs import BlockRange
 from jsearch.common.utils import timeit
+from jsearch.pending_syncer.services import ApiService
 from jsearch.pending_syncer.utils.processing import prepare_pending_txs
 from jsearch.syncer.database import MainDB, RawDB
 
@@ -23,11 +24,16 @@ class PendingSyncerService(mode.Service):
         self.main_db = MainDB(main_db_dsn)
         self.sync_range = sync_range
 
+        self.api = ApiService()
+
         super().__init__(**kwargs)
 
     async def on_start(self) -> None:
         await self.raw_db.connect()
         await self.main_db.connect()
+
+    def on_init_dependencies(self) -> List[mode.Service]:
+        return [self.api]
 
     async def on_stop(self) -> None:
         await self.raw_db.disconnect()

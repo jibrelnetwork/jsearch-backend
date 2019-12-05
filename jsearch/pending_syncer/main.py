@@ -27,7 +27,6 @@ def run(log_level, no_json_formatter, sync_range):
             main_db_dsn=settings.JSEARCH_MAIN_DB,
             sync_range=parsed_sync_range,
         ),
-        services.ApiService(),
     ).execute_from_commandline()
 
 
