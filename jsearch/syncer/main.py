@@ -77,7 +77,7 @@ def run(
     stats.setup_syncer_metrics()
     logs.configure(log_level=log_level, formatter_class=logs.select_formatter_class(no_json_formatter))
 
-    block_range = BlockRange(*parse_range(sync_range))
+    block_range = parse_range(sync_range)
 
     if workers > 1:
         logger.info("Scale... ", extra={"workers": workers})
