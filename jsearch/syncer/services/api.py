@@ -90,8 +90,8 @@ async def healthcheck(request: web.Request) -> web.Response:
 
 
 async def on_startup(app: web.Application) -> None:
-    app['db_pool'] = await aiopg.sa.create_engine(settings.JSEARCH_MAIN_DB, min_size=1, max_size=1)
-    app['db_pool_raw'] = await aiopg.sa.create_engine(settings.JSEARCH_RAW_DB, min_size=1, max_size=1)
+    app['db_pool'] = await aiopg.sa.create_engine(settings.JSEARCH_MAIN_DB, minsize=1, maxsize=1)
+    app['db_pool_raw'] = await aiopg.sa.create_engine(settings.JSEARCH_RAW_DB, minsize=1, maxsize=1)
 
 
 async def on_shutdown(app: web.Application) -> None:
