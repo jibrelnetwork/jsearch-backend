@@ -134,7 +134,7 @@ async def test_get_account_internal_transactions(cli, block_factory, transaction
     )
 
     resp = await cli.get(
-        f'v1/accounts/0x3e20a5fe4eb128156c51e310f0391799beccf0c1/'
+        f'v1/accounts/0x2222222222222222222222222222222222222222/'
         f'internal_transactions?timestamp=1550000000')
     resp_json = await resp.json()
 
