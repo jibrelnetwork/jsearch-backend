@@ -153,7 +153,7 @@ def get_block_number_by_timestamp_query(timestamp: int, order_direction: OrderDi
             operator_or_equal(blocks_t.c.timestamp, timestamp),
             blocks_t.c.is_forked == false(),
         )
-    ).order_by(direction_func(blocks_t.c.timestamp))
+    ).order_by(direction_func(blocks_t.c.timestamp)).limit(1)
 
 
 def generate_blocks_query(
