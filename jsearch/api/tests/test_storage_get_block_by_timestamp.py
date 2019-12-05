@@ -2,6 +2,7 @@ from typing import NamedTuple
 
 import pytest
 
+from jsearch.api.database_queries.blocks import get_block_number_by_timestamp_query
 from jsearch.api.storage import Storage
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
 
@@ -66,3 +67,13 @@ async def test_get_block_by_timestamp_does_not_return_block_from_fork(
     block_info = await storage.get_block_by_timestamp(timestamp=block.timestamp, order_direction=order_direction)
 
     assert block_info is None
+
+
+@pytest.mark.parametrize('order_direction', ('desc', 'asc'))
+async def test_get_block_number_by_timestamp_query_limits_query_by_one(
+        block_factory: BlockFactory,
+        storage: Storage,
+        order_direction: str,
+) -> None:
+    query = get_block_number_by_timestamp_query(1575289040, order_direction)
+    assert query._limit == 1
