@@ -222,8 +222,8 @@ async def test_get_uncles_limits(
             ('timestamp', 2 ** 8, 200)
     ),
     ids=(
-            "block_number_with_too_big_value",
-            "block_number_with_normal_value",
+            "uncle_number_with_too_big_value",
+            "uncle_number_with_normal_value",
             "timestamp_with_too_big_value",
             "timestamp_with_normal_value"
     )

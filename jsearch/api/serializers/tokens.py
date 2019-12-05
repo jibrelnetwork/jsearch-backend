@@ -1,4 +1,5 @@
 from marshmallow import validates_schema, ValidationError
+from marshmallow.fields import Integer
 from marshmallow.validate import Range, Length
 
 from jsearch.api.database_queries.token_holders import get_token_holders_ordering
@@ -37,7 +38,7 @@ class TokenTransfersSchema(BlockRelatedListSchema):
 
 class TokenHoldersListSchema(ListSchema):
     _id = BigIntField(validate=Range(min=0), load_from='id')
-    balance = IntField(validate=Range(min=0))
+    balance = Integer(validate=Range(min=0))
 
     address = StrLower(validate=Length(min=1, max=100), location='match_info')
 
