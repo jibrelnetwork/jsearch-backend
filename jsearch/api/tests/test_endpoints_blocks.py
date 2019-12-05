@@ -1,6 +1,7 @@
 import logging
 from urllib.parse import parse_qs, urlencode
 
+import factory
 import pytest
 from aiohttp.test_utils import TestClient
 from typing import List, Dict, Any, Tuple, Optional
@@ -9,6 +10,9 @@ from jsearch.api.models import InternalTransaction
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
 
 logger = logging.getLogger(__name__)
+
+
+TIMESTAMP = 1575289040
 
 
 def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
@@ -42,18 +46,34 @@ def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
                 "/v1/blocks?limit=3&block_number=5&order=desc",
         ),
         (
+                "/v1/blocks?limit=5&timestamp=1575289047",
+                10,
+                [7, 6, 5, 4, 3],
+                "/v1/blocks?limit=5&timestamp=1575289042&order=desc",
+                "/v1/blocks?limit=5&timestamp=1575289047&order=desc",
+        ),
+        (
                 "/v1/blocks?limit=3&block_number=latest",
                 10,
                 [9, 8, 7],
                 "/v1/blocks?limit=3&block_number=6&order=desc",
                 "/v1/blocks?limit=3&block_number=9&order=desc",
         ),
+        (
+                "/v1/blocks?limit=3&timestamp=latest",
+                10,
+                [9, 8, 7],
+                "/v1/blocks?limit=3&timestamp=1575289046&order=desc",
+                "/v1/blocks?limit=3&timestamp=1575289049&order=desc",
+        ),
     ],
     ids=[
         "/v1/blocks?limit=3",
         "/v1/blocks?limit=3&order=asc",
+        "/v1/uncles?limit=5&timestamp=1575289047",
         "/v1/blocks?limit=3&block_number=5",
         "/v1/blocks?limit=3&block_number=latest",
+        "/v1/uncles?limit=3&timestamp=latest",
     ]
 )
 async def test_get_blocks(cli,
@@ -64,7 +84,7 @@ async def test_get_blocks(cli,
                           next_link: str,
                           link: str) -> None:
     # given
-    block_factory.create_batch(blocks)
+    block_factory.create_batch(blocks, timestamp=factory.Sequence(lambda x: x + TIMESTAMP))
 
     resp = await cli.get(url)
     resp_json = await resp.json()

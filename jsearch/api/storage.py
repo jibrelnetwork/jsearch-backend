@@ -302,7 +302,7 @@ class Storage(DbActionsMixin):
             timestamp: Optional[int],
             number: Optional[int],
     ) -> Tuple[List[models.Block], Optional[LastAffectedBlock]]:
-        if number is None:
+        if number is None and timestamp is None:
             query = get_blocks_query(limit=limit, order=order, miner=address)
         else:
             if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
@@ -313,7 +313,12 @@ class Storage(DbActionsMixin):
                     miner=address,
                 )
             elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-                query = get_blocks_by_number_query(limit=limit, number=number, order=order, miner=address)
+                query = get_blocks_by_number_query(  # type: ignore
+                    limit=limit,
+                    number=number,
+                    order=order,
+                    miner=address,
+                )
             else:
                 raise ValueError('Invalid scheme: {scheme}')
 
@@ -353,14 +358,14 @@ class Storage(DbActionsMixin):
             number: Optional[int] = None,
             timestamp: Optional[int] = None
     ) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
-        if number is None:
+        if number is None and timestamp is None:
             query = get_uncles_query(limit=limit, order=order)
         else:
             if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
                 query = get_uncles_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)  # type: ignore
 
             elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-                query = get_uncles_by_number_query(limit, number=number, order=order)
+                query = get_uncles_by_number_query(limit, number=number, order=order)  # type: ignore
 
             else:
                 raise ValueError('Invalid scheme: {scheme}')
@@ -384,7 +389,7 @@ class Storage(DbActionsMixin):
             number: Optional[int] = None,
             timestamp: Optional[int] = None
     ) -> Tuple[List[models.Uncle], Optional[LastAffectedBlock]]:
-        if number is None:
+        if number is None and timestamp is None:
             query = get_uncles_query(limit=limit, order=order, address=address)
         else:
             if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
@@ -396,7 +401,7 @@ class Storage(DbActionsMixin):
                 )
 
             elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-                query = get_uncles_by_miner_address_and_number_query(
+                query = get_uncles_by_miner_address_and_number_query(  # type: ignore
                     address=address,
                     limit=limit,
                     number=number,

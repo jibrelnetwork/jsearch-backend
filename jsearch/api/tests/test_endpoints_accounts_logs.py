@@ -213,6 +213,24 @@ TIMESTAMP = int(time.time())
                     'order': 'desc'
                 })),
         ),
+        (
+                URL.format(params=urlencode({'timestamp': 'latest', 'limit': 3})),
+                [(4, 1, 2), (4, 1, 1), (4, 0, 2)],
+                URL.format(params=urlencode({
+                    'timestamp': TIMESTAMP + 4,
+                    'transaction_index': 0,
+                    'log_index': 1,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+                URL.format(params=urlencode({
+                    'timestamp': TIMESTAMP + 4,
+                    'transaction_index': 1,
+                    'log_index': 2,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+        ),
     ],
     ids=[
         URL.format(params=urlencode({'limit': 3})),
@@ -232,6 +250,7 @@ TIMESTAMP = int(time.time())
             'limit': 3
         })),
         URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
+        URL.format(params=urlencode({'timestamp': 'latest', 'limit': 3})),
     ]
 )
 async def test_get_account_logs_pagination(cli,
