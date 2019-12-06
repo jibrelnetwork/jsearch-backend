@@ -213,16 +213,14 @@ async def test_get_token_holders_limits(
 @pytest.mark.parametrize(
     "parameter, value, status",
     (
-            ('balance', 2 ** 128, 400),
-            ('balance', 2 ** 8, 200),
+            ('balance', 2 ** 128, 200),
             ('id', 2 ** 128, 400),
-            ('id', 2 ** 8, 200)
+            ('id', 2 ** 8, 200),
     ),
     ids=(
-            "block_number_with_too_big_value",
-            "block_number_with_normal_value",
-            "timestamp_with_too_big_value",
-            "timestamp_with_normal_value"
+            "balance_with_normal_value",
+            "id_with_too_big_value",
+            "id_with_normal_value",
     )
 )
 async def test_get_token_holders_by_big_value(
@@ -233,7 +231,6 @@ async def test_get_token_holders_by_big_value(
 ):
     # given
     address = generate_address()
-
     params = urlencode({parameter: value})
     url = f"/v1/tokens/{address}/holders?{params}"
 
