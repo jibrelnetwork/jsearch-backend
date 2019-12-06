@@ -365,7 +365,12 @@ async def test_get_account_logs_single(cli, db, main_db_data):
 
     resp = await cli.get(
         f'/v1/accounts/{address}/logs?'
-        f'order=asc&block_number=2&transaction_index=0&log_index=0&order=asc&limit=20'
+        f'order=asc&'
+        f'block_number=2'
+        f'&transaction_index=0'
+        f'&log_index=0'
+        f'&order=asc'
+        f'&limit=20'
     )
     resp_json = await resp.json()
 
@@ -375,9 +380,21 @@ async def test_get_account_logs_single(cli, db, main_db_data):
         'paging': {
             'link': (
                 '/v1/accounts/0xbb4af59aeaf2e83684567982af5ca21e9ac8419a/logs?'
-                'block_number=2&transaction_index=0&log_index=0&order=asc&limit=20'
+                'block_number=2&'
+                'transaction_index=0&'
+                'log_index=0&'
+                'order=asc&'
+                'limit=20'
             ),
-            'next': None
+            'link_kwargs': {
+                'block_number': '2',
+                'transaction_index': '0',
+                'log_index': '0',
+                'order': 'asc',
+                'limit': '20'
+            },
+            'next': None,
+            'next_kwargs': None,
         }
     }
 

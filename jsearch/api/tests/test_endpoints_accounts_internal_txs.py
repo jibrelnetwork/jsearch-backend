@@ -79,7 +79,7 @@ TIMESTAMP = int(time.time())
                     'block_number': 4,
                     'parent_transaction_index': 1,
                     'transaction_index': 2,
-                    'limit': 20,
+                    'limit': '20',
                     'order': 'desc'
                 })),
         ),

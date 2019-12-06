@@ -73,7 +73,13 @@ info:
       "meta": {...},
       "paging": {
         "link": "/v1/...",
-        "next": "/v1/..."
+        "link_kwargs": {
+          'order': 'asc',
+        }
+        "next": "/v1/...",
+        "next_kwargs": {
+          'order': 'asc',
+        }
       }
     }
     ```
@@ -2496,11 +2502,23 @@ definitions:
         type: string
         format: url
         example: "/v1/..."
+      link_kwargs:
+        description: The current link keyword arguments
+        type: object
+        example: {order: "asc", limit: 20}
       next:
         description: The next page of data (relative url). The server MUST determine whether a next page exists, and return null as the next link if not.
         type: string
         format: url
         example: "/v1/..."
+      next_kwargs:
+        description: The next link keyword arguments
+        type: object
+        example: {order: "asc", limit: 20}
+      progress:
+        description: Show the cursor progress. It can be wrong nearly to begin and end of query.
+        type: integer
+        example: 23
 
 schemes:
  - http

@@ -11,7 +11,7 @@ from jsearch.api.helpers import (
     ApiError,
     maybe_orphan_request)
 from jsearch.api.ordering import Ordering
-from jsearch.api.pagination import get_page
+from jsearch.api.pagination import get_pagination_description
 from jsearch.api.serializers.uncles import UncleListSchema
 from jsearch.api.utils import use_kwargs
 
@@ -45,7 +45,13 @@ async def get_uncles(
     uncles, tip = await maybe_apply_tip(storage, tip_hash, uncles, last_affected_block, empty=[])
 
     url = request.app.router['uncles'].url_for()
-    page = get_page(url=url, items=uncles, limit=limit, ordering=order, mapping=UncleListSchema.mapping)
+    page = get_pagination_description(
+        url=url,
+        items=uncles,
+        limit=limit,
+        ordering=order,
+        mapping=UncleListSchema.mapping
+    )
 
     orphaned_request = await maybe_orphan_request(
         request,

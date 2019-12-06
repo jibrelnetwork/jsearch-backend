@@ -7,7 +7,7 @@ from sqlalchemy.orm import Query
 from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.pagination import Page
+from jsearch.api.pagination import PaginationBlock
 from jsearch.common.db import fetch_one
 from jsearch.common.utils import timeit
 from jsearch.typing import AnyCoroutine, ProgressPercent
@@ -81,7 +81,7 @@ def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -
 
 def api_success(
         data: Union[Dict[str, Any], Any],
-        page: Optional[Page] = None,
+        page: Optional[PaginationBlock] = None,
         progress: Optional[ProgressPercent] = None,
         meta: Optional[Dict[str, Any]] = None
 ):
