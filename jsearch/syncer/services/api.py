@@ -99,4 +99,4 @@ async def on_shutdown(app: web.Application) -> None:
     app['db_pool_raw'].close()
 
     await app['db_pool'].wait_closed()
-    await app['db_pool_raw'].close()
+    await app['db_pool_raw'].wait_closed()
