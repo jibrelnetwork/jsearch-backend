@@ -391,7 +391,7 @@ async def test_get_account_logs_single(cli, db, main_db_data):
                 'transaction_index': '0',
                 'log_index': '0',
                 'order': 'asc',
-                'limit': 20
+                'limit': '20'
             },
             'next': None,
             'next_kwargs': None,

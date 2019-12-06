@@ -116,7 +116,7 @@ async def test_get_token_holders_pagination_large_balances_does_not_converted_to
             'balance': '1000000000000000000',
             'id': '1',
             'order': 'desc',
-            'limit': 1
+            'limit': '1'
         },
         'next': f'/v1/tokens/{token_address}/holders?'
                 f'balance=1000000000000000000&'
@@ -127,7 +127,7 @@ async def test_get_token_holders_pagination_large_balances_does_not_converted_to
             'balance': '1000000000000000000',
             'id': '0',
             'order': 'desc',
-            'limit': 1
+            'limit': '1'
         }
     }
 

@@ -1,5 +1,4 @@
 import decimal
-from copy import copy
 
 from typing import NamedTuple, List, Dict, Any, Optional
 from yarl import URL
@@ -23,7 +22,7 @@ class PaginationBlock(NamedTuple):
     items: List[Any]
 
     def to_dict(self) -> Dict[str, Any]:
-        block = {
+        block: Dict[str, Any] = {
             "next": None,
             "link": None,
             "next_kwargs": None,
@@ -35,6 +34,7 @@ class PaginationBlock(NamedTuple):
                 "next": str(self.next_link),
                 "next_kwargs": self.next_link.kwargs,
             })
+
         if self.link:
             block.update({
                 "link": str(self.link),
@@ -44,6 +44,15 @@ class PaginationBlock(NamedTuple):
         return block
 
 
+def stringify_link_value(value, decimals_to_ints: bool) -> str:
+    if decimals_to_ints and isinstance(value, decimal.Decimal):
+        # If a value is a big decimal, it will be converted to a scientific
+        # notation when casted to string (i.e. str(1..0.0) = '1e+18').
+        value = int(value)
+
+    return str(value)
+
+
 def make_link_query(
         fields: List[str],
         item: Dict[str, Any],
@@ -51,20 +60,10 @@ def make_link_query(
         decimals_to_ints: bool,
         mapping: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
-    query = {}
-
-    for field in fields:
-        query_key = mapping and mapping.get(field) or field
-        value = item[field]
-        if decimals_to_ints and isinstance(value, decimal.Decimal):
-            # If a value is a big decimal, it will be converted to a scientific
-            # notation when casted to string (i.e. str(1..0.0) = '1e+18').
-            value = int(value)
-
-        query[query_key] = str(value)
-
+    query = {mapping and mapping.get(field) or field: item[field] for field in fields}
     query.update(params)
-    return query
+
+    return {key: stringify_link_value(value, decimals_to_ints) for key, value in query.items()}
 
 
 def get_pagination_description(

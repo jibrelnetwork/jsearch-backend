@@ -395,7 +395,7 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
             'link_kwargs': {
                 'event_index': str(event.event_index),
                 'order': 'desc',
-                'limit': 20,
+                'limit': '20',
                 'blockchain_address': event.address
             },
             'next': None,
