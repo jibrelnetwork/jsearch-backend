@@ -1,24 +1,25 @@
 import asyncio
 import logging
 
-import asyncpg
 from aiohttp import web
+from aiopg.sa import Engine
 
 from jsearch import settings
-from jsearch.common import utils, prom_metrics
 from jsearch.api.node_proxy import NodeProxy
-from jsearch.common.structs import DbStats, LoopStats, NodeStats, ChainStats, LagStats
+from jsearch.common import utils, prom_metrics
 from jsearch.common.reference_data import get_lag_statistics, get_lag_statistics_by_provider
+from jsearch.common.structs import DbStats, LoopStats, NodeStats, ChainStats, LagStats
 
 logger = logging.getLogger(__name__)
 
 
-async def get_db_stats(db_pool: asyncpg.pool.Pool) -> DbStats:
+async def get_db_stats(engine: Engine) -> DbStats:
     is_healthy = False
 
     try:
-        async with db_pool.acquire() as conn:
-            await conn.fetch('SELECT 1')
+        async with engine.acquire() as conn:
+            async with conn.execute('SELECT 1') as cursor:
+                await cursor.fetchone()
 
         is_healthy = True
     except asyncio.CancelledError:
@@ -52,10 +53,10 @@ async def get_loop_stats() -> LoopStats:
     )
 
 
-async def get_chain_stats(db_pool: asyncpg.pool.Pool) -> ChainStats:
+async def get_chain_stats(engine: Engine) -> ChainStats:
     is_healthy = False
     try:
-        async with db_pool.acquire() as conn:
+        async with engine.acquire() as conn:
             # stored function check_canonical_chain(depth) returns number, hash, parent_hash
             # for each block N from canonical chain, if N.parent_hash != (N-1).hash
             holes = await conn.fetch('SELECT number, hash, parent_hash FROM check_canonical_chain(1000);')

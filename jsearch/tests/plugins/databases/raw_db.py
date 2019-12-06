@@ -3,10 +3,10 @@ import os
 
 import dsnparse
 import pytest
+from aiopg.sa import Engine
 from pathlib import Path
 from sqlalchemy import MetaData
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
 from typing import Optional, Callable, Any
 
 from .utils import apply_dump, load_json_dump, truncate

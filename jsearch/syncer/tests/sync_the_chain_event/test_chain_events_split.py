@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy.engine import Engine
+from aiopg.sa import Engine
 from typing import Callable
 
 from jsearch.common.structs import BlockRange

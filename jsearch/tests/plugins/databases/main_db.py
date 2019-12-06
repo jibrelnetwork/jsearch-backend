@@ -3,12 +3,11 @@ import os
 from asyncio import AbstractEventLoop
 
 import aiopg
-import asyncpg
 import pytest
+from aiopg.sa import Engine
 from pathlib import Path
 from sqlalchemy import MetaData
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
 from typing import Optional, Callable, Any
 
 from jsearch.api.storage import Storage
@@ -93,13 +92,9 @@ async def main_db_wrapper(db_dsn):
 
 @pytest.mark.asyncio
 @pytest.fixture()
-async def storage(db_dsn: str, loop: AbstractEventLoop) -> Storage:
-    db_pool = await asyncpg.create_pool(dsn=db_dsn)
-    storage = Storage(db_pool)
-
+async def storage(db_dsn: str, sa_engine, loop: AbstractEventLoop) -> 'Storage':
+    storage = Storage(sa_engine)
     yield storage
-
-    await db_pool.close()
 
 
 @pytest.fixture(autouse=True)

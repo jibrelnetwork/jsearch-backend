@@ -1,4 +1,4 @@
-from sqlalchemy import select, and_, false, desc, column, String
+from sqlalchemy import select, and_, false, desc, column, String, text
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
 from typing import List
@@ -52,8 +52,16 @@ def get_assets_summary_query(addresses: List[str], assets: List[str]) -> Query:
         desc(assets_summary_t.c.block_number),
     ).limit(1).alias('subsubquery')
 
-    query = select(['*']).select_from(subquery).select_from(subsubquery.lateral())
-
+    query = select().select_from(subquery).select_from(subsubquery.lateral())
+    query = query.with_only_columns([
+        text("subquery.address"),
+        text("subquery.asset_address"),
+        text("value"),
+        text("decimals"),
+        text("nonce"),
+        text("tx_number"),
+        text("block_number"),
+    ])
     return query
 
 
