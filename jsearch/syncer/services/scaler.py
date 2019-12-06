@@ -61,7 +61,7 @@ class SyncRangeField(fields.String):
     def _deserialize(self, value, attr, data):
         value = super(SyncRangeField, self)._deserialize(value, attr, data)
         if value:
-            return BlockRange(*parse_range(value))
+            return parse_range(value)
 
 
 class ScaleSchema(Schema):

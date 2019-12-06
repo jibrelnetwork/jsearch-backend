@@ -2,7 +2,9 @@ import logging
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import ProgrammingError
-from typing import Tuple, Optional
+from typing import Optional
+
+from jsearch.common.structs import BlockRange
 
 logger = logging.getLogger(__name__)
 
@@ -47,21 +49,21 @@ def get_goose_version(db_dsn: str) -> Optional[str]:
     return safe_query(db_dsn, query, key='version_id')
 
 
-def parse_range(value: Optional[str] = None) -> Tuple[int, Optional[int]]:
+def parse_range(value: Optional[str] = None) -> BlockRange:
     """
     >>> parse_range(None)
-    (0, None)
+    BlockRange(start=0, end=None)
     >>> parse_range('')
-    (0, None)
+    BlockRange(start=0, end=None)
     >>> parse_range('10-')
-    (10, None)
+    BlockRange(start=10, end=None)
     >>> parse_range('-10')
-    (0, 10)
+    BlockRange(start=0, end=10)
     >>> parse_range('10-20')
-    (10, 20)
+    BlockRange(start=10, end=20)
     """
     if not value:
-        return DEFAULT_RANGE_START, DEFAULT_RANGE_END
+        return BlockRange(DEFAULT_RANGE_START, DEFAULT_RANGE_END)
 
     parts = [p.strip() for p in value.split('-')]
 
@@ -75,4 +77,4 @@ def parse_range(value: Optional[str] = None) -> Tuple[int, Optional[int]]:
         if value is not None and value < 0:
             raise ValueError('Invalid range. It allows to be from 0 to integer or - .')
 
-    return value_from, value_until
+    return BlockRange(value_from, value_until)
