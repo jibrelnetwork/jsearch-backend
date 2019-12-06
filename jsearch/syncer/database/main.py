@@ -169,8 +169,8 @@ class MainDB(DBWrapper):
             where is_forked = false and number >= %s and number <= %s;
         """
         result = await self.fetch_one(query, start, end)
-        if result and (result.left or result.right):
-            return BlockRange(result.left, result.right)
+        if result and (result['left'] or result['right']):
+            return BlockRange(result['left'], result['right'])
 
         return None
 
@@ -186,7 +186,7 @@ class MainDB(DBWrapper):
         """
         result = await self.fetch_one(query, start, end + 1)
         if result:
-            return result.gap_end
+            return result['gap_end']
 
         return None
 

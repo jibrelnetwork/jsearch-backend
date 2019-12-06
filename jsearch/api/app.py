@@ -1,10 +1,11 @@
 import asyncio
 import os
 
-import asyncpg
+import aiopg.sa
 from aiohttp import web
 from aiohttp.web_app import Application
 from aiohttp_swagger import setup_swagger
+from psycopg2.extras import DictCursor
 
 from jsearch import settings
 from jsearch.api.handlers import contracts
@@ -34,7 +35,8 @@ swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
 
 
 async def on_shutdown(app):
-    await app['db_pool'].close()
+    app['db_pool'].close()
+    await app['db_pool'].wait_closed()
 
 
 def define_routes(app: Application):
@@ -98,7 +100,10 @@ async def make_app() -> Application:
     app = web.Application(middlewares=(prom_middleware, cors_middleware))
     app.on_shutdown.append(on_shutdown)
 
-    app['db_pool'] = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
+    app['db_pool'] = await aiopg.sa.create_engine(
+        dsn=settings.JSEARCH_MAIN_DB,
+        cursor_factory=DictCursor,
+    )
     app['storage'] = Storage(app['db_pool'])
     app['node_proxy'] = NodeProxy(settings.ETH_NODE_URL)
 

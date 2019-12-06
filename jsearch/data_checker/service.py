@@ -1,20 +1,20 @@
 import asyncio
+import json
 import logging
 from asyncio import Task
-
-import re
 from decimal import Decimal
-from typing import NamedTuple, Dict, Any, List
-import itertools
-import json
 
-import backoff
-import aiopg
 import aiohttp
+import aiopg
+import backoff
+import itertools
 import mode
+import re
+from aiopg.sa import Engine
+from dateutil import parser
 from lxml import html
 from psycopg2.extras import DictCursor
-from dateutil import parser
+from typing import NamedTuple, Dict, Any, List, Optional
 
 from . import settings
 
@@ -41,6 +41,7 @@ class DataChecker(mode.Service):
     Checking ERC20 tokens transfers by comparing
     with Etherscan transfers list https://etherscan.io/tokentxns
     """
+    db_pool: Optional[Engine] = None
 
     def __init__(self, main_db_dsn: str, use_proxy: bool, *args, **kwargs) -> None:
         self.main_db_dsn = main_db_dsn
@@ -48,7 +49,6 @@ class DataChecker(mode.Service):
         self.check_queue: 'asyncio.Queue[Dict[str, Any]]' = asyncio.Queue()
         self.workers: List[Task] = []
         self.use_proxy = use_proxy
-        self.db_pool = None
 
         # FIXME (nickgashkov): `mode.Service` does not support `*args`
         super().__init__(*args, **kwargs)  # type: ignore
@@ -62,9 +62,11 @@ class DataChecker(mode.Service):
         await self.disconnect()
 
     async def connect(self) -> None:
-        self.db_pool = await aiopg.create_pool(self.main_db_dsn,
-                                               cursor_factory=DictCursor,
-                                               maxsize=settings.WORKERS)
+        self.db_pool: Engine = await aiopg.sa.create_engine(
+            self.main_db_dsn,
+            cursor_factory=DictCursor,
+            maxsize=settings.WORKERS
+        )
 
     async def disconnect(self) -> None:
         # FIXME (nickgashkov): `self.db_pool` is `None` upon `__init__`.

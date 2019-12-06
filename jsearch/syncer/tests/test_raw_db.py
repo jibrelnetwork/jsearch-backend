@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy.engine import Engine
+from aiopg.sa import Engine
 
 from jsearch.syncer.database import RawDB
 from jsearch.syncer.structs import TokenHolderBalance

@@ -102,7 +102,7 @@ class RawDB(DBWrapper):
                 AND "type"='split'
             ORDER BY id ASC
         """
-        return self.fetch_all_async(q, block_range.start, block_range.end, node_id)
+        return await self.iterate_by(q, block_range.start, block_range.end, node_id)
 
     @timeit('[RAW DB] Get first chain event')
     async def get_first_chain_event_for_block_range(self, block_range: BlockRange, node_id):
