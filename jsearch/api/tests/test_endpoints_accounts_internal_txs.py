@@ -47,6 +47,7 @@ def create_account_internal_txs(
                         internal_transaction_factory.create_for_tx(
                             tx=new_txs[0],
                             transaction_index=internal_tx_index,
+                            from_=account,
                         )
 
             account_address = account
@@ -78,7 +79,7 @@ TIMESTAMP = int(time.time())
                     'block_number': 4,
                     'parent_transaction_index': 1,
                     'transaction_index': 2,
-                    'limit': 20,
+                    'limit': '20',
                     'order': 'desc'
                 })),
         ),

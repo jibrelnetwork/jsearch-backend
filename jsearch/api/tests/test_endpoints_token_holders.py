@@ -107,8 +107,28 @@ async def test_get_token_holders_pagination_large_balances_does_not_converted_to
     resp_json = await resp.json()
 
     assert resp_json['paging'] == {
-        'link': f'/v1/tokens/{token_address}/holders?balance=1000000000000000000&id=1&order=desc&limit=1',
-        'next': f'/v1/tokens/{token_address}/holders?balance=1000000000000000000&id=0&order=desc&limit=1',
+        'link': f'/v1/tokens/{token_address}/holders?'
+                f'balance=1000000000000000000&'
+                f'id=1&'
+                f'order=desc&'
+                f'limit=1',
+        'link_kwargs': {
+            'balance': '1000000000000000000',
+            'id': '1',
+            'order': 'desc',
+            'limit': '1'
+        },
+        'next': f'/v1/tokens/{token_address}/holders?'
+                f'balance=1000000000000000000&'
+                f'id=0&'
+                f'order=desc&'
+                f'limit=1',
+        'next_kwargs': {
+            'balance': '1000000000000000000',
+            'id': '0',
+            'order': 'desc',
+            'limit': '1'
+        }
     }
 
 

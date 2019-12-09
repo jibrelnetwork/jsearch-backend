@@ -458,4 +458,39 @@
   pk: false
   indexdef: CREATE INDEX transactions_address_idx_partial ON public.transactions USING
     btree (address, block_number, transaction_index) WHERE (is_forked = false)
-
+- name: ix_internal_transactions_to_partial_block_number
+  table: internal_transactions
+  fields: ("to", "block_number", "parent_tx_index", "transaction_index")
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_internal_transactions_to_partial_block_number ON internal_transactions USING
+    btree ("to", "block_number", "parent_tx_index", "transaction_index") WHERE (is_forked = false)
+- name: ix_internal_transactions_from_partial_block_number
+  table: internal_transactions
+  fields: ("from", "block_number", "parent_tx_index", "transaction_index")
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_internal_transactions_from_partial_block_number ON internal_transactions USING
+    btree ("from", "block_number", "parent_tx_index", "transaction_index") WHERE (is_forked = false)
+- name: ix_internal_transactions_to_partial_timestamp
+  table: internal_transactions
+  fields: ("to", "timestamp", "parent_tx_index", "transaction_index")
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_internal_transactions_to_partial_timestamp ON internal_transactions USING
+    btree ("to", "timestamp", "parent_tx_index", "transaction_index") WHERE (is_forked = false)
+- name: ix_internal_transactions_from_partial_timestamp
+  table: internal_transactions
+  fields: ("from", "timestamp", "parent_tx_index", "transaction_index")
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX ix_internal_transactions_from_partial_timestamp ON internal_transactions USING
+    btree ("from", "timestamp", "parent_tx_index", "transaction_index") WHERE (is_forked = false)
