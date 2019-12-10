@@ -3,6 +3,17 @@ builder(
         coverageReportsPath: 'coverage-reports',
         buildTasks: [
                 [
+                        name: "Swagger",
+                        type: "lint",
+                        method: "inside",
+                        runAsUser: "root",
+                        entrypoint: "",
+                        command: [
+                                'pip install openapi-spec-validator==0.2.8',
+                                'openapi-spec-validator jsearch/api/swagger/jsearch-v1.swagger.yaml',
+                        ],
+                ],
+                [
                         name: "Linters",
                         type: "lint",
                         method: "inside",
