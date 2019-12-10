@@ -3,7 +3,7 @@ from copy import copy
 
 import re
 import time
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple
 
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
@@ -12,7 +12,7 @@ from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.wallet import token_holders_from_token_balances
 from jsearch.common.utils import timeit, unique
-from jsearch.syncer.database import RawDB, MainDB
+from jsearch.syncer.database import MainDB
 from jsearch.syncer.structs import RawBlockData, BlockData
 from jsearch.typing import Logs
 
@@ -25,54 +25,6 @@ def update_is_forked_state(items: List[Dict[str, Any]], is_forked: bool) -> List
     for item in items:
         item['is_forked'] = is_forked
     return items
-
-
-@timeit("[RAW DB] Load block data")
-async def load_block(
-        raw_db: RawDB,
-        block_hash: str,
-        is_forked: bool,
-        block_number: Optional[int] = None
-) -> Optional[RawBlockData]:
-    receipts = await raw_db.get_block_receipts(block_hash)
-    if receipts is None:
-        logger.debug("Block is not ready, no receipts", extra={'hash': block_hash})
-        return None
-
-    reward = await raw_db.get_reward(block_number, block_hash)
-    if reward is None:
-        logger.debug("Block is not ready, no reward", extra={'hash': block_hash})
-        return None
-
-    return RawBlockData(
-        reward=reward,
-        receipts=receipts,
-        header=await raw_db.get_header_by_hash(block_hash),
-        body=await raw_db.get_block_body(block_hash),
-        accounts=await raw_db.get_block_accounts(block_hash),
-        internal_txs=await raw_db.get_internal_transactions(block_hash),
-        token_balances=await raw_db.get_token_holder_balances(block_hash),
-        is_forked=is_forked
-    )
-
-
-@timeit("[RAW DB] Sync block")
-async def sync_block(
-        raw_db: RawDB,
-        main_db: MainDB,
-        block_hash: str,
-        block_number: Optional[int] = None,
-        is_forked: bool = False,
-        chain_event: Optional[Dict[str, Any]] = None,
-        rewrite: Optional[bool] = False
-) -> Optional[bool]:
-    data = await load_block(raw_db, block_hash=block_hash, block_number=block_number, is_forked=is_forked)
-    if data:
-        block = await process_block(main_db, data)
-        await main_db.write_block(chain_event, block, rewrite)
-        return True
-
-    return None
 
 
 @timeit('[CPU/GETH/MAIN DB] Process block')
