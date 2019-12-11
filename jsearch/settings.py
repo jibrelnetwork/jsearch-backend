@@ -6,6 +6,8 @@ import socket
 BASE_DIR = pathlib.Path(__file__).parent.parent
 
 VERSION_FILE = BASE_DIR / 'jsearch' / 'version.txt'
+SWAGGER_SPEC_FILE = BASE_DIR / 'jsearch' / 'api' / 'swagger' / 'jsearch-v1.swagger.yaml'
+
 VERSION = VERSION_FILE.read_text().strip()
 
 

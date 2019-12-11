@@ -12,6 +12,9 @@ build:
 lint:
 	docker-compose run --rm dev_shell flake8 .
 
+lock:
+	@docker-compose run -u root --rm dev_shell pip-compile
+
 mypy:
 	docker-compose run --rm dev_shell mypy .
 
