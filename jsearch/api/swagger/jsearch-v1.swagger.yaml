@@ -134,7 +134,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/accounts/{address}:
     get:
       tags:
@@ -146,7 +146,7 @@ paths:
       operationId: getAccount
       parameters:
       - $ref: '#/components/parameters/address'
-      - $ref: '#/components/parameters/tag'
+      - $ref: '#/components/parameters/tagOptional'
       - $ref: '#/components/parameters/blockchain_tip'
       responses:
         '200':
@@ -167,8 +167,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        404:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: not found
           content:
             application/json:
@@ -220,7 +220,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/accounts/{address}/transactions:
     get:
       tags:
@@ -261,7 +261,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/accounts/{address}/internal_transactions:
     get:
       tags:
@@ -303,7 +303,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/accounts/{address}/pending_transactions:
     get:
       tags:
@@ -339,7 +339,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/accounts/{address}/mined_blocks:
     get:
       tags:
@@ -379,7 +379,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/accounts/{address}/mined_uncles:
     get:
       tags:
@@ -419,7 +419,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/accounts/{address}/token_balances:
     get:
       tags:
@@ -455,7 +455,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/accounts/{address}/token_balance/{contract_address}:
     get:
       tags:
@@ -480,7 +480,7 @@ paths:
                   status:
                     $ref: '#/components/schemas/Status'
                   data:
-                    $ref: '#/components/schemas/TokenHolder'
+                    $ref: '#/components/schemas/TokenBalance'
                   meta:
                     $ref: '#/components/schemas/BlockchainTipInfo'
         '400':
@@ -488,8 +488,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        404:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: Holder not found
           content:
             application/json:
@@ -541,7 +541,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/accounts/{address}/transaction_count:
     get:
       tags:
@@ -564,15 +564,15 @@ paths:
                   status:
                     $ref: '#/components/schemas/Status'
                   data:
-                    type: string
+                    type: integer
                     format: dec
-                    example: "1"
+                    example: 1
         '400':
           description: Input parameter has failed validation.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/accounts/{address}/eth_transfers:
     get:
       tags:
@@ -613,7 +613,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/blocks:
     get:
       tags:
@@ -652,7 +652,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/blocks/{tag}:
     get:
       tags:
@@ -680,8 +680,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        404:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: not found
           content:
             application/json:
@@ -721,8 +721,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        404:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: not found
           content:
             application/json:
@@ -762,8 +762,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        404:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: not found
           content:
             application/json:
@@ -803,7 +803,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/transactions/{txhash}:
     get:
       tags:
@@ -831,8 +831,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        404:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: not found
           content:
             application/json:
@@ -872,8 +872,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        404:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: not found
           content:
             application/json:
@@ -911,8 +911,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        404:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: not found
           content:
             application/json:
@@ -961,7 +961,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/uncles/{tag}:
     get:
       tags:
@@ -989,8 +989,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        404:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: not found
           content:
             application/json:
@@ -1001,6 +1001,29 @@ paths:
                   errors:
                   - code: NOT_FOUND
                     message: Resource not found
+  /v1/verify_contract:
+    post:
+      tags:
+      - common
+      summary: Verify a contract
+      description: |
+        You can use this endpoint to enque a contract verification
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifiedContractData'
+        required: true
+      responses:
+        '200':
+          description: Contract
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verification_passed:
+                    type: boolean
   /v1/verified_contracts:
     get:
       tags:
@@ -1034,7 +1057,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/verified_contracts/{contract_address}:
     get:
       tags:
@@ -1062,8 +1085,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        404:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: Contract not found
           content: {}
   /v1/tokens:
@@ -1099,7 +1122,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/tokens/{contract_address}:
     get:
       tags:
@@ -1127,8 +1150,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        404:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: Token not found
           content:
             application/json:
@@ -1180,7 +1203,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/tokens/{contract_address}/holders:
     get:
       tags:
@@ -1219,7 +1242,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/proxy/gas_price:
     get:
       tags:
@@ -1422,6 +1445,18 @@ paths:
                     $ref: '#/components/schemas/Status'
                   data:
                     $ref: '#/components/schemas/BlockchainTip'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                - success: false
+                  errors:
+                  - field: tip
+                    code: BLOCK_NOT_FOUND
+                    message: Block with hash {block_hash} not found
   /v1/wallet/assets_summary:
     get:
       tags:
@@ -1446,7 +1481,9 @@ paths:
                   status:
                     $ref: '#/components/schemas/Status'
                   data:
-                    $ref: '#/components/schemas/AddressSummary'
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AddressSummary'
                   meta:
                     $ref: '#/components/schemas/BlockchainTipInfo'
   /v1/wallet/events:
@@ -1500,19 +1537,19 @@ paths:
                 - success: false
                   errors:
                   - field: blockchain_address
-                    error_code: VALIDATION_ERROR
-                    error_message: Query param `blockchain_address` is required
+                    code: VALIDATION_ERROR
+                    message: Query param `blockchain_address` is required
                 - success: false
                   errors:
                   - field: blockchain_tip
-                    error_code: VALIDATION_ERROR
-                    error_message: Query param `blockchain_tip` is required
+                    code: VALIDATION_ERROR
+                    message: Query param `blockchain_tip` is required
                 - success: false
                   errors:
                   - field: block_range_start
-                    error_code: VALIDATION_ERROR
-                    error_message: query param `block range start ` is required
-        404:
+                    code: VALIDATION_ERROR
+                    message: query param `block range start ` is required
+        '404':
           description: Not found
           content:
             application/json:
@@ -1522,8 +1559,8 @@ paths:
                 - success: false
                   errors:
                   - field: tip
-                    error_code: BLOCK_NOT_FOUND
-                    error_message: Block with hash {block_hash} not found
+                    code: BLOCK_NOT_FOUND
+                    message: Block with hash {block_hash} not found
 components:
   schemas:
     Account:
@@ -1544,10 +1581,9 @@ components:
           format: address
           example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
         nonce:
-          type: string
+          type: integer
           description: QUANTITY - the number of transactions made by the account
-          format: dec
-          example: "976"
+          example: 976
         code:
           type: string
           description: DATA - the code from the given address.
@@ -2083,11 +2119,10 @@ components:
             null when its pending log.
           example: 0
         removed:
-          type: string
+          type: boolean
           description: TAG - true when the log was removed, due to a chain reorganization.
             false if its a valid log
-          format: boolean
-          example: "false"
+          example: false
         topics:
           type: array
           description: Array of DATA - Array of 0 to 4 32 Bytes DATA of indexed log
@@ -2123,13 +2158,11 @@ components:
         balance:
           type: string
           description: The balance
-          format: dec
           example: "1000000"
         decimals:
-          type: string
+          type: integer
           description: Token decimals
-          format: dec
-          example: "18"
+          example: 18
     Balance:
       type: object
       properties:
@@ -2204,6 +2237,7 @@ components:
       properties:
         timestamp:
           type: integer
+          nullable: true
           description: The unix timestamp
           example: 1548229016
         transactionHash:
@@ -2259,10 +2293,9 @@ components:
           format: dec
           example: "1664600000000000000000"
         decimals:
-          type: string
+          type: integer
           description: Token decimals
-          format: dec
-          example: "18"
+          example: 18
     TokenHolder:
       type: object
       properties:
@@ -2277,15 +2310,13 @@ components:
           format: address
           example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
         balance:
-          type: string
+          type: integer
           description: Token balance
-          format: dec
-          example: "1000000"
+          example: 1000000
         decimals:
-          type: string
+          type: integer
           description: Token decimals
-          format: dec
-          example: "18"
+          example: 18
     AssetSummary:
       type: object
       properties:
@@ -2305,10 +2336,9 @@ components:
           format: dec
           example: "18"
         transfersNumber:
-          type: string
+          type: integer
           description: The number of transfers
-          format: dec
-          example: "1"
+          example: 1
     AddressSummary:
       type: object
       properties:
@@ -2370,6 +2400,7 @@ components:
               example: false
             lastUnchangedBlock:
               type: integer
+              nullable: true
               description: The latest block in a canonical chain. Client should invalidate
                 cache since this block number.
               example: 0
@@ -2400,9 +2431,13 @@ components:
                 description: Name of field
                 example: asset
               fieldValue:
-                type: string
-                description: Value of field
-                example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
+                oneOf:
+                  - type: string
+                    description: Value of field
+                    example: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
+                  - type: integer
+                    description: Value of field
+                    example: 12
     TransactionInfo:
       type: object
       properties:
@@ -2438,6 +2473,14 @@ components:
       example: []
       items:
         $ref: '#/components/schemas/Error'
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        data:
+          nullable: true
+          example: null
     Status:
       type: object
       properties:
@@ -2476,6 +2519,21 @@ components:
           type: string
           description: Hash of the method signature and encoded parameters.
           example: "0x6740d36c0000000000000000000000000000000000000000000000000000000000000005"
+    VerifiedContractData:
+      type: object
+      properties:
+        address:
+          type: string
+        contract_name:
+          type: string
+        compiler:
+          type: string
+        optimization_enabled:
+          type: string
+        constructor_args:
+          type: string
+        source_code:
+          type: string
     BlockParameter:
       type: object
       description: An integer block number, or the string "latest", "earliest" or
@@ -2486,11 +2544,13 @@ components:
       properties:
         link:
           type: string
+          nullable: true
           description: The current page of data (relative url).
           format: url
           example: /v1/...
         link_kwargs:
           type: object
+          nullable: true
           properties: {}
           description: The current link keyword arguments
           example:
@@ -2498,12 +2558,14 @@ components:
             limit: 20
         next:
           type: string
+          nullable: true
           description: The next page of data (relative url). The server MUST determine
             whether a next page exists, and return null as the next link if not.
           format: url
           example: /v1/...
         next_kwargs:
           type: object
+          nullable: true
           properties: {}
           description: The next link keyword arguments
           example:
@@ -2515,27 +2577,6 @@ components:
             end of query.
           example: 23
       description: The paging object that’s a sibling of the paginated data
-    ValidationErrorResponse:
-      type: object
-      properties:
-        status:
-          type: object
-          properties:
-            success:
-              type: boolean
-              example: false
-            errors:
-              type: object
-              properties:
-                field:
-                  type: string
-                  example: name
-                code:
-                  type: string
-                  example: ERR_CODE
-                message:
-                  type: string
-                  example: Does not match validation criteria.
   parameters:
     address:
       name: address
@@ -2633,7 +2674,10 @@ components:
         data. Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:">link</a>
         for details.
       schema:
-        type: integer
+        oneOf:
+          - type: integer
+          - type: string
+            enum: [latest]
     uncle_number:
       name: uncle_number
       in: query
@@ -2641,7 +2685,10 @@ components:
         uncle-number-based data. Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:">link</a>
         for details.
       schema:
-        type: integer
+        oneOf:
+          - type: integer
+          - type: string
+            enum: [latest]
     timestamp:
       name: timestamp
       in: query
@@ -2650,7 +2697,10 @@ components:
         by number or by timestamp only. Please se the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892374/API+pagination#APIpagination-Uniquefilterssetsforendpoints:">link</a>
         for details.
       schema:
-        type: integer
+        oneOf:
+          - type: integer
+          - type: string
+            enum: [latest]
     transaction_index:
       name: transaction_index
       in: query
