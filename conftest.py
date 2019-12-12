@@ -90,7 +90,7 @@ async def aiohttp_client_session_wide(event_loop):
 def cli(loop, aiohttp_client_session_wide):
     app = loop.run_until_complete(make_app())
 
-    app['validate_spec'] = False
+    app['validate_spec'] = True
     app._middlewares += (spec_testing_middleware,)
 
     client = loop.run_until_complete(aiohttp_client_session_wide(app))

@@ -117,8 +117,8 @@ async def get_blockchain_tip(request):
     block = await storage.get_latest_block_info()
     if block is None:
         err = {
-            'error_code': ErrorCode.BLOCK_NOT_FOUND,
-            'error_message': f'Blockchain tip not found'
+            'code': ErrorCode.BLOCK_NOT_FOUND,
+            'message': f'Blockchain tip not found'
         }
         return api_error_response(status=404, errors=[err])
 

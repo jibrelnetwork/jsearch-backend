@@ -50,8 +50,8 @@ async def get_accounts_balances(request):
         return api_error_response_400(errors=[
             {
                 'field': 'addresses',
-                'error_code': ErrorCode.TOO_MANY_ITEMS,
-                'error_message': 'Too many addresses requested'
+                'code': ErrorCode.TOO_MANY_ITEMS,
+                'message': 'Too many addresses requested'
             }
         ])
 
@@ -434,7 +434,7 @@ async def get_account_token_balance(request):
     storage = request.app['storage']
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
-    token_address = request.match_info['token_address'].lower()
+    token_address = request.match_info['contract_address'].lower()
     account_address = request.match_info['address'].lower()
     tip_hash = request.query.get('blockchain_tip') or None
 
@@ -475,8 +475,8 @@ async def get_account_token_balances_multi(request):
         return api_error_response_400(errors=[
             {
                 'field': 'contract_addresses',
-                'error_code': ErrorCode.TOO_MANY_ITEMS,
-                'error_message': 'Too many addresses requested'
+                'code': ErrorCode.TOO_MANY_ITEMS,
+                'message': 'Too many addresses requested'
             }
         ])
 
