@@ -1264,6 +1264,12 @@ paths:
                     type: string
                     format: dec
                     example: "10000000000000"
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/proxy/transaction_count:
     post:
       tags:
@@ -1299,6 +1305,12 @@ paths:
                     type: string
                     format: dec
                     example: "1"
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       x-codegen-request-body-name: body
   /v1/proxy/estimate_gas:
     post:
@@ -1342,6 +1354,12 @@ paths:
                     type: string
                     format: dec
                     example: "21000"
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       x-codegen-request-body-name: body
   /v1/proxy/call_contract:
     post:
@@ -1387,6 +1405,12 @@ paths:
                     type: string
                     format: hex
                     example: "0x0"
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       x-codegen-request-body-name: body
   /v1/proxy/send_raw_transaction:
     post:
@@ -1425,6 +1449,12 @@ paths:
                     type: string
                     format: hex
                     example: "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331"
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       x-codegen-request-body-name: body
   /v1/blockchain_tip:
     get:
