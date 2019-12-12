@@ -2,8 +2,8 @@ import logging.config
 import sys
 
 import sentry_sdk
-from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
+from jsearch.common.sentry_aiohttp_integration import AioHttpIntegration
 from jsearch import settings
 
 sentry_sdk.init(

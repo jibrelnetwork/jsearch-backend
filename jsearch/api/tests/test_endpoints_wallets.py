@@ -157,6 +157,20 @@ URL = '/v1/wallet/events?{params}'
                     'order': 'desc'
                 })),
         ),
+        (
+                URL.format(params=urlencode({'timestamp': 'latest', 'limit': 3})),
+                [(4, 1, 2), (4, 1, 1), (4, 0, 2)],
+                URL.format(params=urlencode({
+                    'event_index': make_event_index(4, 0, 1),
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+                URL.format(params=urlencode({
+                    'event_index': make_event_index(4, 1, 2),
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+        ),
     ],
     ids=[
         URL.format(params=urlencode({'limit': 3})),
@@ -165,6 +179,7 @@ URL = '/v1/wallet/events?{params}'
         URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
         URL.format(params=urlencode({'event_index': make_event_index(3, 0, 1), 'limit': 3})),
         URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
+        URL.format(params=urlencode({'timestamp': 'latest', 'limit': 3})),
     ]
 )
 async def test_get_wallet_events_pagination(
@@ -336,7 +351,7 @@ async def test_get_events_limits(
 async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_factory, transaction_factory):
     # given
     block = block_factory.create(number=100)
-    tx, _ = transaction_factory.create_for_block(block=block, )
+    tx, _ = transaction_factory.create_for_block(block=block, value='0x08')
     event = wallet_events_factory.create_token_transfer(tx=tx, block=block)
 
     url = 'v1/wallet/events?{params}'.format(
@@ -377,7 +392,14 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
                 f'limit=20&'
                 f'blockchain_address={event.address}'
             ),
+            'link_kwargs': {
+                'event_index': str(event.event_index),
+                'order': 'desc',
+                'limit': '20',
+                'blockchain_address': event.address
+            },
             'next': None,
+            'next_kwargs': None,
         },
         'data': {
             'pendingEvents': [],
@@ -409,7 +431,7 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
                         'to': tx.to,
                         'transactionIndex': tx.transaction_index,
                         'v': tx.v,
-                        'value': tx.value
+                        'value': str(int(tx.value, 16))
                     }
                 }
             ],

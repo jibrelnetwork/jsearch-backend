@@ -1,6 +1,7 @@
 import logging
 from urllib.parse import parse_qs, urlencode
 
+import factory
 import pytest
 from aiohttp.test_utils import TestClient
 from typing import List, Dict, Any, Tuple, Optional
@@ -9,6 +10,9 @@ from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
 from jsearch.tests.plugins.databases.factories.uncles import UncleFactory
 
 logger = logging.getLogger(__name__)
+
+
+TIMESTAMP = 1575289040
 
 
 def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
@@ -42,18 +46,34 @@ def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
                 "/v1/uncles?limit=3&uncle_number=5&order=desc",
         ),
         (
+                "/v1/uncles?limit=5&timestamp=1575289047",
+                10,
+                [7, 6, 5, 4, 3],
+                "/v1/uncles?limit=5&timestamp=1575289042&order=desc",
+                "/v1/uncles?limit=5&timestamp=1575289047&order=desc",
+        ),
+        (
                 "/v1/uncles?limit=3&uncle_number=latest",
                 10,
                 [9, 8, 7],
                 "/v1/uncles?limit=3&uncle_number=6&order=desc",
                 "/v1/uncles?limit=3&uncle_number=9&order=desc",
         ),
+        (
+                "/v1/uncles?limit=3&timestamp=latest",
+                10,
+                [9, 8, 7],
+                "/v1/uncles?limit=3&timestamp=1575289046&order=desc",
+                "/v1/uncles?limit=3&timestamp=1575289049&order=desc",
+        ),
     ],
     ids=[
         "/v1/uncles?limit=3",
         "/v1/uncles?limit=3&order=asc",
         "/v1/uncles?limit=3&uncle_number=5",
+        "/v1/uncles?limit=5&timestamp=1575289047",
         "/v1/uncles?limit=3&uncle_number=latest",
+        "/v1/uncles?limit=3&timestamp=latest",
     ]
 )
 async def test_get_uncles(cli,
@@ -66,7 +86,7 @@ async def test_get_uncles(cli,
                           link: str) -> None:
     # given
     block_factory.create_batch(10)
-    uncle_factory.create_batch(uncles)
+    uncle_factory.create_batch(uncles, timestamp=factory.Sequence(lambda x: x + TIMESTAMP))
 
     resp = await cli.get(url)
     resp_json = await resp.json()
@@ -202,8 +222,8 @@ async def test_get_uncles_limits(
             ('timestamp', 2 ** 8, 200)
     ),
     ids=(
-            "block_number_with_too_big_value",
-            "block_number_with_normal_value",
+            "uncle_number_with_too_big_value",
+            "uncle_number_with_normal_value",
             "timestamp_with_too_big_value",
             "timestamp_with_normal_value"
     )

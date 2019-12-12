@@ -1,3 +1,6 @@
+Click
+ConfigArgParse
+SQLAlchemy
 aiohttp
 aiohttp-apispec
 aiohttp-swagger
@@ -9,14 +12,13 @@ asyncpg>=0.19
 asyncpgsa>=0.25
 backoff
 cachetools
-Click
-ConfigArgParse
 dsnparse
 eth-abi<=1.1.1
 eth-utils<=1.4.1
 ethereum<=2.3.1
 funcy
 hexbytes<=0.1.0
+jibrel-aiohttp-swagger
 lxml
 marshmallow<3
 mode
@@ -28,6 +30,5 @@ raven
 requests
 rlp<=0.6.0
 sentry-sdk
-SQLAlchemy
 web3<4.7
 webargs

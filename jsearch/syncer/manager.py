@@ -7,7 +7,7 @@ import backoff
 import psycopg2
 import time
 from functools import partial
-from typing import Dict, Any, Optional, List, Coroutine, Callable
+from typing import Dict, Any, Optional, List
 
 from jsearch import settings
 from jsearch.api.helpers import ChainEvent
@@ -15,8 +15,8 @@ from jsearch.common.prom_metrics import METRIC_SYNCER_EVENT_SYNC_DURATION
 from jsearch.common.structs import BlockRange
 from jsearch.common.utils import timeit, safe_get
 from jsearch.syncer.database import MainDB, RawDB
-from jsearch.syncer.processor import sync_block
 from jsearch.syncer.state import SyncerState
+from jsearch.syncer.syncer import apply_create_event, apply_split_event, sync_block
 
 logger = logging.getLogger(__name__)
 
@@ -35,100 +35,6 @@ async def reconnect(details: Dict[str, Any]) -> None:
         await manager.main_db.disconnect()
     finally:
         await manager.main_db.connect()
-
-
-async def sync_block_by_hash(raw_db: RawDB, main_db: MainDB, block_hash: str, node_id: str) -> Dict[str, Any]:
-    logging.info('Load and insert block', extra={'hash': block_hash})
-    insert_event = await raw_db.get_insert_chain_event_by_block_hash(block_hash, node_id)
-    await process_insert_block_event(raw_db, main_db, block_hash, insert_event['block_number'], insert_event)
-    return await main_db.get_block_by_hash(block_hash)
-
-
-async def process_insert_block_event(raw_db: RawDB,
-                                     main_db: MainDB,
-                                     block_hash: str,
-                                     block_num: int,
-                                     chain_event: Dict[str, Any]) -> None:
-    parent_hash = await raw_db.get_parent_hash(block_hash)
-    is_block_number_exists = await main_db.is_block_number_exists(block_num)
-
-    is_canonical_parent = await raw_db.is_canonical_block(parent_hash)
-    is_forked = is_block_number_exists or (not is_canonical_parent)
-
-    is_block_exist = await main_db.is_block_exist(block_hash)
-    if is_block_exist:
-        logger.debug(
-            "Block already exists, skip and save event...",
-            extra={
-                'hash': block_hash,
-                'event_id': chain_event['id']
-            }
-        )
-        await main_db.insert_chain_event(event=chain_event)
-    else:
-        await sync_block(
-            raw_db=raw_db,
-            main_db=main_db,
-            block_hash=block_hash,
-            block_number=block_num,
-            is_forked=is_forked,
-            chain_event=chain_event,
-        )
-
-
-async def safe_get_block_and_maybe_load(
-        block_hash: str,
-        blocks: Dict[str, Dict[str, Any]],
-        load_missed=Optional[Callable[[str], Coroutine[Any, Any, None]]],
-) -> Dict[str, Any]:
-    try:
-        block = blocks[block_hash]
-    except KeyError:
-        if load_missed is None:
-            raise
-
-        block = await load_missed(block_hash)
-    return block
-
-
-async def get_split_chain(
-        blocks: Dict[str, Dict[str, Any]],
-        split: Dict[str, Any],
-        load_missed=Optional[Callable[[str], Coroutine[Any, Any, None]]],
-        *, direction: str
-) -> List[Dict[str, Any]]:
-    assert direction in ('add', 'drop')
-
-    depth: int = split[f'{direction}_length']
-    head: str = split[f'{direction}_block_hash']
-
-    chain = [await safe_get_block_and_maybe_load(head, blocks, load_missed)]
-
-    while len(chain) < depth:
-        last_link = chain[-1]['parent_hash']
-        next_block = await safe_get_block_and_maybe_load(last_link, blocks, load_missed)
-        chain.append(next_block)
-    return chain
-
-
-def get_split_range(split_data: Dict[str, Any]):
-    from_block: int = split_data['block_number']
-    to_block = from_block + max(split_data['add_length'] or 0, split_data['drop_length'] or 0)
-    return from_block, to_block
-
-
-async def process_chain_split_event(main_db: MainDB, split_data: Dict[str, Any], load_missed=None) -> None:
-    from_block, to_block = get_split_range(split_data)
-    hash_map = await main_db.get_hash_map_from_block_range(from_block, to_block)
-
-    new_chain_fragment = await get_split_chain(hash_map, split_data, load_missed, direction='add')
-    old_chain_fragment = await get_split_chain(hash_map, split_data, load_missed, direction='drop')
-
-    await main_db.apply_chain_split(
-        new_chain_fragment=new_chain_fragment,
-        old_chain_fragment=old_chain_fragment,
-        chain_event=split_data,
-    )
 
 
 class Manager:
@@ -177,10 +83,6 @@ class Manager:
         self.node_id = settings.ETH_NODE_ID
 
     async def start(self):
-        can_run = await self.try_lock_range()
-        if can_run is not True:
-            logger.error("Syncer instance already exists, exit now", extra={'sync range': self.sync_range})
-            return
         logger.info("Starting Sync Manager", extra={'sync range': self.sync_range})
         self._running = True
 
@@ -283,10 +185,10 @@ class Manager:
                 'block_hash': chain_split['block_hash']
             })
 
-            await process_chain_split_event(
+            await apply_split_event(
                 main_db=self.main_db,
                 split_data=dict(chain_split),
-                load_missed=partial(sync_block_by_hash, self.raw_db, self.main_db, node_id=self.node_id)
+                load_missed=partial(sync_block, self.raw_db, self.main_db, node_id=self.node_id)
             )
 
             if not self._running:
@@ -305,7 +207,7 @@ class Manager:
         if event['type'] == ChainEvent.INSERT:
             block_hash = event['block_hash']
             block_number = event['block_number']
-            await process_insert_block_event(
+            await apply_create_event(
                 raw_db=self.raw_db,
                 main_db=self.main_db,
                 block_hash=block_hash,
@@ -316,7 +218,7 @@ class Manager:
         elif event['type'] == ChainEvent.REINSERT:
             await self.main_db.insert_chain_event(event)
         elif event['type'] == ChainEvent.SPLIT:
-            await process_chain_split_event(self.main_db, split_data=event)
+            await apply_split_event(self.main_db, split_data=event)
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],
@@ -344,13 +246,11 @@ class Manager:
         if self.state.already_processed is None:
             self.state.already_processed = self.sync_range.start
 
-        block_range = await get_range_and_check_holes(self.main_db, self.sync_range, self.state)
-        logger.info("Event range", extra={"range": block_range})
+        block_range = await get_next_range(self.main_db, self.sync_range, self.state)
         last_event = await self.main_db.get_last_chain_event(block_range, self.node_id)
-        if last_event is None:
-            next_event = await self.raw_db.get_first_chain_event_for_block_range(block_range, self.node_id)
-        else:
-            next_event = await self.raw_db.get_next_chain_event(block_range, last_event['id'], self.node_id)
+        next_event = await get_next_event(last_event, self.raw_db, self.node_id, block_range)
+
+        logger.info("Event range", extra={"range": block_range})
 
         if self.sync_range.end != block_range.end and next_event is None:
             logger.info("No more events in the range", extra={
@@ -378,11 +278,8 @@ class Manager:
             ended_at = time.perf_counter()
             METRIC_SYNCER_EVENT_SYNC_DURATION.labels(next_event_type).observe(ended_at - started_at)
 
-    async def try_lock_range(self):
-        return await self.main_db.try_advisory_lock(self.sync_range.start, self.sync_range.end)
 
-
-async def get_range_and_check_holes(
+async def get_next_range(
         main_db: MainDB,
         sync_range: BlockRange,
         state: SyncerState,
@@ -422,15 +319,16 @@ async def get_range_and_check_holes(
           - hole
           - checked_on_holes
     """
-    # FIXME (nickgashkov): `state.already_processed` could be `None`.
-    sync_range = BlockRange(max(state.already_processed, sync_range.start), sync_range.end)  # type: ignore
+    sync_range = BlockRange(max(state.already_processed or 0, sync_range.start), sync_range.end)
     if sync_range.end is None:
         return sync_range
 
     if state.hole and sync_range.start in state.hole:
         sync_range = state.hole
+
     elif state.checked_on_holes and sync_range.start in state.checked_on_holes:
         sync_range = state.checked_on_holes
+
     else:
         left, right = sync_range
 
@@ -444,3 +342,18 @@ async def get_range_and_check_holes(
             sync_range = state.checked_on_holes
 
     return sync_range
+
+
+async def get_next_event(
+        last_event: Optional[Dict[str, Any]],
+        raw_db: RawDB,
+        node_id: str,
+        event_range: BlockRange,
+) -> Optional[Dict[str, Any]]:
+    last_event_id = last_event and last_event['id']
+    if last_event_id is None:
+        next_event = await raw_db.get_first_chain_event_for_block_range(event_range, node_id)
+    else:
+        next_event = await raw_db.get_next_chain_event(event_range, last_event_id, node_id)
+
+    return next_event

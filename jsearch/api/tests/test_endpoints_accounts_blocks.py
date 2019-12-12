@@ -1,6 +1,7 @@
 import logging
 from urllib.parse import parse_qs, urlencode
 
+import factory
 import pytest
 from aiohttp.test_utils import TestClient
 from typing import List, Dict, Any, Tuple, Optional
@@ -9,6 +10,9 @@ from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
 from jsearch.tests.plugins.databases.factories.common import generate_address
 
 logger = logging.getLogger(__name__)
+
+
+TIMESTAMP = 1575289040
 
 
 def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
@@ -42,18 +46,34 @@ def parse_url(url: str) -> Tuple[str, Dict[str, Any]]:
             "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&block_number=5&order=desc",
         ),
         (
+            "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=5&timestamp=1575289047",
+            10,
+            [7, 6, 5, 4, 3],
+            "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=5&timestamp=1575289042&order=desc",  # NOQA: E501
+            "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=5&timestamp=1575289047&order=desc",  # NOQA: E501
+        ),
+        (
             "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&block_number=latest",
             10,
             [9, 8, 7],
             "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&block_number=6&order=desc",
             "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&block_number=9&order=desc",
         ),
+        (
+            "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&timestamp=latest",
+            10,
+            [9, 8, 7],
+            "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&timestamp=1575289046&order=desc",  # NOQA: E501
+            "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&timestamp=1575289049&order=desc",  # NOQA: E501
+        ),
     ],
     ids=[
         "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3",
         "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&order=asc",
         "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&block_number=5",
+        "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=5&timestamp=1575289047",
         "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&block_number=latest",
+        "/v1/accounts/0x3f956bd03cbc756a4605a4000cb3602e5946f9c4/mined_blocks?limit=3&timestamp=latest",
     ]
 )
 async def test_get_accounts_blocks(cli,
@@ -64,7 +84,11 @@ async def test_get_accounts_blocks(cli,
                                    next_link: str,
                                    link: str) -> None:
     # given
-    block_factory.create_batch(blocks, miner='0x3f956bd03cbc756a4605a4000cb3602e5946f9c4')
+    block_factory.create_batch(
+        blocks,
+        miner='0x3f956bd03cbc756a4605a4000cb3602e5946f9c4',
+        timestamp=factory.Sequence(lambda x: x + TIMESTAMP),
+    )
 
     resp = await cli.get(url)
     resp_json = await resp.json()

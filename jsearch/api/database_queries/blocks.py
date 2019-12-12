@@ -149,8 +149,11 @@ def get_block_number_by_timestamp_query(timestamp: int, order_direction: OrderDi
     operator_or_equal = DIRECTIONS_OPERATOR_OR_EQUAL_MAPS[order_direction]
 
     return select([blocks_t.c.number, blocks_t.c.hash, blocks_t.c.timestamp]).where(
-        operator_or_equal(blocks_t.c.timestamp, timestamp)
-    ).order_by(direction_func(blocks_t.c.timestamp))
+        and_(
+            operator_or_equal(blocks_t.c.timestamp, timestamp),
+            blocks_t.c.is_forked == false(),
+        )
+    ).order_by(direction_func(blocks_t.c.timestamp)).limit(1)
 
 
 def generate_blocks_query(
@@ -159,14 +162,14 @@ def generate_blocks_query(
         timestamp: Optional[int] = None,
         limit: Optional[int] = None,
 ) -> Query:
-    if number is None:
+    if number is None and timestamp is None:
         query = get_blocks_query(limit=limit, order=order)
     else:
         if order.scheme == ORDER_SCHEME_BY_TIMESTAMP:
             query = get_blocks_by_timestamp_query(limit=limit, timestamp=timestamp, order=order)  # type: ignore
 
         elif order.scheme == ORDER_SCHEME_BY_NUMBER:
-            query = get_blocks_by_number_query(limit=limit, number=number, order=order)
+            query = get_blocks_by_number_query(limit=limit, number=number, order=order)  # type: ignore
         else:
             raise ValueError('Invalid scheme: {scheme}')
     return query

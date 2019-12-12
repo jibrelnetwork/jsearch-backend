@@ -2,7 +2,6 @@ import json
 import logging
 
 from sqlalchemy.dialects.postgresql import insert
-import aiopg
 from aiopg.sa import SAConnection
 from sqlalchemy import and_, Table, false
 from sqlalchemy.orm import Query
@@ -55,13 +54,6 @@ class MainDB(DBWrapper):
     jSearch Main db wrapper
     """
     pool_size = MAIN_DB_POOL_SIZE
-    lock_conn = None
-
-    async def disconnect(self):
-        if self.lock_conn:
-            self.lock_conn.close()
-        if self.engine is not None:
-            self.engine.terminate()
 
     async def get_latest_synced_block_number(self) -> int:
         """
@@ -177,8 +169,8 @@ class MainDB(DBWrapper):
             where is_forked = false and number >= %s and number <= %s;
         """
         result = await self.fetch_one(query, start, end)
-        if result and (result.left or result.right):
-            return BlockRange(result.left, result.right)
+        if result and (result['left'] or result['right']):
+            return BlockRange(result['left'], result['right'])
 
         return None
 
@@ -194,7 +186,7 @@ class MainDB(DBWrapper):
         """
         result = await self.fetch_one(query, start, end + 1)
         if result:
-            return result.gap_end
+            return result['gap_end']
 
         return None
 
@@ -276,7 +268,11 @@ class MainDB(DBWrapper):
 
     async def insert_or_update_pending_txs(self, pending_txs: List[Dict[str, Any]]) -> None:
         query = insert_or_update_pending_txs_q(pending_txs)
-        await self.execute(query)
+
+        async with self.engine.acquire() as conn:
+            res = await conn.execute(query)
+
+        logger.info('Upserted batch of pending TXs', extra={'status_message': res._connection._cursor.statusmessage})
 
     async def is_block_exist(self, block_hash):
         q = """SELECT hash from blocks WHERE hash=%s"""
@@ -344,20 +340,6 @@ class MainDB(DBWrapper):
         await connection.execute("""DELETE FROM internal_transactions WHERE block_hash=%s""", block_hash)
         await connection.execute("""DELETE FROM uncles WHERE block_hash=%s""", block_hash)
         await connection.execute("""DELETE FROM blocks WHERE hash=%s""", block_hash)
-
-    async def try_advisory_lock(self, start, end):
-        if end is None:
-            q = """SELECT pg_try_advisory_lock(%s)"""
-            params = [start]
-        else:
-            q = """SELECT pg_try_advisory_lock(%s, %s)"""
-            params = [start, end]
-
-        self.lock_conn = await aiopg.connect(self.connection_string)
-        cur = await self.lock_conn.cursor()
-        await cur.execute(q, params)
-        res = await cur.fetchone()
-        return res[0]
 
     async def get_block_hash_by_number(self, block_num):
         q = blocks_t.select().where(and_(blocks_t.c.number == block_num, blocks_t.c.is_forked == false()))

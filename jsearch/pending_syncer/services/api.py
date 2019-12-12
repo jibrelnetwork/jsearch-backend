@@ -1,14 +1,12 @@
+import aiopg
+from aiohttp import web
 from typing import Any
 
-import asyncpg
-from aiohttp import web
-
+from jsearch import settings
 from jsearch.api.handlers import monitoring
 from jsearch.api.middlewares import cors_middleware
-
-from jsearch import settings
-from jsearch.common import stats
 from jsearch.common import services
+from jsearch.common import stats
 
 
 class ApiService(services.ApiService):
@@ -56,10 +54,13 @@ async def healthcheck(request: web.Request) -> web.Response:
 
 
 async def on_startup(app: web.Application) -> None:
-    app['db_pool'] = await asyncpg.create_pool(settings.JSEARCH_MAIN_DB)
-    app['db_pool_raw'] = await asyncpg.create_pool(settings.JSEARCH_RAW_DB)
+    app['db_pool'] = await aiopg.sa.create_engine(settings.JSEARCH_MAIN_DB)
+    app['db_pool_raw'] = await aiopg.sa.create_engine(settings.JSEARCH_RAW_DB)
 
 
 async def on_shutdown(app: web.Application) -> None:
-    await app['db_pool'].close()
-    await app['db_pool_raw'].close()
+    app['db_pool'].close()
+    app['db_pool_raw'].close()
+
+    await app['db_pool'].wait_closed()
+    await app['db_pool_raw'].wait_closed()

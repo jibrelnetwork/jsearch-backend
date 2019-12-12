@@ -1,10 +1,10 @@
 import asyncio
-import os
 
-import asyncpg
+import aiopg.sa
 from aiohttp import web
 from aiohttp.web_app import Application
-from aiohttp_swagger import setup_swagger
+from psycopg2.extras import DictCursor
+from jibrel_aiohttp_swagger import setup_swagger
 
 from jsearch import settings
 from jsearch.api.handlers import contracts
@@ -29,12 +29,10 @@ from jsearch.api.node_proxy import NodeProxy
 from jsearch.api.storage import Storage
 from jsearch.common import logs, stats
 
-swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
-swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
-
 
 async def on_shutdown(app):
-    await app['db_pool'].close()
+    app['db_pool'].close()
+    await app['db_pool'].wait_closed()
 
 
 def define_routes(app: Application):
@@ -87,8 +85,12 @@ def define_routes(app: Application):
 
 
 def enable_swagger_docs(app: Application) -> None:
-    app.router.add_static('/docs', swagger_ui_path)
-    setup_swagger(app, swagger_from_file=swagger_file)
+    setup_swagger(
+        app,
+        spec_path=settings.SWAGGER_SPEC_FILE,
+        api_root='/docs/index.html',
+        version_file_path=settings.VERSION_FILE,
+    )
 
 
 async def make_app() -> Application:
@@ -98,7 +100,10 @@ async def make_app() -> Application:
     app = web.Application(middlewares=(prom_middleware, cors_middleware))
     app.on_shutdown.append(on_shutdown)
 
-    app['db_pool'] = await asyncpg.create_pool(dsn=settings.JSEARCH_MAIN_DB)
+    app['db_pool'] = await aiopg.sa.create_engine(
+        dsn=settings.JSEARCH_MAIN_DB,
+        cursor_factory=DictCursor,
+    )
     app['storage'] = Storage(app['db_pool'])
     app['node_proxy'] = NodeProxy(settings.ETH_NODE_URL)
 

@@ -1,3 +1,5 @@
+import functools
+
 import asyncio
 import logging
 
@@ -11,19 +13,21 @@ from jsearch import settings
 from jsearch.common.prom_metrics import METRIC_SYNCER_PENDING_TXS_BATCH_SYNC_SPEED, METRIC_SYNCER_PENDING_LAG_RAW_DB
 from jsearch.common.structs import BlockRange
 from jsearch.common.utils import timeit
+from jsearch.common.worker import shutdown_root_worker
+from jsearch.pending_syncer.services import ApiService
 from jsearch.pending_syncer.utils.processing import prepare_pending_txs
 from jsearch.syncer.database import MainDB, RawDB
 
 logger = logging.getLogger(__name__)
 
-ADVISORY_LOCK_ID = -1
-
 
 class PendingSyncerService(mode.Service):
-    def __init__(self, raw_db_dsn: str, main_db_dsn: str, sync_range: BlockRange, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, raw_db_dsn: str, main_db_dsn: str, sync_range: BlockRange, **kwargs: Any) -> None:
         self.raw_db = RawDB(raw_db_dsn)
         self.main_db = MainDB(main_db_dsn)
         self.sync_range = sync_range
+
+        self.api = ApiService()
 
         super().__init__(**kwargs)
 
@@ -31,21 +35,20 @@ class PendingSyncerService(mode.Service):
         await self.raw_db.connect()
         await self.main_db.connect()
 
+    def on_init_dependencies(self) -> List[mode.Service]:
+        return [self.api]
+
     async def on_stop(self) -> None:
         await self.raw_db.disconnect()
         await self.main_db.disconnect()
 
-    @mode.Service.task
+    async def on_started(self) -> None:
+        fut = asyncio.create_task(self.syncer())
+        fut.add_done_callback(functools.partial(shutdown_root_worker, service=self))
+
     async def syncer(self) -> None:
         pending_txs: List[Dict[str, Any]] = []
         last_sync_id = None
-
-        can_run = await self.try_lock()
-        if can_run is not True:
-            logger.error("Pending Syncer instance already exists, exit now")
-            await self.stop()
-            # we schedule shutdown on root Worker
-            self.beacon.root.data.schedule_shutdown()
 
         while not self.should_stop:
             last_sync_id, pending_txs = await self.get_and_process_pending_txs(last_sync_id, pending_txs)
@@ -144,6 +147,3 @@ class PendingSyncerService(mode.Service):
         )
 
         return pending_txs
-
-    async def try_lock(self):
-        return await self.main_db.try_advisory_lock(ADVISORY_LOCK_ID, None)

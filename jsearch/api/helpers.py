@@ -1,6 +1,5 @@
-import asyncpgsa
 from aiohttp import web
-from asyncpg import Connection
+from aiopg.sa import Engine
 from functools import partial
 from sqlalchemy import asc, desc, Column
 from sqlalchemy.dialects import postgresql
@@ -8,7 +7,8 @@ from sqlalchemy.orm import Query
 from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.pagination import Page
+from jsearch.api.pagination import PaginationBlock
+from jsearch.common.db import fetch_one
 from jsearch.common.utils import timeit
 from jsearch.typing import AnyCoroutine, ProgressPercent
 
@@ -81,7 +81,7 @@ def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -
 
 def api_success(
         data: Union[Dict[str, Any], Any],
-        page: Optional[Page] = None,
+        page: Optional[PaginationBlock] = None,
         progress: Optional[ProgressPercent] = None,
         meta: Optional[Dict[str, Any]] = None
 ):
@@ -158,12 +158,12 @@ def get_order(columns: List[Column], direction: Optional[str]) -> List[Column]:
     return columns
 
 
-async def estimate_query(connection: Connection, query: Query) -> int:
+async def estimate_query(engine: Engine, query: Query) -> int:
     query = query.with_only_columns('*').limit(None)
     query = query.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
 
     query = f"SELECT row_estimator($${query}$$);"
-    result = await fetch_row(connection, query)
+    result = await fetch_one(engine, query)
 
     if result:
         return result.get('row_estimator', 0)
@@ -173,12 +173,12 @@ async def estimate_query(connection: Connection, query: Query) -> int:
 
 @timeit(name='[MAIN DB] Pages left query')
 async def get_cursor_percent(
-        connection: Connection,
+        engine: Engine,
         query: Query,
         reverse_query: Query,
 ) -> Optional[ProgressPercent]:
-    query_estimation = await estimate_query(connection, query)
-    reverse_estimation = await estimate_query(connection, reverse_query)
+    query_estimation = await estimate_query(engine, query)
+    reverse_estimation = await estimate_query(engine, reverse_query)
 
     if query_estimation:
         total = (reverse_estimation + query_estimation)
@@ -187,21 +187,6 @@ async def get_cursor_percent(
             return 99
         return 100 - progress
     return 0
-
-
-async def fetch(connection: Connection, query: Union[Query, str]) -> List[Dict[str, Any]]:
-    query, params = asyncpgsa.compile_query(query)
-    result = await connection.fetch(query, *params)
-    return [dict(item) for item in result]
-
-
-async def fetch_row(connection: Connection, query: Union[Query, str]) -> Optional[Dict[str, Any]]:
-    query, params = asyncpgsa.compile_query(query)
-    result = await connection.fetchrow(query, *params)
-    if result is not None:
-        return dict(result)
-
-    return None
 
 
 def get_positive_number(

@@ -107,8 +107,28 @@ async def test_get_token_holders_pagination_large_balances_does_not_converted_to
     resp_json = await resp.json()
 
     assert resp_json['paging'] == {
-        'link': f'/v1/tokens/{token_address}/holders?balance=1000000000000000000&id=1&order=desc&limit=1',
-        'next': f'/v1/tokens/{token_address}/holders?balance=1000000000000000000&id=0&order=desc&limit=1',
+        'link': f'/v1/tokens/{token_address}/holders?'
+                f'balance=1000000000000000000&'
+                f'id=1&'
+                f'order=desc&'
+                f'limit=1',
+        'link_kwargs': {
+            'balance': '1000000000000000000',
+            'id': '1',
+            'order': 'desc',
+            'limit': '1'
+        },
+        'next': f'/v1/tokens/{token_address}/holders?'
+                f'balance=1000000000000000000&'
+                f'id=0&'
+                f'order=desc&'
+                f'limit=1',
+        'next_kwargs': {
+            'balance': '1000000000000000000',
+            'id': '0',
+            'order': 'desc',
+            'limit': '1'
+        }
     }
 
 
@@ -193,16 +213,14 @@ async def test_get_token_holders_limits(
 @pytest.mark.parametrize(
     "parameter, value, status",
     (
-            ('balance', 2 ** 128, 400),
-            ('balance', 2 ** 8, 200),
+            ('balance', 2 ** 128, 200),
             ('id', 2 ** 128, 400),
-            ('id', 2 ** 8, 200)
+            ('id', 2 ** 8, 200),
     ),
     ids=(
-            "block_number_with_too_big_value",
-            "block_number_with_normal_value",
-            "timestamp_with_too_big_value",
-            "timestamp_with_normal_value"
+            "balance_with_normal_value",
+            "id_with_too_big_value",
+            "id_with_normal_value",
     )
 )
 async def test_get_token_holders_by_big_value(
@@ -213,7 +231,6 @@ async def test_get_token_holders_by_big_value(
 ):
     # given
     address = generate_address()
-
     params = urlencode({parameter: value})
     url = f"/v1/tokens/{address}/holders?{params}"
 

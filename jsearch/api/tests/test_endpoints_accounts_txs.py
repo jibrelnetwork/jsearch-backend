@@ -90,6 +90,26 @@ URL = '/v1/accounts/address/transactions?{params}'
                 URL.format(params=urlencode({'block_number': 4, 'transaction_index': 1, 'limit': 3, 'order': 'desc'}))
         ),
         (
+                URL.format(params=urlencode({'timestamp': 'latest', 'limit': 3})),
+                [(4, 1), (4, 0), (3, 1)],
+                URL.format(params=urlencode(
+                    {
+                        'timestamp': TIMESTAMP + 3,
+                        'transaction_index': 0,
+                        'limit': 3,
+                        'order': 'desc',
+                    },
+                )),
+                URL.format(params=urlencode(
+                    {
+                        'timestamp': TIMESTAMP + 4,
+                        'transaction_index': 1,
+                        'limit': 3,
+                        'order': 'desc',
+                    },
+                )),
+        ),
+        (
                 URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 3, 'order': 'asc'})),
                 [(0, 0), (0, 1), (1, 0)],
                 URL.format(params=urlencode({
@@ -112,6 +132,7 @@ URL = '/v1/accounts/address/transactions?{params}'
         URL.format(params=urlencode({'block_number': 3, 'limit': 3})),
         URL.format(params=urlencode({'block_number': 3, 'transaction_index': 1, 'limit': 3})),
         URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
+        URL.format(params=urlencode({'timestamp': 'latest', 'limit': 3})),
         URL.format(params=urlencode({'timestamp': TIMESTAMP, 'limit': 3, 'order': 'asc'})),
     ]
 )

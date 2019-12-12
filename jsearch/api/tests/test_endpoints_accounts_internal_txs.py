@@ -47,6 +47,7 @@ def create_account_internal_txs(
                         internal_transaction_factory.create_for_tx(
                             tx=new_txs[0],
                             transaction_index=internal_tx_index,
+                            from_=account,
                         )
 
             account_address = account
@@ -78,7 +79,7 @@ TIMESTAMP = int(time.time())
                     'block_number': 4,
                     'parent_transaction_index': 1,
                     'transaction_index': 2,
-                    'limit': 20,
+                    'limit': '20',
                     'order': 'desc'
                 })),
         ),
@@ -218,6 +219,24 @@ TIMESTAMP = int(time.time())
                     'order': 'desc'
                 })),
         ),
+        (
+                URL.format(params=urlencode({'timestamp': 'latest', 'limit': 3})),
+                [(4, 1, 2), (4, 1, 1), (4, 0, 2)],
+                URL.format(params=urlencode({
+                    'timestamp': TIMESTAMP + 4,
+                    'parent_transaction_index': 0,
+                    'transaction_index': 1,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+                URL.format(params=urlencode({
+                    'timestamp': TIMESTAMP + 4,
+                    'parent_transaction_index': 1,
+                    'transaction_index': 2,
+                    'limit': 3,
+                    'order': 'desc'
+                })),
+        ),
     ],
     ids=[
         'no_params',
@@ -238,6 +257,7 @@ TIMESTAMP = int(time.time())
             'limit': 3
         })),
         URL.format(params=urlencode({'block_number': 'latest', 'limit': 3})),
+        URL.format(params=urlencode({'timestamp': 'latest', 'limit': 3})),
     ]
 )
 async def test_get_account_internal_transactions(cli,

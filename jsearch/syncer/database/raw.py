@@ -22,14 +22,6 @@ class RawDB(DBWrapper):
     """
     pool_size: int = RAWDB_POOL_SIZE
 
-    async def get_latest_available_block_number(self):
-        q = """SELECT block_number FROM "bodies" order by block_number desc limit 1"""
-
-        row = await self.fetch_one(q)
-
-        if row:
-            return row['block_number']
-
     async def get_pending_txs(self, start_id, end_id):
         q = """
         SELECT
@@ -110,7 +102,7 @@ class RawDB(DBWrapper):
                 AND "type"='split'
             ORDER BY id ASC
         """
-        return self.fetch_all_async(q, block_range.start, block_range.end, node_id)
+        return await self.iterate_by(q, block_range.start, block_range.end, node_id)
 
     @timeit('[RAW DB] Get first chain event')
     async def get_first_chain_event_for_block_range(self, block_range: BlockRange, node_id):

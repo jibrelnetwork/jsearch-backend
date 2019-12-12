@@ -16,7 +16,7 @@ from jsearch.api.helpers import (
     api_error_response,
 )
 from jsearch.api.ordering import Ordering
-from jsearch.api.pagination import get_page
+from jsearch.api.pagination import get_pagination_description
 from jsearch.api.serializers.wallets import WalletEventsSchema, WalletAssetsSchema
 from jsearch.api.structs.wallets import wallet_events_to_json
 from jsearch.api.utils import use_kwargs
@@ -52,8 +52,7 @@ async def get_wallet_events(
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     if timestamp:
-        # FIXME (nickgashkov): If `timestamp` is `latest` -> 500 will be raised.
-        block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)  # type: ignore
+        block_number = await get_block_number_or_tag_from_timestamp(storage, timestamp, order.direction)
         timestamp = None
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
@@ -72,7 +71,7 @@ async def get_wallet_events(
     data, tip = await maybe_apply_tip(storage, tip_hash, events, last_affected_block, empty=[])
 
     url = request.app.router['wallet_events'].url_for()
-    page = get_page(
+    page = get_pagination_description(
         url=url,
         items=data,
         limit=limit,

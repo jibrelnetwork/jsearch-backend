@@ -7,7 +7,7 @@ from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.handlers.common import get_last_block_number_and_timestamp, get_block_number_or_tag_from_timestamp
 from jsearch.api.helpers import api_success, ApiError, maybe_orphan_request
 from jsearch.api.ordering import Ordering
-from jsearch.api.pagination import get_page
+from jsearch.api.pagination import get_pagination_description
 from jsearch.api.serializers.tokens import TokenTransfersSchema, TokenHoldersListSchema
 from jsearch.api.utils import use_kwargs
 from jsearch.typing import TokenAddress
@@ -47,7 +47,7 @@ async def get_token_transfers(
     transfers, tip = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
 
     url = request.app.router['token_transfers'].url_for(address=address)
-    page = get_page(url=url, items=transfers, limit=limit, ordering=order)
+    page = get_pagination_description(url=url, items=transfers, limit=limit, ordering=order)
 
     orphaned_request = await maybe_orphan_request(
         request,
@@ -88,7 +88,7 @@ async def get_token_holders(
     holders, tip = await maybe_apply_tip(storage, tip_hash, holders, last_affected_block, empty=[])
 
     url = request.app.router['token_holders'].url_for(address=address)
-    page = get_page(url=url, items=holders, limit=limit, ordering=order, decimals_to_ints=True)
+    page = get_pagination_description(url=url, items=holders, limit=limit, ordering=order, decimals_to_ints=True)
 
     orphaned_request = await maybe_orphan_request(
         request,
