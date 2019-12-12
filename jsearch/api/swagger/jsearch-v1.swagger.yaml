@@ -118,17 +118,23 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Balance'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Balance'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+              examples:
+                regular:
+                  $ref: '#/components/examples/AccountsBalancesResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -154,14 +160,21 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    $ref: '#/components/schemas/Account'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        $ref: '#/components/schemas/Account'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+              examples:
+                regular:
+                  $ref: '#/components/examples/AccountResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -203,18 +216,25 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Log'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Log'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/AccountLogsResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -244,18 +264,25 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Transaction'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Transaction'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/AccountTransactionsResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -286,18 +313,25 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/InternalTransaction'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/InternalTransaction'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/AccountInternalTransactionsResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -362,18 +396,25 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Block'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Block'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/BlocksResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -402,18 +443,25 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Uncle'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Uncle'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/UnclesResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -475,14 +523,21 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    $ref: '#/components/schemas/TokenBalance'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        $ref: '#/components/schemas/TokenBalance'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+              examples:
+                regular:
+                  $ref: '#/components/examples/AccountTokenBalanceResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -524,18 +579,25 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/TokenTransfer'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TokenTransfer'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/TokenTransfersResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -635,18 +697,25 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Block'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Block'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/BlocksResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -944,18 +1013,25 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Uncle'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Uncle'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/UnclesResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -1186,18 +1262,25 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/TokenTransfer'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TokenTransfer'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/TokenTransfersResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -1225,18 +1308,25 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/TokenHolder'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TokenHolder'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/TokenHoldersResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -1539,24 +1629,32 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
                     properties:
-                      events:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/TransactionInfo'
-                      pending_events:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/PendingTransactionInfo'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: object
+                        properties:
+                          events:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/TransactionInfo'
+                          pending_events:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/PendingTransactionInfo'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/WalletEventsResponseExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Validation errors
           content:
@@ -2607,6 +2705,13 @@ components:
             end of query.
           example: 23
       description: The paging object that’s a sibling of the paginated data
+    OrphanedResponse:
+      type: object
+      description: Special data object indicating that data consistency has been
+        violated.
+      properties:
+        isOrphaned:
+          type: boolean
   parameters:
     address:
       name: address
@@ -2779,3 +2884,327 @@ components:
         for details.
       schema:
         type: integer
+  examples:
+    StatusSuccessExample:
+      value:
+        status: true
+        errors: []
+    MetaExample:
+      value:
+        currentBlockchainTip:
+          block_hash: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
+          block_number: 8000000
+        blockchainTipStatus:
+          blockHash: "0x88a6bc42f4f65a0daab3a810444c2202d301db04d05203a86342b35333ac1413"
+          blockNumber: 900056
+          isOrphaned: false
+          lastUnchangedBlock: null
+    PagingExample:
+      value:
+        link: "/v1/..."
+        link_kwargs:
+          order: asc
+          limit: 20
+        next: "/v1/..."
+        next_kwargs:
+          order: asc
+          limit: 20
+        progress: 23
+    OrphanedResponseExample:
+      value:
+        isOrphaned: true
+    AccountsBalancesResponseExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "address": "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c",
+              "balance": "474000000000000"
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
+    AccountResponseExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          {
+            "blockNumber": 9094494,
+            "blockHash": "0xfbaee04d3ef77fc4af424402a7923c800aab3bf00ee23b8495d216cc90e47f47",
+            "address": "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c",
+            "nonce": 6031977,
+            "code": "0x",
+            "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+            "balance": "12389035795907504666"
+          }
+        meta:
+          $ref: '#/components/examples/MetaExample'
+    AccountLogsResponseExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "address": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
+              "blockHash": "0xc5ecf5800ca7aaeca756aebb9a4397bcb5338b97711aeb7784fe6fd9e4fd0d02",
+              "blockNumber": 9093982,
+              "timestamp": 1576148171,
+              "data": "0x0000000000000000000000000000000000000000000000000de0b6b3a7640000",
+              "logIndex": 19,
+              "removed": false,
+              "topics": [
+                "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                "0x000000000000000000000000fde25413d1e97801a36c4b7dffd06fe87fcbb396",
+                "0x00000000000000000000000057d3bc6f91622c21b348b190febc6a8f105ab6a1"
+              ],
+              "transactionHash": "0x4f9e622eda52f06b42ef513b8ec09f68e25bfd398041e8a90c2967b9d7b0ec1d",
+              "transactionIndex": 20
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
+    AccountTransactionsResponseExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "blockHash": "0x04ffa4a7f2554b3c1be8b59ae5c4fdba749f3b0577868c1c10a8490aa6f40659",
+              "blockNumber": 9094478,
+              "timestamp": 1576155672,
+              "from": "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c",
+              "gas": "0x186a0",
+              "gasPrice": "0x165a0bc00",
+              "hash": "0x6437c444498aeb56cceffb6a0df393f67c8fae46689e9680c6eb81cfa3d31101",
+              "input": "0x",
+              "nonce": "0x5c0a68",
+              "r": "0x7d513f46c7f71f75e7cad4774f082aa651ad4a628a2bd44a32b562bdcbf45869",
+              "s": "0x348017c97ebdc528409ea360f238a2862786e76c7a89e4e2c8868455b5890683",
+              "to": "0x8fd00f170fdf3772c5ebdcd90bf257316c69ba45",
+              "transactionIndex": 80,
+              "v": "0x26",
+              "value": "0x4b4bc395812efa2f9",
+              "status": 1
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
+    AccountInternalTransactionsResponseExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "blockNumber": 8347461,
+              "blockHash": "0x1bd7181ffcde5cf09b0c9c2596b92a2c1da24627e98c1c18aff8519943207baf",
+              "timestamp": 1565770159,
+              "parentTxHash": "0xbb253d97eeeb602ae76071b675721fdba1b8fcb70b4fe1fab9b32964e5fbf613",
+              "parentTxIndex": 48,
+              "op": "call",
+              "callDepth": 2,
+              "from": "0x893dae013b055065839d49b0aba06dd6f10e2359",
+              "to": "0xa3bfbc2b995ecc629a1d2668a04e23c31a50fa27",
+              "value": "111653139458242922",
+              "gasLimit": "9341",
+              "input": "0x",
+              "status": "success",
+              "transactionIndex": 3
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
+    AccountTokenBalanceResponseExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          {
+            "accountAddress": "0x57d3bc6f91622c21b348b190febc6a8f105ab6a1",
+            "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
+            "balance": "1000000000000000000",
+            "decimals": 18
+          }
+        meta:
+          $ref: '#/components/examples/MetaExample'
+    BlocksResponseExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "difficulty": "2490533620867858",
+              "extraData": "0x7070796520e4b883e5bda9e7a59ee4bb99e9b1bc",
+              "gasLimit": "9911299",
+              "gasUsed": "127049",
+              "hash": "0xe5e8964520ed75fefd863980fe947ef44c9b602ce9a182ea36355f07e167004b",
+              "logsBloom": "",
+              "miner": "0x829bd824b016326a401d083b33d092293333a830",
+              "mixHash": "0x93c5c4b57831c8c1fa1cb3e3d6ff4a0e1f143b9059066a56fe5fd7de41778dfd",
+              "nonce": "0x9b1725e8047b0172",
+              "number": 9094505,
+              "parentHash": "0xc33200ee8bb91fbe9929c69bf3158a796e080219908abd00486b9a30685bde25",
+              "receiptsRoot": "0x18e1d378c80ea5c973be83623b7917283b735ff03ca6744bcdac14246dfb936a",
+              "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+              "stateRoot": "0xf2bf4061729c91483f27a440171b47a93d45386ba6926ad7f42fcd08ecfdd3a9",
+              "timestamp": 1576156063,
+              "transactions": [
+                "0xeace85b1f906680a5a8d6a753cf359fcd3a597aefd2c47d75dfed2fef8f7c3e0",
+                "0x1109425f3591fefcc594fb8cff37998592289d542b82e24be8cd9a151d80af74",
+                "0x0083fe4c73a10bb4a0260292b26019161e6ef2248b584bc41e834578d4561deb"
+              ],
+              "transactionsRoot": "0x70efbb2a876f90472d2c4615c432a5cca54a89e9eccfd8adc22ab50b81e1458c",
+              "uncles": [],
+              "staticReward": "2000000000000000000",
+              "uncleInclusionReward": "0",
+              "txFees": "2404590000000000"
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
+    UnclesResponseExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "difficulty": "2489983865053970",
+              "extraData": "0x5050594520737061726b706f6f6c2d6574682d636e2d687a31",
+              "gasLimit": "9887142",
+              "gasUsed": "9882693",
+              "hash": "0x8e26c4d03a29990f0f7f2158e5493e73b6bd57b92035b091afec5439606c84e6",
+              "logsBloom": "",
+              "miner": "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c",
+              "mixHash": "0xee6320f4ca5bfccdcd84f59ab9f14cc411214f08ec30c30aadd7f9c5b650ec4d",
+              "nonce": "0x8af8c7ecf34e200e",
+              "number": 9094503,
+              "parentHash": "0xefaca876a85ea7d5e07b49d976f1c9b50092e444ebf74c92e664dfbfa7ec2002",
+              "receiptsRoot": "0xd3d811e965d2191e642729f4ef9a3c57c388ff2b447ff770befc7f2f4f4b0b98",
+              "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+              "stateRoot": "0xc132f932c160a36169617bd0a18cbd6f72dd3036bcef9faeaf5e2d8b92b61271",
+              "timestamp": 1576156029,
+              "transactionsRoot": "0xd37c35f742274609bf0a5f6e679c33980255563a03a1417a6f7d542148c55db8",
+              "blockNumber": 9094504,
+              "reward": "1750000000000000000"
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
+    TokenTransfersResponseExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "transactionHash": "0x4f9e622eda52f06b42ef513b8ec09f68e25bfd398041e8a90c2967b9d7b0ec1d",
+              "timestamp": 1576148171,
+              "from": "0xfde25413d1e97801a36c4b7dffd06fe87fcbb396",
+              "to": "0x57d3bc6f91622c21b348b190febc6a8f105ab6a1",
+              "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
+              "amount": "1000000000000000000",
+              "decimals": 18,
+              "blockNumber": 9093982,
+              "logIndex": 19,
+              "transactionIndex": 20
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
+    TokenHoldersResponseExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "accountAddress": "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0",
+              "contractAddress": "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7",
+              "balance": 1000000,
+              "decimals": 18
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
+    WalletEventsResponseExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          {
+            "events": [
+              {
+                "transaction": {
+                  "blockHash": "0x04ffa4a7f2554b3c1be8b59ae5c4fdba749f3b0577868c1c10a8490aa6f40659",
+                  "blockNumber": 9094478,
+                  "timestamp": 1576155672,
+                  "from": "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c",
+                  "gas": "0x186a0",
+                  "gasPrice": "0x165a0bc00",
+                  "hash": "0x6437c444498aeb56cceffb6a0df393f67c8fae46689e9680c6eb81cfa3d31101",
+                  "input": "0x",
+                  "nonce": "0x5c0a68",
+                  "r": "0x7d513f46c7f71f75e7cad4774f082aa651ad4a628a2bd44a32b562bdcbf45869",
+                  "s": "0x348017c97ebdc528409ea360f238a2862786e76c7a89e4e2c8868455b5890683",
+                  "to": "0x8fd00f170fdf3772c5ebdcd90bf257316c69ba45",
+                  "transactionIndex": 80,
+                  "v": "0x26",
+                  "value": "0x4b4bc395812efa2f9",
+                  "status": 1
+                },
+                "events": [
+                {
+                  "eventType": "eth-transfer",
+                  "eventIndex": 90944780800000,
+                  "eventData": [
+                  {
+                    "fieldName": "sender",
+                    "fieldValue": "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c"
+                  },
+                  {
+                    "fieldName": "recipient",
+                    "fieldValue": "0x8fd00f170fdf3772c5ebdcd90bf257316c69ba45"
+                  },
+                  {
+                    "fieldName": "amount",
+                    "fieldValue": "86810323567724438265"
+                  },
+                  {
+                    "fieldName": "status",
+                    "fieldValue": 1
+                  }
+                  ],
+                  "eventDirection": "out"
+                }
+                ]
+              }
+            ],
+            "pendingEvents": []
+          }
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
