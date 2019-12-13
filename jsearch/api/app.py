@@ -49,7 +49,7 @@ def define_routes(app: Application):
     add('GET', '/v1/accounts/{address}/mined_blocks', get_account_mined_blocks, name='accounts_mined_blocks')
     add('GET', '/v1/accounts/{address}/mined_uncles', get_account_mined_uncles, name='accounts_mined_uncles')
     add('GET', '/v1/accounts/{address}/token_transfers', get_account_token_transfers, name='account_transfers')
-    add('GET', '/v1/accounts/{address}/token_balance/{token_address}', get_account_token_balance)
+    add('GET', '/v1/accounts/{address}/token_balance/{contract_address}', get_account_token_balance)
     add('GET', '/v1/accounts/{address}/token_balances', get_account_token_balances_multi)
     add('GET', '/v1/accounts/{address}/logs', get_account_logs, name='accounts_logs')
     add('GET', '/v1/accounts/{address}/transaction_count', get_account_transaction_count)
@@ -70,8 +70,8 @@ def define_routes(app: Application):
 
     add('POST', '/v1/verify_contract', contracts.verify_contract)
 
-    add('GET', '/v1/tokens/{address}/transfers', tokens.get_token_transfers, name='token_transfers')
-    add('GET', '/v1/tokens/{address}/holders', tokens.get_token_holders, name='token_holders')
+    add('GET', '/v1/tokens/{contract_address}/transfers', tokens.get_token_transfers, name='token_transfers')
+    add('GET', '/v1/tokens/{contract_address}/holders', tokens.get_token_holders, name='token_holders')
 
     add('GET', '/v1/proxy/gas_price', node_proxy.get_gas_price)
     add('POST', '/v1/proxy/transaction_count', node_proxy.get_transaction_count)

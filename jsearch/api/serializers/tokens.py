@@ -11,7 +11,7 @@ from jsearch.typing import OrderScheme, OrderDirection
 
 
 class TokenTransfersSchema(BlockRelatedListSchema):
-    address = StrLower(validate=Length(min=1, max=100), location='match_info')
+    contract_address = StrLower(validate=Length(min=1, max=100), location='match_info')
 
     log_index = IntField(validate=Range(min=0))
     transaction_index = IntField(validate=Range(min=0))
@@ -40,7 +40,7 @@ class TokenHoldersListSchema(ListSchema):
     _id = BigIntField(validate=Range(min=0), load_from='id')
     balance = Integer(validate=Range(min=0))
 
-    address = StrLower(validate=Length(min=1, max=100), location='match_info')
+    contract_address = StrLower(validate=Length(min=1, max=100), location='match_info')
 
     tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
 

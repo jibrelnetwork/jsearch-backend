@@ -75,7 +75,7 @@ class WalletEventsFactory(factory.alchemy.SQLAlchemyModelFactory):
         defaults = dict(
             address=getattr(tx, 'from'),
             type='eth-transfer',
-            event_data={'sender': getattr(tx, 'from'), 'recipient': tx.to, 'amount': randint(0, 10 * 18)},
+            event_data={'sender': getattr(tx, 'from'), 'recipient': tx.to, 'amount': str(randint(0, 10 * 18))},
             event_index=make_event_index_for_tx(tx.block_number, tx.transaction_index),
             tx_hash=tx.hash,
             tx_data=None,

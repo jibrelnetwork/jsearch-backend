@@ -37,8 +37,8 @@ async def get_tip_or_raise_api_error(
         raise ApiError(
             {
                 'field': 'tip',
-                'error_code': ErrorCode.BLOCK_NOT_FOUND,
-                'error_message': f'Block with hash {tip_hash} not found'
+                'code': ErrorCode.BLOCK_NOT_FOUND,
+                'message': f'Block with hash {tip_hash} not found'
             },
             status=404
         )

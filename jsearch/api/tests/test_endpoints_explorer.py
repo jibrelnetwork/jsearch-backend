@@ -12,7 +12,7 @@ async def test_get_transaction(cli, main_db_data):
     assert (await resp.json())['data'] == {
         'blockHash': tx['block_hash'],
         'blockNumber': tx['block_number'],
-        'timestamp': None,
+        'timestamp': 1529159847,
         'from': tx['from'],
         'gas': tx['gas'],
         'gasPrice': tx['gas_price'],
