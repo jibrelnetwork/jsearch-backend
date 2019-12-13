@@ -257,7 +257,7 @@ async def test_get_account_mined_blocks_orphaned_requests(
 
     _patch_maybe_apply_tip('jsearch.api.handlers.accounts.maybe_apply_tip', case.block_numbers_of_chain_splits)
 
-    url = 'v1/accounts/{address}/transactions?{query_params}'.format(
+    url = 'v1/accounts/{address}/mined_blocks?{query_params}'.format(
         address=block_of_data.miner,
         query_params=urlencode({
             'block_number': block_of_data.number,

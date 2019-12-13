@@ -98,15 +98,13 @@ async def test_get_block_with_uncles(cli, main_db_data, uncles):
     assert payload['data']['uncles'] == uncle_hashes
 
 
-async def test_get_block_by_number_no_forked(cli, db):
+async def test_get_block_by_number_no_forked(cli, db, block_factory):
     # given
-    db.execute('INSERT INTO blocks (number, hash, is_forked, static_reward, uncle_inclusion_reward, tx_fees)'
-               'values (%s, %s, %s, %s, %s, %s)', [
-                   (1, 'aa', False, 0, 0, 0),
-                   (2, 'ab', False, 0, 0, 0),
-                   (2, 'ax', True, 0, 0, 0),
-                   (3, 'ac', False, 0, 0, 0),
-               ])
+    block_factory.create(number=1, hash='aa', is_forked=False)
+    block_factory.create(number=2, hash='ab', is_forked=False)
+    block_factory.create(number=2, hash='ax', is_forked=True)
+    block_factory.create(number=3, hash='ac', is_forked=False)
+
     # then
     resp = await cli.get('/v1/blocks/2')
     assert resp.status == 200
@@ -115,15 +113,13 @@ async def test_get_block_by_number_no_forked(cli, db):
     assert b['data']['number'] == 2
 
 
-async def test_get_block_by_hash_forked_404(cli, db):
+async def test_get_block_by_hash_forked_404(cli, db, block_factory):
     # given
-    db.execute('INSERT INTO blocks (number, hash, is_forked, static_reward, uncle_inclusion_reward, tx_fees)'
-               'values (%s, %s, %s, %s, %s, %s)', [
-                   (1, 'aa', False, 0, 0, 0),
-                   (2, 'ab', False, 0, 0, 0),
-                   (2, 'ax', True, 0, 0, 0),
-                   (3, 'ac', False, 0, 0, 0),
-               ])
+    block_factory.create(number=1, hash='aa', is_forked=False)
+    block_factory.create(number=2, hash='ab', is_forked=False)
+    block_factory.create(number=2, hash='ax', is_forked=True)
+    block_factory.create(number=3, hash='ac', is_forked=False)
+
     # then
     resp = await cli.get('/v1/blocks/ax')
     await assert_not_404_response(resp)
@@ -222,16 +218,13 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
     ]
 
 
-async def test_get_block_transactions_forked(cli, db):
+async def test_get_block_transactions_forked(cli, db, transaction_factory):
     # given
-    db.execute('INSERT INTO transactions (block_number, block_hash, timestamp, hash, is_forked, transaction_index)'
-               'values (%s, %s, %s, %s, %s, %s)', [
-                   (1, 'aa', 1550000000, 'tx1', False, 1),
-                   (2, 'ab', 1550000000, 'tx2', False, 1),
-                   (2, 'ax', 1550000000, 'tx3', True, 1),
-                   (3, 'ac', 1550000000, 'tx3', False, 1),
-               ])
-    # then
+    transaction_factory.create(block_number=1, block_hash='aa', hash='tx1', is_forked=False)
+    transaction_factory.create(block_number=2, block_hash='ab', hash='tx2', is_forked=False)
+    transaction_factory.create(block_number=2, block_hash='ax', hash='tx3', is_forked=True)
+    transaction_factory.create(block_number=3, block_hash='ac', hash='tx3', is_forked=False)
+
     resp = await cli.get('/v1/blocks/2/transactions')
     assert resp.status == 200
     txs = (await resp.json())['data']
@@ -570,8 +563,8 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
     assert resp_json['status']['errors'] == [
         {
             'field': 'addresses',
-            'error_code': 'TOO_MANY_ITEMS',
-            'error_message': 'Too many addresses requested'
+            'code': 'TOO_MANY_ITEMS',
+            'message': 'Too many addresses requested'
         }
     ]
 

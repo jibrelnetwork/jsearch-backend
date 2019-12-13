@@ -12,8 +12,8 @@ async def test_get_tip_or_raise_api_error_raises_an_error_if_there_s_no_tip_bloc
     assert exc.value.errors == [
         {
             'field': 'tip',
-            'error_code': 'BLOCK_NOT_FOUND',
-            'error_message': 'Block with hash 0x1 not found'
+            'code': 'BLOCK_NOT_FOUND',
+            'message': 'Block with hash 0x1 not found'
         }
     ]
 

@@ -256,8 +256,8 @@ async def test_get_account_token_balances_multi_too_many_addresses(cli, token_ho
     assert resp.status == 400
     resp_json = await resp.json()
     assert resp_json == {'data': None,
-                         'status': {'errors': [{'error_code': 'TOO_MANY_ITEMS',
-                                                'error_message': 'Too many addresses requested',
+                         'status': {'errors': [{'code': 'TOO_MANY_ITEMS',
+                                                'message': 'Too many addresses requested',
                                                 'field': 'contract_addresses'}],
                                     'success': False}}
 

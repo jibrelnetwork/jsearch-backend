@@ -50,8 +50,8 @@ async def get_tip_block_number_and_timestamp(
             raise ApiError(
                 {
                     'field': 'tip',
-                    'error_code': ErrorCode.BLOCK_NOT_FOUND,
-                    'error_message': f'Block with hash {tip_hash} not found'
+                    'code': ErrorCode.BLOCK_NOT_FOUND,
+                    'message': f'Block with hash {tip_hash} not found'
                 },
                 status=400
             )
@@ -61,8 +61,8 @@ async def get_tip_block_number_and_timestamp(
             raise ApiError(
                 {
                     'field': 'tip',
-                    'error_code': ErrorCode.BLOCK_NOT_FOUND,
-                    'error_message': f'Block with hash {tip_hash} not found'
+                    'code': ErrorCode.BLOCK_NOT_FOUND,
+                    'message': f'Block with hash {tip_hash} not found'
                 },
                 status=400
             )
