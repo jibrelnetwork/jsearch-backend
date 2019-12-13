@@ -854,9 +854,6 @@ class Storage(DbActionsMixin):
                 if asset['nonce']:
                     nonce = asset['nonce']
 
-                if not asset['value']:
-                    continue
-
                 value = asset['value'] or "0"
                 decimals = asset['decimals'] or "0"
 

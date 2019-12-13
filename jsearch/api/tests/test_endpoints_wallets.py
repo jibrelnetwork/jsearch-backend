@@ -622,6 +622,7 @@ def create_assets_summaries(
                         'assetsSummary': [
                             {'address': ETHER_ASSET_ADDRESS, 'balance': "300", 'decimals': "0", 'transfersNumber': 0},
                             {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 0},
+                            {'address': 'c100', 'balance': "0", 'decimals': "0", 'transfersNumber': 0},
                             {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 0}
                         ],
                         'outgoingTransactionsNumber': "10"
@@ -629,6 +630,7 @@ def create_assets_summaries(
                     {
                         'address': 'a2',
                         'assetsSummary': [
+                            {'address': ETHER_ASSET_ADDRESS, 'balance': "0", 'decimals': "0", 'transfersNumber': 0},
                             {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 0}
                         ],
                         'outgoingTransactionsNumber': "2"
@@ -656,6 +658,18 @@ def create_assets_summaries(
                         ],
                         'outgoingTransactionsNumber': "10"
                     },
+                    {
+                        'address': 'a2',
+                        'assetsSummary': [
+                            {
+                                'address': ETHER_ASSET_ADDRESS,
+                                'balance': "0",
+                                'decimals': "0",
+                                'transfersNumber': 0
+                            },
+                        ],
+                        'outgoingTransactionsNumber': "2"
+                    },
                 ]
         ),
         (
@@ -678,6 +692,18 @@ def create_assets_summaries(
                             },
                         ],
                         'outgoingTransactionsNumber': "10"
+                    },
+                    {
+                        'address': 'a2',
+                        'assetsSummary': [
+                            {
+                                'address': ETHER_ASSET_ADDRESS,
+                                'balance': "0",
+                                'decimals': "0",
+                                'transfersNumber': 0
+                            },
+                        ],
+                        'outgoingTransactionsNumber': "2"
                     },
                 ]
         )
