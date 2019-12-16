@@ -1,3 +1,5 @@
+from aiopg.sa import Engine
+from typing import Optional
 
 import asyncio
 import logging
@@ -6,6 +8,7 @@ import aiopg
 import mode
 from psycopg2.extras import DictCursor
 
+from jsearch.common.db import execute, fetch_all
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +18,12 @@ BATCH_SIZE = 100
 
 
 class TokenHoldersCleaner(mode.Service):
+    engine: Optional[Engine] = None
 
-    def __init__(self, main_db_dsn: str, *args, **kwargs) -> None:
+    def __init__(self, main_db_dsn: str, **kwargs) -> None:
         self.main_db_dsn = main_db_dsn
         self.total = 0
-        # FIXME (nickgashkov): `mode.Service` does not support `*args`
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(**kwargs)
 
     async def on_start(self) -> None:
         await self.connect()
@@ -29,10 +32,13 @@ class TokenHoldersCleaner(mode.Service):
         await self.disconnect()
 
     async def connect(self) -> None:
-        self.conn = await aiopg.connect(self.main_db_dsn, cursor_factory=DictCursor)
+        self.engine = await aiopg.sa.create_engine(self.main_db_dsn, cursor_factory=DictCursor)
 
     async def disconnect(self) -> None:
-        self.conn.close()
+        if self.engine is None:
+            return
+
+        self.engine.close()
 
     @mode.Service.task
     async def main_loop(self):
@@ -67,15 +73,12 @@ class TokenHoldersCleaner(mode.Service):
             ORDER BY token_address
             LIMIT %s;
         """
-        async with self.conn.cursor() as cur:
-            await cur.execute(q, [last_scanned, BATCH_SIZE])
-            rows = await cur.fetchall()
+
+        rows = await fetch_all(self.engine, q, last_scanned, BATCH_SIZE)
         return [r['token_address'] for r in rows]
 
     async def clean_holder(self, holder):
         q = """
             SELECT clean_holder(%s);
         """
-        async with self.conn.cursor() as cur:
-            logger.debug('Clean for %s', holder)
-            await cur.execute(q, [holder])
+        await execute(self.engine, q, holder)
