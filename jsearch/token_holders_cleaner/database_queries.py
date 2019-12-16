@@ -23,7 +23,9 @@ def get_pairs_batch(last_processed_pair: Pair, limit: int) -> Query:
 
 
 def get_max_block_number_for_pair(pair: Pair) -> Query:
-    return select([func.max(token_holders_t.c.id).label('max_block_number')]).where(
+    return select(
+        [func.max(token_holders_t.c.block_number).label('max_block_number')],
+    ).where(
         and_(
             token_holders_t.c.account_address == pair.account_address,
             token_holders_t.c.token_address == pair.token_address,
