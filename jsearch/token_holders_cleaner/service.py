@@ -89,7 +89,7 @@ class TokenHoldersCleaner(mode.Service):
         if block_number is None:
             return
 
-        logger.info('Cleaning stale entries for %r until %s block', pair, block_number)
+        logger.debug('Cleaning stale entries for %r until %s block', pair, block_number)
 
         block_number = int(block_number)
         block_number = block_number - settings.OFFSET
