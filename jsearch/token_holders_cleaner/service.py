@@ -1,11 +1,15 @@
+import functools
+
+from typing import List, Optional
 
 import asyncio
 import logging
 
-import aiopg
 import mode
-from psycopg2.extras import DictCursor
 
+from jsearch.common.db import execute, fetch_all
+from jsearch.common.services import DatabaseService
+from jsearch.common.worker import shutdown_root_worker
 
 logger = logging.getLogger(__name__)
 
@@ -15,38 +19,31 @@ BATCH_SIZE = 100
 
 
 class TokenHoldersCleaner(mode.Service):
-
-    def __init__(self, main_db_dsn: str, *args, **kwargs) -> None:
-        self.main_db_dsn = main_db_dsn
+    def __init__(self, main_db_dsn: str, **kwargs) -> None:
+        self.database = DatabaseService(dsn=main_db_dsn)
         self.total = 0
-        # FIXME (nickgashkov): `mode.Service` does not support `*args`
-        super().__init__(*args, **kwargs)  # type: ignore
 
-    async def on_start(self) -> None:
-        await self.connect()
+        super().__init__(**kwargs)
 
-    async def on_stop(self) -> None:
-        await self.disconnect()
+    def on_init_dependencies(self) -> List[mode.Service]:
+        return [self.database]
 
-    async def connect(self) -> None:
-        self.conn = await aiopg.connect(self.main_db_dsn, cursor_factory=DictCursor)
+    async def on_started(self) -> None:
+        fut = asyncio.create_task(self.cleaner())
+        fut.add_done_callback(functools.partial(shutdown_root_worker, service=self))
 
-    async def disconnect(self) -> None:
-        self.conn.close()
-
-    @mode.Service.task
-    async def main_loop(self):
+    async def cleaner(self) -> None:
         logger.info('Enter main loop')
         last_scanned = '0'
         while not self.should_stop:
-            last_scanned = await self.clean_next_batch(last_scanned)
+            last_scanned = await self.clean_next_batch(last_scanned)  # type: ignore
             if last_scanned is None:
                 last_scanned = '0'
                 self.total = 0
                 logger.info('Starting new iteration')
         logger.info('Leaving main loop')
 
-    async def clean_next_batch(self, last_scanned):
+    async def clean_next_batch(self, last_scanned: str) -> Optional[str]:
         logger.info('Fetching next batch')
         holders = await self.get_next_batch(last_scanned)
         self.total += len(holders)
@@ -59,7 +56,9 @@ class TokenHoldersCleaner(mode.Service):
             last = holders[-1]
             return last
 
-    async def get_next_batch(self, last_scanned):
+        return None
+
+    async def get_next_batch(self, last_scanned: str) -> List[str]:
         q = """
             SELECT DISTINCT token_address
             FROM token_holders
@@ -67,15 +66,12 @@ class TokenHoldersCleaner(mode.Service):
             ORDER BY token_address
             LIMIT %s;
         """
-        async with self.conn.cursor() as cur:
-            await cur.execute(q, [last_scanned, BATCH_SIZE])
-            rows = await cur.fetchall()
+
+        rows = await fetch_all(self.database.engine, q, last_scanned, BATCH_SIZE)
         return [r['token_address'] for r in rows]
 
-    async def clean_holder(self, holder):
+    async def clean_holder(self, holder: str) -> None:
         q = """
             SELECT clean_holder(%s);
         """
-        async with self.conn.cursor() as cur:
-            logger.debug('Clean for %s', holder)
-            await cur.execute(q, [holder])
+        await execute(self.database.engine, q, holder)
