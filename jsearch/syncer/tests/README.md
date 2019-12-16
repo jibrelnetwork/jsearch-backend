@@ -1,5 +1,5 @@
-Desing of syncer unit tests:
-------------------
+Design of syncer unit tests:
+---------------------------
 
 1. Sync the chain event
    1. Create chain event
@@ -57,6 +57,17 @@ Desing of syncer unit tests:
         - [ ] Check all missed create events are synced
         - [ ] Check all missed splits events are synced
         - [ ] resync-chain-splits mode on/off
+   5. Switch between nodes. 
+      - [ ] 2 nodes - left, right. Left node has no more events to sync.
+          - [x] right has and it is in canonical chain
+          - [x] right has and it is in fork chain 
+          - [x] right has, there are not common blocks between left and right nodes
+          - [x] right has, there is a gap between nodes
+          - [x] right has no events
+      - [ ] switch exactly after timeout
+      - [ ] multiple nodes (left and 3 or more, Left node has not more events to sync)
+          - [ ] there are tree nodes with different chains, get node with the longest chain
+          - [ ] there are tree nodes with different chains, the longest node has not common block with left
 2. Test the cli 
    1 One worker entrypoints
      - [ ] sync range validation

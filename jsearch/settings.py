@@ -26,6 +26,11 @@ ETH_NODE_BATCH_REQUEST_SIZE = int(os.environ['ETH_NODE_BATCH_REQUEST_SIZE'])
 # but still we need to think about such logic implementation
 ETH_NODE_ID = os.environ['ETH_NODE_ID']
 
+# if there are no blocks - after this timeout syncer will try to switch to another node
+# in normal conditions we have new blocks each 15 seconds
+# WARNING: do not set this interval to value which is less then 15 seconds
+ETH_NODE_SWITCH_TIMEOUT = int(os.environ['ETH_NODE_SWITCH_TIMEOUT'])
+
 JSEARCH_CONTRACTS_API = os.environ['JSEARCH_CONTRACTS_API']
 JSEARCH_COMPILER_API = os.environ['JSEARCH_COMPILER_API']
 

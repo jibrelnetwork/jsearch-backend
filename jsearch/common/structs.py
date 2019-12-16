@@ -48,6 +48,28 @@ class BlockRange(NamedTuple):
         """
         return self.start <= item <= self.end  # type: ignore
 
+    def __len__(self):
+        """
+        >>> len(BlockRange(0, 5))
+        6
+        >>> len(BlockRange(0, 0))
+        1
+        """
+        if self.end is None:
+            raise ValueError('To get a length - need to specify all borders')
+        return (self.end + 1) - self.start
+
+    def as_range(self) -> List[int]:
+        """
+        >>> BlockRange(0, 5).as_range()
+        [0, 1, 2, 3, 4, 5]
+        >>> BlockRange(0, 0).as_range()
+        [0]
+        """
+        if self.end is None:
+            raise ValueError('To get a range - need to specify all borders')
+        return list(range(self.start, self.end + 1))
+
 
 class ChainStats(NamedTuple):
     is_healthy: bool
