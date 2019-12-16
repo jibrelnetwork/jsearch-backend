@@ -17,7 +17,11 @@ async def token_holders_cleaner(db_dsn: str) -> TokenHoldersCleaner:
     service = TokenHoldersCleaner(main_db_dsn=db_dsn)
 
     await service.on_start()
+    await service.database.on_start()
+
     yield service
+
+    await service.database.on_stop()
     await service.on_stop()
 
 
