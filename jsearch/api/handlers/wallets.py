@@ -16,7 +16,7 @@ from jsearch.api.helpers import (
     api_error_response,
 )
 from jsearch.api.ordering import Ordering
-from jsearch.api.pagination import get_page
+from jsearch.api.pagination import get_pagination_description
 from jsearch.api.serializers.wallets import WalletEventsSchema, WalletAssetsSchema
 from jsearch.api.structs.wallets import wallet_events_to_json
 from jsearch.api.utils import use_kwargs
@@ -71,7 +71,7 @@ async def get_wallet_events(
     data, tip = await maybe_apply_tip(storage, tip_hash, events, last_affected_block, empty=[])
 
     url = request.app.router['wallet_events'].url_for()
-    page = get_page(
+    page = get_pagination_description(
         url=url,
         items=data,
         limit=limit,
@@ -117,8 +117,8 @@ async def get_blockchain_tip(request):
     block = await storage.get_latest_block_info()
     if block is None:
         err = {
-            'error_code': ErrorCode.BLOCK_NOT_FOUND,
-            'error_message': f'Blockchain tip not found'
+            'code': ErrorCode.BLOCK_NOT_FOUND,
+            'message': f'Blockchain tip not found'
         }
         return api_error_response(status=404, errors=[err])
 

@@ -7,7 +7,7 @@ from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.handlers.common import get_last_block_number_and_timestamp, get_block_number_or_tag_from_timestamp
 from jsearch.api.helpers import api_success, ApiError, maybe_orphan_request
 from jsearch.api.ordering import Ordering
-from jsearch.api.pagination import get_page
+from jsearch.api.pagination import get_pagination_description
 from jsearch.api.serializers.tokens import TokenTransfersSchema, TokenHoldersListSchema
 from jsearch.api.utils import use_kwargs
 from jsearch.typing import TokenAddress
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @use_kwargs(TokenTransfersSchema())
 async def get_token_transfers(
         request: Request,
-        address: str,
+        contract_address: str,
         limit: int,
         order: Ordering,
         tip_hash: Optional[str] = None,
@@ -37,7 +37,7 @@ async def get_token_transfers(
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     transfers, last_affected_block = await storage.get_tokens_transfers(
-        address=address,
+        address=contract_address,
         limit=limit + 1,
         ordering=order,
         block_number=block_number,
@@ -46,8 +46,8 @@ async def get_token_transfers(
     )
     transfers, tip = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
 
-    url = request.app.router['token_transfers'].url_for(address=address)
-    page = get_page(url=url, items=transfers, limit=limit, ordering=order)
+    url = request.app.router['token_transfers'].url_for(contract_address=contract_address)
+    page = get_pagination_description(url=url, items=transfers, limit=limit, ordering=order)
 
     orphaned_request = await maybe_orphan_request(
         request,
@@ -66,7 +66,7 @@ async def get_token_transfers(
 @use_kwargs(TokenHoldersListSchema())
 async def get_token_holders(
         request,
-        address: TokenAddress,
+        contract_address: TokenAddress,
         limit: int,
         order: Ordering,
         tip_hash: Optional[str] = None,
@@ -78,7 +78,7 @@ async def get_token_holders(
 
     # Notes: we need to query limit + 1 items to get link on next page
     holders, last_affected_block = await storage.get_tokens_holders(
-        token_address=address,
+        token_address=contract_address,
         limit=limit + 1,
         ordering=order,
         balance=balance,
@@ -87,8 +87,8 @@ async def get_token_holders(
 
     holders, tip = await maybe_apply_tip(storage, tip_hash, holders, last_affected_block, empty=[])
 
-    url = request.app.router['token_holders'].url_for(address=address)
-    page = get_page(url=url, items=holders, limit=limit, ordering=order, decimals_to_ints=True)
+    url = request.app.router['token_holders'].url_for(contract_address=contract_address)
+    page = get_pagination_description(url=url, items=holders, limit=limit, ordering=order, decimals_to_ints=True)
 
     orphaned_request = await maybe_orphan_request(
         request,

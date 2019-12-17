@@ -43,6 +43,7 @@ funcy==1.13
 future==0.18.1            # via ethereum
 hexbytes==0.1.0
 idna==2.8                 # via requests, yarl
+jibrel-aiohttp-swagger==0.1.0
 jinja2==2.10.3            # via aiohttp-apispec, aiohttp-swagger
 lru-dict==1.1.6           # via web3
 lxml==4.4.1
@@ -64,7 +65,7 @@ pysha3==1.0.2             # via ethereum
 python-dateutil==2.8.0
 python-editor==1.0.4      # via alembic
 python-json-logger==0.1.11
-pyyaml==5.1.2             # via aiohttp-swagger, ethereum
+pyyaml==5.1.2             # via aiohttp-swagger, ethereum, jibrel-aiohttp-swagger
 raven==6.10.0
 repoze.lru==0.7           # via ethereum
 requests==2.22.0

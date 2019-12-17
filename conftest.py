@@ -7,6 +7,7 @@ from pathlib import Path
 
 from jsearch.api.app import make_app
 from jsearch.common import logs
+from jsearch.tests.plugins.api import spec_testing_middleware
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,10 @@ async def aiohttp_client_session_wide(event_loop):
 @pytest.fixture(scope="session")
 def cli(loop, aiohttp_client_session_wide):
     app = loop.run_until_complete(make_app())
+
+    app['validate_spec'] = True
+    app._middlewares += (spec_testing_middleware,)
+
     client = loop.run_until_complete(aiohttp_client_session_wide(app))
 
     return client

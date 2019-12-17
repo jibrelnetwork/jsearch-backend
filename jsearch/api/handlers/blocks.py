@@ -12,7 +12,7 @@ from jsearch.api.helpers import (
     maybe_orphan_request,
 )
 from jsearch.api.ordering import Ordering
-from jsearch.api.pagination import get_page
+from jsearch.api.pagination import get_pagination_description
 from jsearch.api.serializers.blocks import BlockListSchema
 from jsearch.api.utils import use_kwargs
 
@@ -45,7 +45,13 @@ async def get_blocks(
     blocks, tip = await maybe_apply_tip(storage, tip_hash, blocks, last_affected_block, empty=[])
 
     url = request.app.router['blocks'].url_for()
-    page = get_page(url=url, items=blocks, limit=limit, ordering=order, mapping=BlockListSchema.mapping)
+    page = get_pagination_description(
+        url=url,
+        items=blocks,
+        limit=limit,
+        ordering=order,
+        mapping=BlockListSchema.mapping
+    )
 
     orphaned_request = await maybe_orphan_request(
         request,

@@ -1,3 +1,5 @@
+import functools
+
 import asyncio
 import logging
 
@@ -11,6 +13,7 @@ from jsearch import settings
 from jsearch.common.prom_metrics import METRIC_SYNCER_PENDING_TXS_BATCH_SYNC_SPEED, METRIC_SYNCER_PENDING_LAG_RAW_DB
 from jsearch.common.structs import BlockRange
 from jsearch.common.utils import timeit
+from jsearch.common.worker import shutdown_root_worker
 from jsearch.pending_syncer.services import ApiService
 from jsearch.pending_syncer.utils.processing import prepare_pending_txs
 from jsearch.syncer.database import MainDB, RawDB
@@ -40,6 +43,10 @@ class PendingSyncerService(mode.Service):
         await self.main_db.disconnect()
 
     async def on_started(self) -> None:
+        fut = asyncio.create_task(self.syncer())
+        fut.add_done_callback(functools.partial(shutdown_root_worker, service=self))
+
+    async def syncer(self) -> None:
         pending_txs: List[Dict[str, Any]] = []
         last_sync_id = None
 

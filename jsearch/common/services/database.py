@@ -35,6 +35,8 @@ class DatabaseService(mode.Service):
         self.engine = await sa.create_engine(self.dsn)
 
     async def on_stop(self) -> None:
-        self.engine.close()
+        if self.engine is None:
+            return
 
+        self.engine.close()
         await self.engine.wait_closed()

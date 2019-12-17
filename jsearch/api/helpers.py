@@ -7,7 +7,7 @@ from sqlalchemy.orm import Query
 from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.pagination import Page
+from jsearch.api.pagination import PaginationBlock
 from jsearch.common.db import fetch_one
 from jsearch.common.utils import timeit
 from jsearch.typing import AnyCoroutine, ProgressPercent
@@ -81,7 +81,7 @@ def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -
 
 def api_success(
         data: Union[Dict[str, Any], Any],
-        page: Optional[Page] = None,
+        page: Optional[PaginationBlock] = None,
         progress: Optional[ProgressPercent] = None,
         meta: Optional[Dict[str, Any]] = None
 ):
@@ -132,8 +132,8 @@ def proxy_response(resp):
     if 'error' in resp:
         err = {
             'field': 'non_field_error',
-            'error_code': resp['error']['code'],
-            'error_message': resp['error']['message']
+            'code': resp['error']['code'],
+            'message': resp['error']['message']
         }
         status = {'success': False, 'errors': [err]}
     else:
@@ -210,8 +210,8 @@ def get_positive_number(
         raise ApiError(
             {
                 'field': attr,
-                'error_code': ErrorCode.VALIDATION_ERROR,
-                'error_message': f'Parameter `{attr}` must be either positive integer{msg_allowed_tags}.'
+                'code': ErrorCode.VALIDATION_ERROR,
+                'message': f'Parameter `{attr}` must be either positive integer{msg_allowed_tags}.'
             },
             status=400
         )
@@ -220,8 +220,8 @@ def get_positive_number(
         raise ApiError(
             {
                 'field': attr,
-                'error_code': ErrorCode.VALIDATION_ERROR,
-                'error_message': f'Query param `{attr}` is required'
+                'code': ErrorCode.VALIDATION_ERROR,
+                'message': f'Query param `{attr}` is required'
             },
             status=400
         )
@@ -265,8 +265,8 @@ async def load_json_or_raise_api_error(request: web.Request) -> Json:
         raise ApiError(
             {
                 'field': 'non_field_error',
-                'error_code': ErrorCode.INVALID_BODY,
-                'error_message': 'The provided body is not a valid JSON.'
+                'code': ErrorCode.INVALID_BODY,
+                'message': 'The provided body is not a valid JSON.'
             },
             status=400,
         )

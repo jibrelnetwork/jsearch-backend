@@ -1,5 +1,7 @@
-from sqlalchemy import select, Column, and_, false, tuple_
+from sqlalchemy import select, Column, and_, false, tuple_, union
 from sqlalchemy.orm import Query
+from sqlalchemy.sql import CompoundSelect
+from sqlalchemy.sql.elements import ClauseList
 from typing import List, Optional
 
 from jsearch.api.helpers import get_order
@@ -64,14 +66,24 @@ def get_internal_txs_by_parent(parent_tx_hash: str, order: str, columns: List[Co
     )
 
 
-def get_internal_txs_by_address_query(address: str, ordering: Ordering) -> Query:
-    return select(
-        columns=get_default_fields(),
-        whereclause=and_(
-            internal_transactions_t.c.is_forked == false(),
-            internal_transactions_t.c.tx_origin == address,
-        )
-    ).order_by(*ordering.columns)
+def get_internal_txs_union_by_from_and_to(
+        query: Query,
+        address: str,
+        order_by: Columns,
+        limit: int,
+        filter_q: Optional[ClauseList] = None
+) -> CompoundSelect:
+    filter_by_from_q = getattr(internal_transactions_t.c, 'from') == address
+    filter_by_to_q = getattr(internal_transactions_t.c, 'to') == address
+
+    if filter_q is not None:
+        filter_by_from_q &= filter_q
+        filter_by_to_q &= filter_q
+
+    return union(
+        query.where(filter_by_from_q).order_by(*order_by).limit(limit).alias("from"),
+        query.where(filter_by_to_q).order_by(*order_by).limit(limit).alias("to"),
+    )
 
 
 def get_internal_txs_by_address_and_block_query(
@@ -82,7 +94,10 @@ def get_internal_txs_by_address_and_block_query(
         tx_index: Optional[int] = None,
         parent_tx_index: Optional[int] = None,
 ) -> Query:
-    query = get_internal_txs_by_address_query(address, ordering)
+    query = select(
+        columns=get_default_fields(),
+    ).where(internal_transactions_t.c.is_forked == false())
+
     columns = []
     params = []
     if block_number is not None and block_number != 'latest':
@@ -95,10 +110,12 @@ def get_internal_txs_by_address_and_block_query(
         columns.append(internal_transactions_t.c.transaction_index)
         params.append(tx_index)
     if columns:
-        q = ordering.operator_or_equal(tuple_(*columns), tuple_(*params))
-        return query.where(q).limit(limit)
+        filter_q = ordering.operator_or_equal(tuple_(*columns), tuple_(*params))
     else:
-        return query.limit(limit)
+        filter_q = None
+
+    query = get_internal_txs_union_by_from_and_to(query, address, ordering.columns, limit, filter_q)
+    return query.order_by(*ordering.get_ordering_for_union_query(query)).limit(limit)
 
 
 def get_internal_txs_by_address_and_timestamp_query(
@@ -109,12 +126,14 @@ def get_internal_txs_by_address_and_timestamp_query(
         tx_index: Optional[int] = None,
         parent_tx_index: Optional[int] = None,
 ) -> Query:
-    query = get_internal_txs_by_address_query(address, ordering)
+    query = select(
+        columns=get_default_fields(),
+    ).where(internal_transactions_t.c.is_forked == false())
 
     if parent_tx_index is None and tx_index is None:
-        q = ordering.operator_or_equal(internal_transactions_t.c.timestamp, timestamp)
+        filter_q = ordering.operator_or_equal(internal_transactions_t.c.timestamp, timestamp)
     elif tx_index is None:
-        q = ordering.operator_or_equal(
+        filter_q = ordering.operator_or_equal(
             tuple_(
                 internal_transactions_t.c.timestamp,
                 internal_transactions_t.c.parent_tx_index,
@@ -125,7 +144,7 @@ def get_internal_txs_by_address_and_timestamp_query(
             )
         )
     else:
-        q = ordering.operator_or_equal(
+        filter_q = ordering.operator_or_equal(
             tuple_(
                 internal_transactions_t.c.timestamp,
                 internal_transactions_t.c.parent_tx_index,
@@ -137,4 +156,6 @@ def get_internal_txs_by_address_and_timestamp_query(
                 tx_index
             )
         ).self_group()
-    return query.where(q).limit(limit)
+
+    query = get_internal_txs_union_by_from_and_to(query, address, ordering.columns, limit, filter_q)
+    return query.order_by(*ordering.get_ordering_for_union_query(query)).limit(limit)

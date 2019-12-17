@@ -18,7 +18,7 @@ from jsearch.api.helpers import (
     ApiError,
     maybe_orphan_request)
 from jsearch.api.ordering import Ordering, OrderScheme
-from jsearch.api.pagination import get_page
+from jsearch.api.pagination import get_pagination_description
 from jsearch.api.serializers.accounts import (
     AccountsTxsSchema,
     AccountLogsSchema,
@@ -50,8 +50,8 @@ async def get_accounts_balances(request):
         return api_error_response_400(errors=[
             {
                 'field': 'addresses',
-                'error_code': ErrorCode.TOO_MANY_ITEMS,
-                'error_message': 'Too many addresses requested'
+                'code': ErrorCode.TOO_MANY_ITEMS,
+                'message': 'Too many addresses requested'
             }
         ])
 
@@ -137,7 +137,7 @@ async def get_account_transactions(
     txs, tip = await maybe_apply_tip(storage, tip_hash, txs, last_affected_block, empty=[])
 
     url = request.app.router['accounts_txs'].url_for(address=address)
-    page = get_page(url=url, items=txs, limit=limit, ordering=order)
+    page = get_pagination_description(url=url, items=txs, limit=limit, ordering=order)
 
     orphaned_request = await maybe_orphan_request(
         request,
@@ -184,7 +184,8 @@ async def get_account_internal_txs(
     txs, tip = await maybe_apply_tip(storage, tip_hash, txs, last_affected_block, empty=[])
 
     url = request.app.router['accounts_internal_txs'].url_for(address=address)
-    page = get_page(url=url, items=txs, limit=limit, ordering=order, mapping=AccountsInternalTxsSchema.mapping)
+    page = get_pagination_description(url=url, items=txs, limit=limit, ordering=order,
+                                      mapping=AccountsInternalTxsSchema.mapping)
 
     orphaned_request = await maybe_orphan_request(
         request,
@@ -226,7 +227,8 @@ async def get_account_pending_txs(
     )
 
     url = request.app.router['accounts_pending_txs'].url_for(address=address)
-    page = get_page(url=url, items=txs, limit=limit, ordering=order, mapping=AccountsPendingTxsSchema.mapping)
+    page = get_pagination_description(url=url, items=txs, limit=limit, ordering=order,
+                                      mapping=AccountsPendingTxsSchema.mapping)
 
     return api_success(data=[x.to_dict() for x in page.items], page=page)
 
@@ -263,7 +265,7 @@ async def get_account_logs(
     logs, tip = await maybe_apply_tip(storage, tip_hash, logs, last_affected_block, empty=[])
 
     url = request.app.router['accounts_logs'].url_for(address=address)
-    page = get_page(url=url, items=logs, limit=limit, ordering=order)
+    page = get_pagination_description(url=url, items=logs, limit=limit, ordering=order)
 
     orphaned_request = await maybe_orphan_request(
         request,
@@ -307,7 +309,13 @@ async def get_account_mined_blocks(
     blocks, tip = await maybe_apply_tip(storage, tip_hash, blocks, last_affected_block, empty=[])
 
     url = request.app.router['accounts_mined_blocks'].url_for(address=address)
-    page = get_page(url=url, items=blocks, limit=limit, ordering=order, mapping=AccountMinedBlocksSchema.mapping)
+    page = get_pagination_description(
+        url=url,
+        items=blocks,
+        limit=limit,
+        ordering=order,
+        mapping=AccountMinedBlocksSchema.mapping
+    )
 
     orphaned_request = await maybe_orphan_request(
         request,
@@ -353,7 +361,13 @@ async def get_account_mined_uncles(
     uncles, tip = await maybe_apply_tip(storage, tip_hash, uncles, last_affected_block, empty=[])
 
     url = request.app.router['accounts_mined_uncles'].url_for(address=address)
-    page = get_page(url=url, items=uncles, limit=limit, ordering=order, mapping=AccountUncleSchema.mapping)
+    page = get_pagination_description(
+        url=url,
+        items=uncles,
+        limit=limit,
+        ordering=order,
+        mapping=AccountUncleSchema.mapping
+    )
 
     orphaned_request = await maybe_orphan_request(
         request,
@@ -400,7 +414,7 @@ async def get_account_token_transfers(
     transfers, tip = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
 
     url = request.app.router['account_transfers'].url_for(address=address)
-    page = get_page(url=url, items=transfers, limit=limit, ordering=order)
+    page = get_pagination_description(url=url, items=transfers, limit=limit, ordering=order)
 
     orphaned_request = await maybe_orphan_request(
         request,
@@ -420,7 +434,7 @@ async def get_account_token_balance(request):
     storage = request.app['storage']
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
-    token_address = request.match_info['token_address'].lower()
+    token_address = request.match_info['contract_address'].lower()
     account_address = request.match_info['address'].lower()
     tip_hash = request.query.get('blockchain_tip') or None
 
@@ -461,8 +475,8 @@ async def get_account_token_balances_multi(request):
         return api_error_response_400(errors=[
             {
                 'field': 'contract_addresses',
-                'error_code': ErrorCode.TOO_MANY_ITEMS,
-                'error_message': 'Too many addresses requested'
+                'code': ErrorCode.TOO_MANY_ITEMS,
+                'message': 'Too many addresses requested'
             }
         ])
 
@@ -522,8 +536,14 @@ async def get_account_eth_transfers(request,
                                                                              limit=limit + 1)
     transfers, tip = await maybe_apply_tip(storage, tip_hash, transfers, last_affected_block, empty=[])
     url = request.app.router['accounts_eth_transfers'].url_for(address=address)
-    page = get_page(url=url, items=transfers, key_set_fields=get_key_set_fields(order.scheme), limit=limit,
-                    ordering=order, mapping=EthTransfersListSchema.mapping)
+    page = get_pagination_description(
+        url=url,
+        items=transfers,
+        key_set_fields=get_key_set_fields(order.scheme),
+        limit=limit,
+        ordering=order,
+        mapping=EthTransfersListSchema.mapping
+    )
     data = []
     for item in page.items:
         d = item.to_dict()

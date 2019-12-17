@@ -1,11 +1,10 @@
 import asyncio
-import os
 
 import aiopg.sa
 from aiohttp import web
 from aiohttp.web_app import Application
-from aiohttp_swagger import setup_swagger
 from psycopg2.extras import DictCursor
+from jibrel_aiohttp_swagger import setup_swagger
 
 from jsearch import settings
 from jsearch.api.handlers import contracts
@@ -30,9 +29,6 @@ from jsearch.api.node_proxy import NodeProxy
 from jsearch.api.storage import Storage
 from jsearch.common import logs, stats
 
-swagger_file = os.path.join(os.path.dirname(__file__), 'swagger', 'jsearch-v1.swagger.yaml')
-swagger_ui_path = os.path.join(os.path.dirname(__file__), 'swagger', 'ui')
-
 
 async def on_shutdown(app):
     app['db_pool'].close()
@@ -53,7 +49,7 @@ def define_routes(app: Application):
     add('GET', '/v1/accounts/{address}/mined_blocks', get_account_mined_blocks, name='accounts_mined_blocks')
     add('GET', '/v1/accounts/{address}/mined_uncles', get_account_mined_uncles, name='accounts_mined_uncles')
     add('GET', '/v1/accounts/{address}/token_transfers', get_account_token_transfers, name='account_transfers')
-    add('GET', '/v1/accounts/{address}/token_balance/{token_address}', get_account_token_balance)
+    add('GET', '/v1/accounts/{address}/token_balance/{contract_address}', get_account_token_balance)
     add('GET', '/v1/accounts/{address}/token_balances', get_account_token_balances_multi)
     add('GET', '/v1/accounts/{address}/logs', get_account_logs, name='accounts_logs')
     add('GET', '/v1/accounts/{address}/transaction_count', get_account_transaction_count)
@@ -74,8 +70,8 @@ def define_routes(app: Application):
 
     add('POST', '/v1/verify_contract', contracts.verify_contract)
 
-    add('GET', '/v1/tokens/{address}/transfers', tokens.get_token_transfers, name='token_transfers')
-    add('GET', '/v1/tokens/{address}/holders', tokens.get_token_holders, name='token_holders')
+    add('GET', '/v1/tokens/{contract_address}/transfers', tokens.get_token_transfers, name='token_transfers')
+    add('GET', '/v1/tokens/{contract_address}/holders', tokens.get_token_holders, name='token_holders')
 
     add('GET', '/v1/proxy/gas_price', node_proxy.get_gas_price)
     add('POST', '/v1/proxy/transaction_count', node_proxy.get_transaction_count)
@@ -89,8 +85,12 @@ def define_routes(app: Application):
 
 
 def enable_swagger_docs(app: Application) -> None:
-    app.router.add_static('/docs', swagger_ui_path)
-    setup_swagger(app, swagger_from_file=swagger_file)
+    setup_swagger(
+        app,
+        spec_path=settings.SWAGGER_SPEC_FILE,
+        api_root='/docs/index.html',
+        version_file_path=settings.VERSION_FILE,
+    )
 
 
 async def make_app() -> Application:

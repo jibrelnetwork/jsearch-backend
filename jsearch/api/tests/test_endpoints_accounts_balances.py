@@ -201,8 +201,8 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
     assert resp_json['status']['errors'] == [
         {
             'field': 'addresses',
-            'error_code': 'TOO_MANY_ITEMS',
-            'error_message': 'Too many addresses requested'
+            'code': 'TOO_MANY_ITEMS',
+            'message': 'Too many addresses requested'
         }
     ]
 

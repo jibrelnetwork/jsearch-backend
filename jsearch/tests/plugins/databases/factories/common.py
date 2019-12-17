@@ -1,7 +1,7 @@
 import os
 
 import datetime
-from eth_utils import to_normalized_address, keccak
+from eth_utils import to_normalized_address, keccak, to_hex
 from requests import Session
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.ext.declarative import as_declarative
@@ -23,6 +23,10 @@ class Base:
 
 def generate_address():
     return to_normalized_address(keccak(text=str(uuid4()))[-20:])
+
+
+def generate_hash():
+    return to_hex(keccak(text=str(uuid4())))
 
 
 def generate_psql_timestamp():
