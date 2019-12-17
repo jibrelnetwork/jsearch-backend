@@ -229,13 +229,6 @@ class MainDB(DBWrapper):
 
         return None
 
-    @timeit('MAIN DB] Get last block')
-    async def get_last_block(self) -> Optional[Dict[str, Any]]:
-        q = """
-        SELECT number, hash FROM blocks ORDER BY number DESC LIMIT 1;
-        """
-        return await self.fetch_one(q)
-
     @timeit('[MAIN DB] Get last chain event')
     async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> Optional[Dict[str, Any]]:
         if sync_range.end is not None:
