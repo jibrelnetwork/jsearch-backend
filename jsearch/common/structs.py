@@ -82,7 +82,7 @@ class BlockRange(NamedTuple):
         """
         if not self.is_closed:
             raise ValueError('To get a range - need to specify all borders')
-        return list(range(self.start, self.end + 1))
+        return list(range(self.start, self.end + 1))  # type: ignore
 
 
 class ChainStats(NamedTuple):
