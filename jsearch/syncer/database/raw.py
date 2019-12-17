@@ -216,6 +216,9 @@ class RawDB(DBWrapper):
         return await self.fetch_all(q, block_hash)
 
     async def get_nodes(self, block_range: BlockRange) -> List[NodeState]:
+        assert block_range.is_closed, 'Do not query in open range'
+        assert len(block_range) < 10000, 'Do not query too many blocks'
+
         q = """
         SELECT node_id, count(id) as events
         FROM chain_events
@@ -241,6 +244,9 @@ class RawDB(DBWrapper):
             node_id: str,
             block_range: BlockRange,
     ) -> List[Dict[str, Any]]:
+        assert block_range.is_closed, 'Do not query in open range'
+        assert len(block_range) < 10000, 'Do not query too many blocks'
+
         q = f"""
         SELECT block_number, block_hash, parent_block_hash
         FROM chain_events

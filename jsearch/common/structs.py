@@ -55,9 +55,23 @@ class BlockRange(NamedTuple):
         >>> len(BlockRange(0, 0))
         1
         """
-        if self.end is None:
+        if not self.is_closed:
             raise ValueError('To get a length - need to specify all borders')
         return (self.end + 1) - self.start
+
+    @property
+    def is_closed(self) -> bool:
+        """
+        >>> BlockRange(0, None).is_closed
+        False
+        >>> BlockRange(None, 0).is_closed
+        False
+        >>> BlockRange(0, 0).is_closed
+        True
+        >>> BlockRange(0, 100).is_closed
+        True
+        """
+        return self.start is not None and self.end is not None
 
     def as_range(self) -> List[int]:
         """
@@ -66,7 +80,7 @@ class BlockRange(NamedTuple):
         >>> BlockRange(0, 0).as_range()
         [0]
         """
-        if self.end is None:
+        if not self.is_closed:
             raise ValueError('To get a range - need to specify all borders')
         return list(range(self.start, self.end + 1))
 
