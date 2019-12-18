@@ -194,7 +194,7 @@ class Manager:
             await apply_split_event(
                 main_db=self.main_db,
                 split_data=dict(chain_split),
-                load_missed=partial(sync_block, self.raw_db, self.main_db, node_id=self.node_id)
+                load_missed=partial(sync_block, self.raw_db, self.main_db)
             )
 
             if not self._running:
@@ -224,7 +224,11 @@ class Manager:
         elif event['type'] == ChainEvent.REINSERT:
             await self.main_db.insert_chain_event(event)
         elif event['type'] == ChainEvent.SPLIT:
-            await apply_split_event(self.main_db, split_data=event)
+            await apply_split_event(
+                self.main_db,
+                split_data=event,
+                load_missed=partial(sync_block, self.raw_db, self.main_db)
+            )
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],
