@@ -287,7 +287,6 @@ class Manager:
         )
 
         if available_nodes and is_it_time_to_switch_node:
-            # from pdb import set_trace; set_trace()
             logger.info('Search candidate to switch data source')
             switch = await search_candidate_to_switch_data_source(next_block, self.node_id, self.raw_db)
             if switch:
@@ -313,7 +312,6 @@ class Manager:
             self.state.checked_on_holes = block_range
 
         elif available_nodes:
-            # from pdb import set_trace; set_trace()
             logger.info(
                 'There are no blocks from current node, but there are from others',
                 extra={
