@@ -229,7 +229,7 @@ class MainDB(DBWrapper):
 
         return None
 
-    @timeit('MAIN DB] Get last block')
+    @timeit('[MAIN DB] Get last block')
     async def get_last_block_number(self, block_range: BlockRange) -> int:
         query = select([blocks_t.c.number]).order_by(desc(blocks_t.c.number)).limit(1)
 

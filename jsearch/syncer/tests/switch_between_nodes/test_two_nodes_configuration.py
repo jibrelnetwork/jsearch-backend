@@ -148,7 +148,6 @@ async def test_switch_events_chain(
     generate_chains(chain_generator, given, raw_db)
 
     # when
-    # try:
     try:
         await sync(given.synced_range, node_id=given.left_id)
     except Exception as e:

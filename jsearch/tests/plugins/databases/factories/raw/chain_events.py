@@ -31,7 +31,7 @@ class RawDBChainEventFactory(DictFactory):
     add_length = 1
     add_block_hash = factory.LazyFunction(generate_address)
     node_id = ''
-    created_at = generate_psql_timestamp()
+    created_at = factory.LazyFunction(generate_psql_timestamp())
 
 
 @dataclass

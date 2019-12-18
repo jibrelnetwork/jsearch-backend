@@ -341,7 +341,7 @@ async def search_candidate_to_switch_data_source(
     switch_candidate: Optional[NodeState]
     try:
         switch_candidate = sorted(node_states, key=lambda x: x.events)[-1]
-    except KeyError:
+    except IndexError:
         switch_candidate = None
 
     current_node = nodes_map.get(node_id)
