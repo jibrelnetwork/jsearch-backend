@@ -169,6 +169,38 @@ def event_from_internal_tx(address: str,
 def get_token_transfer_args_from_pending_tx(
         pending_tx: PendingTransaction,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    >>> get_token_transfer_args_from_pending_tx(  # 'transfer'
+    ...     {
+    ...         'input': '0xa9059cbb0000000000000000000000004aeff5f0ffcfb9db8d'
+    ...                  '0e3eec2f44df7a96d41ba5000000000000000000000000000000'
+    ...                  '00000000000000000000000002a4aa0cc0',
+    ...         'from': '0xbf9d709cca3a5eae0a07791bebed674bbbd43b6d',
+    ...     }
+    ... ) == (
+    ...     '0xbf9d709cca3a5eae0a07791bebed674bbbd43b6d',
+    ...     '0x4aeff5f0ffcfb9db8d0e3eec2f44df7a96d41ba5',
+    ...     '11352542400',
+    ... )
+    True
+    >>> get_token_transfer_args_from_pending_tx(  # 'transferFrom'
+    ...     {
+    ...         'input': '0x23b872dd00000000000000000000000005723a8d81b06330da'
+    ...                  '7dee6b1f6dab7c422b54b90000000000000000000000002faf48'
+    ...                  '7a4414fe77e2327f0bf4ae2a264a776ad2000000000000000000'
+    ...                  '00000000000000000000000000006c6884f5878acd8000',
+    ...     }
+    ... ) == (
+    ...     '0x05723a8d81b06330da7dee6b1f6dab7c422b54b9',
+    ...     '0x2faf487a4414fe77e2327f0bf4ae2a264a776ad2',
+    ...     '1999779774400000000000',
+    ... )
+    True
+    >>> get_token_transfer_args_from_pending_tx({'input': '0x', 'from': '0xbf9d709cca3a5eae0a07791bebed674bbbd43b6d'})
+    (None, None, None)
+    >>> get_token_transfer_args_from_pending_tx({'input': '0x'})
+    (None, None, None)
+    """
     try:
         tx_input = pending_tx['input']
         method_id = tx_input[:10]
@@ -179,7 +211,7 @@ def get_token_transfer_args_from_pending_tx(
             # signature is `function transferFrom(address from, address to, uint tokens)`
 
             sender: Optional[str] = f"0x{body[:64][-40:]}"
-            receiver: Optional[str] = f"0x{body[64:][-40:]}"
+            receiver: Optional[str] = f"0x{body[64:128][-40:]}"
 
         elif method_id == ERC20_METHODS_IDS['transfer']:
             # signature is `function transfer(address to, uint tokens)`
@@ -189,8 +221,8 @@ def get_token_transfer_args_from_pending_tx(
         else:
             amount = sender = receiver = None
 
-    except (TypeError, IndexError) as e:
-        logger.error(e)
+    except (TypeError, IndexError, ValueError):
+        logger.exception('Cannot retrieve transfer args from pending TX')
         amount = sender = receiver = None
 
     return sender, receiver, amount
@@ -201,10 +233,18 @@ def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> O
 
     if event_type == WalletEventType.ERC20_TRANSFER:
         sender, recipient, amount = get_token_transfer_args_from_pending_tx(pending_tx)
+        event_data = {
+            'sender': sender,
+            'recipient': recipient,
+            'amount': amount,
+            'asset': pending_tx['to'],
+        }
     else:
-        sender = pending_tx['from']
-        recipient = pending_tx['to']
-        amount = str(int(pending_tx['value'], 16))
+        event_data = {
+            'sender': pending_tx['from'],
+            'recipient': pending_tx['to'],
+            'amount': str(int(pending_tx['value'], 16)),
+        }
 
     if event_type:
         return {
@@ -214,11 +254,7 @@ def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> O
             'tx_hash': pending_tx['hash'],
             'tx_data': None,
             'event_index': 0,
-            'event_data': {
-                'sender': sender,
-                'recipient': recipient,
-                'amount': amount,
-            }
+            'event_data': event_data,
         }
 
     return None
