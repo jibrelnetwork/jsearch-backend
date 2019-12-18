@@ -1,3 +1,5 @@
+from random import randint
+
 import logging
 from urllib.parse import urlencode
 
@@ -439,9 +441,11 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
     }
 
 
-async def test_get_wallet_events_pending_txs(cli,
-                                             block_factory,
-                                             pending_transaction_factory):
+async def test_get_wallet_events_pending_eth_transfer(
+        cli,
+        block_factory,
+        pending_transaction_factory,
+):
     # given
     block = block_factory.create()
     pending_tx = pending_transaction_factory.create_eth_transfer()
@@ -478,6 +482,81 @@ async def test_get_wallet_events_pending_txs(cli,
                 'eventIndex': 0,
                 'eventType': 'eth-transfer',
                 'eventDirection': 'in'
+            }],
+            'transaction': {
+                'from': getattr(pending_tx, 'from'),
+                'gas': str(pending_tx.gas),
+                'gasPrice': str(pending_tx.gas_price),
+                'hash': pending_tx.hash,
+                'input': pending_tx.input,
+                'nonce': str(pending_tx.nonce),
+                'removed': False,
+                'r': pending_tx.r,
+                's': pending_tx.s,
+                'to': pending_tx.to,
+                'v': pending_tx.v,
+                'status': pending_tx.status,
+                'value': pending_tx.value,
+            }
+        }
+    ]
+
+
+@pytest.mark.parametrize('method_id', ('transfer', 'transferFrom'))
+async def test_get_wallet_events_pending_erc20_transfer(
+        cli,
+        block_factory,
+        pending_transaction_factory,
+        method_id,
+):
+    # given
+    token_value = randint(0, 999)
+    sender = generate_address()
+    recipient = generate_address()
+
+    pending_tx = pending_transaction_factory.create_token_transfer(
+        method_id=method_id,
+        address_from=sender,
+        address_to=recipient,
+        token_value=token_value,
+    )
+
+    url = URL.format(
+        params=urlencode({
+            'blockchain_address': getattr(pending_tx, 'from'),
+            'include_pending_txs': 1
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+    assert response_json['data']['pendingEvents'] == [
+        {
+            'events': [{
+                'eventData': [
+                    {
+                        'fieldName': 'sender',
+                        'fieldValue': sender,
+                    },
+                    {
+                        'fieldName': 'recipient',
+                        'fieldValue': recipient,
+                    },
+                    {
+                        'fieldName': 'amount',
+                        'fieldValue': str(token_value)
+                    },
+                    {
+                        'fieldName': 'asset',
+                        'fieldValue': pending_tx.to,
+                    },
+                ],
+                'eventIndex': 0,
+                'eventType': 'erc20-transfer',
+                'eventDirection': 'out'
             }],
             'transaction': {
                 'from': getattr(pending_tx, 'from'),

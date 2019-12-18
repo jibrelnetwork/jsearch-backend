@@ -1,7 +1,9 @@
 from random import randint
+from typing import Optional
 
 import factory
 import pytest
+from eth_utils import remove_0x_prefix
 
 from jsearch.common.contracts import ERC20_METHODS_IDS
 from jsearch.common.tables import pending_transactions_t
@@ -46,15 +48,34 @@ class PendingTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
         return cls.create(value=value, to=to)
 
     @classmethod
-    def create_token_transfer(cls, address=None):
-        transfer_sign = ERC20_METHODS_IDS['transfer']
-        empty_nulls = "0" * 20
-        address_to = address or generate_address()
-        value = hex(randint(0, 999))
-        return cls.create(
-            value=value,
-            input=f"{transfer_sign}{empty_nulls}{address_to}{empty_nulls}{value}"
-        )
+    def create_token_transfer(
+            cls,
+            method_id: str,
+            address_from: Optional[str] = None,
+            address_to: Optional[str] = None,
+            token_value: Optional[int] = None,
+    ):
+        if method_id not in {'transfer', 'transferFrom'}:
+            raise ValueError(f"ERC20 method ID must be either 'transfer' or 'transferFrom', got '{method_id}'")
+
+        transfer_sign = ERC20_METHODS_IDS[method_id]
+
+        address_from = address_from or generate_address()
+        address_to = address_to or generate_address()
+        token_value = hex(token_value)
+
+        address_from_unprefixed = remove_0x_prefix(address_from)
+        address_to_unprefixed = remove_0x_prefix(address_to)
+        token_value_unprefixed = remove_0x_prefix(token_value)
+
+        if method_id == 'transfer':
+            # signature is `function transferFrom(address to, uint tokens)`
+            input_ = f"{transfer_sign}{address_to_unprefixed.zfill(64)}{token_value_unprefixed.zfill(64)}"
+        else:
+            # signature is `function transferFrom(address from, address to, uint tokens)`
+            input_ = f"{transfer_sign}{address_from_unprefixed.zfill(64)}{address_to_unprefixed.zfill(64)}{token_value_unprefixed.zfill(64)}"  # NOQA: E501
+
+        return cls.create(value="0x0", from_=address_from, input=input_)
 
 
 @pytest.fixture()
