@@ -266,19 +266,23 @@ class Manager:
             await self.process_chain_event(next_event)
             return next_event
 
+        if self.state.last_synced_at is None:
+            self.state.last_synced_at = time.monotonic()
+
         next_block = await self.main_db.get_last_block_number(block_range) + 1
         available_nodes = await self.raw_db.get_nodes_for_block(next_block, exclude_node=self.node_id)
-        is_it_time_to_switch_node = (
-                block_range.end is None or
-                self.state.last_synced_at and
-                self.state.last_synced_at < (time.monotonic() - settings.ETH_NODE_SWITCH_TIMEOUT)
-        )
+
+        before_switch = 0
+        if self.state.last_synced_at:
+            before_switch = self.state.last_synced_at + settings.ETH_NODE_SWITCH_TIMEOUT - time.monotonic()
+        is_it_time_to_switch_node = block_range.end is not None or before_switch < 0
+
         logger.info(
             'No blocks, available nodes',
             extra={
                 'next_block': next_block,
                 'nodes': available_nodes,
-                'it_is_time_to_switch': is_it_time_to_switch_node
+                'before_switch': round(before_switch, 2)
             }
         )
 
