@@ -16,7 +16,8 @@ from lxml import html
 from psycopg2.extras import DictCursor
 from typing import NamedTuple, Dict, Any, List, Optional
 
-from . import settings
+from jsearch.data_checker import settings
+from jsearch.common.db import fetch_all, fetch_one
 
 logger = logging.getLogger(__name__)
 
@@ -41,37 +42,36 @@ class DataChecker(mode.Service):
     Checking ERC20 tokens transfers by comparing
     with Etherscan transfers list https://etherscan.io/tokentxns
     """
-    db_pool: Optional[Engine] = None
+    engine: Optional[Engine] = None
 
-    def __init__(self, main_db_dsn: str, use_proxy: bool, *args, **kwargs) -> None:
+    def __init__(self, main_db_dsn: str, use_proxy: bool, **kwargs) -> None:
         self.main_db_dsn = main_db_dsn
         self.total = 0
         self.check_queue: 'asyncio.Queue[Dict[str, Any]]' = asyncio.Queue()
         self.workers: List[Task] = []
         self.use_proxy = use_proxy
 
-        # FIXME (nickgashkov): `mode.Service` does not support `*args`
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(**kwargs)
 
     async def on_start(self) -> None:
         await self.connect()
 
     async def on_stop(self) -> None:
-        # for worker in self.workers:
-        #     worker.cancel()
         await self.disconnect()
 
     async def connect(self) -> None:
-        self.db_pool: Engine = await aiopg.sa.create_engine(
+        self.engine: Engine = await aiopg.sa.create_engine(
             self.main_db_dsn,
             cursor_factory=DictCursor,
             maxsize=settings.WORKERS
         )
 
     async def disconnect(self) -> None:
-        # FIXME (nickgashkov): `self.db_pool` is `None` upon `__init__`.
-        self.db_pool.close()  # type: ignore
-        await self.db_pool.wait_closed()  # type: ignore
+        if self.engine is None:
+            return
+
+        self.engine.close()
+        await self.engine.wait_closed()
 
     async def worker(self, number):
         logger.info('Worker %s started', number)
@@ -240,11 +240,8 @@ class DataChecker(mode.Service):
             ORDER BY number DESC
             LIMIT 6;
         """
-        async with self.db_pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q)
-                rows = await cur.fetchall()
-        return dict(rows[-1])
+        rows = await fetch_all(self.engine, q)
+        return rows[-1]
 
     async def get_synced_block_by_number(self, block_number):
         q = """
@@ -253,11 +250,7 @@ class DataChecker(mode.Service):
             WHERE number=%s
                 AND is_forked=false;
         """
-        async with self.db_pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, [block_number])
-                row = await cur.fetchone()
-        return dict(row)
+        return await fetch_one(self.engine, q, [block_number])
 
     async def get_synced_block_transfers(self, block_hash):
         q = """
@@ -265,10 +258,7 @@ class DataChecker(mode.Service):
             FROM token_transfers
             WHERE block_hash=%s;
         """
-        async with self.db_pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(q, [block_hash])
-                rows = await cur.fetchall()
+        rows = await fetch_all(self.engine, q, [block_hash])
         transfers = []
         for row in rows:
             transfer = Transfer(
