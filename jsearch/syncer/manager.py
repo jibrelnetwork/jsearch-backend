@@ -262,7 +262,7 @@ class Manager:
             await self.process_chain_event(next_event)
             return next_event
 
-        next_block = last_event['block_number'] + 1
+        next_block = await self.main_db.get_last_block_number(block_range) + 1
         available_nodes = await self.raw_db.get_nodes_for_block(next_block, exclude_node=self.node_id)
         is_it_time_to_switch_node = (
                 block_range.end is None or
