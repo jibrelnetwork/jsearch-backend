@@ -239,10 +239,11 @@ class RawDB(DBWrapper):
         """
         return [item['node_id'] for item in await self.fetch_all(q, block_number, exclude_node)]
 
-    async def get_create_chain_events_before_block(
+    async def get_chain_events_for_range(
             self,
             node_id: str,
             block_range: BlockRange,
+            event_type: str = ChainEvent.INSERT
     ) -> List[Dict[str, Any]]:
         assert block_range.is_closed, 'Do not query in open range'
         assert len(block_range) < 10000, 'Do not query too many blocks'
@@ -253,7 +254,7 @@ class RawDB(DBWrapper):
         WHERE
             block_number BETWEEN %s and %s
             and node_id = %s
-            and type = '{ChainEvent.INSERT}'
+            and type = '{event_type}'
         ORDER BY block_number
         """
         return await self.fetch_all(q, block_range.start, block_range.end, node_id)
@@ -264,8 +265,8 @@ class RawDB(DBWrapper):
             node_right: str,
             block_range: BlockRange,
     ) -> int:
-        chain_left = await self.get_create_chain_events_before_block(node_left, block_range)
-        chain_right = await self.get_create_chain_events_before_block(node_right, block_range)
+        chain_left = await self.get_chain_events_for_range(node_left, block_range)
+        chain_right = await self.get_chain_events_for_range(node_right, block_range)
 
         chain_left_map = {item['block_hash']: item for item in chain_left}
 
