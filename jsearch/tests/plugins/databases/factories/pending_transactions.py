@@ -1,5 +1,6 @@
 from random import randint
-from typing import Optional
+
+from typing import Optional, Any
 
 import factory
 import pytest
@@ -32,7 +33,7 @@ class PendingTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     gas_price = factory.Faker('pyint')
     input = '0x00'
     nonce = factory.Sequence(lambda n: n)
-    value = factory.Sequence(lambda n: str(n))
+    value = factory.LazyFunction(lambda: str(randint(0, 999)))
 
     class Meta:
         model = PendingTransactionModel
@@ -41,11 +42,8 @@ class PendingTransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
         rename = {'from_': 'from'}
 
     @classmethod
-    def create_eth_transfer(cls, to=None):
-        value = hex(randint(0, 999))
-        if not to:
-            to = generate_address()
-        return cls.create(value=value, to=to)
+    def create_eth_transfer(cls, **kwargs: Any) -> PendingTransactionModel:
+        return cls.create(**kwargs)
 
     @classmethod
     def create_token_transfer(
