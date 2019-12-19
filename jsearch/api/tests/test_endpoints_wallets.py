@@ -441,6 +441,33 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
     }
 
 
+async def test_get_wallet_events_pending_eth_transfer_does_not_double_cast_value_into_dec(
+        cli,
+        block_factory,
+        pending_transaction_factory,
+):
+    # given
+    pending_tx = pending_transaction_factory.create_eth_transfer(value='1000')
+
+    url = URL.format(
+        params=urlencode({
+            'blockchain_address': pending_tx.to,
+            'include_pending_txs': 1
+        })
+    )
+
+    # when
+    response = await cli.get(url)
+    response_json = await response.json()
+
+    # then
+
+    txs = response_json['data']['pendingEvents']
+    tx = txs[0]
+
+    assert tx['events'][0]['eventData'][2]['fieldValue'] == tx['transaction']['value'] == '1000'
+
+
 async def test_get_wallet_events_pending_eth_transfer(
         cli,
         block_factory,
@@ -470,13 +497,15 @@ async def test_get_wallet_events_pending_eth_transfer(
                 'eventData': [
                     {
                         'fieldName': 'sender',
-                        'fieldValue': getattr(pending_tx, 'from')},
+                        'fieldValue': getattr(pending_tx, 'from'),
+                    },
                     {
                         'fieldName': 'recipient',
-                        'fieldValue': pending_tx.to},
+                        'fieldValue': pending_tx.to,
+                    },
                     {
                         'fieldName': 'amount',
-                        'fieldValue': f'{int(pending_tx.value, 16)}'
+                        'fieldValue': pending_tx.value,
                     }
                 ],
                 'eventIndex': 0,
