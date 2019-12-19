@@ -112,7 +112,7 @@ txs_cases = [
     # - pending transactions
     TransactionCase(
         data={
-            'value': '0x100',
+            'value': '256',
             'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
             'to': '0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
             'input': '0x1a412cd2'
@@ -124,7 +124,7 @@ txs_cases = [
     ),
     TransactionCase(
         data={
-            'value': '0x0',
+            'value': '0',
             'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
             'to': CANCELLATION_ADDRESS,
             'input': '0x1a412cd2'
@@ -150,7 +150,7 @@ txs_cases = [
     ),
     TransactionCase(
         data={
-            'value': '0x0',
+            'value': '0',
             'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
             'to': '0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
             'input': '0x23b872dd'
@@ -165,7 +165,7 @@ txs_cases = [
     ),
     TransactionCase(
         data={
-            'value': '0x0',
+            'value': '0',
             'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
             'to': '0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
             'input': '0x1a412cd2'
@@ -177,7 +177,7 @@ txs_cases = [
     ),
     TransactionCase(
         data={
-            'value': '0x2b203d2b8468efff',
+            'value': '3107550999999999999',
             'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
             'to': '0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
             'input': '0x1a412cd2'
@@ -189,7 +189,7 @@ txs_cases = [
     ),
     TransactionCase(
         data={
-            'value': '0x0',
+            'value': '0',
             'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
             'to': CANCELLATION_ADDRESS,
             'input': '0x1a412cd2'
@@ -201,7 +201,7 @@ txs_cases = [
     ),
     TransactionCase(
         data={
-            'value': '0x0',
+            'value': '0',
             'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
             'to': CANCELLATION_ADDRESS,
             'input': '0x1a412cd2'
@@ -215,7 +215,7 @@ txs_cases = [
     # Target is not a contract
     TransactionCase(
         data={
-            'value': '0x0',
+            'value': '0',
             'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
             'to': '0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
             'input': '0xa9059cbb'
@@ -229,7 +229,7 @@ txs_cases = [
     ),
     TransactionCase(
         data={
-            'value': '0x2b203d2b8468efff',
+            'value': '3107550999999999999',
             'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
             'to': '0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
             'input': '0x1a412cd2'
@@ -241,7 +241,7 @@ txs_cases = [
     ),
     TransactionCase(
         data={
-            'value': '0x0',
+            'value': '0',
             'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
             'to': CANCELLATION_ADDRESS,
             'input': '0x1a412cd2'
