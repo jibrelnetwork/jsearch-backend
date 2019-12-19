@@ -22,7 +22,13 @@ def get_event_type(tx_data: Transaction, is_receiver_contract=False, is_pending=
     """
     Accord to https://jibrelnetwork.atlassian.net/wiki/spaces/JWALLET/pages/769327162/Ethereum+blockchain+events
     """
-    if int(tx_data['value'], 16) != 0:
+    # WTF:
+    #   * `"transactions"."value"` is hex-string
+    #   * `"pending_transactions"."value"` is dec-string
+    value_base = 10 if is_pending else 16
+    value = int(tx_data['value'], value_base)
+
+    if value != 0:
         return WalletEventType.ETH_TRANSFER
 
     if tx_data['to'] == CANCELLATION_ADDRESS:
@@ -243,7 +249,7 @@ def get_event_from_pending_tx(address: str, pending_tx: PendingTransaction) -> O
         event_data = {
             'sender': pending_tx['from'],
             'recipient': pending_tx['to'],
-            'amount': str(int(pending_tx['value'], 16)),
+            'amount': pending_tx['value'],
         }
 
     if event_type:
