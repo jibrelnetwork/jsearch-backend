@@ -6,6 +6,7 @@ echo "Supported commands:
   jsearch-syncer-pending
   app
   migrate
+  monitor
 "
 
 RUNMODE="${1:-app}"
@@ -24,6 +25,8 @@ wait_main_db_ready () {
 if [[ "${RUNMODE}" = "jsearch-syncer" ]]; then
     wait_raw_db_ready
     wait_main_db_ready
+elif [[ "${RUNMODE}" = "monitor" ]]; then
+    wait_main_db_ready
 elif [[ "${RUNMODE}" = "jsearch-syncer-pending" ]]; then
     wait_raw_db_ready
     wait_main_db_ready
@@ -33,12 +36,15 @@ elif [[ "${RUNMODE}" = "migrate" ]]; then
     wait_main_db_ready
 fi
 
+CMD="$@"
 
-if [[ "$@" = "app" ]]; then
+if [[ $CMD = "app" ]]; then
     python manage.py init
     jsearch api
-elif [[ "$@" = "migrate" ]]; then
+elif [[ $CMD = "monitor" ]]; then
+    jsearch monitor
+elif [[ $CMD = "migrate" ]]; then
     python manage.py up
 else
-    exec "$@"
+    exec $CMD
 fi
