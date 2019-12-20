@@ -1,14 +1,8 @@
 import binascii
 import logging
 
-import re
-from ethereum.abi import (
-    decode_abi,
-    normalize_name as normalize_abi_method_name,
-    method_id as get_abi_method_id,
-    ContractTranslator
-)
-from ethereum.utils import encode_int, zpad, decode_hex
+from ethereum.abi import ContractTranslator
+from ethereum.utils import decode_hex
 
 from jsearch.typing import Abi_ERC20, AccountAddress
 
@@ -291,25 +285,6 @@ def _fix_arg(arg, typ, decoder=None):
     return decoder(arg)
 
 
-def decode_contract_call(contract_abi: list, call_data: str):
-    call_data = call_data.replace('0x', '')
-    call_data_bin = decode_hex(call_data)
-    method_signature = call_data_bin[:4]
-    for description in contract_abi:
-        if description.get('type') != 'function':
-            continue
-        method_name = normalize_abi_method_name(description['name'])
-        arg_types = [item['type'] for item in description['inputs']]
-        method_id = get_abi_method_id(method_name, arg_types)
-        if zpad(encode_int(method_id), 4) == method_signature:
-            try:
-                args = decode_abi(arg_types, call_data_bin[4:])
-                args = _fix_string_args(args, arg_types)
-            except AssertionError:
-                continue
-            return {'function': method_name, 'args': args}
-
-
 def decode_event(contract_abi, event):
     ct = ContractTranslator(contract_abi)
     log_topics = [int(t[2:], 16) for t in event['topics']]
@@ -323,81 +298,3 @@ def decode_event(contract_abi, event):
         t = args_map[k]
         fixed_event[k] = _fix_arg(v, t)
     return fixed_event
-
-
-def is_erc20_stricte(abi):
-    for item in ERC20_ABI:
-        if item not in abi:
-            return False
-    return True
-
-
-def is_erc20_compatible(abi):
-    abi_simple = simplify_abi(abi)
-    for item in ERC20_ABI_SIMPLE:
-        if item not in abi_simple:
-            return False
-    return True
-
-
-def simplify_abi(abi):
-    def fix_uint(typ):
-        if typ.startswith('uint'):
-            return 'uint'
-        return typ
-
-    abi_simple = []
-    for item in abi:
-        if item.get('type') not in {'function', 'event'}:
-            continue
-        s = {}
-        s['name'] = item['name']
-        s['type'] = item['type']
-        s['inputs'] = [fix_uint(v['type']) for v in item['inputs']]
-        if 'outputs' in item and item['name'] != 'transfer':  # dont check outputs for transfer
-            s['outputs'] = [fix_uint(v['type']) for v in item['outputs']]
-        abi_simple.append(s)
-    return abi_simple
-
-
-def cut_contract_metadata_hash(byte_code):
-    """
-    https://github.com/ethereum/solidity/blob/c9bdbcf470f4ca7f8d2d71f1be180274f534888d/libsolidity/interface/CompilerStack.cpp#L699  # noqa: E501
-
-    bytes cborEncodedHash =
-        // CBOR-encoding of the key "bzzr0"
-        bytes{0x65, 'b', 'z', 'z', 'r', '0'}+
-        // CBOR-encoding of the hash
-        bytes{0x58, 0x20} + dev::swarmHash(metadata).asBytes();
-    bytes cborEncodedMetadata;
-    if (onlySafeExperimentalFeaturesActivated(_contract.sourceUnit().annotation().experimentalFeatures))
-        cborEncodedMetadata =
-            // CBOR-encoding of {"bzzr0": dev::swarmHash(metadata)}
-            bytes{0xa1} +
-            cborEncodedHash;
-    else
-        cborEncodedMetadata =
-            // CBOR-encoding of {"bzzr0": dev::swarmHash(metadata), "experimental": true}
-            bytes{0xa2} +
-            cborEncodedHash +
-            bytes{0x6c, 'e', 'x', 'p', 'e', 'r', 'i', 'm', 'e', 'n', 't', 'a', 'l', 0xf5};
-    solAssert(cborEncodedMetadata.size() <= 0xffff, "Met:306adata too large");
-    """
-
-    cbor_hash = '65627a7a72305820(.*)'
-    sig_1 = 'a1' + cbor_hash + '0029'
-    sig_2 = 'a2' + cbor_hash + '6c6578706572696d656e74616cf50037'
-
-    m = re.match('.*({}).*'.format(sig_1), byte_code)
-    if m:
-        logger.debug('Metadata signature found', extra={'signature': m.groups()[0]})
-        swarm_hash = m.groups()[1]
-        return re.sub(swarm_hash, '', byte_code), swarm_hash
-
-    m = re.match('.*({}).*'.format(sig_2), byte_code)
-    if m:
-        logger.debug('Metadata experimental signature found: %s', extra={'signature': m.groups()[0]})
-        swarm_hash = m.groups()[1]
-        return re.sub(swarm_hash, '', byte_code), swarm_hash
-    logger.debug('No metadata hash found')
-    return byte_code, ''

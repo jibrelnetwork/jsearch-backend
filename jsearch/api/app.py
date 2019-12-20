@@ -3,11 +3,10 @@ import asyncio
 import aiopg.sa
 from aiohttp import web
 from aiohttp.web_app import Application
-from psycopg2.extras import DictCursor
 from jibrel_aiohttp_swagger import setup_swagger
+from psycopg2.extras import DictCursor
 
 from jsearch import settings
-from jsearch.api.handlers import contracts
 from jsearch.api.handlers import monitoring, blocks, uncles, explorer, tokens, node_proxy, wallets
 from jsearch.api.handlers.accounts import (
     get_account,
@@ -67,8 +66,6 @@ def define_routes(app: Application):
 
     add('GET', '/v1/uncles', uncles.get_uncles, name='uncles')
     add('GET', '/v1/uncles/{tag}', uncles.get_uncle)
-
-    add('POST', '/v1/verify_contract', contracts.verify_contract)
 
     add('GET', '/v1/tokens/{contract_address}/transfers', tokens.get_token_transfers, name='token_transfers')
     add('GET', '/v1/tokens/{contract_address}/holders', tokens.get_token_holders, name='token_holders')
