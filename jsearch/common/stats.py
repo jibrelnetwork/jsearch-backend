@@ -1,3 +1,5 @@
+from typing import Any, List, Dict
+
 import asyncio
 import logging
 
@@ -7,6 +9,7 @@ from aiopg.sa import Engine
 from jsearch import settings
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.common import utils, prom_metrics
+from jsearch.common.db import fetch_one, fetch_all
 from jsearch.common.reference_data import get_lag_statistics, get_lag_statistics_by_provider
 from jsearch.common.structs import DbStats, LoopStats, NodeStats, ChainStats, LagStats
 
@@ -17,10 +20,7 @@ async def get_db_stats(engine: Engine) -> DbStats:
     is_healthy = False
 
     try:
-        async with engine.acquire() as conn:
-            async with conn.execute('SELECT 1') as cursor:
-                await cursor.fetchone()
-
+        await fetch_one(engine, 'SELECT 1')
         is_healthy = True
     except asyncio.CancelledError:
         raise
@@ -55,15 +55,15 @@ async def get_loop_stats() -> LoopStats:
 
 async def get_chain_stats(engine: Engine) -> ChainStats:
     is_healthy = False
+    holes: List[Dict[str, Any]] = []
     try:
-        async with engine.acquire() as conn:
-            # stored function check_canonical_chain(depth) returns number, hash, parent_hash
-            # for each block N from canonical chain, if N.parent_hash != (N-1).hash
-            holes = await conn.fetch('SELECT number, hash, parent_hash FROM check_canonical_chain(1000);')
-            if not holes:
-                is_healthy = True
-            else:
-                logger.critical("Chain Health Error: Chain Holes", extra={"holes": str([dict(h) for h in holes])})
+        # stored function check_canonical_chain(depth) returns number, hash, parent_hash
+        # for each block N from canonical chain, if N.parent_hash != (N-1).hash
+        holes = await fetch_all(engine, 'SELECT number, hash, parent_hash FROM check_canonical_chain(1000)')
+        if not holes:
+            is_healthy = True
+        else:
+            logger.critical("Chain Health Error: Chain Holes", extra={"holes": str([dict(h) for h in holes])})
     except asyncio.CancelledError:
         raise
     except Exception as e:
