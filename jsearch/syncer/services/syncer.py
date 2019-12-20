@@ -2,14 +2,15 @@ import asyncio
 import logging
 
 import mode
-from typing import Any
+from functools import partial
+from typing import Any, List
 
 from jsearch import settings
-from jsearch.common.async_utils import aiosuppress
-from jsearch.common.reference_data import set_lag_statistics
 from jsearch.common.structs import BlockRange
+from jsearch.common.worker import shutdown_root_worker
 from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.manager import Manager
+from jsearch.syncer.services.lag import LagCollector
 from jsearch.syncer.state import SyncerState
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,6 @@ class SyncerService(mode.Service):
                  resync: bool = False,
                  resync_chain_splits: bool = False,
                  check_lag: bool = False,
-                 *args: Any,
                  **kwargs: Any) -> None:
         self.raw_db = RawDB(settings.JSEARCH_RAW_DB)
         self.main_db = MainDB(settings.JSEARCH_MAIN_DB)
@@ -37,8 +37,11 @@ class SyncerService(mode.Service):
         )
         self.check_lag = check_lag
 
-        # FIXME (nickgashkov): `mode.Service` does not support `*args`
-        super(SyncerService, self).__init__(*args, **kwargs)  # type: ignore
+        super(SyncerService, self).__init__(**kwargs)
+
+    def on_init_dependencies(self) -> List[mode.Service]:
+        if self.check_lag:
+            return [LagCollector(self.main_db)]
 
     async def on_start(self) -> None:
         await self.raw_db.connect()
@@ -53,27 +56,12 @@ class SyncerService(mode.Service):
     async def stop(self):
         await self.on_stop()
 
-    @mode.Service.task
-    async def syncer(self):
+    async def on_started(self) -> None:
+        task = asyncio.create_task(self.syncer())
+        task.add_done_callback(partial(shutdown_root_worker, service=self))
+
+    async def syncer(self) -> None:
         await self.manager.start()
         exception = await self.manager.wait()
         if exception:
             await self.crash(exception)
-
-        # we schedule shutdown on root Worker
-        self.beacon.root.data.schedule_shutdown()
-
-    @mode.Service.task
-    async def update_lag_statistics(self):
-        if not self.check_lag:
-            return
-
-        while not self.should_stop:
-            await self.update_lag_statistics_once()
-            await asyncio.sleep(settings.UPDATE_LAG_STATISTICS_DELAY_SECONDS)
-
-    async def update_lag_statistics_once(self):
-        latest_synced_block_number = await self.main_db.get_latest_synced_block_number()
-
-        with aiosuppress(Exception):
-            await set_lag_statistics(latest_synced_block_number)
