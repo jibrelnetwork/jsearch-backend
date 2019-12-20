@@ -16,4 +16,4 @@ def get_default_fields() -> List[Column]:
 
 
 def get_account_base_query(address: str) -> Query:
-    return select(get_default_fields()).where(accounts_base_t.c.address == address)
+    return select(get_default_fields()).where(accounts_base_t.c.address == address).limit(1)

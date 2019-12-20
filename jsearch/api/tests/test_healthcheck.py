@@ -23,3 +23,23 @@ async def test_healthcheck_everything_is_ok(
         "isNodeHealthy": True,
         "isLoopHealthy": True,
     }
+
+
+async def test_healthcheck_everything_is_ok_syncer(
+        cli_syncer: TestClient,
+        override_settings,
+):
+    override_settings('VERSION', '1.0.0-app-version')
+
+    result = await cli_syncer.get('/healthcheck', json=dict())
+
+    assert result.status == 200
+    assert await result.json() == {
+        "healthy": True,
+        "version": '1.0.0-app-version',
+        "isMainDbHealthy": True,
+        "isLoopHealthy": True,
+        "isChainHealthy": True,
+        "isLagHealthy": True,
+        "isRawDbHealthy": True
+    }
