@@ -6,6 +6,7 @@ from aiohttp.test_utils import TestServer, TestClient
 from pathlib import Path
 
 from jsearch.api.app import make_app
+from jsearch.syncer.services.api import make_app as syncer_make_app
 from jsearch.common import logs
 from jsearch.tests.plugins.api import spec_testing_middleware
 
@@ -97,6 +98,14 @@ def cli(loop, aiohttp_client_session_wide):
     client = loop.run_until_complete(aiohttp_client_session_wide(app))
 
     return client
+
+
+@pytest.fixture(scope="session")
+def cli_syncer(loop, aiohttp_client_session_wide):
+    app = syncer_make_app()
+    app['settings'] = {'check_lag': True, 'check_holes': True}
+
+    return loop.run_until_complete(aiohttp_client_session_wide(app))
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -590,16 +590,6 @@ class Storage(DbActionsMixin):
 
         return transfers, last_affected_block
 
-    async def get_contact_creation_code(self, address: str) -> str:
-        query = """
-        SELECT input FROM transactions t
-          INNER JOIN receipts r
-           ON t.hash = r.transaction_hash
-           AND r.contract_address = %s
-        """
-        row = await self.fetch_one(query, address)
-        return row['input']
-
     async def get_tokens_holders(
             self,
             limit: int,
