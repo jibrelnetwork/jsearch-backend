@@ -1,9 +1,9 @@
 import json
 import logging
 
-from sqlalchemy.dialects.postgresql import insert
 from aiopg.sa import SAConnection
-from sqlalchemy import and_, Table, false
+from sqlalchemy import and_, Table, false, select, desc
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Query
 from typing import List, Dict, Any, Optional
 
@@ -228,6 +228,20 @@ class MainDB(DBWrapper):
             return gap
 
         return None
+
+    @timeit('[MAIN DB] Get last block')
+    async def get_last_block_number(self, block_range: BlockRange) -> int:
+        query = select([blocks_t.c.number]).order_by(desc(blocks_t.c.number)).limit(1)
+
+        if block_range.start:
+            query = query.where(blocks_t.c.number >= block_range.start)
+        if block_range.end:
+            query = query.where(blocks_t.c.number <= block_range.end)
+
+        result = await self.fetch_one(query)
+        if result:
+            return result['number']
+        return 0
 
     @timeit('[MAIN DB] Get last chain event')
     async def get_last_chain_event(self, sync_range: BlockRange, node_id: str) -> Optional[Dict[str, Any]]:

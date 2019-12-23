@@ -18,6 +18,8 @@ class SyncerState:
     last_check_blocks: int = 0
     new_check_blocks: int = 0
 
+    last_synced_at: Optional[float] = None
+
     hole: Optional[BlockRange] = None
 
     already_processed: Optional[int] = None
