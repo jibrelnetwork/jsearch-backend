@@ -1,12 +1,13 @@
 import logging
 from decimal import Decimal
 
-from typing import AsyncGenerator, Any, Dict
+from typing import AsyncGenerator, Any, Dict, List
 
+from jsearch.api.helpers import ChainEvent
 from jsearch.common import contracts
 from jsearch.common.structs import BlockRange
 from jsearch.common.utils import timeit
-from jsearch.syncer.structs import TokenHolderBalances, TokenHolderBalance
+from jsearch.syncer.structs import TokenHolderBalances, TokenHolderBalance, NodeState
 from .wrapper import DBWrapper
 
 logger = logging.getLogger(__name__)
@@ -213,6 +214,74 @@ class RawDB(DBWrapper):
         FROM "internal_transactions" WHERE "block_hash"=%s"""
 
         return await self.fetch_all(q, block_hash)
+
+    async def get_nodes(self, block_range: BlockRange) -> List[NodeState]:
+        assert block_range.is_closed, 'Do not query in open range'
+        assert len(block_range) < 10000, 'Do not query too many blocks'
+
+        q = """
+        SELECT node_id, count(id) as events
+        FROM chain_events
+        WHERE block_number BETWEEN %s and %s
+        GROUP BY node_id;
+        """
+        results = await self.fetch_all(q, block_range.start, block_range.end)
+        if results:
+            return [NodeState(id=item['node_id'], events=item['events']) for item in results]
+        return list()
+
+    async def get_nodes_for_block(self, block_number: int, exclude_node: str) -> List[str]:
+        q = """
+        SELECT node_id
+        FROM chain_events
+        WHERE block_number = %s and node_id != %s
+        GROUP BY node_id;
+        """
+        return [item['node_id'] for item in await self.fetch_all(q, block_number, exclude_node)]
+
+    async def get_chain_events_for_range(
+            self,
+            node_id: str,
+            block_range: BlockRange,
+            event_type: str = ChainEvent.INSERT
+    ) -> List[Dict[str, Any]]:
+        assert block_range.is_closed, 'Do not query in open range'
+        assert len(block_range) < 10000, 'Do not query too many blocks'
+
+        q = f"""
+        SELECT block_number, block_hash, parent_block_hash
+        FROM chain_events
+        WHERE
+            block_number BETWEEN %s and %s
+            and node_id = %s
+            and type = '{event_type}'
+        ORDER BY block_number
+        """
+        return await self.fetch_all(q, block_range.start, block_range.end, node_id)
+
+    async def get_common_block_number(
+            self,
+            node_left: str,
+            node_right: str,
+            block_range: BlockRange,
+    ) -> int:
+        chain_left = await self.get_chain_events_for_range(node_left, block_range)
+        chain_right = await self.get_chain_events_for_range(node_right, block_range)
+
+        chain_left_map = {item['block_hash']: item for item in chain_left}
+
+        links = [event for event in chain_right if event['parent_block_hash'] in chain_left_map]
+        try:
+            block = sorted(links, key=lambda event: event['block_number'])[-1]
+        except IndexError:
+            common_block = None
+        else:
+            common_block = block['block_number']
+
+        if common_block is None:
+            raise ValueError(f'No common block between {node_left} and {node_right}')
+
+        return common_block
 
 
 def get_reward_for_genesis_block(block_hash):

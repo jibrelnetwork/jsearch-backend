@@ -16,6 +16,7 @@ from jsearch.common.structs import BlockRange
 from jsearch.common.utils import timeit, safe_get
 from jsearch.syncer.database import MainDB, RawDB
 from jsearch.syncer.state import SyncerState
+from jsearch.syncer.structs import SwitchEvent, NodeState
 from jsearch.syncer.syncer import apply_create_event, apply_split_event, sync_block
 
 logger = logging.getLogger(__name__)
@@ -148,7 +149,12 @@ class Manager:
     async def chain_events_process_loop(self):
         logger.info("Entering Chain Events Process Loop")
         while self._running is True:
-            await self.get_and_process_chain_event()
+            started_at = time.perf_counter()
+            event = await self.get_and_process_chain_event()
+            event_type = event and safe_get(event, 'type')
+            if event_type is not None:
+                ended_at = time.perf_counter()
+                METRIC_SYNCER_EVENT_SYNC_DURATION.labels(event_type).observe(ended_at - started_at)
 
     async def resync_loop(self):
         logger.info("Entering ReSync Loop")
@@ -188,7 +194,7 @@ class Manager:
             await apply_split_event(
                 main_db=self.main_db,
                 split_data=dict(chain_split),
-                load_missed=partial(sync_block, self.raw_db, self.main_db, node_id=self.node_id)
+                load_missed=partial(sync_block, self.raw_db, self.main_db)
             )
 
             if not self._running:
@@ -218,7 +224,11 @@ class Manager:
         elif event['type'] == ChainEvent.REINSERT:
             await self.main_db.insert_chain_event(event)
         elif event['type'] == ChainEvent.SPLIT:
-            await apply_split_event(self.main_db, split_data=event)
+            await apply_split_event(
+                self.main_db,
+                split_data=event,
+                load_missed=partial(sync_block, self.raw_db, self.main_db)
+            )
         else:
             logger.error('Invalid chain event', extra={
                 'event_id': event['id'],
@@ -241,8 +251,6 @@ class Manager:
     )
     @timeit('[SYNCER] Get and process chain event')
     async def get_and_process_chain_event(self):
-        started_at = time.perf_counter()
-
         if self.state.already_processed is None:
             self.state.already_processed = self.sync_range.start
 
@@ -252,7 +260,49 @@ class Manager:
 
         logger.info("Event range", extra={"range": block_range})
 
-        if self.sync_range.end != block_range.end and next_event is None:
+        if next_event:
+            self.state.already_processed = max(self.state.already_processed, block_range.start)
+            self.state.last_synced_at = time.monotonic()
+            await self.process_chain_event(next_event)
+            return next_event
+
+        if self.state.last_synced_at is None:
+            self.state.last_synced_at = time.monotonic()
+
+        next_block = await self.main_db.get_last_block_number(block_range) + 1
+        available_nodes = await self.raw_db.get_nodes_for_block(next_block, exclude_node=self.node_id)
+
+        before_switch = 0
+        if self.state.last_synced_at:
+            before_switch = self.state.last_synced_at + settings.ETH_NODE_SWITCH_TIMEOUT - time.monotonic()
+        is_it_time_to_switch_node = block_range.end is not None or before_switch < 0
+
+        logger.info(
+            'No blocks, available nodes',
+            extra={
+                'next_block': next_block,
+                'nodes': available_nodes,
+                'before_switch': round(before_switch, 2)
+            }
+        )
+
+        if available_nodes and is_it_time_to_switch_node:
+            logger.info('Search candidate to switch data source')
+            switch = await search_candidate_to_switch_data_source(next_block, self.node_id, self.raw_db)
+            if switch:
+                logger.info(
+                    'No blocks, switch node_id',
+                    extra={
+                        'old': self.node_id,
+                        'new': switch.id,
+                        'common_block': switch.block_number
+                    }
+                )
+                self.node_id = switch.id
+                self.state.already_processed = switch.block_number
+            else:
+                raise ValueError('No blocks, no nodes to switch')
+        elif self.sync_range.end != block_range.end:
             logger.info("No more events in the range", extra={
                 "range": block_range,
                 'last': last_event and last_event['id']
@@ -261,22 +311,57 @@ class Manager:
             self.state.already_processed = block_range.end + 1
             self.state.checked_on_holes = block_range
 
-        elif self.sync_range.end and self.sync_range.end == block_range.end and next_event is None:
+        elif available_nodes:
+            logger.info(
+                'There are no blocks from current node, but there are from others',
+                extra={
+                    'range': self.sync_range,
+                    'node_id': self.node_id,
+                    'available_nodes': available_nodes
+                }
+            )
+            await asyncio.sleep(self.sleep_on_no_blocks)
+        elif self.sync_range.end and self.sync_range.end == block_range.end:
             logger.info('Sync range complete', extra={'range': self.sync_range})
             self._running = False
-
-        elif next_event is None:
+        else:
             logger.info('No blocks, sleeping')
             await asyncio.sleep(self.sleep_on_no_blocks)
-        else:
-            self.state.already_processed = max(self.state.already_processed, block_range.start)
-            await self.process_chain_event(next_event)
 
-        next_event_type = next_event and safe_get(next_event, 'type')
 
-        if next_event_type is not None:
-            ended_at = time.perf_counter()
-            METRIC_SYNCER_EVENT_SYNC_DURATION.labels(next_event_type).observe(ended_at - started_at)
+async def search_candidate_to_switch_data_source(
+        next_block: int,
+        node_id: str,
+        raw_db: RawDB,
+        offset: int = 1024,
+) -> Optional[SwitchEvent]:
+    node_states: List[NodeState] = await raw_db.get_nodes(BlockRange(next_block, next_block + offset))
+    nodes_map = {node.id: node for node in node_states}
+
+    switch_candidate: Optional[NodeState]
+    try:
+        switch_candidate = sorted(node_states, key=lambda x: x.events)[-1]
+    except IndexError:
+        switch_candidate = None
+
+    current_node = nodes_map.get(node_id)
+    current_node_events = current_node and current_node.events or 0
+    if switch_candidate and switch_candidate.events > current_node_events:
+        logging.info(
+            "Difference between nodes",
+            extra={
+                "candidate": switch_candidate.id,
+                "current": node_id,
+                "difference": switch_candidate.events - current_node_events
+            }
+        )
+        common_block = await raw_db.get_common_block_number(
+            node_left=node_id,
+            node_right=switch_candidate.id,
+            block_range=BlockRange(next_block - offset, next_block)
+        )
+        return SwitchEvent(switch_candidate.id, common_block)
+    return None
 
 
 async def get_next_range(
