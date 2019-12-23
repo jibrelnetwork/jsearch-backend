@@ -10,7 +10,7 @@ async def sync(event_loop, main_db_wrapper, raw_db_wrapper):
     from jsearch.common.structs import BlockRange
 
     async def start_syncer(block_range: BlockRange, node_id: str = ""):
-        async with async_timeout.timeout(3000):
+        async with async_timeout.timeout(30):
             manager = Manager(
                 service=None,
                 main_db=main_db_wrapper,
