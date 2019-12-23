@@ -42,6 +42,7 @@ class SyncHoleCase(NamedTuple):
     synced_ranges: List[BlockRange]
 
 
+# ToDo: Need to rewrite to chain generator
 class RawDBMock(NamedTuple):
     db_events: List[RawDbEvent]
 
@@ -54,6 +55,9 @@ class RawDBMock(NamedTuple):
         for event in self.db_events:
             if event.block_number in block_range and event.id > last_id:
                 return event
+
+    async def get_nodes_for_block(self, *args, **kwargs):
+        return []
 
 
 @pytest.mark.parametrize(
