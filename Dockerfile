@@ -39,7 +39,7 @@ ENV LOG_LEVEL="INFO" \
     SYNCER_CHECK_HOLES="1" \
     SYNCER_RESYNC="0" \
     SYNCER_RESYNC_CHAIN_SPLITS="0" \
-    ENABLE_HEALThCHECK="0"
+    ENABLE_HEALTHCHECK="0"
 
 RUN groupadd -g 999 app \
  && useradd -r -u 999 -g app app \
