@@ -1,9 +1,7 @@
 import click
 
-from jsearch import settings
 from jsearch.common import logs, worker
-
-from jsearch.token_holders_cleaner import service
+from jsearch.token_holders_cleaner import service, settings
 
 
 @click.command()

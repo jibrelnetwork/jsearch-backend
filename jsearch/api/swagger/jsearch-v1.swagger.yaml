@@ -1077,29 +1077,6 @@ paths:
                   errors:
                   - code: NOT_FOUND
                     message: Resource not found
-  /v1/verify_contract:
-    post:
-      tags:
-      - common
-      summary: Verify a contract
-      description: |
-        You can use this endpoint to enque a contract verification
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VerifiedContractData'
-        required: true
-      responses:
-        '200':
-          description: Contract
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  verification_passed:
-                    type: boolean
   /v1/verified_contracts:
     get:
       tags:
@@ -2647,21 +2624,6 @@ components:
           type: string
           description: Hash of the method signature and encoded parameters.
           example: "0x6740d36c0000000000000000000000000000000000000000000000000000000000000005"
-    VerifiedContractData:
-      type: object
-      properties:
-        address:
-          type: string
-        contract_name:
-          type: string
-        compiler:
-          type: string
-        optimization_enabled:
-          type: string
-        constructor_args:
-          type: string
-        source_code:
-          type: string
     BlockParameter:
       type: object
       description: An integer block number, or the string "latest", "earliest" or

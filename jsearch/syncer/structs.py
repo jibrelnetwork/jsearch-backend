@@ -85,3 +85,13 @@ class AddressAssetPair(NamedTuple):
 
 
 AddressAssetPairs = List[AddressAssetPair]
+
+
+class NodeState(NamedTuple):
+    id: str
+    events: int
+
+
+class SwitchEvent(NamedTuple):
+    id: str
+    block_number: int
