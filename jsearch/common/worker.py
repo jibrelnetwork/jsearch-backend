@@ -41,4 +41,5 @@ def shutdown_root_worker(fut: asyncio.Future, service: mode.Service) -> None:
         asyncio.create_task(service.crash(exc))
         return
 
-    service.beacon.root.data._starting_fut.cancel()
+    if hasattr(service.beacon.root.data, '_starting_fut'):
+        service.beacon.root.data._starting_fut.cancel()
