@@ -6,6 +6,7 @@ from click import Context
 from jsearch.api.cli import api
 from jsearch.structs import AppConfig
 from jsearch.syncer.cli import monitor
+from jsearch.index_manager.cli import indexes
 
 logger = logging.getLogger(__name__)
 
@@ -20,3 +21,4 @@ def cli(ctx: Context, log_level: str, no_json_formatter: bool) -> None:
 
 cli.add_command(api)
 cli.add_command(monitor)
+cli.add_command(indexes)
