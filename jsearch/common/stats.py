@@ -100,6 +100,9 @@ def setup_api_metrics(app: web.Application) -> None:
 
 def setup_syncer_metrics() -> None:
     prom_metrics.METRIC_SYNCER_LOOP_TASKS_TOTAL.set_function(lambda: utils.get_loop_tasks_count())
+
+
+def setup_monitor_metrics() -> None:
     prom_metrics.METRIC_SYNCER_LAG_ETHERSCAN.set_function(lambda: get_lag_statistics_by_provider('etherscan'))
     prom_metrics.METRIC_SYNCER_LAG_INFURA.set_function(lambda: get_lag_statistics_by_provider('infura'))
     prom_metrics.METRIC_SYNCER_LAG_JWALLET.set_function(lambda: get_lag_statistics_by_provider('jwallet'))
