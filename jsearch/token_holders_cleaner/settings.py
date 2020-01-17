@@ -1,0 +1,7 @@
+import os
+
+from jsearch.settings import JSEARCH_MAIN_DB, LOG_LEVEL, NO_JSON_FORMATTER  # noqa: F401
+
+SLEEP_TIME = float(os.environ['TOKEN_HOLDERS_CLEANER_SLEEP_TIME'])
+BATCH_SIZE = int(os.environ['TOKEN_HOLDERS_CLEANER_BATCH_SIZE'])
+OFFSET = int(os.environ['TOKEN_HOLDERS_CLEANER_BLOCKS_OFFSET'])

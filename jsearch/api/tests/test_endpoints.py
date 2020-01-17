@@ -1,9 +1,7 @@
 import logging
-from unittest import mock
 
 import pytest
 from aiohttp.test_utils import TestClient
-from asynctest import CoroutineMock
 
 from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
@@ -472,56 +470,6 @@ async def test_get_uncle_by_number(cli, main_db_data):
         'reward': str(3750000000000000000),
         'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
     }
-
-
-class AsyncContextManagerMock(mock.Mock):
-    async def __aenter__(self):
-        return self.aenter
-
-    async def __aexit__(self, *args):
-        pass
-
-
-async def test_verify_contract_ok(db, cli, main_db_data, here, fuck_token):
-    contract_data = {
-        'address': main_db_data['accounts_state'][2]['address'],
-        'contract_name': 'FucksToken',
-        'compiler': 'v0.4.18+commit.9cf6e910',
-        'optimization_enabled': True,
-        'constructor_args': None,
-        'source_code': fuck_token.sources
-    }
-
-    with mock.patch('jsearch.api.handlers.contracts.aiohttp.request', new=AsyncContextManagerMock()) as m:
-        m.return_value.aenter.json = CoroutineMock(side_effect=[
-            {
-                'bin': fuck_token.bin,
-                'abi': fuck_token.abi_as_dict(),
-            },
-            {}
-        ])
-
-        resp = await cli.post('/v1/verify_contract', json=contract_data)
-    assert resp.status == 200
-    assert (await resp.json())['data'] == {'verification_passed': True}
-
-    # assert m.has_call()
-    m.assert_called_with(
-        'POST',
-        mock.ANY,
-        json={
-            'abi': fuck_token.abi_as_dict(),
-            'address': contract_data['address'],
-            'compiler': 'v0.4.18+commit.9cf6e910',
-            'constructor_args': '',
-            'contract_creation_code': mock.ANY,
-            'contract_name': 'FucksToken',
-            'is_erc20_token': True,
-            'mhash': '4c3e25afac0b2393e51b49944bdfca9d02ac0c064fb7dccd895eaf7c59f55155',
-            'optimization_enabled': True,
-            'source_code': contract_data['source_code']
-        }
-    )
 
 
 async def test_get_blockchain_tip(cli, block_factory):

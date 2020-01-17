@@ -3,6 +3,7 @@ import pytest
 from typing import List, Dict
 
 import jsearch.syncer.main
+import jsearch.cli
 from jsearch.tests.common import CODE_OK, CODE_ERROR_FROM_CLICK
 
 
@@ -40,6 +41,33 @@ async def test_syncer_entrypoint(
 
 class MockFixture(object):
     pass
+
+
+@pytest.mark.usefixtures('_mock_loop_runners')
+@pytest.mark.parametrize(
+    'call_args, exit_code',
+    [
+        ([], CODE_OK),
+        (['monitor', 'd'], CODE_ERROR_FROM_CLICK),
+        (['monitor', 'port', '8000'], CODE_OK),
+        (['--log-level', 'ERROR', '--no-json-formatter', 'monitor'], CODE_OK),
+        (['--no-json-formatter', 'monitor'], CODE_OK),
+    ],
+    ids=[
+        "no args",
+        "invalid args",
+        "port",
+        "log-level",
+        "no-json-formatter"
+    ]
+)
+async def test_lag_checker_entrypoint(
+        cli_runner: click.testing.CliRunner,
+        call_args: List[str],
+        exit_code: int,
+) -> None:
+    result = cli_runner.invoke(jsearch.cli.cli, call_args)
+    assert result.exit_code == exit_code
 
 
 @pytest.mark.usefixtures('_mock_loop_runners')
