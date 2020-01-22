@@ -8,10 +8,9 @@ CREATE FUNCTION get_gaps(range_start integer, range_end integer)
                 gap_start   bigint,
                 gap_end     bigint,
                 parent_hash character varying,
-                prev_hash   character varying,
+                prev_hash   character varying
             )
     LANGUAGE plpgsql
-    STABLE
 AS
 $$
 BEGIN
@@ -36,11 +35,16 @@ $$;
 
 CREATE FUNCTION remove_blocks_in_gaps(range_star integer, range_end integer)
     RETURNS boolean
+    LANGUAGE plpgsql
 AS
 $$
+DECLARE
+    gap_start integer;
+    gap_end integer;
+    block_hash character varying;
 BEGIN
-    FOR gap_start, gap_end, parent_hash, prev_hash IN
-        SELECT get_gaps(range_start, range_end)
+    FOR gap_start, gap_end IN
+        SELECT gap_start, gap_end FROM get_gaps(range_start, range_end)
         LOOP
             FOR block_hash IN SELECT block_hash from chain_events WHERE block_number BETWEEN gap_start and gap_end
                 LOOP
