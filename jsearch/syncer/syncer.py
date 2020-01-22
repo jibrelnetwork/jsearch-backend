@@ -126,8 +126,8 @@ async def apply_create_event(
     parent = await main_db.get_block_by_hash(parent_hash)
 
     is_block_number_exists = await main_db.is_block_number_exists(block_num)
-    is_parent_does_not_match = parent and parent.get('hash') != parent_hash
-    is_forked = bool(is_block_number_exists or is_parent_does_not_match)
+    is_parent_does_not_match_to_canonical_chain = parent and parent['is_forked']
+    is_forked = bool(is_block_number_exists or is_parent_does_not_match_to_canonical_chain)
 
     is_block_exist = await main_db.get_block_by_hash(block_hash) is not None
     if is_block_exist:
