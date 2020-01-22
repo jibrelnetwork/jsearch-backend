@@ -291,7 +291,7 @@ class Manager:
             await asyncio.sleep(self.sleep_on_no_blocks)
 
     async def _try_to_switch(self, block_range: BlockRange, start_from: int) -> bool:
-        before_switch = 0
+        before_switch = 0.0
         if self.state.last_synced_at:
             before_switch = self.state.last_synced_at + settings.ETH_NODE_SWITCH_TIMEOUT - time.monotonic()
 
