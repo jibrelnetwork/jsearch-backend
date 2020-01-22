@@ -280,15 +280,15 @@ class Manager:
             self.state.hole = None
             self.state.already_processed = block_range.end + 1
             self.state.checked_on_holes = block_range
-
-        is_need_to_wait = await self._try_to_switch(block_range, next_block)
-
-        if not is_need_to_wait and self.sync_range.end and self.sync_range.end == block_range.end:
-            logger.info('Sync range complete', extra={'range': self.sync_range})
-            self._running = False
         else:
-            logger.info('No blocks, sleeping')
-            await asyncio.sleep(self.sleep_on_no_blocks)
+            is_need_to_wait = await self._try_to_switch(block_range, next_block)
+
+            if not is_need_to_wait and self.sync_range.end and self.sync_range.end == block_range.end:
+                logger.info('Sync range complete', extra={'range': self.sync_range})
+                self._running = False
+            else:
+                logger.info('No blocks, sleeping')
+                await asyncio.sleep(self.sleep_on_no_blocks)
 
     async def _try_to_switch(self, block_range: BlockRange, start_from: int) -> bool:
         before_switch = 0.0
