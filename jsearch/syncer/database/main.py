@@ -187,11 +187,11 @@ class MainDB(DBWrapper):
 
     async def get_gap_right_border(self, start: int, end: int) -> Optional[int]:
         query = """
-        select number, next_number -1 as gap_end
+        select next_number - 1 as gap_end
         from (
           select number, lead(number) over (order by number asc) as next_number
           from blocks
-          where is_forked = false and blocks.number >= 9000000 and blocks.number <= 10000000
+          where is_forked = false and blocks.number >= %s and blocks.number <= %s
         ) numbers
         where number + 1 <> next_number limit 1;
         """
@@ -298,11 +298,6 @@ class MainDB(DBWrapper):
             res = await conn.execute(query)
 
         logger.info('Upserted batch of pending TXs', extra={'status_message': res._connection._cursor.statusmessage})
-
-    async def is_block_exist(self, block_hash):
-        q = """SELECT hash from blocks WHERE hash=%s"""
-        row = await self.fetch_one(q, block_hash)
-        return row['hash'] == block_hash if row else False
 
     async def write_block_data_proc(
             self,
