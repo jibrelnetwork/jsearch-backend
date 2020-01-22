@@ -22,6 +22,7 @@ ENV LOG_LEVEL="INFO" \
     PENDING_SYNCER_BACKOFF_MAX_TRIES="5" \
     DOCKERIZE_VERSION="v0.6.1" \
     PORT="8080" \
+    QUERY_TIMEOUT="60" \
     NO_JSON_FORMATTER="0" \
     ETH_BALANCE_BLOCK_OFFSET="6" \
     ETH_NODE_BATCH_REQUEST_SIZE="20" \
@@ -41,7 +42,8 @@ ENV LOG_LEVEL="INFO" \
     SYNCER_RESYNC_CHAIN_SPLITS="0" \
     TOKEN_HOLDERS_CLEANER_SLEEP_TIME="0.1" \
     TOKEN_HOLDERS_CLEANER_BATCH_SIZE="100" \
-    TOKEN_HOLDERS_CLEANER_BLOCKS_OFFSET="6"
+    TOKEN_HOLDERS_CLEANER_BLOCKS_OFFSET="6" \
+    ENABLE_HEALTHCHECK="0"
 
 RUN groupadd -g 999 app \
  && useradd -r -u 999 -g app app \
@@ -65,3 +67,5 @@ COPY --from=goose /go/bin/goose /usr/local/bin/
 USER app
 ENTRYPOINT ["/app/run.sh"]
 CMD ["app"]
+
+HEALTHCHECK --start-period=30s --interval=5s --timeout=3s --retries=3 CMD ./scripts/healthcheck.sh

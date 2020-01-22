@@ -1,11 +1,20 @@
+import asyncio
 import contextlib
+import logging
 
+import async_timeout
 import backoff
 import psycopg2
-from aiopg.sa import Engine, SAConnection
+from aiopg.sa import SAConnection, Engine
 from aiopg.sa.result import ResultProxy
+from sqlalchemy.dialects.postgresql import dialect
 from sqlalchemy.orm import Query
-from typing import Any, Union, AsyncGenerator, Dict, List, Optional
+from typing import AsyncGenerator, Dict, List, Optional
+from typing import Callable, Any, Union
+
+from jsearch import settings
+
+logger = logging.getLogger(__name__)
 
 
 @contextlib.asynccontextmanager
@@ -21,13 +30,40 @@ async def acquire_connection(engine: Union[Engine, SAConnection]) -> AsyncGenera
         engine.release(connection)
 
 
+def query_timeout(func: Callable[..., Any]) -> Callable[..., Any]:
+    timeout = settings.QUERY_TIMEOUT
+
+    async def _wrapper(pool: Union[Engine, SAConnection], query: Union[str, Query], *params) -> Any:
+        assert query is not None, "Query can't be empty"
+
+        try:
+            async with async_timeout.timeout(timeout):
+                return await func(pool, query, *params)
+        except asyncio.TimeoutError:
+            if isinstance(query, Query):
+                query = str(query.compile(dialect=dialect(), compile_kwargs={"literal_binds": True}))
+            logging.error(
+                'Query exceeds time limits',
+                extra={
+                    'timeout': timeout,
+                    'query': query,
+                    'params': params
+                }
+            )
+            raise
+
+    return _wrapper
+
+
 @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
+@query_timeout
 async def execute(pool: Union[Engine, SAConnection], query: Union[Query, str], *params: Any):
     async with acquire_connection(pool) as connection:
         return await connection.execute(query, params)
 
 
 @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
+@query_timeout
 async def fetch_all(pool: Union[Engine, SAConnection], query: Union[Query, str], *params: Any) -> List[Dict[str, Any]]:
     async with acquire_connection(pool) as connection:
         cursor = await connection.execute(query, params)
@@ -36,6 +72,7 @@ async def fetch_all(pool: Union[Engine, SAConnection], query: Union[Query, str],
 
 
 @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
+@query_timeout
 async def fetch_one(
         pool: Union[Engine, SAConnection],
         query: Union[Query, str],
@@ -49,6 +86,7 @@ async def fetch_one(
 
 
 @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
+@query_timeout
 async def get_iterator(
         pool: Engine,
         query: Query,
