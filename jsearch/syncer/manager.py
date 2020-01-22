@@ -1,13 +1,13 @@
 import asyncio
 import logging
+import time
 from asyncio import Future
+from functools import partial
+from typing import Dict, Any, Optional, List
 
 import aiopg
 import backoff
 import psycopg2
-import time
-from functools import partial
-from typing import Dict, Any, Optional, List
 
 from jsearch import settings
 from jsearch.api.helpers import ChainEvent
@@ -270,25 +270,48 @@ class Manager:
             self.state.last_synced_at = time.monotonic()
 
         next_block = await self.main_db.get_last_block_number(block_range) + 1
-        available_nodes = await self.raw_db.get_nodes_for_block(next_block, exclude_node=self.node_id)
+        logger.info('No blocks, handle gaps', extra={'next_block': next_block})
 
+        if self.sync_range.end != block_range.end:
+            logger.info("No more events in the range", extra={
+                "range": block_range,
+                'last': last_event and last_event['id']
+            })
+            self.state.hole = None
+            self.state.already_processed = block_range.end + 1
+            self.state.checked_on_holes = block_range
+
+        is_need_to_wait = await self._try_to_switch(block_range, next_block)
+
+        if not is_need_to_wait and self.sync_range.end and self.sync_range.end == block_range.end:
+            logger.info('Sync range complete', extra={'range': self.sync_range})
+            self._running = False
+        else:
+            logger.info('No blocks, sleeping')
+            await asyncio.sleep(self.sleep_on_no_blocks)
+
+    async def _try_to_switch(self, block_range: BlockRange, start_from: int) -> bool:
         before_switch = 0
         if self.state.last_synced_at:
             before_switch = self.state.last_synced_at + settings.ETH_NODE_SWITCH_TIMEOUT - time.monotonic()
-        is_it_time_to_switch_node = block_range.end is not None or before_switch < 0
 
+        available_nodes = await self.raw_db.get_nodes_for_block(start_from, exclude_node=self.node_id)
         logger.info(
-            'No blocks, available nodes',
+            'No blocks, try to find alternative',
             extra={
-                'next_block': next_block,
-                'nodes': available_nodes,
+                'next_block': start_from,
+                'available nodes': available_nodes,
                 'before_switch': round(before_switch, 2)
             }
         )
+        is_it_time_to_switch_node = block_range.end is not None or before_switch < 0
 
-        if available_nodes and is_it_time_to_switch_node:
+        if not available_nodes:
+            return False
+
+        if is_it_time_to_switch_node:
             logger.info('Search candidate to switch data source')
-            switch = await search_candidate_to_switch_data_source(next_block, self.node_id, self.raw_db)
+            switch = await search_candidate_to_switch_data_source(start_from, self.node_id, self.raw_db)
             if switch:
                 logger.info(
                     'No blocks, switch node_id',
@@ -300,33 +323,20 @@ class Manager:
                 )
                 self.node_id = switch.id
                 self.state.already_processed = switch.block_number
-            else:
-                raise ValueError('No blocks, no nodes to switch')
-        elif self.sync_range.end != block_range.end:
-            logger.info("No more events in the range", extra={
-                "range": block_range,
-                'last': last_event and last_event['id']
-            })
-            self.state.hole = None
-            self.state.already_processed = block_range.end + 1
-            self.state.checked_on_holes = block_range
 
-        elif available_nodes:
-            logger.info(
-                'There are no blocks from current node, but there are from others',
-                extra={
-                    'range': self.sync_range,
-                    'node_id': self.node_id,
-                    'available_nodes': available_nodes
-                }
-            )
-            await asyncio.sleep(self.sleep_on_no_blocks)
-        elif self.sync_range.end and self.sync_range.end == block_range.end:
-            logger.info('Sync range complete', extra={'range': self.sync_range})
-            self._running = False
-        else:
-            logger.info('No blocks, sleeping')
-            await asyncio.sleep(self.sleep_on_no_blocks)
+                return True
+            else:
+                raise ValueError('No common block to switch')
+
+        logger.info(
+            'There are no blocks from current node, but there are from others',
+            extra={
+                'range': self.sync_range,
+                'node_id': self.node_id,
+                'available_nodes': available_nodes
+            }
+        )
+        return True
 
 
 async def search_candidate_to_switch_data_source(
