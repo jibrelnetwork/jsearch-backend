@@ -126,7 +126,7 @@ async def apply_create_event(
     parent_hash = await raw_db.get_parent_hash(block_hash)
     is_block_number_exists = await main_db.is_block_number_exists(block_num)
 
-    is_canonical_parent = await raw_db.is_canonical_block(parent_hash)
+    is_canonical_parent = await main_db.is_block_exist(parent_hash)
     is_forked = is_block_number_exists or (not is_canonical_parent)
 
     is_block_exist = await main_db.is_block_exist(block_hash)

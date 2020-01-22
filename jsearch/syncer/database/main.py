@@ -1,11 +1,11 @@
 import json
 import logging
+from typing import List, Dict, Any, Optional
 
 from aiopg.sa import SAConnection
 from sqlalchemy import and_, Table, false, select, desc
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Query
-from typing import List, Dict, Any, Optional
 
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
 from jsearch.common.structs import BlockRange
@@ -149,7 +149,18 @@ class MainDB(DBWrapper):
                 },
             )
 
-    @timeit('[RAW DB] is block exists query')
+    @timeit('[MAIN DB] is block hash canonical')
+    async def is_block_hash_canonical(self, block_hash: str) -> bool:
+        q = blocks_t.select().where(
+            and_(
+                blocks_t.c.hash == block_hash,
+                blocks_t.c.is_forked == false()
+            )
+        )
+        block = await self.fetch_one(q)
+        return block is not None
+
+    @timeit('[MAIN DB] is block exists query')
     async def is_block_number_exists(self, block_num):
         q = blocks_t.select().where(
             and_(
@@ -176,11 +187,11 @@ class MainDB(DBWrapper):
 
     async def get_gap_right_border(self, start: int, end: int) -> Optional[int]:
         query = """
-        select next_number - 1 as gap_end
+        select number, next_number -1 as gap_end
         from (
           select number, lead(number) over (order by number asc) as next_number
           from blocks
-          where is_forked = false and blocks.number >= %s and blocks.number <= %s
+          where is_forked = false and blocks.number >= 9000000 and blocks.number <= 10000000
         ) numbers
         where number + 1 <> next_number limit 1;
         """
