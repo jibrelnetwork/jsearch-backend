@@ -1,7 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
-SELECT 'up SQL query';
-
 CREATE OR REPLACE FUNCTION get_gaps(range_start integer, range_end integer)
     RETURNS TABLE
             (
