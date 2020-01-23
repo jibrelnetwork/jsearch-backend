@@ -336,12 +336,15 @@ class MainDB(DBWrapper):
         await connection.execute("""DELETE FROM uncles WHERE block_hash=%s""", block_hash)
         await connection.execute("""DELETE FROM blocks WHERE hash=%s""", block_hash)
 
-    async def get_block_hash_by_number(self, block_num):
+    async def get_block_hash_by_number(self, block_num) -> Optional[str]:
         q = blocks_t.select().where(and_(blocks_t.c.number == block_num, blocks_t.c.is_forked == false()))
         async with self.engine.acquire() as conn:
             res = await conn.execute(q)
             row = await res.fetchone()
-            return row['hash']
+            if row:
+                return row['hash']
+
+        return None
 
     async def is_contract_address(self, addresses):
         contracts_addresses = []
