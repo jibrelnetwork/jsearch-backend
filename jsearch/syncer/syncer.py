@@ -70,8 +70,8 @@ async def sync_block(
         block_number: Optional[int] = None,
         is_forked: bool = False,
         chain_event: Optional[Dict[str, Any]] = None,
-        rewrite: Optional[bool] = False
-) -> Optional[bool]:
+        rewrite: Optional[bool] = False,
+) -> Optional[Dict[str, Any]]:
     data = await load_block_from_raw_db(
         raw_db=raw_db,
         block_hash=block_hash,
@@ -81,7 +81,7 @@ async def sync_block(
     if data:
         block = await process_block(main_db, data)
         await main_db.write_block(chain_event, block, rewrite)
-        return True
+        return block.block
 
     return None
 
