@@ -1,19 +1,24 @@
 import asyncio
 import contextlib
 import logging
-from typing import AsyncGenerator, Dict, List, Optional
+from typing import AsyncGenerator, Dict, List
 from typing import Callable, Any, Union
+from typing import Optional
 
+import aiopg
 import async_timeout
 import backoff
 import psycopg2
-from aiopg.sa import SAConnection, Engine
+from aiopg.sa import Engine
+from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
+from psycopg2.extras import DictCursor
 from sqlalchemy.dialects.postgresql import dialect
 from sqlalchemy.orm import Query
 
 from jsearch import settings
 
+TIMEOUT = 60
 logger = logging.getLogger(__name__)
 
 
@@ -118,3 +123,39 @@ class DbActionsMixin:
 
     async def iterate_by(self, query: Union[str, Query], *params) -> AsyncGenerator[Dict[str, Any], None]:
         return get_iterator(self.engine, query, *params)
+
+
+class DBWrapper(DbActionsMixin):
+    connection_string: str
+
+    pool_size: int
+    timeout: int = TIMEOUT
+    pool: Optional[Engine] = None
+
+    def __init__(self, connection_string, **params):
+        self.connection_string = connection_string
+        self.params = params
+        self.engine = None
+
+    async def __aenter__(self):
+        await self.connect()
+        return self
+
+    async def __aexit__(self, *exc_info):
+        await self.disconnect()
+        if any(exc_info):
+            return False
+
+    async def connect(self):
+        self.engine = await aiopg.sa.create_engine(
+            self.connection_string,
+            minsize=1,
+            maxsize=self.pool_size,
+            timeout=self.timeout,
+            cursor_factory=DictCursor,
+            **self.params
+        )
+
+    async def disconnect(self):
+        if self.engine is not None:
+            self.engine.terminate()
