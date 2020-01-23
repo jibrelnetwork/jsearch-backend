@@ -161,7 +161,8 @@ class Manager:
         if self.resync_chain_splits:
             await self.reapply_splits(self.sync_range)
 
-        for block_number in range(self.sync_range.end, self.sync_range.start, -1):
+        last_block = self.sync_range.end or await self.main_db.get_last_block_number(self.sync_range)
+        for block_number in range(last_block, self.sync_range.start, -1):
             if not self._running:
                 logger.info("Leave ReSync Loop")
                 break

@@ -1,6 +1,8 @@
 import asyncio
 import contextlib
 import logging
+from typing import AsyncGenerator, Dict, List, Optional
+from typing import Callable, Any, Union
 
 import async_timeout
 import backoff
@@ -9,8 +11,6 @@ from aiopg.sa import SAConnection, Engine
 from aiopg.sa.result import ResultProxy
 from sqlalchemy.dialects.postgresql import dialect
 from sqlalchemy.orm import Query
-from typing import AsyncGenerator, Dict, List, Optional
-from typing import Callable, Any, Union
 
 from jsearch import settings
 
@@ -85,8 +85,6 @@ async def fetch_one(
     return dict(result) if result else None
 
 
-@backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
-@query_timeout
 async def get_iterator(
         pool: Engine,
         query: Query,
@@ -119,4 +117,4 @@ class DbActionsMixin:
         return await fetch_one(self.engine, query, *params)
 
     async def iterate_by(self, query: Union[str, Query], *params) -> AsyncGenerator[Dict[str, Any], None]:
-        return await get_iterator(self.engine, query, *params)
+        return get_iterator(self.engine, query, *params)
