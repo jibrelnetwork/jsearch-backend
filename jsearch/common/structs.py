@@ -87,7 +87,7 @@ class BlockRange(NamedTuple):
 
 class ChainStats(NamedTuple):
     is_healthy: bool
-    chain_holes: Optional[List]
+    chain_holes: List
 
 
 class LagStats(NamedTuple):
