@@ -45,6 +45,10 @@ METRIC_SYNCER_LAG_JWALLET = Gauge(
     'jsearch_syncer_lag_jwallet',
     'Chain lag with jWallet',
 )
+METRIC_SYNCER_CHAIN_CONSISTENCY = Gauge(
+    'jsearch_syncer_chain_consistency',
+    'Chain consistency',
+)
 METRIC_SYNCER_LOOP_TASKS_TOTAL = Gauge(
     'jsearch_syncer_loop_tasks_total',
     'Total amount of tasks in the event loop.',

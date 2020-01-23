@@ -1,14 +1,13 @@
 import logging
 from decimal import Decimal
-
 from typing import AsyncGenerator, Any, Dict, List
 
 from jsearch.api.helpers import ChainEvent
 from jsearch.common import contracts
+from jsearch.common.db import DBWrapper
 from jsearch.common.structs import BlockRange
 from jsearch.common.utils import timeit
 from jsearch.syncer.structs import TokenHolderBalances, TokenHolderBalance, NodeState
-from .wrapper import DBWrapper
 
 logger = logging.getLogger(__name__)
 

@@ -7,6 +7,7 @@ from sqlalchemy import and_, Table, false, select, desc
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Query
 
+from jsearch.common.db import DBWrapper
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
 from jsearch.common.structs import BlockRange
 from jsearch.common.tables import (
@@ -29,7 +30,6 @@ from jsearch.pending_syncer.database_queries.pending_txs import insert_or_update
 from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.syncer.structs import BlockData
 from jsearch.typing import Blocks, Block
-from .wrapper import DBWrapper
 
 MAIN_DB_POOL_SIZE = 1
 NO_CODE_HASH = 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'
@@ -54,20 +54,6 @@ class MainDB(DBWrapper):
     jSearch Main db wrapper
     """
     pool_size = MAIN_DB_POOL_SIZE
-
-    async def get_latest_synced_block_number(self) -> int:
-        """
-        Get latest block writed in main DB
-        """
-        q = """
-            SELECT max(number) as max_number
-            FROM blocks
-            WHERE is_forked=false
-        """
-        async with self.engine.acquire() as conn:
-            res = await conn.execute(q)
-            row = await res.fetchone()
-        return row and row['max_number'] or 0
 
     async def get_missed_blocks_numbers(self, limit: int):
         q = """SELECT l.number + 1 as start
