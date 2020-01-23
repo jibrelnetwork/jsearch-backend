@@ -172,15 +172,18 @@ class Manager:
     async def rewrite_block(self, block_number):
         logger.info("Rewrite block", extra={'block_number': block_number})
         block_hash = await self.main_db.get_block_hash_by_number(block_number)
-        await sync_block(
-            raw_db=self.raw_db,
-            main_db=self.main_db,
-            block_hash=block_hash,
-            block_number=block_number,
-            is_forked=False,
-            chain_event=None,
-            rewrite=True
-        )
+        if block_hash is None:
+            logger.info('Block is missed, use the syncer to sync it', extra={'number': block_number})
+        else:
+            await sync_block(
+                raw_db=self.raw_db,
+                main_db=self.main_db,
+                block_hash=block_hash,
+                block_number=block_number,
+                is_forked=False,
+                chain_event=None,
+                rewrite=True
+            )
 
     @timeit('[SYNCER] Reapply splits')
     async def reapply_splits(self, block_range: BlockRange) -> None:
