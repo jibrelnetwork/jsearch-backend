@@ -119,4 +119,4 @@ class DbActionsMixin:
         return await fetch_one(self.engine, query, *params)
 
     async def iterate_by(self, query: Union[str, Query], *params) -> AsyncGenerator[Dict[str, Any], None]:
-        return await get_iterator(self.engine, query, *params)
+        return get_iterator(self.engine, query, *params)

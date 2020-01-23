@@ -24,7 +24,7 @@ class GooseWrapper(NamedTuple):
             sys.exit(1)
 
     def create(self, message: str) -> None:
-        self._call("create", message, "sql")
+        self._call("create", f'"{message}"', "sql")
 
     def up(self) -> None:
         self._call("up")

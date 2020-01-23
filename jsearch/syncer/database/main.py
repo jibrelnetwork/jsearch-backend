@@ -1,11 +1,11 @@
 import json
 import logging
+from typing import List, Dict, Any, Optional
 
 from aiopg.sa import SAConnection
 from sqlalchemy import and_, Table, false, select, desc
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Query
-from typing import List, Dict, Any, Optional
 
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
 from jsearch.common.structs import BlockRange
@@ -149,7 +149,7 @@ class MainDB(DBWrapper):
                 },
             )
 
-    @timeit('[RAW DB] is block exists query')
+    @timeit('[MAIN DB] is block exists query')
     async def is_block_number_exists(self, block_num):
         q = blocks_t.select().where(
             and_(
@@ -287,11 +287,6 @@ class MainDB(DBWrapper):
             res = await conn.execute(query)
 
         logger.info('Upserted batch of pending TXs', extra={'status_message': res._connection._cursor.statusmessage})
-
-    async def is_block_exist(self, block_hash):
-        q = """SELECT hash from blocks WHERE hash=%s"""
-        row = await self.fetch_one(q, block_hash)
-        return row['hash'] == block_hash if row else False
 
     async def write_block_data_proc(
             self,
