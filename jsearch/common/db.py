@@ -69,7 +69,11 @@ async def execute(pool: Union[Engine, SAConnection], query: Union[ClauseElement,
 
 @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
 @query_timeout
-async def fetch_all(pool: Union[Engine, SAConnection], query: Union[ClauseElement, str], *params: Any) -> List[Dict[str, Any]]:
+async def fetch_all(
+        pool: Union[Engine, SAConnection],
+        query: Union[ClauseElement, str],
+        *params: Any,
+) -> List[Dict[str, Any]]:
     async with acquire_connection(pool) as connection:
         cursor = await connection.execute(query, params)
         results = await cursor.fetchall()
