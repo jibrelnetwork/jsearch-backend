@@ -39,7 +39,5 @@ async def test_healthcheck_everything_is_ok_syncer(
         "version": '1.0.0-app-version',
         "isMainDbHealthy": True,
         "isLoopHealthy": True,
-        "isChainHealthy": True,
-        "isLagHealthy": True,
         "isRawDbHealthy": True
     }
