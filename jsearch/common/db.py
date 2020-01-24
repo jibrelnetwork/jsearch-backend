@@ -14,7 +14,7 @@ from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
 from psycopg2.extras import DictCursor
 from sqlalchemy.dialects.postgresql import dialect
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import ClauseElement
 
 from jsearch import settings
 
@@ -38,14 +38,14 @@ async def acquire_connection(engine: Union[Engine, SAConnection]) -> AsyncGenera
 def query_timeout(func: Callable[..., Any]) -> Callable[..., Any]:
     timeout = settings.QUERY_TIMEOUT
 
-    async def _wrapper(pool: Union[Engine, SAConnection], query: Union[str, Query], *params) -> Any:
+    async def _wrapper(pool: Union[Engine, SAConnection], query: Union[str, ClauseElement], *params) -> Any:
         assert query is not None, "Query can't be empty"
 
         try:
             async with async_timeout.timeout(timeout):
                 return await func(pool, query, *params)
         except asyncio.TimeoutError:
-            if isinstance(query, Query):
+            if isinstance(query, ClauseElement):
                 query = str(query.compile(dialect=dialect(), compile_kwargs={"literal_binds": True}))
             logger.error(
                 'Query exceeds time limits',
@@ -62,14 +62,14 @@ def query_timeout(func: Callable[..., Any]) -> Callable[..., Any]:
 
 @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
 @query_timeout
-async def execute(pool: Union[Engine, SAConnection], query: Union[Query, str], *params: Any):
+async def execute(pool: Union[Engine, SAConnection], query: Union[ClauseElement, str], *params: Any):
     async with acquire_connection(pool) as connection:
         return await connection.execute(query, params)
 
 
 @backoff.on_exception(backoff.fibo, max_tries=3, exception=psycopg2.OperationalError)
 @query_timeout
-async def fetch_all(pool: Union[Engine, SAConnection], query: Union[Query, str], *params: Any) -> List[Dict[str, Any]]:
+async def fetch_all(pool: Union[Engine, SAConnection], query: Union[ClauseElement, str], *params: Any) -> List[Dict[str, Any]]:
     async with acquire_connection(pool) as connection:
         cursor = await connection.execute(query, params)
         results = await cursor.fetchall()
@@ -80,7 +80,7 @@ async def fetch_all(pool: Union[Engine, SAConnection], query: Union[Query, str],
 @query_timeout
 async def fetch_one(
         pool: Union[Engine, SAConnection],
-        query: Union[Query, str],
+        query: Union[ClauseElement, str],
         *params: Any
 ) -> Optional[Dict[str, Any]]:
     async with acquire_connection(pool) as connection:
@@ -92,7 +92,7 @@ async def fetch_one(
 
 async def get_iterator(
         pool: Engine,
-        query: Query,
+        query: ClauseElement,
         *params,
         size: int = 1
 ) -> AsyncGenerator[Dict[str, Any], None]:
@@ -112,16 +112,16 @@ async def get_iterator(
 class DbActionsMixin:
     engine: Engine
 
-    async def execute(self, query: Union[str, Query], *params) -> ResultProxy:
+    async def execute(self, query: Union[str, ClauseElement], *params) -> ResultProxy:
         return await execute(self.engine, query, *params)
 
-    async def fetch_all(self, query: Union[str, Query], *params) -> List[Dict[str, Any]]:
+    async def fetch_all(self, query: Union[str, ClauseElement], *params) -> List[Dict[str, Any]]:
         return await fetch_all(self.engine, query, *params)
 
-    async def fetch_one(self, query: Union[str, Query], *params) -> Dict[str, Any]:
+    async def fetch_one(self, query: Union[str, ClauseElement], *params) -> Dict[str, Any]:
         return await fetch_one(self.engine, query, *params)
 
-    async def iterate_by(self, query: Union[str, Query], *params) -> AsyncGenerator[Dict[str, Any], None]:
+    async def iterate_by(self, query: Union[str, ClauseElement], *params) -> AsyncGenerator[Dict[str, Any], None]:
         return get_iterator(self.engine, query, *params)
 
 
