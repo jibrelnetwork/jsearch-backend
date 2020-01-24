@@ -38,5 +38,4 @@ class DatabaseService(mode.Service):
         if self.engine is None:
             return
 
-        self.engine.close()
-        await self.engine.wait_closed()
+        self.engine.terminate()

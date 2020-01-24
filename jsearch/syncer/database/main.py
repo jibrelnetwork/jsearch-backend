@@ -1,12 +1,13 @@
 import json
 import logging
+from typing import List, Dict, Any, Optional
 
 from aiopg.sa import SAConnection
 from sqlalchemy import and_, Table, false, select, desc
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Query
-from typing import List, Dict, Any, Optional
 
+from jsearch.common.db import DBWrapper
 from jsearch.common.processing.accounts import accounts_to_state_and_base_data
 from jsearch.common.structs import BlockRange
 from jsearch.common.tables import (
@@ -29,7 +30,6 @@ from jsearch.pending_syncer.database_queries.pending_txs import insert_or_update
 from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.syncer.structs import BlockData
 from jsearch.typing import Blocks, Block
-from .wrapper import DBWrapper
 
 MAIN_DB_POOL_SIZE = 1
 NO_CODE_HASH = 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'
@@ -54,20 +54,6 @@ class MainDB(DBWrapper):
     jSearch Main db wrapper
     """
     pool_size = MAIN_DB_POOL_SIZE
-
-    async def get_latest_synced_block_number(self) -> int:
-        """
-        Get latest block writed in main DB
-        """
-        q = """
-            SELECT max(number) as max_number
-            FROM blocks
-            WHERE is_forked=false
-        """
-        async with self.engine.acquire() as conn:
-            res = await conn.execute(q)
-            row = await res.fetchone()
-        return row and row['max_number'] or 0
 
     async def get_missed_blocks_numbers(self, limit: int):
         q = """SELECT l.number + 1 as start
@@ -149,7 +135,7 @@ class MainDB(DBWrapper):
                 },
             )
 
-    @timeit('[RAW DB] is block exists query')
+    @timeit('[MAIN DB] is block exists query')
     async def is_block_number_exists(self, block_num):
         q = blocks_t.select().where(
             and_(
@@ -288,11 +274,6 @@ class MainDB(DBWrapper):
 
         logger.info('Upserted batch of pending TXs', extra={'status_message': res._connection._cursor.statusmessage})
 
-    async def is_block_exist(self, block_hash):
-        q = """SELECT hash from blocks WHERE hash=%s"""
-        row = await self.fetch_one(q, block_hash)
-        return row['hash'] == block_hash if row else False
-
     async def write_block_data_proc(
             self,
             chain_event: Dict[str, Any],
@@ -355,12 +336,15 @@ class MainDB(DBWrapper):
         await connection.execute("""DELETE FROM uncles WHERE block_hash=%s""", block_hash)
         await connection.execute("""DELETE FROM blocks WHERE hash=%s""", block_hash)
 
-    async def get_block_hash_by_number(self, block_num):
+    async def get_block_hash_by_number(self, block_num) -> Optional[str]:
         q = blocks_t.select().where(and_(blocks_t.c.number == block_num, blocks_t.c.is_forked == false()))
         async with self.engine.acquire() as conn:
             res = await conn.execute(q)
             row = await res.fetchone()
-            return row['hash']
+            if row:
+                return row['hash']
+
+        return None
 
     async def is_contract_address(self, addresses):
         contracts_addresses = []
