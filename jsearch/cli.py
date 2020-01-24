@@ -5,7 +5,7 @@ from click import Context
 
 from jsearch.api.cli import api
 from jsearch.structs import AppConfig
-from jsearch.syncer.cli import monitor
+from jsearch.monitor.cli import monitor
 from jsearch.index_manager.cli import indexes
 
 logger = logging.getLogger(__name__)

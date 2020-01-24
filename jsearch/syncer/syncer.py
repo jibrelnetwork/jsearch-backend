@@ -1,5 +1,4 @@
 import logging
-
 from typing import Dict, Any, Optional, List, Coroutine, Callable
 
 from jsearch.common.utils import timeit
@@ -71,8 +70,8 @@ async def sync_block(
         block_number: Optional[int] = None,
         is_forked: bool = False,
         chain_event: Optional[Dict[str, Any]] = None,
-        rewrite: Optional[bool] = False
-) -> Optional[bool]:
+        rewrite: Optional[bool] = False,
+) -> Optional[Dict[str, Any]]:
     data = await load_block_from_raw_db(
         raw_db=raw_db,
         block_hash=block_hash,
@@ -82,7 +81,7 @@ async def sync_block(
     if data:
         block = await process_block(main_db, data)
         await main_db.write_block(chain_event, block, rewrite)
-        return True
+        return block.block
 
     return None
 
@@ -124,12 +123,13 @@ async def apply_create_event(
         chain_event: Dict[str, Any]
 ) -> None:
     parent_hash = await raw_db.get_parent_hash(block_hash)
+    parent = await main_db.get_block_by_hash(parent_hash)
+
     is_block_number_exists = await main_db.is_block_number_exists(block_num)
+    is_parent_does_not_match_to_canonical_chain = parent and parent['is_forked']
+    is_forked = bool(is_block_number_exists or is_parent_does_not_match_to_canonical_chain)
 
-    is_canonical_parent = await raw_db.is_canonical_block(parent_hash)
-    is_forked = is_block_number_exists or (not is_canonical_parent)
-
-    is_block_exist = await main_db.is_block_exist(block_hash)
+    is_block_exist = await main_db.get_block_by_hash(block_hash) is not None
     if is_block_exist:
         logger.debug(
             "Block already exists, skip and save event...",

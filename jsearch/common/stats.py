@@ -1,7 +1,6 @@
-from typing import Any, List, Dict
-
 import asyncio
 import logging
+from typing import Any, List, Dict
 
 from aiohttp import web
 from aiopg.sa import Engine
@@ -63,7 +62,7 @@ async def get_chain_stats(engine: Engine) -> ChainStats:
         if not holes:
             is_healthy = True
         else:
-            logger.critical("Chain Health Error: Chain Holes", extra={"holes": str([dict(h) for h in holes])})
+            logger.error("Chain Health Error: Chain Holes", extra={"holes": str([dict(h) for h in holes])})
     except asyncio.CancelledError:
         raise
     except Exception as e:
