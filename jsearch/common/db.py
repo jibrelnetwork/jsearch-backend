@@ -47,7 +47,7 @@ def query_timeout(func: Callable[..., Any]) -> Callable[..., Any]:
         except asyncio.TimeoutError:
             if isinstance(query, Query):
                 query = str(query.compile(dialect=dialect(), compile_kwargs={"literal_binds": True}))
-            logging.error(
+            logger.error(
                 'Query exceeds time limits',
                 extra={
                     'timeout': timeout,
