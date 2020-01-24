@@ -1,5 +1,6 @@
 from sqlalchemy import select, and_, asc, false, func
 from sqlalchemy.orm import Query
+from sqlalchemy.sql import Delete
 
 from jsearch.common.tables import assets_summary_pairs_t, token_holders_t
 from jsearch.token_holders_cleaner.structs import Pair
@@ -34,7 +35,7 @@ def get_max_block_number_for_pair(pair: Pair) -> Query:
     )
 
 
-def delete_stale_holders_by_pair(pair: Pair, block_number: int) -> Query:
+def delete_stale_holders_by_pair(pair: Pair, block_number: int) -> Delete:
     return token_holders_t.delete().where(
         and_(
             token_holders_t.c.account_address == pair.account_address,
