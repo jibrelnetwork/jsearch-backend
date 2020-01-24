@@ -14,7 +14,7 @@ from aiopg.sa import SAConnection
 from aiopg.sa.result import ResultProxy
 from psycopg2.extras import DictCursor
 from sqlalchemy.dialects.postgresql import dialect
-from sqlalchemy.orm import ClauseElement
+from sqlalchemy.sql import ClauseElement
 
 from jsearch import settings
 
