@@ -1,12 +1,14 @@
 from sqlalchemy import select, and_, asc, false, func
-from sqlalchemy.orm import Query
-from sqlalchemy.sql import Delete
+from sqlalchemy.sql import Delete, Select
 
 from jsearch.common.tables import assets_summary_pairs_t, token_holders_t
 from jsearch.token_holders_cleaner.structs import Pair
 
 
-def get_pairs_batch(last_processed_pair: Pair, limit: int) -> Query:
+def get_pairs_for_one_account(last_processed_pair: Pair, limit: int) -> Select:
+    """
+    Useful, if only a part of a batch has been processed.
+    """
     return select(
         [
             assets_summary_pairs_t.c.address,
@@ -14,7 +16,7 @@ def get_pairs_batch(last_processed_pair: Pair, limit: int) -> Query:
         ],
     ).where(
         and_(
-            assets_summary_pairs_t.c.address > last_processed_pair.account_address,
+            assets_summary_pairs_t.c.address == last_processed_pair.account_address,
             assets_summary_pairs_t.c.asset_address > last_processed_pair.token_address,
         ),
     ).order_by(
@@ -23,7 +25,26 @@ def get_pairs_batch(last_processed_pair: Pair, limit: int) -> Query:
     ).limit(limit)
 
 
-def get_max_block_number_for_pair(pair: Pair) -> Query:
+def get_pairs_for_all_accounts(last_processed_pair: Pair, limit: int) -> Select:
+    """
+    Useful, if all pairs for an account has been processed.
+    """
+    return select(
+        [
+            assets_summary_pairs_t.c.address,
+            assets_summary_pairs_t.c.asset_address,
+        ],
+    ).where(
+        and_(
+            assets_summary_pairs_t.c.address > last_processed_pair.account_address,
+        ),
+    ).order_by(
+        asc(assets_summary_pairs_t.c.address),
+        asc(assets_summary_pairs_t.c.asset_address),
+    ).limit(limit)
+
+
+def get_max_block_number_for_pair(pair: Pair) -> Select:
     return select(
         [func.max(token_holders_t.c.block_number).label('max_block_number')],
     ).where(

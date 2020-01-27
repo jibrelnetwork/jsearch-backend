@@ -101,7 +101,7 @@ async def test_token_holders_cleaner_does_not_affect_older_records_with_no_updat
     assets_summary_pair_factory.create(address=account2, asset_address=token2)
 
     # stale account1-token1 on the first block
-    token_holder_factory.create(account_address=account1, token_address=token1, block_number=1),
+    token_holder_factory.create(account_address=account1, token_address=token1, block_number=1)
 
     fresh_holders = [
         token_holder_factory.create(account_address=account1, token_address=token1, block_number=7),
@@ -132,3 +132,61 @@ async def test_token_holders_cleaner_does_not_crashes_if_there_s_no_holders_for_
     assets_summary_pair_factory.create(address=account, asset_address=token)
 
     await token_holders_cleaner.clean_next_batch(get_starting_pair(), 0)
+
+
+@pytest.mark.parametrize('batch_size', (1, 2, 3, 4, 5, 100))
+async def test_token_holders_batch_size_does_not_affect_cleaning(
+        token_holders_cleaner: TokenHoldersCleaner,
+        token_holder_factory: TokenHolderFactory,
+        assets_summary_pair_factory: AssetsSummaryPairFactory,
+        db: Engine,
+        batch_size: int,
+) -> None:
+    """
+    For this case:
+    [1] --- Account1-Token1
+    [1] --- Account1-Token2
+    [1] --- Account2-Token1
+    [1] --- Account2-Token2
+    [7] --- Account2-Token1
+    [7] --- Account2-Token2
+
+    Old entries `Account2-Token*` at block `[1]` can be safely removed. Others
+    should be kept.
+    """
+    account1 = '0x00000000000000000000000000000000000000a1'
+    account2 = '0x00000000000000000000000000000000000000a2'
+
+    token1 = '0x00000000000000000000000000000000000000b1'
+    token2 = '0x00000000000000000000000000000000000000b2'
+
+    assets_summary_pair_factory.create(address=account1, asset_address=token1)
+    assets_summary_pair_factory.create(address=account1, asset_address=token2)
+    assets_summary_pair_factory.create(address=account2, asset_address=token1)
+    assets_summary_pair_factory.create(address=account2, asset_address=token2)
+
+    # stale entries on the block `[2]`
+    token_holder_factory.create(account_address=account2, token_address=token1, block_number=1)
+    token_holder_factory.create(account_address=account2, token_address=token2, block_number=1)
+
+    fresh_holders = [
+        token_holder_factory.create(account_address=account1, token_address=token1, block_number=1),
+        token_holder_factory.create(account_address=account1, token_address=token2, block_number=1),
+        token_holder_factory.create(account_address=account2, token_address=token1, block_number=7),
+        token_holder_factory.create(account_address=account2, token_address=token2, block_number=7),
+    ]
+
+    fresh_holders_hashes = {r.block_hash for r in fresh_holders}
+
+    # FIXME: Inject init params properly.
+    token_holders_cleaner.batch_size = batch_size
+
+    pair, total = await token_holders_cleaner.clean_next_batch(get_starting_pair(), 0)
+
+    while total:
+        pair, total = await token_holders_cleaner.clean_next_batch(pair, total)
+
+    db_holders = db.execute(token_holders_t.select()).fetchall()
+    db_holders_hashes = {r.block_hash for r in db_holders}
+
+    assert db_holders_hashes == fresh_holders_hashes
