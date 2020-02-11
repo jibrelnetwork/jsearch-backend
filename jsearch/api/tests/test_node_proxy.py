@@ -59,7 +59,7 @@ async def test_valid_json_for_proxy_endpoints_should_return_node_response(
     cli.app['validate_spec'] = False
 
     async def _request(self, method, params=None):
-        return {'result': ['response', 'from', 'the', 'node']}
+        return [{'result': ['response', 'from', 'the', 'node']}, ]
 
     mocker.patch.object(NodeProxy, '_request', _request)
 

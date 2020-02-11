@@ -65,7 +65,14 @@ class NodeProxy:
 
     async def send_raw_transaction(self, args: List) -> str:
         res = await self._request('eth_sendRawTransaction', args)
-        return res[0]  # ToDo: check responses from all urls
+
+        # we must find and return a first success response
+        # otherwise return a first received response
+        for node_response in res:
+            if "error" not in node_response:
+                return node_response
+
+        return res[0]
 
     async def transaction_count(self, args: List) -> str:
         res = await self._request('eth_getTransactionCount', args)
