@@ -23,6 +23,7 @@ async def node_server(aiohttp_server):
 @pytest.mark.asyncio
 async def cli_with_node(event_loop, db_dsn, aiohttp_client, node_server, override_settings):
     override_settings('ETH_NODE_URL', str(node_server._root))
+    override_settings('FORK_NODES', [str(node_server._root), ])
 
     app = await make_app()
     return await aiohttp_client(app)
