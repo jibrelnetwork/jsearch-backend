@@ -1,9 +1,10 @@
 from functools import reduce
+from typing import Optional, List
+
 from sqlalchemy import select, and_, false, tuple_, exists
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
 from sqlalchemy.sql.functions import max
-from typing import Optional, List
 
 from jsearch.api.database_queries.transactions import get_ordering
 from jsearch.api.ordering import Ordering
@@ -24,6 +25,7 @@ def get_default_fields():
 
 def get_token_holders_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
     columns: Columns = [
+        token_holders_t.c.token_address,
         token_holders_t.c.balance,
         token_holders_t.c.id
     ]
@@ -81,8 +83,8 @@ def get_token_holders_query(
     query = select(columns=get_default_fields())
 
     conditions = [
-        token_holders_t.c.token_address == token_address,
-        token_holders_t.c.is_forked == false()
+        token_holders_t.c.is_forked == false(),
+        token_holders_t.c.balance > 0
     ]
 
     subquery_table = token_holders_t.alias('source')
@@ -96,13 +98,19 @@ def get_token_holders_query(
     )
     conditions.append(subquery)
 
-    if balance is not None:
-        filter_by_balance = ordering.operator_or_equal(token_holders_t.c.balance, balance)
-        conditions.append(filter_by_balance)
+    if _id is not None and balance is not None:
+        q = ordering.operator_or_equal(
+            tuple_(token_holders_t.c.token_address, token_holders_t.c.balance, token_holders_t.c.id),
+            tuple_(token_address, balance, _id)
+        )
+    elif balance is not None:
+        q = ordering.operator_or_equal(
+            tuple_(token_holders_t.c.token_address, token_holders_t.c.balance),
+            tuple_(token_address, balance)
+        )
+    else:
+        q = token_holders_t.c.token_address == token_address
 
-    if _id is not None:
-        filter_by_id = ordering.operator_or_equal(token_holders_t.c.id, _id)
-        conditions.append(filter_by_id)
-
+    conditions.append(q)
     query = query.where(reduce(and_, conditions))
     return query.order_by(*ordering.columns).limit(limit)

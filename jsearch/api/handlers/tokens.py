@@ -88,7 +88,14 @@ async def get_token_holders(
     holders, tip = await maybe_apply_tip(storage, tip_hash, holders, last_affected_block, empty=[])
 
     url = request.app.router['token_holders'].url_for(contract_address=contract_address)
-    page = get_pagination_description(url=url, items=holders, limit=limit, ordering=order, decimals_to_ints=True)
+    page = get_pagination_description(
+        url=url,
+        key_set_fields=['balance', 'id'],
+        items=holders,
+        limit=limit,
+        ordering=order,
+        decimals_to_ints=True
+    )
 
     orphaned_request = await maybe_orphan_request(
         request,
