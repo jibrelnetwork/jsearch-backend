@@ -1583,6 +1583,12 @@ paths:
                       $ref: '#/components/schemas/AddressSummary'
                   meta:
                     $ref: '#/components/schemas/BlockchainTipInfo'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/wallet/events:
     get:
       tags:
