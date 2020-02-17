@@ -85,6 +85,13 @@ async def get_block_transactions(request):
     return api_success([t.to_dict() for t in txs])
 
 
+async def get_block_transaction_count(request):
+    storage = request.app['storage']
+    tag = get_tag(request)
+    txs = await storage.get_block_transactions(tag)
+    return api_success({"count": len(txs)})
+
+
 async def get_block_uncles(request):
     storage = request.app['storage']
     tag = get_tag(request)
