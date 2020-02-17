@@ -74,6 +74,7 @@ from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
 from jsearch.common.utils import unique
 from jsearch.common.wallet_events import get_event_from_pending_tx
+from jsearch.consts import NULL_ADDRESS
 from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress, ProgressPercent
 
 logger = logging.getLogger(__name__)
@@ -816,6 +817,10 @@ class Storage(DbActionsMixin):
             addresses: List[str],
             assets: Optional[List[str]] = None
     ) -> Tuple[AddressesSummary, LastAffectedBlock]:
+        # See: https://jibrelnetwork.atlassian.net/browse/ETHBE-801
+        addresses_contains_null_address = NULL_ADDRESS in addresses
+        addresses = [a for a in addresses if a != NULL_ADDRESS]
+
         query = get_assets_summary_query(addresses=unique(addresses), assets=unique(assets or []))
         rows = await self.fetch_all(query)
 
@@ -829,6 +834,27 @@ class Storage(DbActionsMixin):
                 accounts_with_ether.add(asset['address'])
 
         summary = []
+
+        if addresses_contains_null_address:
+            # Return fake Ether balance for Null Address account. This is done
+            # for lowering the load on the database but keep API the same.
+            #
+            # SEE: https://jibrelnetwork.atlassian.net/browse/ETHBE-801
+            summary.append(
+                AddressSummary(
+                    address=NULL_ADDRESS,
+                    assets_summary=[
+                        AssetSummary(
+                            balance="0",
+                            decimals="0",
+                            address=ETHER_ASSET_ADDRESS,
+                            transfers_number=0,
+                        )
+                    ],
+                    outgoing_transactions_number="0",
+                )
+            )
+
         for account in addresses:
             nonce = 0
             account_summary: List[AssetSummary] = []
