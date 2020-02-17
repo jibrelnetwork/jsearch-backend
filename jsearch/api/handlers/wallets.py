@@ -24,9 +24,6 @@ from jsearch.typing import IntOrStr, OrderScheme
 
 logger = logging.getLogger(__name__)
 
-MAX_COUNT = 1000
-MAX_LIMIT = 1000
-MAX_OFFSET = 10000
 PENDING_EVENTS_DEFAULT_LIMIT = 100
 
 
