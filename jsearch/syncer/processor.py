@@ -1,8 +1,7 @@
 import logging
-from copy import copy
-
 import re
 import time
+from copy import copy
 from typing import Dict, Any, List, Tuple
 
 from jsearch.common import contracts
@@ -14,7 +13,7 @@ from jsearch.common.processing.wallet import token_holders_from_token_balances
 from jsearch.common.utils import timeit, unique
 from jsearch.syncer.database import MainDB
 from jsearch.syncer.structs import RawBlockData, BlockData
-from jsearch.typing import Logs
+from jsearch.typing import Logs, AnyDict
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +29,22 @@ def update_is_forked_state(items: List[Dict[str, Any]], is_forked: bool) -> List
 @timeit('[CPU/GETH/MAIN DB] Process block')
 async def process_block(main_db: MainDB, data: RawBlockData) -> BlockData:
     block_reward, uncles_rewards = process_rewards(data.reward, data.block_number)
-    uncles = process_uncles(data.uncles, uncles_rewards, data.block_number, data.block_hash, data.is_forked)
-    txs_data = process_txs(data.transactions, data.block_number, data.block_hash, data.timestamp, data.is_forked)
     block_data = process_header(data.header, block_reward, data.transactions, data.uncles, data.is_forked)
-    accounts = process_accounts(data.accounts, data.block_number, data.block_hash, data.is_forked)
+
+    block_info = {
+        'block_number': data.block_number,
+        'block_hash': data.block_hash,
+        'is_forked': data.is_forked,
+    }
+
+    uncles = process_uncles(data.uncles, uncles_rewards, **block_info)
+    txs_data = process_txs(data.transactions, data.timestamp, **block_info)
     internal_txs = process_internal_txs(data.internal_txs, txs_data, data.is_forked)
-    receipts, logs = process_receipts(
-        receipts=data.receipts,
-        transactions=txs_data,
-        block_number=data.block_number,
-        block_hash=data.block_hash,
-        timestamp=data.timestamp,
-        is_forked=data.is_forked
-    )
+
+    accounts = process_accounts(data.accounts, **block_info)
+    receipts = process_receipts(data.receipts, txs_data, **block_info)
+
+    logs = process_logs(data.receipts, data.timestamp, data.is_forked)
 
     contracts_set = set()
     for acc in accounts:
@@ -179,9 +181,9 @@ def process_uncles(
 @timeit("[CPU] Process transactions")
 def process_txs(
         transactions: List[Dict[str, Any]],
+        timestamp: int,
         block_number: int,
         block_hash: str,
-        timestamp: int,
         is_forked: bool
 ) -> List[Dict[str, Any]]:
     items = []
@@ -213,19 +215,18 @@ def process_receipts(
         transactions: List[Dict[str, Any]],
         block_number: int,
         block_hash: str,
-        timestamp: int,
         is_forked: bool
-) -> Tuple[List[Dict[str, Any]], Logs]:
-    rdata: List[Dict[str, Any]] = receipts['fields']['Receipts'] or []
-    recpt_items = []
-    logs_items = []
-    for i, receipt in enumerate(rdata):
-        recpt_data = dict_keys_case_convert(receipt)
-        tx = transactions[i * 2]
-        assert tx['hash'] == recpt_data['transaction_hash']
+) -> List[Dict[str, Any]]:
+    raw: List[Dict[str, Any]] = receipts['fields']['Receipts'] or []
+    items = []
+    for i, receipt in enumerate(raw):
+        receipt = dict_keys_case_convert(receipt)
 
-        logs = recpt_data.pop('logs') or []
-        recpt_data.update({
+        tx = transactions[i * 2]
+        assert tx['hash'] == receipt['transaction_hash']
+
+        receipt.pop('logs')
+        receipt.update({
             'transaction_index': i,
             'to': tx['to'],
             'from': tx['from'],
@@ -235,34 +236,35 @@ def process_receipts(
             'is_forked': is_forked
         })
 
-        hex_vals_to_int(recpt_data, ['cumulative_gas_used', 'gas_used', 'status'])
+        hex_vals_to_int(receipt, ['cumulative_gas_used', 'gas_used', 'status'])
+        items.append(receipt)
 
-        recpt_items.append(recpt_data)
-
-        tx['status'] = recpt_data['status']
-        transactions[i * 2 + 1]['status'] = recpt_data['status']
-
-        logs = process_logs(logs, status=recpt_data['status'], is_forked=is_forked, timestamp=timestamp)
-        logs_items.extend(logs)
-    return recpt_items, logs_items
+        tx['status'] = receipt['status']
+        transactions[i * 2 + 1]['status'] = receipt['status']
+    return items
 
 
-def process_logs(logs: Logs, status: bool, is_forked: bool, timestamp: int) -> Logs:
+def process_logs(receipts: AnyDict, timestamp: int, is_forked: bool) -> Logs:
     items = []
-    for log_record in logs:
-        data = dict_keys_case_convert(log_record)
-        hex_vals_to_int(data, ['log_index', 'transaction_index', 'block_number'])
-        data['is_token_transfer'] = False
-        data['token_transfer_to'] = None
-        data['token_transfer_from'] = None
-        data['token_amount'] = None
-        data['event_type'] = None
-        data['event_args'] = None
-        data['status'] = status
-        data['is_forked'] = is_forked
-        data['timestamp'] = timestamp
-        data = process_log_event(data)
-        items.append(data)
+    for receipt in receipts['fields']['Receipts'] or []:
+        status = int(receipt['status'], 16)
+        logs = receipt.get('logs') or []
+        for log_record in logs:
+            data = dict_keys_case_convert(log_record)
+            hex_vals_to_int(data, ['log_index', 'transaction_index', 'block_number'])
+            data.update({
+                'is_token_transfer': False,
+                'token_transfer_to': None,
+                'token_transfer_from': None,
+                'token_amount': None,
+                'event_type': None,
+                'event_args': None,
+                'status': status,
+                'is_forked': is_forked,
+                'timestamp': timestamp,
+            })
+            data = process_log_event(data)
+            items.append(data)
     return items
 
 
