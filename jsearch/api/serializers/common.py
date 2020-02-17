@@ -71,6 +71,12 @@ def convert_to_api_error_and_raise(exc: ValidationError, field_mapping: Optional
 
 
 class ApiErrorSchema(Schema):
+    # NOTE: There are cases when outer filters names don't match with fields in
+    # database. In this case, we need a mapping:
+    #   * on left side: field name for outer HTTP interface
+    #   * on right side: field name for table
+    mapping: Dict[str, str] = {}
+
     def handle_error(self, exc: ValidationError, data: Dict[str, Any]) -> None:
         """
         Notes:
@@ -88,11 +94,6 @@ class ListSchema(ApiErrorSchema):
         missing=ORDER_DESC,
         validate=OneOf([ORDER_ASC, ORDER_DESC], error='Ordering can be either "asc" or "desc".'),
     )
-    # Notes: there are cases when outer filters names don't match
-    # with fields in database. When we need a mapping.
-    # On left side: field name for outer HTTP interface
-    # On right side: field name for table
-    mapping: Dict[str, str] = {}
     default_values: Dict[str, Any] = {}
 
     class Meta:
