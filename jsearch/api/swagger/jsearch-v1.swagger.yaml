@@ -873,6 +873,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/blocks/{tag}/uncle_count:
+    get:
+      tags:
+        - common
+      summary: Get a number of Uncles by specific Block
+      description: |
+        You can use this endpoint to receive a number of `Uncles` by block hash or number or keyword
+      operationId: getBlockUncleCount
+      parameters:
+        - $ref: '#/components/parameters/tag'
+      responses:
+        '200':
+          description: a nnumber of uncles for specific block
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                  data:
+                    $ref: '#/components/schemas/Count'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/transactions/{txhash}:
     get:
       tags:
@@ -2543,6 +2571,12 @@ components:
                   - type: integer
                     description: Value of field
                     example: 12
+    Count:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 2
     TransactionInfo:
       type: object
       properties:

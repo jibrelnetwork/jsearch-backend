@@ -92,6 +92,13 @@ async def get_block_uncles(request):
     return api_success([u.to_dict() for u in uncles])
 
 
+async def get_block_uncle_count(request):
+    storage = request.app['storage']
+    tag = get_tag(request)
+    uncles = await storage.get_block_uncles(tag)
+    return api_success({"count": len(uncles)})
+
+
 async def get_block_internal_transactions(request):
     storage = request.app['storage']
     tag = get_tag(request)
