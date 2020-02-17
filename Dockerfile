@@ -18,6 +18,7 @@ ENV LOG_LEVEL="INFO" \
     JSEARCH_CONTRACTS_API="http://contracts:8080" \
     JSEARCH_COMPILER_API="http://compiler" \
     ETH_NODE_URL="https://main-node.jwallet.network" \
+    FORK_NODES="[\"https://main-node.jwallet.network\"]" \
     SYNCER_BACKOFF_MAX_TRIES="3" \
     PENDING_SYNCER_BACKOFF_MAX_TRIES="5" \
     DOCKERIZE_VERSION="v0.6.1" \
