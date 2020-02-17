@@ -79,11 +79,6 @@ from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress, Prog
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
-MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
-
-BLOCKS_IN_QUERY = 10
-
 
 def process_block(row: Dict[str, Any]) -> Dict[str, Any]:
     row.update({
@@ -183,9 +178,6 @@ class Storage(DbActionsMixin):
             timestamp: int,
             tx_index: Optional[int] = None
     ) -> Tuple[List[models.Transaction], Optional[LastAffectedBlock]]:
-
-        limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
-
         # Notes: syncer writes txs to main db with denormalization (x2 records per transaction)
         query_limit = limit * 2
         if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
