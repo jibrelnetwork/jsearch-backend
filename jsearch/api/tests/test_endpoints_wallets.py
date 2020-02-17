@@ -993,6 +993,44 @@ async def test_get_wallet_events_filter_by_big_value(
     assert status == resp.status
 
 
+@pytest.mark.parametrize(
+    "amount, status",
+    (
+            (0, 400),
+            (1, 200),
+            (10, 200),
+            (11, 400),
+    ),
+    ids=(
+            "0 addresses  => 400, too little",
+            "1 addresses  => 200",
+            "10 addresses => 200",
+            "11 addresses => 400, too many",
+    )
+)
+async def test_get_wallet_assets_summary_addresses_validation(
+        cli: TestClient,
+        amount: int,
+        status: int,
+):
+    # given
+    addresses = [generate_address() for __ in range(amount)]
+    params = urlencode({'addresses': ','.join(addresses)})
+    url = f'/v1/wallet/assets_summary?{params}'
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status
+
+
+async def test_get_wallet_assets_summary_does_not_throws_500_if_theres_no_addresses(cli: TestClient):
+    url = f'/v1/wallet/assets_summary'
+    resp = await cli.get(url)
+    assert resp.status == 400
+
+
 async def test_get_assets_summaries_returns_ether_balance_even_if_there_s_no_in_db(cli: TestClient) -> None:
     # given
     a1, a2 = generate_address(), generate_address()

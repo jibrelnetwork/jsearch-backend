@@ -34,5 +34,5 @@ async def call_contract(request):
 @ApiError.catch
 async def send_raw_transaction(request):
     args = await load_json_or_raise_api_error(request)
-    resp = await request.app['node_proxy'].send_raw_transaction(args)
+    resp = await request.app['fork_proxy'].send_raw_transaction(args)
     return proxy_response(resp)

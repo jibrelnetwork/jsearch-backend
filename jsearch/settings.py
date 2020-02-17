@@ -1,4 +1,5 @@
 import os
+import json
 
 import pathlib
 import socket
@@ -19,6 +20,8 @@ LOG_LEVEL = os.environ['LOG_LEVEL']
 NO_JSON_FORMATTER = bool(int(os.environ['NO_JSON_FORMATTER']))
 
 ETH_BALANCE_BLOCK_OFFSET = os.environ['ETH_BALANCE_BLOCK_OFFSET']
+
+FORK_NODES = json.loads(os.environ['FORK_NODES'])
 
 ETH_NODE_URL = os.environ['ETH_NODE_URL']
 ETH_NODE_BATCH_REQUEST_SIZE = int(os.environ['ETH_NODE_BATCH_REQUEST_SIZE'])
