@@ -11,7 +11,7 @@ BIGINT_MAX = 9223372036854775807
 int_validator = Range(min=INT_MAX * -1, max=INT_MAX)
 big_int_validator = Range(min=BIGINT_MAX * -1, max=BIGINT_MAX)
 
-T = TypeVar('T', bound=Sized[Any])
+T = TypeVar('T', bound=Sized)
 
 
 def quantity_validator(min: Optional[int] = None, max: Optional[int] = None) -> Callable[[T], T]:
