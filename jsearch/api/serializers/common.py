@@ -70,7 +70,16 @@ def convert_to_api_error_and_raise(exc: ValidationError, field_mapping: Optional
     raise ApiError(messages)
 
 
-class ListSchema(Schema):
+class ApiErrorSchema(Schema):
+    def handle_error(self, exc: ValidationError, data: Dict[str, Any]) -> None:
+        """
+        Notes:
+            don't forget to wrap handler to ApiError.catch
+        """
+        convert_to_api_error_and_raise(exc, self.mapping)
+
+
+class ListSchema(ApiErrorSchema):
     limit = fields.Int(
         missing=DEFAULT_LIMIT,
         validate=Range(min=1, max=MAX_LIMIT)
@@ -105,13 +114,6 @@ class ListSchema(Schema):
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         pass
-
-    def handle_error(self, exc: ValidationError, data: Dict[str, Any]) -> None:
-        """
-        Notes:
-            don't forget to wrap handler to ApiError.catch
-        """
-        convert_to_api_error_and_raise(exc, self.mapping)
 
 
 class BlockRelatedListSchema(ListSchema):
