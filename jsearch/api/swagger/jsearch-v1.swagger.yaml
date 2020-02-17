@@ -1563,6 +1563,8 @@ paths:
         Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892330/Wallet+assets+summary">link</a> for details.
 
          **note**: The `Ether balance` (object with empty `address`) is always present in the response.
+         **note**: Summary for the Null Account (`0x0000000000000000000000000000000000000000`) contains only fake entry
+         for 0 Ether to comply with the API. Actual data for this address cannot be fetched.
       parameters:
       - $ref: '#/components/parameters/addresses'
       - $ref: '#/components/parameters/assets'
