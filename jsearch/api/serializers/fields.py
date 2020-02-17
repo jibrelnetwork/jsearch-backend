@@ -1,7 +1,7 @@
 from datetime import datetime
 from marshmallow import fields, ValidationError
 from marshmallow.validate import Range
-from typing import Set, Any, List, Optional, TypeVar, Callable
+from typing import Set, Any, Sized, Optional, TypeVar, Callable
 
 from jsearch.api.helpers import get_from_joined_string
 
@@ -11,7 +11,7 @@ BIGINT_MAX = 9223372036854775807
 int_validator = Range(min=INT_MAX * -1, max=INT_MAX)
 big_int_validator = Range(min=BIGINT_MAX * -1, max=BIGINT_MAX)
 
-T = TypeVar('T', bound=List[Any])
+T = TypeVar('T', bound=Sized[Any])
 
 
 def quantity_validator(min: Optional[int] = None, max: Optional[int] = None) -> Callable[[T], T]:
