@@ -59,7 +59,7 @@ async def test_valid_json_for_proxy_endpoints_should_return_node_response(
     cli.app['validate_spec'] = False
 
     async def _request(self, method, params=None):
-        return {'result': ['response', 'from', 'the', 'node']}
+        return [{'result': ['response', 'from', 'the', 'node']}, ]
 
     mocker.patch.object(NodeProxy, '_request', _request)
 
@@ -95,16 +95,18 @@ async def test_node_proxy_proxies_errors_from_the_node(
         endpoint: str,
 ) -> None:
     async def _request(self, method, params=None):
-        return {
-            "error": {
-                "code": -32602,
-                "message": (
-                    "invalid argument 0: json: cannot unmarshal hex string "
-                    "without 0x prefix into Go struct field CallArgs.gas of "
-                    "type hexutil.Uint64"
-                ),
-            }
-        }
+        return [
+            {
+                "error": {
+                    "code": -32602,
+                    "message": (
+                        "invalid argument 0: json: cannot unmarshal hex string "
+                        "without 0x prefix into Go struct field CallArgs.gas of "
+                        "type hexutil.Uint64"
+                    ),
+                }
+            },
+        ]
 
     mocker.patch.object(NodeProxy, '_request', _request)
 
