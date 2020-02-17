@@ -102,6 +102,7 @@ async def make_app() -> Application:
         cursor_factory=DictCursor,
     )
     app['storage'] = Storage(app['db_pool'])
+    app['fork_proxy'] = NodeProxy(settings.FORK_NODES)
     app['node_proxy'] = NodeProxy(settings.ETH_NODE_URL)
 
     # Configure service routes
