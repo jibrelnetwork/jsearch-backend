@@ -5,13 +5,9 @@ from marshmallow.marshalling import SCHEMA
 from marshmallow.validate import Range, OneOf, Length
 from typing import Dict, Any, List, Optional
 
+from jsearch import settings
 from jsearch.api.error_code import ErrorCode
-from jsearch.api.helpers import (
-    DEFAULT_LIMIT,
-    MAX_LIMIT,
-    Tag,
-    ApiError
-)
+from jsearch.api.helpers import ApiError, Tag
 from jsearch.api.ordering import get_order_schema, Ordering, ORDER_DESC, ORDER_ASC
 from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower
 from jsearch.typing import OrderScheme, OrderDirection
@@ -87,8 +83,8 @@ class ApiErrorSchema(Schema):
 
 class ListSchema(ApiErrorSchema):
     limit = fields.Int(
-        missing=DEFAULT_LIMIT,
-        validate=Range(min=1, max=MAX_LIMIT)
+        missing=settings.API_PAGING_LIMIT_DEFAULT,
+        validate=Range(min=1, max=settings.API_PAGING_LIMIT_MAX)
     )
     order = fields.Str(
         missing=ORDER_DESC,
