@@ -55,5 +55,5 @@ class WalletEventsSchema(BlockRelatedListSchema):
 class WalletAssetsSchema(ApiErrorSchema):
     tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
 
-    addresses = JoinedString(to_lower=True, validate=quantity_validator(max=10))
+    addresses = JoinedString(to_lower=True, required=True, validate=quantity_validator(min=1, max=10))
     assets = JoinedString(to_lower=True)
