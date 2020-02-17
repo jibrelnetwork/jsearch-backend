@@ -13,6 +13,7 @@ from jsearch.api.serializers.fields import (
     IntField,
     BigIntField,
     JoinedString,
+    quantity_validator,
 )
 from jsearch.typing import OrderScheme, OrderDirection
 
@@ -54,5 +55,5 @@ class WalletEventsSchema(BlockRelatedListSchema):
 class WalletAssetsSchema(ApiErrorSchema):
     tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
 
+    addresses = JoinedString(to_lower=True, validate=quantity_validator(max=10))
     assets = JoinedString(to_lower=True)
-    addresses = JoinedString(to_lower=True)
