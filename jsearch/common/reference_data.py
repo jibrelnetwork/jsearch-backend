@@ -1,10 +1,13 @@
+import logging
 import asyncio
-from typing import NamedTuple
 import json
+from typing import NamedTuple, Optional
 
 import aiohttp
 
 from jsearch import settings
+
+logger = logging.getLogger(__name__)
 
 
 class BlockReferenceData(NamedTuple):
@@ -77,16 +80,32 @@ lag_statistics = {
 }
 
 
+async def get_last_block_safe(data_provider: ReferenceDataProvider) -> Optional[BlockReferenceData]:
+    try:
+        return await data_provider.get_last_block()
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.info('[LAG] Failed to fetch last block for %s', data_provider.name, exc_info=True)
+
+    return None
+
+
 async def set_lag_statistics(latest_synced_block_number):
     refs = [
         EtherscanDataProvider(settings.ETHERSCAN_API_URL, settings.ETHERSCAN_API_KEY),
         InfuraDataProvider(settings.INFURA_API_URL, settings.INFURA_API_KEY),
         JwalletDataProvider(settings.JWALLET_API_URL, None),
     ]
-    coros = [r.get_last_block() for r in refs]
+    coros = [get_last_block_safe(r) for r in refs]
     blocks = await asyncio.gather(*coros)
 
     for ref, ref_block in zip(refs, blocks):
+        if ref_block is None:
+            # Keep the old reference if the data provider failed to obtain the
+            # block.
+            continue
+
         lag_statistics[ref.name] = ref_block.number - latest_synced_block_number
 
 
