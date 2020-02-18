@@ -18,6 +18,7 @@ ENV LOG_LEVEL="INFO" \
     JSEARCH_CONTRACTS_API="http://contracts:8080" \
     JSEARCH_COMPILER_API="http://compiler" \
     ETH_NODE_URL="https://main-node.jwallet.network" \
+    FORK_NODES="[\"https://main-node.jwallet.network\"]" \
     SYNCER_BACKOFF_MAX_TRIES="3" \
     PENDING_SYNCER_BACKOFF_MAX_TRIES="5" \
     DOCKERIZE_VERSION="v0.6.1" \
@@ -44,7 +45,10 @@ ENV LOG_LEVEL="INFO" \
     TOKEN_HOLDERS_CLEANER_BATCH_SIZE="100" \
     TOKEN_HOLDERS_CLEANER_BLOCKS_OFFSET="6" \
     TOKEN_HOLDERS_CLEANER_QUERIES_PARALLEL="10" \
-    ENABLE_HEALTHCHECK="0"
+    ENABLE_HEALTHCHECK="0" \
+    API_PAGING_LIMIT_DEFAULT="20" \
+    API_PAGING_LIMIT_MAX="20"
+
 
 RUN groupadd -g 999 app \
  && useradd -r -u 999 -g app app \

@@ -14,8 +14,6 @@ from jsearch.typing import AnyCoroutine, ProgressPercent
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
-DEFAULT_OFFSET = 0
-MAX_OFFSET = 10000
 
 
 class ChainEvent:
