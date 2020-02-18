@@ -75,6 +75,7 @@ def define_routes(app: Application):
     add('POST', '/v1/proxy/estimate_gas', node_proxy.calculate_estimate_gas)
     add('POST', '/v1/proxy/call_contract', node_proxy.call_contract)
     add('POST', '/v1/proxy/send_raw_transaction', node_proxy.send_raw_transaction)
+    add('POST', '/v1/proxy/get_storage_at', node_proxy.get_storage_at)
 
     add('GET', '/v1/blockchain_tip', wallets.get_blockchain_tip)
     add('GET', '/v1/wallet/assets_summary', wallets.get_assets_summary)

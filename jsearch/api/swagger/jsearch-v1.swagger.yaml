@@ -1523,6 +1523,62 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       x-codegen-request-body-name: body
+  /v1/proxy/get_storage_at:
+    post:
+      tags:
+        - proxy
+      summary: >-
+        Returns the value from a storage position at a given address.
+      description: >
+        You can use this endpoint to get the value from a storage position at a given address.
+
+
+        Parameters
+
+          DATA, 20 Bytes - address of the storage.
+
+          QUANTITY - integer of the position in the storage.
+
+          QUANTITY|TAG - integer block number, or the string "latest", "earliest" or "pending"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              example:
+                [
+                  '0x295a70b2de5e3953354a6a8344e616ed314d7251',
+                  '0x0',
+                  'latest'
+                ]
+              items:
+                type: string
+                format: hex
+        required: true
+      responses:
+        '200':
+          description: >-
+            Returns
+
+            DATA - the value at this storage position.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                  data:
+                    type: string
+                    format: hex
+                    example: '0x000000000000000000000000000000000000000000000000000000000000162e'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: body
   /v1/blockchain_tip:
     get:
       tags:
