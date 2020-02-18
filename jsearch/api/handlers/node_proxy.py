@@ -43,3 +43,10 @@ async def get_proof(request):
     args = await load_json_or_raise_api_error(request)
     resp = await request.app['node_proxy'].get_proof(args)
     return proxy_response(resp)
+
+
+@ApiError.catch
+async def get_storage_at(request):
+    args = await load_json_or_raise_api_error(request)
+    resp = await request.app['node_proxy'].get_storage_at(args)
+    return proxy_response(resp)
