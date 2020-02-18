@@ -1,13 +1,20 @@
 import logging
 
-from marshmallow import fields, validates_schema, ValidationError, Schema
+from marshmallow import fields, validates_schema, ValidationError
 from marshmallow.validate import Range, Length
 
 from jsearch.api.database_queries.wallet_events import get_events_ordering
 from jsearch.api.helpers import Tag
 from jsearch.api.ordering import Ordering
-from jsearch.api.serializers.common import BlockRelatedListSchema, is_less_than_two_values_provided
-from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower, IntField, BigIntField, JoinedString
+from jsearch.api.serializers.common import BlockRelatedListSchema, is_less_than_two_values_provided, ApiErrorSchema
+from jsearch.api.serializers.fields import (
+    PositiveIntOrTagField,
+    StrLower,
+    IntField,
+    BigIntField,
+    JoinedString,
+    quantity_validator,
+)
 from jsearch.typing import OrderScheme, OrderDirection
 
 logger = logging.getLogger(__name__)
@@ -45,8 +52,8 @@ class WalletEventsSchema(BlockRelatedListSchema):
         return get_events_ordering(scheme, direction)
 
 
-class WalletAssetsSchema(Schema):
+class WalletAssetsSchema(ApiErrorSchema):
     tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
 
+    addresses = JoinedString(to_lower=True, required=True, validate=quantity_validator(min=1, max=10))
     assets = JoinedString(to_lower=True)
-    addresses = JoinedString(to_lower=True)

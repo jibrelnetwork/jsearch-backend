@@ -70,7 +70,22 @@ def convert_to_api_error_and_raise(exc: ValidationError, field_mapping: Optional
     raise ApiError(messages)
 
 
-class ListSchema(Schema):
+class ApiErrorSchema(Schema):
+    # NOTE: There are cases when outer filters names don't match with fields in
+    # database. In this case, we need a mapping:
+    #   * on left side: field name for outer HTTP interface
+    #   * on right side: field name for table
+    mapping: Dict[str, str] = {}
+
+    def handle_error(self, exc: ValidationError, data: Dict[str, Any]) -> None:
+        """
+        Notes:
+            don't forget to wrap handler to ApiError.catch
+        """
+        convert_to_api_error_and_raise(exc, self.mapping)
+
+
+class ListSchema(ApiErrorSchema):
     limit = fields.Int(
         missing=DEFAULT_LIMIT,
         validate=Range(min=1, max=MAX_LIMIT)
@@ -79,11 +94,6 @@ class ListSchema(Schema):
         missing=ORDER_DESC,
         validate=OneOf([ORDER_ASC, ORDER_DESC], error='Ordering can be either "asc" or "desc".'),
     )
-    # Notes: there are cases when outer filters names don't match
-    # with fields in database. When we need a mapping.
-    # On left side: field name for outer HTTP interface
-    # On right side: field name for table
-    mapping: Dict[str, str] = {}
     default_values: Dict[str, Any] = {}
 
     class Meta:
@@ -105,13 +115,6 @@ class ListSchema(Schema):
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         pass
-
-    def handle_error(self, exc: ValidationError, data: Dict[str, Any]) -> None:
-        """
-        Notes:
-            don't forget to wrap handler to ApiError.catch
-        """
-        convert_to_api_error_and_raise(exc, self.mapping)
 
 
 class BlockRelatedListSchema(ListSchema):
