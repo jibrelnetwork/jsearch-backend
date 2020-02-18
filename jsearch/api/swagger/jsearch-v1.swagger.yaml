@@ -1523,6 +1523,104 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       x-codegen-request-body-name: body
+  /v1/proxy/get_proof:
+    post:
+      tags:
+        - proxy
+      summary: >-
+        Returns the account- and storage-values of the specified account including the Merkle-proof.
+      description: >
+        You can use this endpoint to get the account- and storage-values of the specified account including the Merkle-proof.
+
+
+        Parameters
+
+        1. DATA, 20 bytes - address of the account or contract
+
+        2. ARRAY, 32 Bytes - array of storage-keys which should be proofed and included. See eth_getStorageAt
+
+        3. QUANTITY|TAG - integer block number, or the string "latest" or "earliest", see the default block parameter
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              example:
+                [
+                  '0x1234567890123456789012345678901234567890',
+                  [
+                    '0x0000000000000000000000000000000000000000000000000000000000000000',
+                    '0x0000000000000000000000000000000000000000000000000000000000000001'
+                  ],
+                  'latest'
+                ]
+              items:
+                type: string
+                format: hex
+        required: true
+      responses:
+        '200':
+          description: >-
+            Returns Object - A account object
+
+            balance - QUANTITY - the balance of the account. See eth_getBalance
+
+
+            codeHash - DATA, 32 Bytes - hash of the code of the account. For a simple Account without code it will return "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+
+
+            nonce - QUANTITY, - nonce of the account. See eth_getTransactionCount
+
+
+            storageHash - DATA, 32 Bytes - SHA3 of the StorageRoot. All storage will deliver a MerkleProof starting with this rootHash.
+
+
+            accountProof - ARRAY - Array of rlp-serialized MerkleTree-Nodes, starting with the stateRoot-Node, following the path of the SHA3 (address) as key.
+
+
+            storageProof - ARRAY - Array of storage-entries as requested. Each entry is a object with these properties
+
+              key -  QUANTITY - the requested storage key
+
+              value - QUANTITY - the storage value
+
+              proof - ARRAY - Array of rlp-serialized MerkleTree-Nodes, starting with the storageHash-Node, following the path of the SHA3 (key) as path.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                  data:
+                    type: object
+                    example:
+                      address: '0x1234567890123456789012345678901234567890'
+                      accountProof: [
+                        "0xf90211a090dcaf88c40c7bbc95a912cbdd...",
+                        "0xf90211a0395d87a95873cd98c21cf1df9421af03f7247880a2554e...",
+                        "0xf90171a04ad705ea7bf04339fa36b124fa221379bd5a38ffe9a611...",
+                        "0xf851808080a009833150c367df138f1538689984b8a84fc55692d..."
+                      ]
+                      balance: '0x0'
+                      codeHash: '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca...'
+                      nonce: '0x0'
+                      storageHash: '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996c...'
+                      storageProof: [
+                      {
+                        'key': '0x0000000000000000000000000000000000000000000000000...',
+                        'value': '0x0',
+                        'proof': []
+
+                      }
+                      ]
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: body
   /v1/blockchain_tip:
     get:
       tags:
