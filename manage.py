@@ -1,10 +1,10 @@
 #!/usr/bin/env python
+import subprocess
 import sys
+from typing import NamedTuple, Any
 
 import click
-import subprocess
 from sqlalchemy import create_engine
-from typing import NamedTuple, Any
 
 from jsearch.utils import get_alembic_version, get_goose_version
 
@@ -38,11 +38,8 @@ class GooseWrapper(NamedTuple):
     def down(self) -> None:
         self._call("down")
 
-    def down_by_one(self):
-        self._call("up-by-one")
-
     def down_to(self, version: str):
-        self._call("up-to", version)
+        self._call("down-to", version)
 
     def status(self) -> None:
         self._call("status")
@@ -123,13 +120,7 @@ def down(ctx):
 
 @click.command()
 @click.pass_context
-def down_by_one(ctx):
-    ctx.obj.down_by_one()
-
-
-@click.command()
-@click.pass_context
-@click.option("-m", "--message", default="", help="migration title")
+@click.option("-v", "--version", default="", help="version")
 def down_to(ctx, version: str):
     ctx.obj.down_to(version)
 
@@ -165,7 +156,6 @@ cli.add_command(up)
 cli.add_command(up_by_one)
 cli.add_command(up_to)
 cli.add_command(down)
-cli.add_command(down_by_one)
 cli.add_command(down_to)
 cli.add_command(status)
 cli.add_command(version)
