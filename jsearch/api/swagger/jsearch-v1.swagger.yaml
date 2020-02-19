@@ -761,6 +761,46 @@ paths:
                   errors:
                   - code: NOT_FOUND
                     message: Resource not found
+  /v1/blocks/{tag}/transaction_count:
+    get:
+      tags:
+        - common
+      summary: Get a number of `Normal Transactions` by specific Block
+      description: >
+        You can use this endpoint to receive a number of `Normal Transactions` by
+        block hash or number or keyword
+      operationId: getBlockTransactionCount
+      parameters:
+        - $ref: '#/components/parameters/tag'
+      responses:
+        '200':
+          description: A number of transactions from specific block
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                  data:
+                    $ref: '#/components/schemas/Count'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  success: false
+                  errors:
+                    - code: NOT_FOUND
+                      message: Resource not found
   /v1/blocks/{tag}/transactions:
     get:
       tags:
@@ -2704,6 +2744,12 @@ components:
                   - type: integer
                     description: Value of field
                     example: 12
+    Count:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 2
     TransactionInfo:
       type: object
       properties:
