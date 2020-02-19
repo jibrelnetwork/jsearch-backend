@@ -12,6 +12,7 @@ from jsearch.api.node_proxy import NodeProxy
         '/v1/proxy/estimate_gas',
         '/v1/proxy/call_contract',
         '/v1/proxy/send_raw_transaction',
+        '/v1/proxy/get_proof',
         '/v1/proxy/get_storage_at'
     ),
 )
@@ -48,6 +49,7 @@ async def test_invalid_json_for_proxy_endpoints_should_return_bad_request(
         ('POST', '/v1/proxy/estimate_gas'),
         ('POST', '/v1/proxy/call_contract'),
         ('POST', '/v1/proxy/send_raw_transaction'),
+        ('POST', '/v1/proxy/get_proof'),
         ('POST', '/v1/proxy/get_storage_at'),
     ),
 )
@@ -88,6 +90,7 @@ async def test_valid_json_for_proxy_endpoints_should_return_node_response(
         ('POST', '/v1/proxy/estimate_gas'),
         ('POST', '/v1/proxy/call_contract'),
         ('POST', '/v1/proxy/send_raw_transaction'),
+        ('POST', '/v1/proxy/get_proof'),
         ('POST', '/v1/proxy/get_storage_at'),
     ),
 )
