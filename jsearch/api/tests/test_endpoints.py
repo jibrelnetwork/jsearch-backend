@@ -324,6 +324,13 @@ async def test_get_block_uncles(cli, main_db_data):
     ]
 
 
+@pytest.mark.usefixtures('uncles')
+async def test_get_block_uncle_count(cli, main_db_data):
+    resp = await cli.get('/v1/blocks/' + main_db_data['blocks'][1]['hash'] + '/uncle_count')
+    assert resp.status == 200
+    assert (await resp.json())['data'] == {'count': 1}
+
+
 @pytest.mark.parametrize(
     "block_hash, txs",
     [
