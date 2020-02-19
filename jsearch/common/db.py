@@ -29,10 +29,11 @@ async def acquire_connection(engine: Union[Engine, SAConnection]) -> AsyncGenera
     else:
         connection = engine
 
-    yield connection
-
-    if isinstance(engine, Engine):
-        engine.release(connection)
+    try:
+        yield connection
+    finally:
+        if isinstance(engine, Engine):
+            engine.release(connection)
 
 
 def query_timeout(func: Callable[..., Any]) -> Callable[..., Any]:
