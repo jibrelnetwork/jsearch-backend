@@ -57,6 +57,7 @@ def define_routes(app: Application):
     add('GET', '/v1/blocks', blocks.get_blocks, name='blocks')
     add('GET', '/v1/blocks/{tag}', blocks.get_block)
     add('GET', '/v1/blocks/{tag}/transactions', blocks.get_block_transactions)
+    add('GET', '/v1/blocks/{tag}/transaction_count', blocks.get_block_transaction_count)
     add('GET', '/v1/blocks/{tag}/uncles', blocks.get_block_uncles)
     add('GET', '/v1/blocks/{tag}/internal_transactions', blocks.get_block_internal_transactions)
 

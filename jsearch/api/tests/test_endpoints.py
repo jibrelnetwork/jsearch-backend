@@ -216,6 +216,27 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
     ]
 
 
+async def test_get_block_transaction_count(cli, link_txs_with_block, block_factory, transaction_factory):
+    # given
+    block = block_factory.create()
+    tx = transaction_factory.create_for_block(block)
+
+    link_txs_with_block(
+        [tx[0].hash, ],
+        block.hash
+    )
+
+    # when
+    resp = await cli.get(f'/v1/blocks/{block.hash}/transaction_count')
+    assert resp.status == 200
+
+    # then
+    res = (await resp.json())['data']
+    assert res == {
+        'count': 1
+    }
+
+
 async def test_get_block_transactions_forked(cli, db, transaction_factory):
     # given
     transaction_factory.create(block_number=1, block_hash='aa', hash='tx1', is_forked=False)
