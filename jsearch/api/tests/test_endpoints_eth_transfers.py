@@ -12,6 +12,7 @@ from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 from jsearch.tests.plugins.databases.factories.wallet_events import WalletEventsFactory
 from jsearch.typing import AnyCoroutine
+from jsearch import settings
 
 
 TIMESTAMP = int(time.time())
@@ -232,7 +233,7 @@ async def test_get_wallet_events_pagination(
             (21, None, [
                 {
                     "field": "limit",
-                    "message": "Must be between 1 and 20.",
+                    "message": f"Must be between 1 and {settings.API_PAGING_LIMIT_MAX}.",
                     "code": "INVALID_LIMIT_VALUE",
                 }
             ]),
@@ -362,7 +363,7 @@ async def test_get_eth_transfers_filter_by_big_value(
         (URL.format(params=urlencode({'limit': 100})), [
             {
                 "field": "limit",
-                "message": "Must be between 1 and 20.",
+                "message": f"Must be between 1 and {settings.API_PAGING_LIMIT_MAX}.",
                 "code": "INVALID_LIMIT_VALUE"
             }
         ]),

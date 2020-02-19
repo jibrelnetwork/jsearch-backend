@@ -12,6 +12,7 @@ from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.tests.plugins.databases.factories.logs import LogFactory
 from jsearch.tests.plugins.databases.factories.transactions import TransactionFactory
 from jsearch.typing import AnyCoroutine
+from jsearch import settings
 
 logger = logging.getLogger(__name__)
 
@@ -408,7 +409,7 @@ async def test_get_account_logs_single(cli, db, main_db_data):
         (21, None, [
             {
                 "field": "limit",
-                "message": "Must be between 1 and 20.",
+                "message": f"Must be between 1 and {settings.API_PAGING_LIMIT_MAX}.",
                 "code": "INVALID_LIMIT_VALUE",
             }
         ]),

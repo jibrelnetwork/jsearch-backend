@@ -8,6 +8,7 @@ from typing import List, Dict, Any, Tuple, Optional
 
 from jsearch.tests.plugins.databases.factories.blocks import BlockFactory
 from jsearch.tests.plugins.databases.factories.common import generate_address
+from jsearch import settings
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +165,7 @@ async def test_get_accounts_blocks_errors(cli, block_factory, url, errors):
             (21, None, [
                 {
                     "field": "limit",
-                    "message": "Must be between 1 and 20.",
+                    "message": f"Must be between 1 and {settings.API_PAGING_LIMIT_MAX}.",
                     "code": "INVALID_LIMIT_VALUE",
                 }
             ]),

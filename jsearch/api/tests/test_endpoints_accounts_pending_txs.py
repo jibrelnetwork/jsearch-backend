@@ -11,6 +11,7 @@ from jsearch.api.tests.utils import parse_url
 from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.typing import AnyCoroutine
+from jsearch import settings
 
 TIMESTAMP = int(time.time())
 URL = '/v1/accounts/address/pending_transactions?{params}'
@@ -227,7 +228,7 @@ async def test_get_account_pending_txs_paging(
             (21, None, [
                 {
                     "field": "limit",
-                    "message": "Must be between 1 and 20.",
+                    "message": f"Must be between 1 and {settings.API_PAGING_LIMIT_MAX}.",
                     "code": "INVALID_LIMIT_VALUE",
                 }
             ]),

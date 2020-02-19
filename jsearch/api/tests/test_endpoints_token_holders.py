@@ -7,6 +7,7 @@ from typing import List, Callable, Tuple, Optional, Dict
 
 from jsearch.api.tests.utils import parse_url
 from jsearch.tests.plugins.databases.factories.common import generate_address
+from jsearch import settings
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,7 @@ async def test_get_token_holders(cli, token_holder_factory):
             (21, None, [
                 {
                     "field": "limit",
-                    "message": "Must be between 1 and 20.",
+                    "message": f"Must be between 1 and {settings.API_PAGING_LIMIT_MAX}.",
                     "code": "INVALID_LIMIT_VALUE",
                 }
             ]),
