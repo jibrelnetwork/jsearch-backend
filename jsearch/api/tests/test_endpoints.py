@@ -216,10 +216,15 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
     ]
 
 
-async def test_get_block_transaction_count(cli, block_factory, transaction_factory):
+async def test_get_block_transaction_count(cli, link_txs_with_block, block_factory, transaction_factory):
     # given
     block = block_factory.create()
-    transaction_factory.create_for_block(block)
+    tx = transaction_factory.create_for_block(block)
+
+    link_txs_with_block(
+        [tx[0].hash, ],
+        block.hash
+    )
 
     # when
     resp = await cli.get(f'/v1/blocks/{block.hash}/transaction_count')
