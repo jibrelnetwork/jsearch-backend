@@ -79,3 +79,13 @@ class NodeProxy:
         # we need to get a response from the first node only
         res = _decimal_result(res[0])
         return res
+
+    async def get_proof(self, args: List) -> str:
+        res = await self._request('eth_getProof', args)
+        # we need to get a response from the first node only
+        return res[0]
+
+    async def get_storage_at(self, args: List) -> str:
+        res = await self._request('eth_getStorageAt', args)
+        # we need to get a response from the first node only
+        return res[0]
