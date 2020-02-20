@@ -481,8 +481,8 @@ async def test_get_token_transfers_filter_by_big_value(
             ({'address': '0x' + 'a' * 40}, {'0x' + '1' * 64}),
             ({'address': '0x' + 'b' * 40}, {'0x' + '1' * 64, '0x' + '2' * 64}),
             ({'address': '0x' + 'c' * 40}, {'0x' + '2' * 64}),
-            (set(),                        {'0x' + '1' * 64, '0x' + '2' * 64}),
-            ({'address': '0x' + 'd' * 40}, {}),
+            ({},                           {'0x' + '1' * 64, '0x' + '2' * 64}),
+            ({'address': '0x' + 'd' * 40}, set()),
     ),
     ids=(
             "filter by [A] - get transfer [1]",
