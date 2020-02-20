@@ -10,7 +10,6 @@ from jsearch.api.tests.utils import parse_url
 from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.tests.plugins.databases.factories.common import generate_address
 from jsearch.typing import AnyCoroutine
-from jsearch import settings
 
 logger = logging.getLogger(__name__)
 
@@ -303,7 +302,7 @@ async def test_get_token_transfers_pagination(cli,
         (URL.format(params=urlencode({'limit': 100})), [
             {
                 "field": "limit",
-                "message": f"Must be between 1 and {settings.API_PAGING_LIMIT_MAX}.",
+                "message": "Must be between 1 and 20.",
                 "code": "INVALID_LIMIT_VALUE"
             }
         ]),
@@ -397,7 +396,7 @@ async def test_get_token_transfers_noparams(cli, block_factory, transaction_fact
             (21, None, [
                 {
                     "field": "limit",
-                    "message": f"Must be between 1 and {settings.API_PAGING_LIMIT_MAX}.",
+                    "message": "Must be between 1 and 20.",
                     "code": "INVALID_LIMIT_VALUE",
                 }
             ]),
