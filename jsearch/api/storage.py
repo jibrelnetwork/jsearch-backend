@@ -52,6 +52,7 @@ from jsearch.api.database_queries.transactions import (
     get_tx_by_address_and_block_query,
     get_tx_by_address_and_timestamp_query,
     get_transactions_by_hashes,
+    get_block_txs_query,
 )
 from jsearch.api.database_queries.uncles import (
     get_uncles_by_timestamp_query,
@@ -193,24 +194,10 @@ class Storage(DbActionsMixin):
 
         return txs, last_affected_block
 
-    async def get_block_transactions(self, tag):
-        fields = models.Transaction.select_fields()
-        if tag.is_hash():
-            query = f"SELECT {fields} FROM transactions WHERE block_hash=%s AND is_forked=false " \
-                    f"ORDER BY transaction_index;"
-        elif tag.is_number():
-            query = f"SELECT {fields} FROM transactions WHERE block_number=%s AND is_forked=false " \
-                    f"ORDER BY transaction_index;"
-        else:
-            query = f"""
-                SELECT {fields} FROM transactions
-                WHERE block_number=(SELECT max(number) FROM blocks) AND is_forked=false ORDER BY transaction_index;
-        """
+    async def get_block_transactions(self, tag, tx_index=None):
+        query = get_block_txs_query(tag, tx_index)
 
-        if tag.is_latest():
-            rows = await self.fetch_all(query)
-        else:
-            rows = await self.fetch_all(query, tag.value)
+        rows = await self.fetch_all(query)
 
         # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
         # `in_app_distinct` instead.
