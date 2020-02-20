@@ -101,7 +101,7 @@ def get_pending_txs_by_account(
 
 
 def get_outcoming_pending_txs_count(account: str) -> Query:
-    query = select([func.count(pending_transactions_t.c.last_synced_id)]).where(
+    query = select([func.count()]).where(
         and_(
             pending_transactions_t.c.removed == false(),
             pending_transactions_t.c['from'] == account,
