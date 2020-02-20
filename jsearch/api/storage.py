@@ -522,6 +522,7 @@ class Storage(DbActionsMixin):
             limit: int,
             ordering: Ordering,
             block_number: int,
+            account_address: Optional[str] = None,
             transaction_index: Optional[int] = None,
             log_index: Optional[int] = None
     ) -> Tuple[List[models.TokenTransfer], Optional[LastAffectedBlock]]:
@@ -535,6 +536,7 @@ class Storage(DbActionsMixin):
             ordering=ordering,
             limit=query_limit,
             block_number=block_number,
+            account_address=account_address,
             transaction_index=transaction_index,
             log_index=log_index
         )
