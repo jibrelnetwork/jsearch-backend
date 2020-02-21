@@ -52,8 +52,7 @@ ENV LOG_LEVEL="INFO" \
 
 RUN groupadd -g 999 app \
  && useradd -r -u 999 -g app app \
- && mkdir -p /app \
- && chown -R app:app /app
+ && mkdir -p /app
 
 WORKDIR /app
 
@@ -61,10 +60,10 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
-COPY --chown=app:app requirements*.txt /app/
+COPY requirements*.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt $(test "$ENVIRONMENT" != "production" && echo "-r requirements-test.txt") 
 
-COPY --chown=app:app . /app
+COPY . /app
 RUN pip install --no-cache-dir .
 
 COPY --from=goose /go/bin/goose /usr/local/bin/
