@@ -12,6 +12,7 @@ from jsearch.typing import OrderScheme, OrderDirection
 
 class TokenTransfersSchema(BlockRelatedListSchema):
     contract_address = StrLower(validate=Length(min=1, max=100), location='match_info')
+    account_address = StrLower(validate=Length(min=1, max=100), load_from='address')
 
     log_index = IntField(validate=Range(min=0))
     transaction_index = IntField(validate=Range(min=0))

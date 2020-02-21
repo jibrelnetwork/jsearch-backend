@@ -51,14 +51,19 @@ def get_transfers_by_address_query(address: str, ordering: Ordering) -> Query:
     ).order_by(*ordering.columns)
 
 
-def get_transfers_by_token_query(address: str, ordering: Ordering) -> Query:
-    return select(
+def get_transfers_by_token_query(address: str, ordering: Ordering, account_address: Optional[str] = None) -> Query:
+    query = select(
         columns=get_default_fields(),
         whereclause=and_(
             token_transfers_t.c.token_address == address,
             token_transfers_t.c.is_forked == false(),
         )
     ).order_by(*ordering.columns)
+
+    if account_address is not None:
+        query = query.where(token_transfers_t.c.address == account_address)
+
+    return query
 
 
 def get_paginated_query_by_block_number(
@@ -112,10 +117,11 @@ def get_token_transfers_by_token_and_block_number(
         limit: int,
         block_number: int,
         ordering: Ordering,
+        account_address: Optional[str] = None,
         transaction_index: Optional[int] = None,
         log_index: Optional[int] = None,
 ) -> Query:
-    query = get_transfers_by_token_query(address, ordering)
+    query = get_transfers_by_token_query(address, ordering, account_address)
     return get_paginated_query_by_block_number(
         query=query,
         limit=limit,
