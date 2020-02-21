@@ -20,6 +20,7 @@ services:
       INFURA_API_URL: https://mainnet.infura.io/v3
       INFURA_API_KEY: secret
       JWALLET_API_URL: https://main.jnode.network
+      API_PAGING_LIMIT_MAX: 20  # Unit tests depend on that value.
     env_file:
       - config/dev.env
 
