@@ -68,6 +68,12 @@ class TokenTransferFactory(factory.alchemy.SQLAlchemyModelFactory):
                 'log_index': log.log_index,
             }
         })
+        return cls.create_denormalized(**data)
+
+    @classmethod
+    def create_denormalized(cls, **kwargs):
+        data = factory.build(dict, FACTORY_CLASS=TokenTransferFactory, **kwargs)
+
         return [
             cls.create(**{**data, 'address': data['from_address']}),
             cls.create(**{**data, 'address': data['to_address']}),
