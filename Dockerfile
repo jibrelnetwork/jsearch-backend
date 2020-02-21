@@ -73,4 +73,4 @@ USER app
 ENTRYPOINT ["/app/run.sh"]
 CMD ["app"]
 
-HEALTHCHECK --start-period=30s --interval=5s --timeout=3s --retries=3 CMD ./scripts/healthcheck.sh
+HEALTHCHECK --start-period=30s --interval=5s --timeout=60s --retries=3 CMD ./scripts/healthcheck.sh
