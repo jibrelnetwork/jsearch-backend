@@ -26,6 +26,12 @@ class LogModel(Base):
         return {k: getattr(self, k) for k in self.__table__.columns.keys()}
 
 
+class DexTokenFactory(factory.DictFactory):
+    userAddress = factory.LazyFunction(generate_address)
+    assetAddress = factory.LazyFunction(generate_address)
+    assetAmount = factory.sequence(lambda n: int(n * 10 ** 3 / randint(1, 99)))
+
+
 class DexTradeFactory(factory.DictFactory):
     tradeId = factory.sequence(lambda n: n)
 
@@ -120,7 +126,10 @@ class LogFactory(factory.alchemy.SQLAlchemyModelFactory):
 
             DexEventType.TRADE_PLACED: DexTradePlacedFactory,
             DexEventType.TRADE_COMPLETED: DexTradeFactory,
-            DexEventType.TRADE_CANCELLED: DexTradeFactory
+            DexEventType.TRADE_CANCELLED: DexTradeFactory,
+
+            DexEventType.TOKEN_BLOCKED: DexTokenFactory,
+            DexEventType.TOKEN_UNBLOCKED: DexTokenFactory,
         }[event_type]
 
         event_args = factory.build(dict, FACTORY_CLASS=factory_cls)
