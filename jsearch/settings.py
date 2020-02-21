@@ -1,6 +1,5 @@
-import os
 import json
-
+import os
 import pathlib
 import socket
 
@@ -65,6 +64,7 @@ HEALTHCHECK_LAG_THRESHOLD = 3
 
 QUERY_TIMEOUT = int(os.environ['QUERY_TIMEOUT'])
 
-
 API_PAGING_LIMIT_DEFAULT = int(os.environ['API_PAGING_LIMIT_DEFAULT'])
 API_PAGING_LIMIT_MAX = int(os.environ['API_PAGING_LIMIT_MAX'])
+
+DEX_CONTRACT = os.environ.get('DEX_CONTRACT', '').lower()

@@ -1,5 +1,6 @@
-from sqlalchemy import Column
 from typing import Any, Dict, Callable, Awaitable, Coroutine, List, Union, Optional
+
+from sqlalchemy import Column
 
 AnyDict = Dict[str, Any]
 AnyDicts = List[AnyDict]

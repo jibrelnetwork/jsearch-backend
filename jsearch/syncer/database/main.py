@@ -24,7 +24,7 @@ from jsearch.common.tables import (
     transactions_t,
     uncles_t,
     wallet_events_t,
-)
+    dex_logs_t)
 from jsearch.common.utils import timeit
 from jsearch.pending_syncer.database_queries.pending_txs import insert_or_update_pending_txs_q
 from jsearch.syncer.database_queries.reorgs import insert_reorg
@@ -119,6 +119,7 @@ class MainDB(DBWrapper):
             transactions_t,
             uncles_t,
             wallet_events_t,
+            dex_logs_t
         )
 
         await conn.execute(get_update_blocks_fork_status_query(is_forked, block_hashes))
@@ -294,7 +295,7 @@ class MainDB(DBWrapper):
         else:
             chain_event = ''
 
-        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
 
         params = [
             [block_data.block],
@@ -311,11 +312,12 @@ class MainDB(DBWrapper):
             block_data.assets_summary_updates,
             block_data.assets_summary_pairs,
             chain_event,
+            block_data.dex_events
         ]
         await connection.execute(q, *[json.dumps(item) for item in params])
 
     @timeit('[MAIN DB] Write block')
-    async def write_block(self, chain_event: Dict[str, Any], block_data: BlockData, rewrite: bool):
+    async def write_block(self, chain_event: Optional[Dict[str, Any]], block_data: BlockData, rewrite: bool):
         async with self.engine.acquire() as connection:
             async with connection.begin():
                 if rewrite:
@@ -335,6 +337,7 @@ class MainDB(DBWrapper):
         await connection.execute("""DELETE FROM internal_transactions WHERE block_hash=%s""", block_hash)
         await connection.execute("""DELETE FROM uncles WHERE block_hash=%s""", block_hash)
         await connection.execute("""DELETE FROM blocks WHERE hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM dex_logs WHERE hash=%s""", block_hash)
 
     async def get_block_hash_by_number(self, block_num) -> Optional[str]:
         q = blocks_t.select().where(and_(blocks_t.c.number == block_num, blocks_t.c.is_forked == false()))

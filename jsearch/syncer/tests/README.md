@@ -100,13 +100,16 @@ Design of syncer unit tests:
       - [x] wallet event types recognitions 
       - [ ] transitions from transactions
       - [ ] transitions from internal transactions
-   2. Logs
+   2. Dex
       - [ ] decode ERC-20 
+      - [ ] decode DEX events
    3. Token transfers
       - [x] transition from logs 
    4. Assets summary
       - [ ] transition from token holder balances
       - [ ] transition from accounts states
+   5. DEX events
+      - [x] transition from logs
 6. Monitoring.
    1. Lags.
       - [ ] lag to etherscan
