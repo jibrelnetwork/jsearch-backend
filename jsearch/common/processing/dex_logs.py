@@ -58,14 +58,62 @@ class DexEvent(NamedTuple):
     data: AnyDict
 
 
+def get_order_id(topics: List[str], event_type) -> Optional[str]:
+    """
+    event OrderPlacedEvent(
+       address indexed orderCreator,
+       string indexed orderID,
+       OrderType orderType,
+       address indexed tradedAsset,
+       uint256 tradedAmount,
+       address fiatAsset,
+       uint256 assetPrice,
+       uint256 expirationTimestamp
+    );
+    event OrderActivatedEvent(string indexed orderID);
+    event OrderCompletedEvent(string indexed orderID);
+    event OrderCancelledEvent(string indexed orderID);
+    event OrderExpiredEvent(string indexed orderID);
+
+    event TradePlacedEvent(
+      address indexed tradeCreator,
+      uint256 indexed tradeID,
+      string indexed orderID,
+      uint256 tradedAmount
+    );
+
+    Note:
+        This is ugly workaround.
+
+        Indexed string stores as hash in a log topics
+        Syncer cann't parse such value.
+    """
+    if event_type == DexEventType.ORDER_PLACED:
+        order_id = topics[2]
+    elif event_type in (DexEventType.ORDER_ACTIVATED,
+                        DexEventType.ORDER_CANCELLED,
+                        DexEventType.ORDER_COMPLETED,
+                        DexEventType.ORDER_EXPIRED):
+        order_id = topics[1]
+    elif event_type == DexEventType.TRADE_PLACED:
+        order_id = topics[3]
+    else:
+        order_id = None
+
+    return order_id
+
+
 def decode_dex_tx_log(log: Log) -> Optional[AnyDict]:
     try:
-        from pdb import set_trace; set_trace()
         event = contracts.decode_event(DEX_ABI, log)
     except Exception:  # NOQA: Logged by 'exc_info'.
         logger.exception('Log decode error', extra={'log': log})
     else:
         event_type = event.pop('_event_type')
+        order_id = get_order_id(log['topics'], event_type)
+        if order_id is not None:
+            event['orderID'] = order_id
+
         return {
             'event_type': event_type,
             'event_args': event
