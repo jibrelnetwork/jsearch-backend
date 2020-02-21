@@ -46,6 +46,7 @@ ENV LOG_LEVEL="INFO" \
     TOKEN_HOLDERS_CLEANER_BLOCKS_OFFSET="6" \
     TOKEN_HOLDERS_CLEANER_QUERIES_PARALLEL="10" \
     ENABLE_HEALTHCHECK="0" \
+    HEALTHCHECK_CURL_TIMEOUT="60" \
     API_PAGING_LIMIT_DEFAULT="20" \
     API_PAGING_LIMIT_MAX="100"
 
@@ -73,4 +74,4 @@ USER app
 ENTRYPOINT ["/app/run.sh"]
 CMD ["app"]
 
-HEALTHCHECK --start-period=30s --interval=5s --timeout=60s --retries=3 CMD ./scripts/healthcheck.sh
+HEALTHCHECK --start-period=30s --interval=5s --retries=3 CMD ./scripts/healthcheck.sh
