@@ -502,3 +502,12 @@
   pk: false
   indexdef: CREATE INDEX ix_internal_transactions_from_partial_timestamp ON internal_transactions USING
     btree ("from", "timestamp", "parent_tx_index", "transaction_index") WHERE (is_forked = false)
+- name: ix_token_transfers_token_address_address_keyset_partial
+  table: token_transfers
+  fields: ("token_address", "address", "block_number", "transaction_index", "log_index")
+  type: btree
+  partial_condition: (is_forked = false)
+  unique: false
+  pk: false
+  indexdef: CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_token_transfers_token_address_address_keyset_partial ON token_transfers USING
+    btree ("token_address", "address", "block_number", "transaction_index", "log_index") WHERE (is_forked = false);
