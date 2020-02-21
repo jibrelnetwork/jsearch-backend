@@ -225,14 +225,14 @@ async def test_get_account_transactions_with_tip(
         transaction_index='84',
         block_number=target_block_number,
         block_hash='0x2f571cb815c2d94c8e48bf697799e545c368029e8b096a730ef5e650874fbbad',
-        gas='25000',
-        gas_price='50000000000',
+        gas='0x61a8',
+        gas_price='0xba43b7400',
         input='0x',
-        nonce='543',
+        nonce='0x21f',
         r='0x23e819fa3f631c042d20b70f28f8f08ef1a2733061b92c59b43ea0997b6cf834',
         s='0x1ad76eadafc639103f6ba7bc0b9f839757086669b973e601ab69efda745948e3',
         v='0x1c',
-        value='2808270086200000000',
+        value='0x26f8fac3b94e7e00',
     )
 
     query_params = f'block_number={target_block_number}&limit=1&blockchain_tip={tip.tip_hash}'
