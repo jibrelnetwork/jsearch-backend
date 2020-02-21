@@ -1,10 +1,12 @@
+import functools
+
 import logging
 from urllib.parse import urlencode
 
 import pytest
 import time
 from aiohttp.test_utils import TestClient
-from typing import List, Dict, Any, Callable, Optional
+from typing import List, Dict, Any, Callable, Optional, Set
 
 from jsearch.api.tests.utils import parse_url
 from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
@@ -471,3 +473,56 @@ async def test_get_token_transfers_filter_by_big_value(
 
     # then
     assert status == resp.status
+
+
+@pytest.mark.parametrize(
+    "query, expected_transfers_hashes",
+    (
+            ({'address': '0x' + 'a' * 40}, {'0x' + '1' * 64}),
+            ({'address': '0x' + 'b' * 40}, {'0x' + '1' * 64, '0x' + '2' * 64}),
+            ({'address': '0x' + 'c' * 40}, {'0x' + '2' * 64}),
+            ({},                           {'0x' + '1' * 64, '0x' + '2' * 64}),
+            ({'address': '0x' + 'd' * 40}, set()),
+    ),
+    ids=(
+            "filter by [A] - get transfer [1]",
+            "filter by [B] - get transfer [1] and [2]",
+            "filter by [C] - get transfer [2]",
+            "don't filter  - get transfer [1] and [2]",
+            "filter by [D] - get no transfers",
+    )
+)
+async def test_get_account_token_transfers_filter_by_address(
+        cli: TestClient,
+        transfer_factory,
+        query: Dict[str, str],
+        expected_transfers_hashes: Set[str],
+):
+    """
+    Two transfers:
+      1. [a] -> [b]
+      2. [b] -> [c]
+
+    If we filter by [a], we get transfer [1].
+    If we filter by [c], we get transfer [2].
+    If we filter by [b], we get transfers [1] and [2].
+    If we don't filter, we get transfers [1] and [2].
+    """
+    # given
+    token = generate_address()
+
+    account_a = '0x' + 'a' * 40
+    account_b = '0x' + 'b' * 40
+    account_c = '0x' + 'c' * 40
+
+    transfer = functools.partial(transfer_factory.create_denormalized, token_address=token)
+
+    transfer(transaction_hash='0x' + '1' * 64, from_address=account_a, to_address=account_b)
+    transfer(transaction_hash='0x' + '2' * 64, from_address=account_b, to_address=account_c)
+
+    # when
+    resp = await cli.get(f'/v1/tokens/{token}/transfers?{urlencode(query)}')
+    resp_json = await resp.json()
+
+    # then
+    assert {x["transactionHash"] for x in resp_json["data"]} == expected_transfers_hashes

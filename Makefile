@@ -25,8 +25,8 @@ validate:
 	make build
 	make test
 
-new_db_migration:
-	docker-compose run --entrypoint python dev_shell manage.py revision -db=postgres://postgres:postgres@test_main_db/jsearch-main -m "$(msg)"
+migration:
+	docker-compose run dev_shell python manage.py create -m "$(msg)"
 
-db_migrate:
-	docker-compose run --entrypoint python dev_shell manage.py upgrade head -db=postgres://postgres:postgres@test_main_db/jsearch-main
+migrate:
+	docker-compose run dev_shell python manage.py up
