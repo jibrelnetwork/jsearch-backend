@@ -1294,6 +1294,7 @@ paths:
       operationId: getTokenTransfers
       parameters:
       - $ref: '#/components/parameters/contract_address'
+      - $ref: '#/components/parameters/address_optional'
       - $ref: '#/components/parameters/blockchain_tip'
       - $ref: '#/components/parameters/order'
       - $ref: '#/components/parameters/block_number'
@@ -2915,6 +2916,14 @@ components:
       in: path
       description: Account address
       required: true
+      schema:
+        type: string
+        format: address
+    address_optional:
+      name: address
+      in: query
+      description: Account address
+      required: false
       schema:
         type: string
         format: address
