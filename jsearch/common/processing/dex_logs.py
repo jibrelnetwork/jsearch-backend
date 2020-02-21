@@ -107,7 +107,7 @@ def decode_dex_tx_log(log: Log) -> Optional[AnyDict]:
     try:
         event = contracts.decode_event(DEX_ABI, log)
     except Exception:  # NOQA: Logged by 'exc_info'.
-        logger.exception('Log decode error', extra={'log': log})
+        logger.debug('Log decode error', extra={'log': log})
     else:
         event_type = event.pop('_event_type')
         order_id = get_order_id(log['topics'], event_type)
