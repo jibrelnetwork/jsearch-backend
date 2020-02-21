@@ -57,7 +57,9 @@ def define_routes(app: Application):
     add('GET', '/v1/blocks', blocks.get_blocks, name='blocks')
     add('GET', '/v1/blocks/{tag}', blocks.get_block)
     add('GET', '/v1/blocks/{tag}/transactions', blocks.get_block_transactions)
+    add('GET', '/v1/blocks/{tag}/transaction_count', blocks.get_block_transaction_count)
     add('GET', '/v1/blocks/{tag}/uncles', blocks.get_block_uncles)
+    add('GET', '/v1/blocks/{tag}/uncle_count', blocks.get_block_uncle_count)
     add('GET', '/v1/blocks/{tag}/internal_transactions', blocks.get_block_internal_transactions)
 
     add('GET', '/v1/transactions/{txhash}', explorer.get_transaction)
@@ -75,6 +77,8 @@ def define_routes(app: Application):
     add('POST', '/v1/proxy/estimate_gas', node_proxy.calculate_estimate_gas)
     add('POST', '/v1/proxy/call_contract', node_proxy.call_contract)
     add('POST', '/v1/proxy/send_raw_transaction', node_proxy.send_raw_transaction)
+    add('POST', '/v1/proxy/get_proof', node_proxy.get_proof)
+    add('POST', '/v1/proxy/get_storage_at', node_proxy.get_storage_at)
 
     add('GET', '/v1/blockchain_tip', wallets.get_blockchain_tip)
     add('GET', '/v1/wallet/assets_summary', wallets.get_assets_summary)
