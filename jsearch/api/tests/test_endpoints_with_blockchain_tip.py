@@ -901,18 +901,18 @@ async def test_get_wallet_events_with_tip(
                     'blockNumber': tx.block_number,
                     'timestamp': tx.timestamp,
                     'from': getattr(tx, 'from'),
-                    'gas': tx.gas,
-                    'gasPrice': tx.gas_price,
+                    'gas': str(int(tx.gas, 16)),
+                    'gasPrice': str(int(tx.gas_price, 16)),
                     'hash': tx.hash,
                     'input': tx.input,
-                    'nonce': tx.nonce,
+                    'nonce': str(int(tx.nonce, 16)),
                     'status': 1,
                     'r': tx.r,
                     's': tx.s,
                     'to': tx.to,
                     'transactionIndex': tx.transaction_index,
                     'v': tx.v,
-                    'value': str(int(tx.value, 16))
+                    'value': str(int(tx.value, 16)),
                 }
             }
         ]

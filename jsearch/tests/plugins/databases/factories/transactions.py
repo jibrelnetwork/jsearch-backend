@@ -38,7 +38,7 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
     gas = '0xabc'
     gas_price = '0x123'
     input = '0x00'
-    nonce = factory.Sequence(lambda n: n)
+    nonce = factory.Sequence(lambda n: hex(n))
     r = '0xaa'
     s = '0xbb'
     v = '0xcc'
