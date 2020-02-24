@@ -108,7 +108,7 @@ def decode_dex_tx_log(log: Log) -> Optional[AnyDict]:
     except Exception:  # NOQA: Logged by 'exc_info'.
         logger.debug('Log decode error', extra={'log': log})
         return None
-    
+
     event_type = event.pop('_event_type')
     order_id = get_order_id(log['topics'], event_type)
     if order_id is not None:
