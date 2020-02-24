@@ -55,11 +55,9 @@ def get_dex_logs_query(
         )
     )
 
-    from sqlalchemy.dialects.postgresql import dialect
     filters = [get_clause(key, value) for key, value in data_filter.items()]
     if filters:
         query = query.where(reduce(and_, filters[1:], filters[0]))
-        print(query.compile(dialect=dialect(), compile_kwargs={"literal_binds": True}))
     return query
 
 
@@ -110,7 +108,7 @@ def get_dex_orders_query(
     filter_kwargs = {}
 
     if creator:
-        filter_kwargs['orderCreator'] = traded_asset
+        filter_kwargs['orderCreator'] = creator
 
     if traded_asset:
         filter_kwargs['tradedAsset'] = traded_asset

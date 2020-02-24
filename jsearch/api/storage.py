@@ -78,7 +78,7 @@ from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
 from jsearch.common.db import DbActionsMixin
-from jsearch.common.processing.dex_logs import DexEventType
+from jsearch.common.processing.dex_logs import DexEventType, ORDER_STATUSES, ORDER_EVENT_TYPE_TO_STATUS
 from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
@@ -1154,7 +1154,7 @@ class Storage(DbActionsMixin):
             self,
             token_address: str,
             order_creator: Optional[str] = None,
-            order_status: Optional[List[str]] = None,
+            order_statuses: Optional[List[str]] = None,
     ):
         # WTF: only orders have information about traded assets
         orders_query = get_dex_orders_query(creator=order_creator, traded_asset=token_address)
@@ -1177,8 +1177,9 @@ class Storage(DbActionsMixin):
         trades_events = await self.fetch_all(trades_events_query)
         trades_states = get_last_trade_states(trades, trades_events)
 
-        if order_status:
-            orders = [order for order in orders if order_states[get_order_id(order)] in order_status]
+        if order_statuses:
+            event_types = [ORDER_STATUSES[status] for status in order_statuses]
+            orders = [order for order in orders if order_states[get_order_id(order)]['event_type'] in event_types]
 
         completed_trades = []
         for trade in trades:
@@ -1209,8 +1210,10 @@ class Storage(DbActionsMixin):
 
             state = order_states[order_id]
             trades_sump = trades_sum_by_orders.get(order_id, 0)
+
+            order_status = ORDER_EVENT_TYPE_TO_STATUS[state['event_type']]
             status = OrderStatusInfo(
-                order_status=state['event_type'],
+                order_status=order_status,
                 order_status_block_number=state['block_number'],
                 remaining_traded_asset_amount=str(get_traded_amount(order) - trades_sump)
             )

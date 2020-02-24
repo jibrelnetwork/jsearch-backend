@@ -6,7 +6,7 @@ from jsearch.api.database_queries.dex_logs import get_events_ordering
 from jsearch.api.ordering import Ordering
 from jsearch.api.serializers.common import BlockRelatedListSchema, ApiErrorSchema
 from jsearch.api.serializers.fields import StrLower, JoinedString
-from jsearch.common.processing.dex_logs import DexEventType
+from jsearch.common.processing.dex_logs import DexEventType, ORDER_STATUSES
 from jsearch.typing import OrderScheme, OrderDirection
 
 logger = logging.getLogger(__name__)
@@ -28,8 +28,10 @@ class DexHistorySchema(BlockRelatedListSchema):
 class DexOrdersSchema(ApiErrorSchema):
     tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
     token_address = StrLower(validate=Length(min=1, max=100), location='match_info')
-    order_status = JoinedString(validate=ContainsOnly(choices=DexEventType.ORDERS))
+    order_status = JoinedString(
+        validate=ContainsOnly(
+            choices=ORDER_STATUSES.keys(),
+            error='Available filters: {choices}'
+        )
+    )
     order_creator = StrLower(validate=Length(min=1, max=100))
-
-    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-        return get_events_ordering(scheme, direction)
