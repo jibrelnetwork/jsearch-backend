@@ -66,7 +66,7 @@ async def get_dex_orders(
     storage = request.app['storage']
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
-    dex_history, last_affected_block = await storage.get_dex_orders(token_address, order_status, order_creator)
+    dex_history, last_affected_block = await storage.get_dex_orders(token_address, order_creator, order_status)
 
     data, tip = await maybe_apply_tip(storage, tip_hash, dex_history, last_affected_block, empty=[])
     orphaned_request = await maybe_orphan_request(

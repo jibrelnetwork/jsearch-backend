@@ -43,7 +43,7 @@ async def get_accounts_balances(request):
     """
     storage = request.app['storage']
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
-    addresses = get_from_joined_string(request.query.get('addresses'))
+    addresses = get_from_joined_string(request.query.get('addresses'), to_lower_case=True)
     tip_hash = request.query.get('blockchain_tip') or None
 
     if len(addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
@@ -468,7 +468,7 @@ async def get_account_token_balances_multi(request):
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     account_address = request.match_info['address'].lower()
-    tokens_addresses = get_from_joined_string(request.query.get('contract_addresses'))
+    tokens_addresses = get_from_joined_string(request.query.get('contract_addresses'), to_lower_case=True)
     tip_hash = request.query.get('blockchain_tip') or None
 
     if len(tokens_addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
