@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 from aiopg.sa import SAConnection
 from sqlalchemy import and_, Table, false, select, desc
@@ -277,7 +277,7 @@ class MainDB(DBWrapper):
 
     async def write_block_data_proc(
             self,
-            chain_event: Dict[str, Any],
+            chain_event: Optional[Dict[str, Any]],
             block_data: BlockData,
             connection: SAConnection
     ) -> None:
@@ -289,11 +289,14 @@ class MainDB(DBWrapper):
         block_data.token_holders_updates.sort(key=lambda u: (u['account_address'], u['token_address']))
         block_data.assets_summary_updates.sort(key=lambda u: (u['address'], u['asset_address']))
 
+        event: Union[Dict[str, Any], str]
         if chain_event is not None:
-            chain_event = dict(chain_event)
-            chain_event['created_at'] = chain_event['created_at'].isoformat()
+            event = {
+                **chain_event,
+                'created_at': chain_event['created_at'].isoformat()
+            }
         else:
-            chain_event = ''
+            event = ''
 
         q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
 
@@ -311,7 +314,7 @@ class MainDB(DBWrapper):
             block_data.wallet_events,
             block_data.assets_summary_updates,
             block_data.assets_summary_pairs,
-            chain_event,
+            event,
             block_data.dex_events
         ]
         await connection.execute(q, *[json.dumps(item) for item in params])

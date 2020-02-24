@@ -88,6 +88,7 @@ def get_order_id(topics: List[str], event_type) -> Optional[str]:
         Indexed string stores as hash in a log topics
         Syncer cann't parse such value.
     """
+    order_id: Optional[str] = None
     if event_type == DexEventType.ORDER_PLACED:
         order_id = topics[2]
     elif event_type in (DexEventType.ORDER_ACTIVATED,
@@ -97,8 +98,6 @@ def get_order_id(topics: List[str], event_type) -> Optional[str]:
         order_id = topics[1]
     elif event_type == DexEventType.TRADE_PLACED:
         order_id = topics[3]
-    else:
-        order_id = None
 
     return order_id
 
@@ -108,16 +107,17 @@ def decode_dex_tx_log(log: Log) -> Optional[AnyDict]:
         event = contracts.decode_event(DEX_ABI, log)
     except Exception:  # NOQA: Logged by 'exc_info'.
         logger.debug('Log decode error', extra={'log': log})
-    else:
-        event_type = event.pop('_event_type')
-        order_id = get_order_id(log['topics'], event_type)
-        if order_id is not None:
-            event['orderID'] = order_id
+        return None
+    
+    event_type = event.pop('_event_type')
+    order_id = get_order_id(log['topics'], event_type)
+    if order_id is not None:
+        event['orderID'] = order_id
 
-        return {
-            'event_type': event_type,
-            'event_args': event
-        }
+    return {
+        'event_type': event_type,
+        'event_args': event
+    }
 
 
 def logs_to_dex_events(
