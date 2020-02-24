@@ -31,5 +31,8 @@ class DexOrdersSchema(ApiErrorSchema):
     order_status = JoinedString(validate=ContainsOnly(choices=DexEventType.ORDERS))
     order_creator = StrLower(validate=Length(min=1, max=100))
 
-    def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-        return get_events_ordering(scheme, direction)
+
+class DexBlockedAmountsSchema(ApiErrorSchema):
+    tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
+    user_address = StrLower(validate=Length(min=1, max=100), location='match_info')
+    token_addresses = JoinedString(load_from='token_address')

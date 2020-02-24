@@ -103,6 +103,26 @@ def get_dex_events_query(
     return query
 
 
+def get_dex_blocked_query(
+        user_address: str = None,
+        token_addresses: Optional[List[str]] = None,
+) -> ClauseElement:
+    filter_kwargs = {
+        'userAddress': user_address
+    }
+
+    if token_addresses:
+        filter_kwargs['assetAddress'] = token_addresses
+
+    return get_dex_logs_query(
+        event_types=[
+            DexEventType.TOKEN_BLOCKED,
+            DexEventType.TOKEN_UNBLOCKED
+        ],
+        **filter_kwargs
+    )
+
+
 def get_dex_orders_query(
         traded_asset: Optional[str] = None,
         creator: Optional[str] = None,

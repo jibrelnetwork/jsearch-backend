@@ -34,8 +34,8 @@ from jsearch.api.database_queries.dex_logs import (
     get_dex_orders_events_query,
     get_dex_trades_query,
     get_dex_trades_events_query,
-    get_dex_events_query
-)
+    get_dex_events_query,
+    get_dex_blocked_query)
 from jsearch.api.database_queries.internal_transactions import (
     get_internal_txs_by_parent,
     get_internal_txs_by_address_and_block_query,
@@ -1225,6 +1225,32 @@ class Storage(DbActionsMixin):
         last_affected_block = sorted_events[-1]['block_number'] if sorted_events else None
         return results, last_affected_block
 
+    async def get_dex_blocked(
+            self,
+            user_address: str,
+            token_addresses: Optional[List[str]],
+    ):
+        events_query = get_dex_blocked_query(user_address, token_addresses)
+        events = await self.fetch_all(events_query)
+
+        events = sorted(events, key=get_asset_address)
+
+        total = defaultdict(lambda: 0)
+        for asset, blocked_amounts in groupby(events, key=get_asset_address):
+            for event in blocked_amounts:
+                value = event['event_data']['assetAmount']
+
+                if event['event_type'] == DexEventType.TOKEN_UNBLOCKED:
+                    value *= -1
+
+                total[asset] += value
+
+        blocked_amounts = {BlockedAssetAmount(asset, str(value)) for asset, value in total.items()}
+
+        sorted_events = sorted(events, key=lambda x: x['block_number'])
+        last_affected_block = sorted_events[-1]['block_number'] if sorted_events else None
+        return blocked_amounts, last_affected_block
+
 
 def get_event_value(event: Dict[str, Any], key: str) -> Any:
     return event['event_data'][key]
@@ -1233,6 +1259,7 @@ def get_event_value(event: Dict[str, Any], key: str) -> Any:
 get_trade_id = partial(get_event_value, key='tradeID')
 get_order_id = partial(get_event_value, key='orderID')
 get_traded_amount = partial(get_event_value, key='tradedAmount')
+get_asset_address = partial(get_event_value, key='assetAddress')
 
 
 def get_last_states(
@@ -1330,3 +1357,8 @@ class HistoryEvent:
             data['trade_data'] = self.trade_data._asdict()
 
         return data
+
+
+class BlockedAssetAmount(NamedTuple):
+    asset_address: str
+    blocked_amount: str
