@@ -1085,9 +1085,6 @@ class Storage(DbActionsMixin):
         orders_ids = list(orders_map.keys())
 
         trades_query = get_dex_trades_query(order_ids=orders_ids)
-        from sqlalchemy.dialects.postgresql import dialect
-        print(orders_query.compile(dialect=dialect(), compile_kwargs={"literal_binds": True}))
-        print(trades_query.compile(dialect=dialect(), compile_kwargs={"literal_binds": True}))
         trades = await self.fetch_all(trades_query)
         trades_map = {get_trade_id(item): item for item in trades}
         trades_ids = list(trades_map.keys())
@@ -1137,6 +1134,7 @@ class Storage(DbActionsMixin):
                 expiration_timestamp=order_payload['expirationTimestamp'],
             )
 
+            trade_event = None
             if trade_id:
                 trade_data = trades_map[trade_id]
                 trade_payload = trade_data['event_data']
@@ -1146,8 +1144,6 @@ class Storage(DbActionsMixin):
                     trade_creation_timestamp=trade_data['timestamp'],
                     trade_amount=str(trade_payload['tradedAmount'])
                 )
-            else:
-                trade_event = None
 
             history_event = HistoryEvent(description, order_event, trade_event)
             result.append(history_event)
@@ -1182,7 +1178,7 @@ class Storage(DbActionsMixin):
         trades_states = get_last_trade_states(trades, trades_events)
 
         if order_status:
-            orders = filter(lambda x: order_states[get_order_id(x)] in order_status, orders)
+            orders = [order for order in orders if order_states[get_order_id(order)] in order_status]
 
         completed_trades = []
         for trade in trades:
