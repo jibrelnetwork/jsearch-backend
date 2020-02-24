@@ -23,6 +23,7 @@ async def get_token_transfers(
         limit: int,
         order: Ordering,
         tip_hash: Optional[str] = None,
+        account_address: Optional[str] = None,
         block_number: Optional[Union[int, str]] = None,
         timestamp: Optional[int] = None,
         transaction_index: Optional[int] = None,
@@ -41,6 +42,7 @@ async def get_token_transfers(
         limit=limit + 1,
         ordering=order,
         block_number=block_number,
+        account_address=account_address,
         transaction_index=transaction_index,
         log_index=log_index
     )
