@@ -1,13 +1,13 @@
 import logging
 
 from marshmallow import validates_schema, ValidationError
-from marshmallow.validate import Length
+from marshmallow.validate import Length, Range
 
 from jsearch.api.database_queries.uncles import get_uncles_ordering
 from jsearch.api.helpers import Tag
 from jsearch.api.ordering import Ordering
-from jsearch.api.serializers.common import ListSchema, is_less_than_two_values_provided
-from jsearch.api.serializers.fields import PositiveIntOrTagField, StrLower
+from jsearch.api.serializers.common import ListSchema, is_less_than_two_values_provided, ApiErrorSchema
+from jsearch.api.serializers.fields import IntField, PositiveIntOrTagField, StrLower
 from jsearch.typing import OrderScheme, OrderDirection
 
 logger = logging.getLogger(__name__)
@@ -43,3 +43,7 @@ class UncleListSchema(ListSchema):
 
 class AccountUncleSchema(UncleListSchema):
     address = StrLower(validate=Length(min=1, max=100), location='match_info')
+
+
+class BlockUnclesIndexSchema(ApiErrorSchema):
+    uncle_index = IntField(validate=Range(min=0))
