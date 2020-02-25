@@ -49,6 +49,7 @@ ENV LOG_LEVEL="INFO" \
     HEALTHCHECK_CURL_TIMEOUT="60" \
     API_PAGING_LIMIT_DEFAULT="20" \
     API_PAGING_LIMIT_MAX="100" \
+    DEX_CONTRACT="" \
     PROXY_LOAD_URL="http://proxyrack.net/rotating/megaproxy/"
 
 

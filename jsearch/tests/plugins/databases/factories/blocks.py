@@ -1,10 +1,10 @@
+import time
 from random import randint
+from uuid import uuid4
 
 import factory
 import pytest
-import time
 from eth_utils import keccak, to_normalized_address
-from uuid import uuid4
 
 from jsearch.common.tables import blocks_t
 from jsearch.tests.plugins.databases.factories.common import generate_address
@@ -23,7 +23,7 @@ class BlockFactory(factory.alchemy.SQLAlchemyModelFactory):
     gas_used = factory.LazyAttribute(lambda self: self.gas_limit - randint(0, self.gas_limit))
     miner = factory.LazyFunction(lambda: to_normalized_address(keccak(text=str(uuid4()))[-20:]))
     tx_fees = factory.LazyFunction(lambda: randint(50703830640000000, 120499392905312000))
-    timestamp = factory.LazyFunction(time.time)
+    timestamp = factory.LazyFunction(lambda: int(time.time()))
 
     # constants or do better latter
     gas_limit = 8000000
@@ -60,3 +60,11 @@ class BlockFactory(factory.alchemy.SQLAlchemyModelFactory):
 def block_factory():
     yield BlockFactory
     BlockFactory.reset_sequence()
+
+
+@pytest.fixture()
+def block_dict_factory():
+    def dict_factory(**kwargs):
+        return factory.build(dict, FACTORY_CLASS=BlockFactory, **kwargs)
+
+    yield dict_factory

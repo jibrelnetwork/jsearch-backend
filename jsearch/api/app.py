@@ -7,7 +7,7 @@ from jibrel_aiohttp_swagger import setup_swagger
 from psycopg2.extras import DictCursor
 
 from jsearch import settings
-from jsearch.api.handlers import monitoring, blocks, uncles, explorer, tokens, node_proxy, wallets
+from jsearch.api.handlers import monitoring, blocks, uncles, explorer, tokens, node_proxy, wallets, dex
 from jsearch.api.handlers.accounts import (
     get_account,
     get_accounts_balances,
@@ -83,6 +83,10 @@ def define_routes(app: Application):
     add('GET', '/v1/blockchain_tip', wallets.get_blockchain_tip)
     add('GET', '/v1/wallet/assets_summary', wallets.get_assets_summary)
     add('GET', '/v1/wallet/events', wallets.get_wallet_events, name='wallet_events')
+
+    add('GET', '/v1/dex/history/{token_address}', dex.get_dex_history, name='dex_history')
+    add('GET', '/v1/dex/orders/{token_address}', dex.get_dex_orders, name='dex_orders')
+    add('GET', '/v1/dex/blocked/{user_address}', dex.get_dex_blocked_amounts, name='dex_blocked')
 
 
 def enable_swagger_docs(app: Application) -> None:

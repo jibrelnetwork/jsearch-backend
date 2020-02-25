@@ -73,7 +73,7 @@ def get_transfer_details_from_erc20_event_args(
     return from_address, to_address, token_amount
 
 
-def process_log_event(log: Log) -> Log:
+def process_erc20_transfer_logs(log: Log) -> Log:
     log = decode_erc20_tx_log(log)
 
     if log.get('event_type') is not None:

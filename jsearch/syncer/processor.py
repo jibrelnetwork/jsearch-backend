@@ -7,8 +7,9 @@ from typing import Dict, Any, List, Tuple
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
 from jsearch.common.processing.contracts_addresses_cache import contracts_addresses_cache
+from jsearch.common.processing.dex_logs import logs_to_dex_events, process_dex_log
+from jsearch.common.processing.erc20_logs import process_erc20_transfer_logs
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
-from jsearch.common.processing.logs import process_log_event
 from jsearch.common.processing.wallet import token_holders_from_token_balances
 from jsearch.common.utils import timeit, unique
 from jsearch.syncer.database import MainDB
@@ -58,6 +59,7 @@ async def process_block(main_db: MainDB, data: RawBlockData) -> BlockData:
 
     decimals = {balance.token: balance.decimals or 0 for balance in data.token_balances}
     transfers = logs_to_transfers(logs, block_data, decimals)
+    dex_events = logs_to_dex_events(logs)
 
     wallet_events = [
         *wallet.events_from_transactions(txs_data, contracts_set=contracts_set),
@@ -96,6 +98,7 @@ async def process_block(main_db: MainDB, data: RawBlockData) -> BlockData:
         wallet_events=wallet_events,
         assets_summary_updates=assets_summary_updates,
         assets_summary_pairs=assets_summary_pairs,
+        dex_events=dex_events
     )
 
 
@@ -263,7 +266,8 @@ def process_logs(receipts: AnyDict, timestamp: int, is_forked: bool) -> Logs:
                 'is_forked': is_forked,
                 'timestamp': timestamp,
             })
-            data = process_log_event(data)
+            data = process_erc20_transfer_logs(data)
+            data = process_dex_log(data)
             items.append(data)
     return items
 

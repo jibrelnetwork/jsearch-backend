@@ -16,12 +16,17 @@ def _fix_string_args(args, types):
 def _fix_arg(arg, typ, decoder=None):
     if not decoder:
         if typ == 'string' and isinstance(arg, bytes):
+
             def decoder(a):
                 return a.decode().replace('\x00', '')
+
         elif typ.startswith('byte'):
+
             def decoder(a):
                 return binascii.hexlify(a).decode()  # FIXME! handle bytes properly
+
         else:
+
             def decoder(a):
                 return a
 
