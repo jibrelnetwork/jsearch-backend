@@ -1896,6 +1896,40 @@ paths:
                   - field: tip
                     code: BLOCK_NOT_FOUND
                     message: Block with hash {block_hash} not found
+  /v1/dex/orders/{token_address}:
+    get:
+      tags:
+        - dex
+      summary: Get orders for traded asset
+      description: |-
+        Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JIB/pages/1161101382/ETHBE+for+DEX#Order-book-and-the-list-of-user-orders">link</a> for details.
+      parameters:
+        - $ref: '#/components/parameters/token_address'
+        - $ref: '#/components/parameters/order_creator'
+        - $ref: '#/components/parameters/order_status'
+        - $ref: '#/components/parameters/blockchain_tip'
+      responses:
+        '200':
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrderDescription'
+                  meta:
+                    $ref: '#/components/schemas/BlockchainTipInfo'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     Account:
@@ -2700,6 +2734,66 @@ components:
             transfersNumber: 1
           items:
             $ref: '#/components/schemas/AssetSummary'
+    OrderDescription:
+      type: array
+      items:
+        type: object
+        properties:
+          order_data:
+            type: object
+            properties:
+              order_creator:
+                type: string
+                description: An order description
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              order_creation_timestamp:
+                type: integer
+                description: An unix timestamp of order creation
+                example: 1548229016
+              order_id:
+                type: string
+                description: An order unique id
+              order_type:
+                type: integer
+                description: An order type
+                example: 1
+              traded_asset:
+                type: string
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+                description: A traded asset
+              traded_asset_amount:
+                type: string
+                example: "10000000"
+                description: A traded asset amount
+              fiat_asset:
+                type: string
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              fiat_price:
+                type: string
+                example: "100"
+                description: A traded asset amount
+              expiration_timestamp:
+                type: integer
+                description: An unix timestamp of expiration date
+                example: 1548229016
+          order_status:
+            type: object
+            properties:
+              order_status:
+                type: string
+                example: "Placed,Cancelled,Completed,Activated,Expired"
+                description: A status of order
+              order_status_block_number:
+                type: integer
+                example: 9000000
+                description: A block number of the latest order status
+              remaining_traded_asset_amount:
+                type: string
+                example: "1000000000"
+                description: The remaining traded asset amount
     BlockchainTip:
       type: object
       properties:
@@ -3090,6 +3184,24 @@ components:
         for details.
       schema:
         type: integer
+    token_address:
+      name: token_address
+      in: path
+      description: A traded asset address
+      schema:
+        type: string
+    order_status:
+      name: order_status
+      in: query
+      description: An order status
+      schema:
+        type: string
+    order_creator:
+      name: order_creator
+      in: query
+      description: An order creator
+      schema:
+        type: string
   examples:
     StatusSuccessExample:
       value:
