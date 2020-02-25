@@ -402,7 +402,7 @@ class Storage(DbActionsMixin):
 
         return uncles, last_affected_block
 
-    async def get_block_uncles(self, tag):
+    async def get_block_uncles(self, tag, uncle_index=None):
         if tag.is_hash():
             query = "SELECT * FROM uncles WHERE block_hash=%s"
         elif tag.is_number():
@@ -420,7 +420,13 @@ class Storage(DbActionsMixin):
             del r['is_forked']
             r['reward'] = int(r['reward'])
 
-        return [models.Uncle(**r) for r in rows]
+        if uncle_index is not None:
+            if uncle_index < len(rows):
+                return [models.Uncle(**rows[uncle_index])]
+            else:
+                return []
+        else:
+            return [models.Uncle(**r) for r in rows]
 
     async def get_transaction(self, tx_hash):
         query = get_tx_by_hash(tx_hash)
