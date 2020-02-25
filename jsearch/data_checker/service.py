@@ -1,5 +1,7 @@
 import asyncio
 import json
+
+import attr
 import logging
 from asyncio import Task
 from decimal import Decimal
@@ -15,6 +17,7 @@ from dateutil import parser
 from lxml import html
 from psycopg2.extras import DictCursor
 from typing import NamedTuple, Dict, Any, List, Optional
+from yarl import URL
 
 from jsearch.data_checker import settings
 from jsearch.common.db import fetch_all, fetch_one
@@ -34,7 +37,28 @@ FETCH_SLEEP_TIME = 1
 REORG_WAIT_TIME = 5
 ES_SCAN_DEPTH = 30
 
-proxy_cycle = itertools.cycle(open(settings.PROXY_LIST_PATH, 'r').readlines())
+
+@backoff.on_exception(backoff.fibo, max_tries=5, exception=aiohttp.ClientError)
+async def perform_request(url, **kwargs) -> str:
+    def mask_password(url_: URL) -> URL:
+        if url_.password is not None:
+            return url_.with_password('********')
+
+        return url_
+
+    logger.info("Requesting %s", url)
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, **kwargs) as resp:
+                return await resp.text()
+    except aiohttp.ClientResponseError as exc:
+        masked_url = mask_password(exc.request_info.url)
+        masked_real_url = mask_password(exc.request_info.real_url)
+
+        exc.request_info = attr.evolve(exc.request_info, url=masked_url, real_url=masked_real_url)
+
+        raise exc
 
 
 class DataChecker(mode.Service):
@@ -44,16 +68,23 @@ class DataChecker(mode.Service):
     """
     engine: Optional[Engine] = None
 
-    def __init__(self, main_db_dsn: str, use_proxy: bool, **kwargs) -> None:
+    def __init__(self, main_db_dsn: str, use_proxy: bool, proxy_load_url: Optional[str] = None, **kwargs) -> None:
         self.main_db_dsn = main_db_dsn
         self.total = 0
         self.check_queue: 'asyncio.Queue[Dict[str, Any]]' = asyncio.Queue()
         self.workers: List[Task] = []
         self.use_proxy = use_proxy
+        self.proxy_load_url = proxy_load_url
+        self.proxy_list: List[str] = []
+        self.proxy_cycle = itertools.cycle(self.proxy_list)
+
+        if self.use_proxy and not self.proxy_load_url:
+            raise ValueError("'use_proxy' setting requires 'proxy_load_url'")
 
         super().__init__(**kwargs)
 
     async def on_start(self) -> None:
+        await self.load_proxies()
         await self.connect()
 
     async def on_stop(self) -> None:
@@ -79,6 +110,8 @@ class DataChecker(mode.Service):
             block_to_check = await self.check_queue.get()
             try:
                 await self.check_block(block_to_check)
+            except asyncio.CancelledError:
+                raise
             except Exception:
                 logger.exception('Error when checking block', extra=block_to_check)
         logger.info('Worker %s is stopped', number)
@@ -98,29 +131,35 @@ class DataChecker(mode.Service):
             await asyncio.sleep(FETCH_SLEEP_TIME)
         logger.info('Leaving main loop')
 
+    async def load_proxies(self) -> None:
+        if not self.use_proxy:
+            return
+
+        logger.info("Loading proxies")
+
+        text = await perform_request(self.proxy_load_url)
+        self.proxy_list = text.split()
+        self.proxy_cycle = itertools.cycle(self.proxy_list)
+
+        logger.info("Loaded %s proxies", len(self.proxy_list))
+
     def get_proxy(self):
         if self.use_proxy:
-            host = next(proxy_cycle)
+            host = next(self.proxy_cycle)
             return f'http://{settings.PROXY_USER}:{settings.PROXY_PASS}@{host}'
 
-    @backoff.on_exception(backoff.fibo, max_tries=5, exception=aiohttp.ClientError)
     async def get_page(self, url):
-        async with aiohttp.ClientSession() as session:
-            proxy = self.get_proxy()
-            async with session.get(url, proxy=proxy) as resp:
-                text = await resp.text()
-                tree = html.fromstring(text)
-                return tree
+        proxy = self.get_proxy()
+        text = await perform_request(url, proxy=proxy)
+        tree = html.fromstring(text)
+        return tree
 
-    @backoff.on_exception(backoff.fibo, max_tries=5, exception=aiohttp.ClientError)
     async def get_api_response(self, url):
-        async with aiohttp.ClientSession() as session:
-            proxy = self.get_proxy()
-            async with session.get(url, proxy=proxy) as resp:
-                text = await resp.text()
-                data = json.loads(text)
-                result = data['result']
-                return result
+        proxy = self.get_proxy()
+        text = await perform_request(url, proxy=proxy)
+        data = json.loads(text)
+        result = data['result']
+        return result
 
     async def es_get_block_info(self, block_number):
         hex_num = hex(block_number)
@@ -141,7 +180,14 @@ class DataChecker(mode.Service):
 
                 transfer['from_address'] = self.get_address_from_url(row_urls[1])
                 transfer['to_address'] = self.get_address_from_url(row_urls[2])
-                transfer['amount'] = Decimal(row_data[5].replace(',', ''))
+
+                try:
+                    transfer['amount'] = Decimal(row_data[5].replace(',', ''))
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    logger.warning('Transfer decimal parsing error: %s, %s, %s', row_data[5], block_timestamp, transfer)
+                    continue
                 transfer['token_address'] = self.get_address_from_url(row_urls[3])
 
                 transfer_timestamp = self.parse_transfer_timestamp(row_data[1])
@@ -151,30 +197,6 @@ class DataChecker(mode.Service):
                     transfers.append(Transfer(**transfer))
                 elif transfer_timestamp < block_timestamp:
                     return transfers
-        return transfers
-
-    async def parse_transfers_list_page(self, page_number, block_timestamp):
-        transfers = []
-        et = await self.get_page(f'https://etherscan.io/tokentxns/?ps=100&p={page_number}')
-        rows = et.xpath('//table//tr')
-        for row in rows[1:]:
-            transfer = {}
-            row_data = [item.strip() for item in row.xpath('td//text()') if item.strip()]
-            row_urls = row.xpath('td//a/@href')
-            # print('ROW DATA', row_data)
-            transfer['transaction_hash'] = self.get_address_from_url(row_urls[0])
-
-            transfer['from_address'] = self.get_address_from_url(row_urls[1])
-            transfer['to_address'] = self.get_address_from_url(row_urls[2])
-            try:
-                transfer['amount'] = Decimal(row_data[5].replace(',', ''))
-            except Exception:
-                logger.exception('Transfer decimal parsing error: %s, %s, %s', row_data[5], block_timestamp, transfer)
-                continue
-            transfer['token_address'] = self.get_address_from_url(row_urls[3])
-            transfer_timestamp = self.parse_transfer_timestamp(row_data[1])
-            if transfer_timestamp == block_timestamp:
-                transfers.append(Transfer(**transfer))
         return transfers
 
     async def check_block(self, block):
@@ -212,7 +234,7 @@ class DataChecker(mode.Service):
                 values['amount'] = t.amount / 10 ** 18
                 tm = Transfer(**values)
                 if tm not in synced_transfers_set:
-                    logger.warning('MISS FROM SYNCED %s', t, extra=block)
+                    logger.error('MISS FROM SYNCED %s', t, extra=block)
         logger.info('Check complete', extra=block)
 
     def parse_block_timestamp(self, time_stamp):
