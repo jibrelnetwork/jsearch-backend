@@ -2795,7 +2795,7 @@ components:
                   TradeCompletedEvent,
                   TradeCancelledEvent
               event_block_number:
-                type: int
+                type: integer
                 example: 9000000
                 description: A block number of event
               event_timestamp:
