@@ -245,11 +245,13 @@ async def get_account_logs(
         transaction_index: Optional[int] = None,
         log_index: Optional[int] = None,
         tip_hash: Optional[str] = None,
+        topics: Optional[str] = None,
 ) -> web.Response:
     """
     Get contract logs
     """
     storage = request.app['storage']
+    topics = get_from_joined_string(topics)
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
@@ -257,6 +259,7 @@ async def get_account_logs(
         address=address,
         limit=limit + 1,
         ordering=order,
+        topics=topics,
         block_number=block_number,
         timestamp=timestamp,
         transaction_index=transaction_index,

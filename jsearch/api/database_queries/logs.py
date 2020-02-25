@@ -38,12 +38,13 @@ def get_logs_ordering(scheme: OrderScheme, direction: OrderDirection) -> Orderin
     return get_ordering(columns, scheme, direction)
 
 
-def get_logs_by_address_query(address: str, ordering: Ordering) -> Query:
+def get_logs_by_address_query(address: str, ordering: Ordering, topics: List[str]) -> Query:
     return select(
         columns=get_default_fields(),
         whereclause=and_(
             logs_t.c.is_forked == false(),
             logs_t.c.address == address,
+            logs_t.c.topics.op("@>")(topics),
         )
     ).order_by(*ordering.columns)
 
@@ -52,11 +53,12 @@ def get_logs_by_address_and_block_query(
         address: str,
         limit: int,
         ordering: Ordering,
+        topics: List[str],
         block_number: Optional[int],
         transaction_index: Optional[int],
         log_index: Optional[int],
 ) -> Query:
-    query = get_logs_by_address_query(address, ordering)
+    query = get_logs_by_address_query(address, ordering, topics)
     columns = []
     params = []
     if block_number is not None:
@@ -79,11 +81,12 @@ def get_logs_by_address_and_timestamp_query(
         address: str,
         limit: int,
         ordering: Ordering,
+        topics: List[str],
         timestamp: Optional[int],
         transaction_index: Optional[int],
         log_index: Optional[int],
 ) -> Query:
-    query = get_logs_by_address_query(address, ordering)
+    query = get_logs_by_address_query(address, ordering, topics)
 
     if transaction_index is None and log_index is None:
         q = ordering.operator_or_equal(logs_t.c.timestamp, timestamp)
