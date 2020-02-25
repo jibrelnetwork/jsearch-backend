@@ -76,7 +76,7 @@ class DataChecker(mode.Service):
         self.use_proxy = use_proxy
         self.proxy_load_url = proxy_load_url
         self.proxy_list: List[str] = []
-        self.proxy_cycle = itertools.cycle([])
+        self.proxy_cycle = itertools.cycle(self.proxy_list)
 
         if self.use_proxy and not self.proxy_load_url:
             raise ValueError("'use_proxy' setting requires 'proxy_load_url'")
