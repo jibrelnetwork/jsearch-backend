@@ -13,7 +13,7 @@ from jsearch.api.helpers import (
 )
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_pagination_description
-from jsearch.api.serializers.blocks import BlockListSchema
+from jsearch.api.serializers.blocks import BlockListSchema, BlockTransactionsIndexSchema
 from jsearch.api.utils import use_kwargs
 
 
@@ -78,10 +78,12 @@ async def get_block(request):
     return api_success(block.to_dict())
 
 
-async def get_block_transactions(request):
+@ApiError.catch
+@use_kwargs(BlockTransactionsIndexSchema())
+async def get_block_transactions(request, transaction_index: Optional[int] = None):
     storage = request.app['storage']
     tag = get_tag(request)
-    txs = await storage.get_block_transactions(tag)
+    txs = await storage.get_block_transactions(tag, tx_index=transaction_index)
     return api_success([t.to_dict() for t in txs])
 
 
