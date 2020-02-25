@@ -47,7 +47,8 @@ ENV LOG_LEVEL="INFO" \
     TOKEN_HOLDERS_CLEANER_QUERIES_PARALLEL="10" \
     ENABLE_HEALTHCHECK="0" \
     API_PAGING_LIMIT_DEFAULT="20" \
-    API_PAGING_LIMIT_MAX="100"
+    API_PAGING_LIMIT_MAX="100" \
+    PROXY_LOAD_URL="http://proxyrack.net/rotating/megaproxy/"
 
 
 RUN groupadd -g 999 app \
