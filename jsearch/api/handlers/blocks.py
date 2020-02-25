@@ -13,7 +13,8 @@ from jsearch.api.helpers import (
 )
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_pagination_description
-from jsearch.api.serializers.blocks import BlockListSchema
+from jsearch.api.serializers.blocks import BlockListSchema, BlockTransactionsIndexSchema
+from jsearch.api.serializers.uncles import BlockUnclesIndexSchema
 from jsearch.api.utils import use_kwargs
 
 
@@ -78,10 +79,12 @@ async def get_block(request):
     return api_success(block.to_dict())
 
 
-async def get_block_transactions(request):
+@ApiError.catch
+@use_kwargs(BlockTransactionsIndexSchema())
+async def get_block_transactions(request, transaction_index: Optional[int] = None):
     storage = request.app['storage']
     tag = get_tag(request)
-    txs = await storage.get_block_transactions(tag)
+    txs = await storage.get_block_transactions(tag, tx_index=transaction_index)
     return api_success([t.to_dict() for t in txs])
 
 
@@ -92,10 +95,12 @@ async def get_block_transaction_count(request):
     return api_success({"count": len(block['transactions'])})
 
 
-async def get_block_uncles(request):
+@ApiError.catch
+@use_kwargs(BlockUnclesIndexSchema())
+async def get_block_uncles(request, uncle_index: Optional[int] = None):
     storage = request.app['storage']
     tag = get_tag(request)
-    uncles = await storage.get_block_uncles(tag)
+    uncles = await storage.get_block_uncles(tag, uncle_index)
     return api_success([u.to_dict() for u in uncles])
 
 
