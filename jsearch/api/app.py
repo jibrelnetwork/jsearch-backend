@@ -86,6 +86,7 @@ def define_routes(app: Application):
 
     add('GET', '/v1/dex/history/{token_address}', dex.get_dex_history, name='dex_history')
     add('GET', '/v1/dex/orders/{token_address}', dex.get_dex_orders, name='dex_orders')
+    add('GET', '/v1/dex/blocked/{user_address}', dex.get_dex_blocked_amounts, name='dex_blocked')
 
 
 def enable_swagger_docs(app: Application) -> None:

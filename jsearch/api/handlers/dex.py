@@ -7,7 +7,7 @@ from jsearch.api.blockchain_tip import maybe_apply_tip
 from jsearch.api.helpers import ApiError, api_success, maybe_orphan_request
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_pagination_description
-from jsearch.api.serializers.dex import DexHistorySchema, DexOrdersSchema
+from jsearch.api.serializers.dex import DexHistorySchema, DexOrdersSchema, DexBlockedAmountsSchema
 from jsearch.api.utils import use_kwargs
 
 logger = logging.getLogger(__name__)
@@ -79,3 +79,29 @@ async def get_dex_orders(
     if orphaned_request is not None:
         return orphaned_request
     return api_success(data=[item.as_dict() for item in dex_history])
+
+
+@ApiError.catch
+@use_kwargs(DexBlockedAmountsSchema)
+async def get_dex_blocked_amounts(
+        request: web.Request,
+        user_address: str,
+        token_addresses: List[str] = None,
+        tip_hash: Optional[str] = None,
+) -> web.Response:
+    storage = request.app['storage']
+    last_known_chain_event_id = await storage.get_latest_chain_event_id()
+
+    dex_history, last_affected_block = await storage.get_dex_blocked(user_address, token_addresses)
+
+    data, tip = await maybe_apply_tip(storage, tip_hash, dex_history, last_affected_block, empty=[])
+    orphaned_request = await maybe_orphan_request(
+        request,
+        last_known_chain_event_id,
+        last_affected_block,
+        tip and tip.last_number,
+    )
+
+    if orphaned_request is not None:
+        return orphaned_request
+    return api_success(data=[item._asdict() for item in dex_history])

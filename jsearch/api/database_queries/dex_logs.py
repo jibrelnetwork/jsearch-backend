@@ -1,6 +1,6 @@
 from _operator import and_
 from functools import reduce
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 
 from sqlalchemy import Column, select, false
 from sqlalchemy.sql import ClauseElement
@@ -99,6 +99,26 @@ def get_dex_events_query(
         query = query.limit(limit)
 
     return query
+
+
+def get_dex_blocked_query(
+        user_address: str = None,
+        token_addresses: Optional[List[str]] = None,
+) -> ClauseElement:
+    filter_kwargs: Dict[str, Any] = {
+        'userAddress': user_address
+    }
+
+    if token_addresses:
+        filter_kwargs['assetAddress'] = token_addresses
+
+    return get_dex_logs_query(
+        event_types=[
+            DexEventType.TOKEN_BLOCKED,
+            DexEventType.TOKEN_UNBLOCKED
+        ],
+        **filter_kwargs
+    )
 
 
 def get_dex_orders_query(

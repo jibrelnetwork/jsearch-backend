@@ -35,3 +35,9 @@ class DexOrdersSchema(ApiErrorSchema):
         )
     )
     order_creator = StrLower(validate=Length(min=1, max=100))
+
+
+class DexBlockedAmountsSchema(ApiErrorSchema):
+    tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
+    user_address = StrLower(validate=Length(min=1, max=100), location='match_info')
+    token_addresses = JoinedString(load_from='token_address')
