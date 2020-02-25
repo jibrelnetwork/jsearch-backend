@@ -51,7 +51,11 @@ async def get_dex_history(
 
     if orphaned_request is not None:
         return orphaned_request
-    return api_success(data=[item.as_dict() for item in dex_history], page=page)
+    return api_success(
+        data=[item.as_dict() for item in dex_history],
+        page=page,
+        meta=tip and tip.to_dict()
+    )
 
 
 @ApiError.catch
@@ -78,7 +82,10 @@ async def get_dex_orders(
 
     if orphaned_request is not None:
         return orphaned_request
-    return api_success(data=[item.as_dict() for item in dex_history])
+    return api_success(
+        data=[item.as_dict() for item in dex_history],
+        meta=tip and tip.to_dict()
+    )
 
 
 @ApiError.catch
@@ -104,4 +111,7 @@ async def get_dex_blocked_amounts(
 
     if orphaned_request is not None:
         return orphaned_request
-    return api_success(data=[item._asdict() for item in dex_history])
+    return api_success(
+        data=[item._asdict() for item in dex_history],
+        meta=tip and tip.to_dict()
+    )
