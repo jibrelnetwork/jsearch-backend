@@ -45,6 +45,16 @@ class DexEventType:
     ALL = (*ORDERS, *TRADE, *BLOCKS)
 
 
+ORDER_STATUSES = {
+    'Placed': DexEventType.ORDER_PLACED,
+    'Activated': DexEventType.ORDER_ACTIVATED,
+    'Completed': DexEventType.ORDER_COMPLETED,
+    'Cancelled': DexEventType.ORDER_CANCELLED,
+    'Expired': DexEventType.ORDER_EXPIRED,
+}
+ORDER_EVENT_TYPE_TO_STATUS = {value: key for key, value in ORDER_STATUSES.items()}
+
+
 class DexEvent(NamedTuple):
     block_hash: str
     block_number: int
