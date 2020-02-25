@@ -1,6 +1,6 @@
 from _operator import and_
 from functools import reduce
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 
 from sqlalchemy import Column, select, false
 from sqlalchemy.sql import ClauseElement
@@ -105,7 +105,7 @@ def get_dex_blocked_query(
         user_address: str = None,
         token_addresses: Optional[List[str]] = None,
 ) -> ClauseElement:
-    filter_kwargs = {
+    filter_kwargs: Dict[str, Any] = {
         'userAddress': user_address
     }
 

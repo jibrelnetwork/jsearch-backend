@@ -1234,7 +1234,7 @@ class Storage(DbActionsMixin):
 
         events = sorted(events, key=get_asset_address)
 
-        total = defaultdict(lambda: 0)
+        total: DefaultDict[str, int] = defaultdict(lambda: 0)
         for asset, blocked_amounts in groupby(events, key=get_asset_address):
             for event in blocked_amounts:
                 value = event['event_data']['assetAmount']
