@@ -74,6 +74,7 @@ class BlockData(NamedTuple):
     txs: AnyDicts
     uncles: AnyDicts
     wallet_events: AnyDicts
+    dex_events: AnyDicts
 
 
 class AddressAssetPair(NamedTuple):

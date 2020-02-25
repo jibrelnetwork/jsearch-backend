@@ -2,6 +2,7 @@ import logging
 
 import sqlalchemy as sa
 import sqlalchemy.types as types
+from sqlalchemy import Integer
 from sqlalchemy.dialects import postgresql
 
 logger = logging.getLogger(__name__)
@@ -348,6 +349,18 @@ chain_events_t = sa.Table(
     sa.Column('add_block_hash', sa.String),
     sa.Column('node_id', sa.String),
     sa.Column('created_at', sa.TIMESTAMP),
+)
+
+dex_logs_t = sa.Table(
+    'dex_logs',
+    metadata,
+    sa.Column('tx_hash', sa.String),
+    sa.Column('block_number', Integer),
+    sa.Column('block_hash', sa.String),
+    sa.Column('timestamp', Integer),
+    sa.Column('event_type', sa.String),
+    sa.Column('event_data', postgresql.JSONB),
+    sa.Column('is_forked', sa.Boolean, default=False),
 )
 
 TABLES = (

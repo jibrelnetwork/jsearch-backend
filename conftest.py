@@ -30,6 +30,7 @@ pytest_plugins = (
     "jsearch.tests.plugins.databases.factories.transactions",
     "jsearch.tests.plugins.databases.factories.uncles",
     "jsearch.tests.plugins.databases.factories.wallet_events",
+    "jsearch.tests.plugins.databases.factories.dex_logs",
     "jsearch.tests.plugins.databases.factories.raw.pending_transactions",
     "jsearch.tests.plugins.databases.factories.raw.chain_events",
     "jsearch.tests.plugins.databases.main_db",
