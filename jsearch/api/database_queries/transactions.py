@@ -1,8 +1,10 @@
 from sqlalchemy import select, Column, and_, false, tuple_
+from sqlalchemy.sql.expression import func
 from sqlalchemy.orm import Query
 from typing import List, Optional
 
 from jsearch.api.ordering import get_ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, Ordering
+from jsearch.api.helpers import Tag
 from jsearch.common.tables import transactions_t
 from jsearch.typing import OrderScheme, OrderDirection, Columns
 
@@ -141,4 +143,27 @@ def get_transactions_by_hashes(hashes):
     columns = get_default_fields()
     query = select(columns).where(and_(transactions_t.c.hash.in_(hashes),
                                        transactions_t.c.is_forked == false()))
+    return query
+
+
+def get_block_txs_query(
+        tag: Tag,
+        tx_index: Optional[int] = None
+) -> Query:
+    columns = get_default_fields()
+
+    if tag.is_hash():
+        query = select(columns).where(and_(transactions_t.c.block_hash == tag.value,
+                                           transactions_t.c.is_forked == false()))
+    elif tag.is_number():
+        query = select(columns).where(and_(transactions_t.c.block_number == tag.value,
+                                           transactions_t.c.is_forked == false()))
+    else:
+        subquery = select([func.max(transactions_t.c.block_number).label('max_block_number')])
+        query = select(columns).where(and_(transactions_t.c.block_number.in_(subquery),
+                                           transactions_t.c.is_forked == false()))
+
+    if tx_index is not None:
+        query = query.where(transactions_t.c.transaction_index == tx_index)
+
     return query

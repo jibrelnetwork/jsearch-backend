@@ -216,6 +216,40 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
     ]
 
 
+async def test_get_block_transaction_by_tx_index(cli, block_factory, transaction_factory):
+    # given
+    block = block_factory.create()
+    txs = transaction_factory.create_for_block(block)
+    tx = txs[0]
+
+    # when
+    resp = await cli.get(f'/v1/blocks/{block.hash}/transactions?transaction_index=0')
+    assert resp.status == 200
+
+    # then
+    res = (await resp.json())['data']
+    assert res == [
+        {
+            'blockHash': tx.block_hash,
+            'blockNumber': tx.block_number,
+            'timestamp': tx.timestamp,
+            'from': getattr(tx, 'from'),
+            'gas': tx.gas,
+            'gasPrice': tx.gas_price,
+            'hash': tx.hash,
+            'input': tx.input,
+            'nonce': tx.nonce,
+            'status': True,
+            'r': tx.r,
+            's': tx.s,
+            'to': tx.to,
+            'transactionIndex': tx.transaction_index,
+            'v': tx.v,
+            'value': tx.value,
+        },
+    ]
+
+
 async def test_get_block_transaction_count(cli, link_txs_with_block, block_factory, transaction_factory):
     # given
     block = block_factory.create()
