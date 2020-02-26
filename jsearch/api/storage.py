@@ -1132,7 +1132,7 @@ class Storage(DbActionsMixin):
                 trade_data = trades_map[trade_id]
                 trade_payload = trade_data['event_data']
                 trade_event = TradeEvent(
-                    trade_id=trade_id,
+                    trade_id=str(trade_id),
                     trade_creator=trade_payload['tradeCreator'],
                     trade_creation_timestamp=trade_data['timestamp'],
                     trade_amount=str(trade_payload['tradedAmount'])
@@ -1313,7 +1313,7 @@ class OrderEvent(NamedTuple):
 
 
 class TradeEvent(NamedTuple):
-    trade_id: int
+    trade_id: str
     trade_amount: str
     trade_creator: str
     trade_creation_timestamp: int

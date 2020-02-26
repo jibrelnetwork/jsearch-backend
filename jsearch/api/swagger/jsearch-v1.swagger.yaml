@@ -1898,6 +1898,126 @@ paths:
                   - field: tip
                     code: BLOCK_NOT_FOUND
                     message: Block with hash {block_hash} not found
+  /v1/dex/orders/{token_address}:
+    get:
+      tags:
+        - dex
+      summary: Get orders for traded asset
+      description: |-
+        Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JIB/pages/1161101382/ETHBE+for+DEX#Order-book-and-the-list-of-user-orders">link</a> for details.
+      parameters:
+        - $ref: '#/components/parameters/token_address'
+        - $ref: '#/components/parameters/order_creator'
+        - $ref: '#/components/parameters/order_status'
+        - $ref: '#/components/parameters/blockchain_tip'
+      responses:
+        '200':
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        $ref: '#/components/schemas/DexOrders'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+              examples:
+                regular:
+                  $ref: '#/components/examples/DexOrdersExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/dex/history/{token_address}:
+    get:
+      tags:
+      - dex
+      description: |-
+        Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JIB/pages/1161101382/ETHBE+for+DEX#Order-book-and-the-list-of-user-orders">link</a> for details.
+      summary: Get orders history for traded asset
+      parameters:
+        - $ref: '#/components/parameters/token_address'
+        - $ref: '#/components/parameters/event_type'
+        - $ref: '#/components/parameters/blockchain_tip'
+        - $ref: '#/components/parameters/block_number'
+        - $ref: '#/components/parameters/timestamp'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: List of orders events
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        $ref: '#/components/schemas/DexEvents'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/DexEventsExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/dex/blocked/{user_address}:
+    get:
+      tags:
+        - dex
+      summary: Information about of user tokens which are locked for DEX.
+      description: |-
+        Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JIB/pages/1161101382/ETHBE+for+DEX#Order-book-and-the-list-of-user-orders">link</a> for details.
+      parameters:
+        - $ref: '#/components/parameters/user_address'
+        - $ref: '#/components/parameters/token_addresses'
+        - $ref: '#/components/parameters/blockchain_tip'
+      responses:
+        '200':
+          description: Blocked asset amounts.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        $ref: '#/components/schemas/BlockedAssetAmounts'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+              examples:
+                regular:
+                  $ref: '#/components/examples/BlockedAssetAmountsExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     Account:
@@ -2702,6 +2822,164 @@ components:
             transfersNumber: 1
           items:
             $ref: '#/components/schemas/AssetSummary'
+    BlockedAssetAmounts:
+      type: array
+      items:
+        type: object
+        properties:
+          asset_address:
+            type: string
+            example: "0x0d8775f648430679a709e98d2b0cb6250d2887ef"
+          blocked_amount:
+            type: string
+            example: "9000000000000000"
+    DexEvents:
+      type: array
+      items:
+        type: object
+        properties:
+          event_data:
+            type: object
+            properties:
+              event_type:
+                type: string
+                example: |
+                  OrderPlacedEvent,
+                  OrderActivatedEvent,
+                  OrderCompletedEvent,
+                  OrderCancelledEvent,
+                  OrderExpiredEvent,
+                  TradePlacedEvent,
+                  TradeCompletedEvent,
+                  TradeCancelledEvent
+              event_block_number:
+                type: integer
+                example: 9000000
+                description: A block number of event
+              event_timestamp:
+                type: integer
+                description: An unix timestamp of event
+                example: 1548229016
+          order_data:
+            type: object
+            properties:
+              order_creator:
+                type: string
+                description: An order creator
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              order_creation_timestamp:
+                type: integer
+                description: An unix timestamp of order creation
+                example: 1548229016
+              order_id:
+                type: string
+                description: An order unique id
+              order_type:
+                type: integer
+                description: An order type
+                example: 1
+              traded_asset:
+                type: string
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+                description: A traded asset
+              traded_asset_amount:
+                type: string
+                example: "10000000"
+                description: A traded asset amount
+              fiat_asset:
+                type: string
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              fiat_price:
+                type: string
+                example: "100"
+                description: A traded asset amount
+              expiration_timestamp:
+                type: integer
+                description: An unix timestamp of expiration date
+                example: 1548229016
+          trade_data:
+            type: object
+            properties:
+              trade_creator:
+                type: string
+                description: A trade creator
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              trade_creation_timestamp:
+                type: integer
+                description: An unix timestamp of trade creation
+                example: 1548229016
+              trade_id:
+                type: integer
+                description: An unique id of trade
+                example: 1231092312
+              trade_amount:
+                type: string
+                description: A trade amount
+                example: "500000000"
+    DexOrders:
+      type: array
+      items:
+        type: object
+        properties:
+          order_data:
+            type: object
+            properties:
+              order_creator:
+                type: string
+                description: An order description
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              order_creation_timestamp:
+                type: integer
+                description: An unix timestamp of order creation
+                example: 1548229016
+              order_id:
+                type: string
+                description: An order unique id
+              order_type:
+                type: integer
+                description: An order type
+                example: 1
+              traded_asset:
+                type: string
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+                description: A traded asset
+              traded_asset_amount:
+                type: string
+                example: "10000000"
+                description: A traded asset amount
+              fiat_asset:
+                type: string
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              fiat_price:
+                type: string
+                example: "100"
+                description: A traded asset amount
+              expiration_timestamp:
+                type: integer
+                description: An unix timestamp of expiration date
+                example: 1548229016
+          order_status:
+            type: object
+            properties:
+              order_status:
+                type: string
+                example: "Placed,Cancelled,Completed,Activated,Expired"
+                description: A status of order
+              order_status_block_number:
+                type: integer
+                example: 9000000
+                description: A block number of the latest order status
+              remaining_traded_asset_amount:
+                type: string
+                example: "1000000000"
+                description: The remaining traded asset amount
     BlockchainTip:
       type: object
       properties:
@@ -3092,6 +3370,54 @@ components:
         for details.
       schema:
         type: integer
+    token_address:
+      name: token_address
+      in: path
+      required: true
+      description: A traded asset address
+      schema:
+        type: string
+    user_address:
+      name: user_address
+      required: true
+      in: path
+      description: A user unique id
+      schema:
+        type: string
+    token_addresses:
+      name: token_address
+      in: query
+      description: A comma separated list of asset addresses.
+      schema:
+        type: string
+    event_type:
+      name: event_type
+      in: query
+      description: |
+          List of comma separated event types. Available are:
+          OrderPlacedEvent,
+          OrderActivatedEvent,
+          OrderCompletedEvent,
+          OrderCancelledEvent,
+          OrderExpiredEvent,
+          TradePlacedEvent,
+          TradeCompletedEvent,
+          TradeCancelledEvent.
+      schema:
+        type: string
+        example: OrderActivatedEvent,OrderPlacedEvent
+    order_status:
+      name: order_status
+      in: query
+      description: An order status
+      schema:
+        type: string
+    order_creator:
+      name: order_creator
+      in: query
+      description: An order creator
+      schema:
+        type: string
     uncle_index:
       name: uncle_index
       in: query
@@ -3422,3 +3748,99 @@ components:
           $ref: '#/components/examples/MetaExample'
         paging:
           $ref: '#/components/examples/PagingExample'
+
+    DexEventsExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+             {
+                "event_data":{
+                   "event_type":"OrderActivatedEvent",
+                   "event_block_number":9520621,
+                   "event_timestamp":1582208588
+                },
+                "order_data":{
+                   "order_id":"0x700732928f253ed5e412f1c34da2ae7706c27f318b03ff48a0fa9bd3ca22e6ab",
+                   "order_creator":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "order_creation_timestamp":1582208588,
+                   "order_type":1,
+                   "traded_asset":"0x7d020d692f6b959fe8efee6673def9d3ab4cb3a5",
+                   "traded_asset_amount":"5000000000000000000000",
+                   "fiat_asset":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "fiat_price":"1234000000000000000000",
+                   "expiration_timestamp":1591729209
+                }
+             },
+             {
+                "event_data":{
+                   "event_type":"TradePlacedEvent",
+                   "event_block_number":9520621,
+                   "event_timestamp":1582208588
+                },
+                "order_data":{
+                   "order_id":"0x700732928f253ed5e412f1c34da2ae7706c27f318b03ff48a0fa9bd3ca22e6ab",
+                   "order_creator":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "order_creation_timestamp":1582208588,
+                   "order_type":1,
+                   "traded_asset":"0x7d020d692f6b959fe8efee6673def9d3ab4cb3a5",
+                   "traded_asset_amount":"5000000000000000000000",
+                   "fiat_asset":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "fiat_price":"1234000000000000000000",
+                   "expiration_timestamp":1591729209
+                },
+                "trade_data":{
+                   "trade_id": "305274744154097",
+                   "trade_amount":"5000000000000000000000",
+                   "trade_creator":"0xeee28e966bb346b7e30c7d4662c10939e1181baa",
+                   "trade_creation_timestamp":1582208588
+                }
+             }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
+
+    DexOrdersExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "order_data": {
+                "order_creator": "0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                "order_creation_timestamp": 1582208407,
+                "order_id": "0x25764c29f6e3c10d980cad9817d1e70c87f152224d8cbaa2efb998f91aa9b337",
+                "order_type": 1,
+                "traded_asset": "0x7d020d692f6b959fe8efee6673def9d3ab4cb3a5",
+                "traded_asset_amount": "5000000000000000000000",
+                "fiat_asset": "0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                "fiat_price": "1234000000000000000000",
+                "expiration_timestamp": 1591729011
+              },
+              "order_status": {
+                "order_status": "Completed",
+                "order_status_block_number": 9520604,
+                "remaining_traded_asset_amount": "0"
+              }
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+
+    BlockedAssetAmountsExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "asset_address": "0xc94ebb328ac25b95db0e0aa968371885fa516215",
+              "blocked_amount": "9000000000000000000"
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'

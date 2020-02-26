@@ -68,50 +68,6 @@ class DexEvent(NamedTuple):
     data: AnyDict
 
 
-def get_order_id(topics: List[str], event_type) -> Optional[str]:
-    """
-    event OrderPlacedEvent(
-       address indexed orderCreator,
-       string indexed orderID,
-       OrderType orderType,
-       address indexed tradedAsset,
-       uint256 tradedAmount,
-       address fiatAsset,
-       uint256 assetPrice,
-       uint256 expirationTimestamp
-    );
-    event OrderActivatedEvent(string indexed orderID);
-    event OrderCompletedEvent(string indexed orderID);
-    event OrderCancelledEvent(string indexed orderID);
-    event OrderExpiredEvent(string indexed orderID);
-
-    event TradePlacedEvent(
-      address indexed tradeCreator,
-      uint256 indexed tradeID,
-      string indexed orderID,
-      uint256 tradedAmount
-    );
-
-    Note:
-        This is ugly workaround.
-
-        Indexed string stores as hash in a log topics
-        Syncer cann't parse such value.
-    """
-    order_id: Optional[str] = None
-    if event_type == DexEventType.ORDER_PLACED:
-        order_id = topics[2]
-    elif event_type in (DexEventType.ORDER_ACTIVATED,
-                        DexEventType.ORDER_CANCELLED,
-                        DexEventType.ORDER_COMPLETED,
-                        DexEventType.ORDER_EXPIRED):
-        order_id = topics[1]
-    elif event_type == DexEventType.TRADE_PLACED:
-        order_id = topics[3]
-
-    return order_id
-
-
 def decode_dex_tx_log(log: Log) -> Optional[AnyDict]:
     try:
         event = contracts.decode_event(DEX_ABI, log)
@@ -120,10 +76,6 @@ def decode_dex_tx_log(log: Log) -> Optional[AnyDict]:
         return None
 
     event_type = event.pop('_event_type')
-    order_id = get_order_id(log['topics'], event_type)
-    if order_id is not None:
-        event['orderID'] = order_id
-
     return {
         'event_type': event_type,
         'event_args': event
