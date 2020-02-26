@@ -3779,7 +3779,7 @@ components:
                    "expiration_timestamp":1591729209
                 },
                 "trade_data":{
-                   "trade_id":3.305274744154097e+76,
+                   "trade_id": "305274744154097",
                    "trade_amount":"5000000000000000000000",
                    "trade_creator":"0xeee28e966bb346b7e30c7d4662c10939e1181baa",
                    "trade_creation_timestamp":1582208588
