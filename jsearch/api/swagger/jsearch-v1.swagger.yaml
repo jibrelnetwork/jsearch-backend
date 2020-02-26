@@ -1964,6 +1964,11 @@ paths:
                         $ref: '#/components/schemas/BlockchainTipInfo'
                       paging:
                         $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/DexHistoryEventExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -3730,6 +3735,60 @@ components:
           $ref: '#/components/examples/MetaExample'
         paging:
           $ref: '#/components/examples/PagingExample'
+    DexHistoryEventExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+             {
+                "event_data":{
+                   "event_type":"OrderActivatedEvent",
+                   "event_block_number":9520621,
+                   "event_timestamp":1582208588
+                },
+                "order_data":{
+                   "order_id":"0x700732928f253ed5e412f1c34da2ae7706c27f318b03ff48a0fa9bd3ca22e6ab",
+                   "order_creator":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "order_creation_timestamp":1582208588,
+                   "order_type":1,
+                   "traded_asset":"0x7d020d692f6b959fe8efee6673def9d3ab4cb3a5",
+                   "traded_asset_amount":"5000000000000000000000",
+                   "fiat_asset":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "fiat_price":"1234000000000000000000",
+                   "expiration_timestamp":1591729209
+                }
+             },
+             {
+                "event_data":{
+                   "event_type":"TradePlacedEvent",
+                   "event_block_number":9520621,
+                   "event_timestamp":1582208588
+                },
+                "order_data":{
+                   "order_id":"0x700732928f253ed5e412f1c34da2ae7706c27f318b03ff48a0fa9bd3ca22e6ab",
+                   "order_creator":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "order_creation_timestamp":1582208588,
+                   "order_type":1,
+                   "traded_asset":"0x7d020d692f6b959fe8efee6673def9d3ab4cb3a5",
+                   "traded_asset_amount":"5000000000000000000000",
+                   "fiat_asset":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "fiat_price":"1234000000000000000000",
+                   "expiration_timestamp":1591729209
+                },
+                "trade_data":{
+                   "trade_id":3.305274744154097e+76,
+                   "trade_amount":"5000000000000000000000",
+                   "trade_creator":"0xeee28e966bb346b7e30c7d4662c10939e1181baa",
+                   "trade_creation_timestamp":1582208588
+                }
+             }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
+
     BlockedAssetAmountsExample:
       value:
         status:
