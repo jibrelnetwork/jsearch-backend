@@ -811,6 +811,7 @@ paths:
       operationId: getBlockTransactions
       parameters:
       - $ref: '#/components/parameters/tag'
+      - $ref: '#/components/parameters/transaction_index'
       responses:
         '200':
           description: transactions from specific block
@@ -893,6 +894,7 @@ paths:
       operationId: getBlockUncles
       parameters:
       - $ref: '#/components/parameters/tag'
+      - $ref: '#/components/parameters/uncle_index'
       responses:
         '200':
           description: uncles for specific block
@@ -3417,6 +3419,12 @@ components:
       description: An order creator
       schema:
         type: string
+    uncle_index:
+      name: uncle_index
+      in: query
+      description: The uncle's index position.
+      schema:
+        type: integer
   examples:
     StatusSuccessExample:
       value:

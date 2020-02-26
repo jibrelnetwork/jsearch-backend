@@ -16,6 +16,7 @@ def run(log_level, no_json_formatter):
         service.DataChecker(
             main_db_dsn=settings.JSEARCH_MAIN_DB,
             use_proxy=settings.USE_PROXY,
+            proxy_load_url=settings.PROXY_LOAD_URL,
         ),
     ).execute_from_commandline()
 

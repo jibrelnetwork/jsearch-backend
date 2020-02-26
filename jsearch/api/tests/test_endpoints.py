@@ -216,6 +216,40 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
     ]
 
 
+async def test_get_block_transaction_by_tx_index(cli, block_factory, transaction_factory):
+    # given
+    block = block_factory.create()
+    txs = transaction_factory.create_for_block(block)
+    tx = txs[0]
+
+    # when
+    resp = await cli.get(f'/v1/blocks/{block.hash}/transactions?transaction_index=0')
+    assert resp.status == 200
+
+    # then
+    res = (await resp.json())['data']
+    assert res == [
+        {
+            'blockHash': tx.block_hash,
+            'blockNumber': tx.block_number,
+            'timestamp': tx.timestamp,
+            'from': getattr(tx, 'from'),
+            'gas': tx.gas,
+            'gasPrice': tx.gas_price,
+            'hash': tx.hash,
+            'input': tx.input,
+            'nonce': tx.nonce,
+            'status': True,
+            'r': tx.r,
+            's': tx.s,
+            'to': tx.to,
+            'transactionIndex': tx.transaction_index,
+            'v': tx.v,
+            'value': tx.value,
+        },
+    ]
+
+
 async def test_get_block_transaction_count(cli, link_txs_with_block, block_factory, transaction_factory):
     # given
     block = block_factory.create()
@@ -299,6 +333,34 @@ async def test_get_block_transactions_by_number(cli, block_factory, transaction_
 @pytest.mark.usefixtures('uncles')
 async def test_get_block_uncles(cli, main_db_data):
     resp = await cli.get('/v1/blocks/' + main_db_data['blocks'][1]['hash'] + '/uncles')
+    assert resp.status == 200
+    assert (await resp.json())['data'] == [
+        {
+            'difficulty': "17578564779",
+            'blockNumber': 2,
+            'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',
+            'gasLimit': "5000",
+            'gasUsed': "0",
+            'hash': '0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc',
+            'logsBloom': '0x0',
+            'miner': '0x0193d941b50d91be6567c7ee1c0fe7af498b4137',
+            'mixHash': '0x94a09bb3ef9208bf434855efdb1089f80d07334d91930387a1f3150494e806cb',
+            'nonce': '0x32de6ee381be0179',
+            'number': 61,
+            'parentHash': '0x3cd0324c7ba14ba7cf6e4b664dea0360681458d76bd25dfc0d2207ce4e9abed4',
+            'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+            'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
+            'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
+            'timestamp': 1438270332,
+            'reward': str(3750000000000000000),
+            'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
+        }
+    ]
+
+
+@pytest.mark.usefixtures('uncles')
+async def test_get_block_uncle_by_uncle_index(cli, main_db_data):
+    resp = await cli.get('/v1/blocks/' + main_db_data['blocks'][1]['hash'] + '/uncles?uncle_index=0')
     assert resp.status == 200
     assert (await resp.json())['data'] == [
         {

@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from aiohttp import web
 import pytest
 
 from jsearch.data_checker.service import DataChecker, Transfer
@@ -62,3 +63,30 @@ async def test_get_synced_block_transfers_retrieves_transfers(
     transfers_from_checker = await data_checker.get_synced_block_transfers(block_hash)
 
     assert set(transfers_from_checker) == set(transfers)
+
+
+async def test_proxies_can_be_loaded(aiohttp_raw_server, db_dsn) -> None:
+    async def handler(request):
+        return web.Response(
+            text=(
+                "209.205.212.34:1200" + "\n"
+                "209.205.212.34:1201" + "\n"
+                "209.205.212.34:1202" + "\n"
+                "209.205.212.34:1203" + "\n"
+                "209.205.212.34:1204" + "\n" + "\n"
+            ),
+        )
+
+    proxy_server = await aiohttp_raw_server(handler)
+    proxy_server_load_url = proxy_server.make_url("/rotating/megaproxy/")
+    data_checker = DataChecker(main_db_dsn=db_dsn, use_proxy=True, proxy_load_url=str(proxy_server_load_url))
+
+    await data_checker.load_proxies()
+
+    assert data_checker.proxy_list == [
+        "209.205.212.34:1200",
+        "209.205.212.34:1201",
+        "209.205.212.34:1202",
+        "209.205.212.34:1203",
+        "209.205.212.34:1204",
+    ]
