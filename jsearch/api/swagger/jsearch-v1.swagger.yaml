@@ -3368,11 +3368,13 @@ components:
     token_address:
       name: token_address
       in: path
+      required: true
       description: A traded asset address
       schema:
         type: string
     user_address:
       name: user_address
+      required: true
       in: path
       description: A user unique id
       schema:
