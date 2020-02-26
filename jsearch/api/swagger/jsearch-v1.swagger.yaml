@@ -1964,8 +1964,7 @@ paths:
                       status:
                         $ref: '#/components/schemas/Status'
                       data:
-                        properties:
-                          $ref: '#/components/schemas/DexEvents'
+                        $ref: '#/components/schemas/DexEvents'
                       meta:
                         $ref: '#/components/schemas/BlockchainTipInfo'
                       paging:
