@@ -1914,16 +1914,18 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/OrderDescription'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/OrderDescription'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -1950,21 +1952,22 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: object
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
                     properties:
-                      events:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/DexHistoryEvent'
-                  meta:
-                    $ref: '#/components/schemas/BlockchainTipInfo'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        properties:
+                          events:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/DexHistoryEvent'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
         '400':
           description: Input parameter has failed validation.
           content:
