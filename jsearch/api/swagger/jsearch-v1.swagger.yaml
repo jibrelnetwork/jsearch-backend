@@ -1921,12 +1921,12 @@ paths:
                       status:
                         $ref: '#/components/schemas/Status'
                       data:
-                        $ref: '#/components/schemas/Orders'
+                        $ref: '#/components/schemas/DexOrders'
                       meta:
                         $ref: '#/components/schemas/BlockchainTipInfo'
               examples:
                 regular:
-                  $ref: '#/components/examples/OrdersExample'
+                  $ref: '#/components/examples/DexOrdersExample'
                 orphaned:
                   $ref: '#/components/examples/OrphanedResponseExample'
         '400':
@@ -2920,7 +2920,7 @@ components:
                 type: string
                 description: A trade amount
                 example: "500000000"
-    Orders:
+    DexOrders:
       type: array
       items:
         type: object
@@ -3797,7 +3797,7 @@ components:
         paging:
           $ref: '#/components/examples/PagingExample'
 
-    OrdersExample:
+    DexOrdersExample:
       value:
         status:
           $ref: '#/components/examples/StatusSuccessExample'
