@@ -3324,7 +3324,16 @@ components:
     event_type:
       name: event_type
       in: query
-      description: List of comma separated event types
+      description: |
+          List of comma separated event types. Available are:
+          OrderPlacedEvent,
+          OrderActivatedEvent,
+          OrderCompletedEvent,
+          OrderCancelledEvent,
+          OrderExpiredEvent,
+          TradePlacedEvent,
+          TradeCompletedEvent,
+          TradeCancelledEvent.
       schema:
         type: string
         example: OrderActivatedEvent,OrderPlacedEvent
