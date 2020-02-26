@@ -1924,6 +1924,11 @@ paths:
                         $ref: '#/components/schemas/OrderDescription'
                       meta:
                         $ref: '#/components/schemas/BlockchainTipInfo'
+              examples:
+                regular:
+                  $ref: '#/components/examples/OrderDescriptionExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -3790,6 +3795,34 @@ components:
           $ref: '#/components/examples/MetaExample'
         paging:
           $ref: '#/components/examples/PagingExample'
+
+    OrderDescriptionExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "order_data": {
+                "order_creator": "0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                "order_creation_timestamp": 1582208407,
+                "order_id": "0x25764c29f6e3c10d980cad9817d1e70c87f152224d8cbaa2efb998f91aa9b337",
+                "order_type": 1,
+                "traded_asset": "0x7d020d692f6b959fe8efee6673def9d3ab4cb3a5",
+                "traded_asset_amount": "5000000000000000000000",
+                "fiat_asset": "0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                "fiat_price": "1234000000000000000000",
+                "expiration_timestamp": 1591729011
+              },
+              "order_status": {
+                "order_status": "Completed",
+                "order_status_block_number": 9520604,
+                "remaining_traded_asset_amount": "0"
+              }
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
 
     BlockedAssetAmountsExample:
       value:
