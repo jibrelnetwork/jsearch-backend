@@ -1964,14 +1964,14 @@ paths:
                       data:
                         properties:
                           events:
-                            $ref: '#/components/schemas/DexHistoryEvent'
+                            $ref: '#/components/schemas/DexEvents'
                       meta:
                         $ref: '#/components/schemas/BlockchainTipInfo'
                       paging:
                         $ref: '#/components/schemas/Paging'
               examples:
                 regular:
-                  $ref: '#/components/examples/DexHistoryEventExample'
+                  $ref: '#/components/examples/DexEventsExample'
                 orphaned:
                   $ref: '#/components/examples/OrphanedResponseExample'
         '400':
@@ -2833,7 +2833,7 @@ components:
           blocked_amount:
             type: string
             example: "9000000000000000"
-    DexHistoryEvent:
+    DexEvents:
       type: array
       items:
         type: object
@@ -3743,7 +3743,7 @@ components:
         paging:
           $ref: '#/components/examples/PagingExample'
 
-    DexHistoryEventExample:
+    DexEventsExample:
       value:
         status:
           $ref: '#/components/examples/StatusSuccessExample'
