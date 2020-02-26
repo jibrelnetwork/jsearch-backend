@@ -1921,12 +1921,12 @@ paths:
                       status:
                         $ref: '#/components/schemas/Status'
                       data:
-                        $ref: '#/components/schemas/OrderDescription'
+                        $ref: '#/components/schemas/Orders'
                       meta:
                         $ref: '#/components/schemas/BlockchainTipInfo'
               examples:
                 regular:
-                  $ref: '#/components/examples/OrderDescriptionExample'
+                  $ref: '#/components/examples/OrdersExample'
                 orphaned:
                   $ref: '#/components/examples/OrphanedResponseExample'
         '400':
@@ -2920,7 +2920,7 @@ components:
                 type: string
                 description: A trade amount
                 example: "500000000"
-    OrderDescription:
+    Orders:
       type: array
       items:
         type: object
@@ -3742,6 +3742,7 @@ components:
           $ref: '#/components/examples/MetaExample'
         paging:
           $ref: '#/components/examples/PagingExample'
+
     DexHistoryEventExample:
       value:
         status:
@@ -3796,7 +3797,7 @@ components:
         paging:
           $ref: '#/components/examples/PagingExample'
 
-    OrderDescriptionExample:
+    OrdersExample:
       value:
         status:
           $ref: '#/components/examples/StatusSuccessExample'
