@@ -1921,9 +1921,7 @@ paths:
                       status:
                         $ref: '#/components/schemas/Status'
                       data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/OrderDescription'
+                        $ref: '#/components/schemas/OrderDescription'
                       meta:
                         $ref: '#/components/schemas/BlockchainTipInfo'
         '400':
@@ -1961,13 +1959,49 @@ paths:
                       data:
                         properties:
                           events:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/DexHistoryEvent'
+                            $ref: '#/components/schemas/DexHistoryEvent'
                       meta:
                         $ref: '#/components/schemas/BlockchainTipInfo'
                       paging:
                         $ref: '#/components/schemas/Paging'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/dex/blocked/{user_address}:
+    get:
+      tags:
+        - dex
+      summary: Information about of user tokens which are locked for DEX.
+      description: |-
+        Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JIB/pages/1161101382/ETHBE+for+DEX#Order-book-and-the-list-of-user-orders">link</a> for details.
+      parameters:
+        - $ref: '#/components/parameters/user_address'
+        - $ref: '#/components/parameters/token_addresses'
+        - $ref: '#/components/parameters/blockchain_tip'
+      responses:
+        '200':
+          description: Blocked asset amounts.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        $ref: '#/components/schemas/BlockedAssetAmounts'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+              examples:
+                regular:
+                  $ref: '#/components/examples/BlockedAssetAmountsExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -2778,6 +2812,17 @@ components:
             transfersNumber: 1
           items:
             $ref: '#/components/schemas/AssetSummary'
+    BlockedAssetAmounts:
+      type: array
+      items:
+        type: object
+        properties:
+          asset_address:
+            type: string
+            example: "0x0d8775f648430679a709e98d2b0cb6250d2887ef"
+          blocked_amount:
+            type: string
+            example: "9000000000000000"
     DexHistoryEvent:
       type: array
       items:
@@ -3321,6 +3366,18 @@ components:
       description: A traded asset address
       schema:
         type: string
+    user_address:
+      name: user_address
+      in: path
+      description: A user unique id
+      schema:
+        type: string
+    token_addresses:
+      name: token_address
+      in: query
+      description: A comma separated list of asset addresses.
+      schema:
+        type: string
     event_type:
       name: event_type
       in: query
@@ -3673,3 +3730,16 @@ components:
           $ref: '#/components/examples/MetaExample'
         paging:
           $ref: '#/components/examples/PagingExample'
+    BlockedAssetAmountsExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "asset_address": "0xc94ebb328ac25b95db0e0aa968371885fa516215",
+              "blocked_amount": "9000000000000000000"
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
