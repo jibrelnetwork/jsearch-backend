@@ -340,7 +340,7 @@ class MainDB(DBWrapper):
         await connection.execute("""DELETE FROM internal_transactions WHERE block_hash=%s""", block_hash)
         await connection.execute("""DELETE FROM uncles WHERE block_hash=%s""", block_hash)
         await connection.execute("""DELETE FROM blocks WHERE hash=%s""", block_hash)
-        await connection.execute("""DELETE FROM dex_logs WHERE hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM dex_logs WHERE block_hash=%s""", block_hash)
 
     async def get_block_hash_by_number(self, block_num) -> Optional[str]:
         q = blocks_t.select().where(and_(blocks_t.c.number == block_num, blocks_t.c.is_forked == false()))
