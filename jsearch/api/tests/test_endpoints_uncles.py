@@ -267,3 +267,29 @@ async def test_get_uncle_forked(
 
     resp = await cli.get('/v1/uncles/u3')
     assert resp.status == 404
+
+
+async def test_get_block_uncles_forked(
+        cli: TestClient,
+        uncle_factory: UncleFactory
+):
+    # given
+    uncle_factory.create(block_number=1, block_hash='aa', number=1, hash='u1', is_forked=False)
+    uncle_factory.create(block_number=2, block_hash='ab', number=2, hash='u2', is_forked=False)
+    uncle_factory.create(block_number=2, block_hash='ax', number=2, hash='u3', is_forked=True)
+    uncle_factory.create(block_number=3, block_hash='ac', number=3, hash='u4', is_forked=False)
+
+    resp = await cli.get('/v1/blocks/2/uncles')
+    assert resp.status == 200
+    uncles = (await resp.json())['data']
+    assert uncles[0]['hash'] == 'u2'
+
+    resp = await cli.get('/v1/blocks/ab/uncles')
+    assert resp.status == 200
+    uncles = (await resp.json())['data']
+    assert uncles[0]['hash'] == 'u2'
+
+    resp = await cli.get('/v1/blocks/u3/uncles')
+    assert resp.status == 200
+    uncles = (await resp.json())['data']
+    assert uncles == []

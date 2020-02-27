@@ -1,9 +1,9 @@
 import asyncio
 import logging
-
-import mode
 from functools import partial
 from typing import Any
+
+import mode
 
 from jsearch import settings
 from jsearch.common.structs import BlockRange
@@ -21,7 +21,6 @@ class SyncerService(mode.Service):
                  sync_range: BlockRange,
                  resync: bool = False,
                  resync_chain_splits: bool = False,
-                 check_lag: bool = False,
                  **kwargs: Any) -> None:
         self.raw_db = RawDB(settings.JSEARCH_RAW_DB)
         self.main_db = MainDB(settings.JSEARCH_MAIN_DB)
@@ -34,8 +33,6 @@ class SyncerService(mode.Service):
             resync=resync,
             state=state
         )
-        self.check_lag = check_lag
-
         super(SyncerService, self).__init__(**kwargs)
 
     async def on_start(self) -> None:
