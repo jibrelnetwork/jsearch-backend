@@ -414,11 +414,11 @@ class Storage(DbActionsMixin):
 
     async def get_block_uncles(self, tag, uncle_index=None):
         if tag.is_hash():
-            query = "SELECT * FROM uncles WHERE block_hash=%s"
+            query = "SELECT * FROM uncles WHERE block_hash=%s AND is_forked=false"
         elif tag.is_number():
-            query = "SELECT * FROM uncles WHERE block_number=%s"
+            query = "SELECT * FROM uncles WHERE block_number=%s AND is_forked=false"
         else:
-            query = "SELECT * FROM uncles WHERE block_number=(SELECT max(number) FROM blocks)"
+            query = "SELECT * FROM uncles WHERE block_number=(SELECT max(number) FROM blocks) AND is_forked=false"
 
         if tag.is_latest():
             rows = await self.fetch_all(query)
