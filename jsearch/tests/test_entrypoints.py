@@ -6,7 +6,6 @@ from typing import List, Dict
 import jsearch.cli
 import jsearch.common.worker
 import jsearch.pending_syncer.main
-import jsearch.syncer.main
 from jsearch.tests.common import CODE_OK, CODE_ERROR_FROM_CLICK
 
 pytestmark = [pytest.mark.asyncio]
