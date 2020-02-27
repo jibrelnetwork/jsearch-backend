@@ -18,7 +18,6 @@ setup(
     entry_points={
         'console_scripts': [
             'jsearch = jsearch.cli:cli',
-            'jsearch-syncer = jsearch.syncer.main:run',
             'jsearch-syncer-pending = jsearch.pending_syncer.main:run',
             'jsearch-token-holders-cleaner = jsearch.token_holders_cleaner.main:run',
             'jsearch-data-checker = jsearch.data_checker.main:run',
