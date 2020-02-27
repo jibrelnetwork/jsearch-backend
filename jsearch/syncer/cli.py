@@ -15,8 +15,6 @@ logger = logging.getLogger(__name__)
 @click.option('-r', '--sync-range', envvar='SYNC_RANGE', help="Blocks range to sync")
 @click.option('-w', '--workers', type=int, envvar='SYNCER_WORKERS')
 @click.option('-p', '--port', type=int, default=settings.SYNCER_API_PORT)
-@click.option('-l', '--check-lag', type=bool, envvar='SYNCER_CHECK_LAG')
-@click.option('-h', '--check-holes', type=bool, envvar='SYNCER_CHECK_HOLES')
 @click.option('--resync', type=bool, envvar='SYNCER_RESYNC')
 @click.option('--resync-chain-splits', type=bool, envvar='SYNCER_RESYNC_CHAIN_SPLITS')
 @click.pass_obj
@@ -27,8 +25,6 @@ def syncer(
         resync_chain_splits: bool,
         workers: int,
         port: int,
-        check_lag: bool,
-        check_holes: bool,
 ) -> None:
     """
     Service to sync data from RawDB to MainDB
@@ -47,8 +43,6 @@ def syncer(
             sync_range=block_range,
             workers=workers,
             **{
-                'check_lag': 0,
-                'check_holes': 0,
                 'resync': resync,
                 'resync_chain_splits': resync_chain_splits,
                 'log_level': config.log_level,
@@ -56,4 +50,4 @@ def syncer(
             }
         )
     else:
-        run_worker(block_range, port, check_lag, check_holes, resync, resync_chain_splits)
+        run_worker(block_range, port, resync, resync_chain_splits)

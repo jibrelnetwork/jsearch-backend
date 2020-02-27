@@ -104,8 +104,6 @@ def cli(loop, aiohttp_client_session_wide):
 @pytest.fixture(scope="session")
 def cli_syncer(loop, aiohttp_client_session_wide):
     app = syncer_make_app()
-    app['settings'] = {'check_lag': True, 'check_holes': True}
-
     return loop.run_until_complete(aiohttp_client_session_wide(app))
 
 

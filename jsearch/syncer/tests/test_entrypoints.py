@@ -42,7 +42,7 @@ async def test_syncer_entrypoint(
         exit_code: int,
 ) -> None:
     result = cli_runner.invoke(jsearch.cli.cli, call_args)
-    assert result.exit_code == exit_code
+    assert result.exit_code == exit_code, result
 
 
 class MockFixture(object):
@@ -73,7 +73,7 @@ async def test_monitor_entrypoint(
         exit_code: int,
 ) -> None:
     result = cli_runner.invoke(jsearch.cli.cli, call_args)
-    assert result.exit_code == exit_code
+    assert result.exit_code == exit_code, result
 
 
 @pytest.mark.usefixtures('_mock_loop_runners')
@@ -82,10 +82,6 @@ async def test_monitor_entrypoint(
     [
         ({'SYNC_RANGE': '1000-2000'}, {'sync_range': '1000-2000'}),
         ({'SYNCER_WORKERS': '15'}, {'workers': 15}),
-        ({'SYNCER_CHECK_LAG': '0'}, {'check_lag': False}),
-        ({'SYNCER_CHECK_LAG': '1'}, {'check_lag': True}),
-        ({'SYNCER_CHECK_HOLES': '0'}, {'check_holes': False}),
-        ({'SYNCER_CHECK_HOLES': '1'}, {'check_holes': True}),
         ({'SYNCER_RESYNC': '0'}, {'resync': False}),
         ({'SYNCER_RESYNC': '1'}, {'resync': True}),
         ({'SYNCER_RESYNC_CHAIN_SPLITS': '0'}, {'resync_chain_splits': False}),
@@ -95,10 +91,6 @@ async def test_monitor_entrypoint(
     ids=[
         "sync-range",
         "syncer-workers",
-        "syncer-check-lag-false",
-        "syncer-check-lag-true",
-        "syncer-check-holes-false",
-        "syncer-check-holes-true",
         "syncer-resync-false",
         "syncer-resync-true",
         "syncer-resync-chain-splits-false",

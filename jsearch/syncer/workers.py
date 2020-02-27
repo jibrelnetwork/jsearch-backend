@@ -14,20 +14,17 @@ logger = logging.getLogger("syncer")
 def run_worker(
         sync_range: BlockRange,
         api_port: int,
-        check_lag: bool,
-        check_holes: bool,
         resync: bool,
         resync_chain_splits: bool
 ) -> None:
     syncer_state = SyncerState(started_at=int(time.time()))
-    api_worker = services.ApiService(check_lag=check_lag, check_holes=check_holes, port=api_port, state=syncer_state)
+    api_worker = services.ApiService(port=api_port, state=syncer_state)
 
     syncer = services.SyncerService(
         sync_range=sync_range,
         resync=resync,
         resync_chain_splits=resync_chain_splits,
         state=syncer_state,
-        check_lag=check_lag
     )
     syncer.add_dependency(api_worker)
 
