@@ -2,6 +2,7 @@ from typing import List, Dict
 
 import click.testing
 import pytest
+from pytest_mock import MockFixture
 
 import jsearch.cli
 import jsearch.syncer.cli
@@ -21,7 +22,8 @@ from jsearch.tests.common import CODE_OK, CODE_ERROR_FROM_CLICK
         (['syncer', '--resync', "1"], CODE_OK),
         (['syncer', '--resync', "0", '--resync-chain-splits', "0"], CODE_OK),
         (['syncer', '--resync', "0", '--resync-chain-splits', "1"], CODE_OK),
-        (['syncer', '--sync-range', '26000-27000', '--resync', 'false'], CODE_OK),
+        (['syncer', '--sync-range', '26000-27000', '--resync', 'false', '--wait-migration', '11111'], CODE_OK),
+        (['syncer', '--wait-migration', '20200217142114'], CODE_OK),
     ],
     ids=[
         "no-args",
@@ -33,16 +35,19 @@ from jsearch.tests.common import CODE_OK, CODE_ERROR_FROM_CLICK
         "resync-false",
         "resync-false-resync-chain-split-true",
         "resync-false-resync-chain-split-false",
-        "all args",
+        "all-args",
+        "wait-migration",
     ]
 )
 async def test_syncer_entrypoint(
         cli_runner: click.testing.CliRunner,
         call_args: List[str],
         exit_code: int,
+        mocker: MockFixture
 ) -> None:
+    mocker.patch('jsearch.syncer.cli.start')
     result = cli_runner.invoke(jsearch.cli.cli, call_args)
-    assert result.exit_code == exit_code
+    assert result.exit_code == exit_code, result
 
 
 class MockFixture(object):
@@ -73,7 +78,7 @@ async def test_monitor_entrypoint(
         exit_code: int,
 ) -> None:
     result = cli_runner.invoke(jsearch.cli.cli, call_args)
-    assert result.exit_code == exit_code
+    assert result.exit_code == exit_code, result
 
 
 @pytest.mark.usefixtures('_mock_loop_runners')
@@ -82,10 +87,7 @@ async def test_monitor_entrypoint(
     [
         ({'SYNC_RANGE': '1000-2000'}, {'sync_range': '1000-2000'}),
         ({'SYNCER_WORKERS': '15'}, {'workers': 15}),
-        ({'SYNCER_CHECK_LAG': '0'}, {'check_lag': False}),
-        ({'SYNCER_CHECK_LAG': '1'}, {'check_lag': True}),
-        ({'SYNCER_CHECK_HOLES': '0'}, {'check_holes': False}),
-        ({'SYNCER_CHECK_HOLES': '1'}, {'check_holes': True}),
+        ({'SYNCER_WAIT_MIGRATION': '20200217142114'}, {'wait_migration': '20200217142114'}),
         ({'SYNCER_RESYNC': '0'}, {'resync': False}),
         ({'SYNCER_RESYNC': '1'}, {'resync': True}),
         ({'SYNCER_RESYNC_CHAIN_SPLITS': '0'}, {'resync_chain_splits': False}),
@@ -95,10 +97,7 @@ async def test_monitor_entrypoint(
     ids=[
         "sync-range",
         "syncer-workers",
-        "syncer-check-lag-false",
-        "syncer-check-lag-true",
-        "syncer-check-holes-false",
-        "syncer-check-holes-true",
+        "syncer-wait-migration",
         "syncer-resync-false",
         "syncer-resync-true",
         "syncer-resync-chain-splits-false",
