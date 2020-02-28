@@ -7,7 +7,7 @@ from jibrel_aiohttp_swagger import setup_swagger
 from psycopg2.extras import DictCursor
 
 from jsearch import settings
-from jsearch.api.handlers import monitoring, blocks, uncles, explorer, tokens, node_proxy, wallets, dex
+from jsearch.api.handlers import monitoring, blocks, uncles, explorer, tokens, node_proxy, wallets, dex, web3
 from jsearch.api.handlers.accounts import (
     get_account,
     get_accounts_balances,
@@ -71,6 +71,8 @@ def define_routes(app: Application):
 
     add('GET', '/v1/tokens/{contract_address}/transfers', tokens.get_token_transfers, name='token_transfers')
     add('GET', '/v1/tokens/{contract_address}/holders', tokens.get_token_holders, name='token_holders')
+
+    add('POST', '/v1/sha3', web3.sha3, name='web3_sha3')
 
     add('GET', '/v1/proxy/gas_price', node_proxy.get_gas_price)
     add('POST', '/v1/proxy/transaction_count', node_proxy.get_transaction_count)
