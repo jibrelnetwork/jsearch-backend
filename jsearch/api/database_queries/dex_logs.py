@@ -5,10 +5,10 @@ from typing import List, Optional, Any, Dict
 from sqlalchemy import Column, select, false
 from sqlalchemy.sql import ClauseElement
 
-from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, get_ordering
+from jsearch.api.ordering import Ordering, get_ordering
 from jsearch.common.processing.dex_logs import DexEventType
 from jsearch.common.tables import dex_logs_t
-from jsearch.typing import OrderScheme, OrderDirection, Columns
+from jsearch.typing import OrderScheme, OrderDirection
 
 
 def get_default_fields() -> List[Column]:
@@ -82,7 +82,7 @@ def get_dex_events_query(
 
     query = get_dex_logs_query(event_types=events_types)
     if event_index:
-        query = query.where(ordering.operator_or_equal(dex_logs_t.c.event_index, index))
+        query = query.where(ordering.operator_or_equal(dex_logs_t.c.event_index, event_index))
 
     elif block_number:
         query = query.where(ordering.operator_or_equal(dex_logs_t.c.block_number, block_number))

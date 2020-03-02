@@ -26,7 +26,7 @@ def tx_logs_with_dex_event_factory(
             block = block_factory.create(as_dict=as_dict, **block_kwargs)
 
         tx = transaction_factory.create_for_block(block, as_dict=as_dict, **tx_kwargs)[0]
-        kwargs = create_dex_event_dict(event_type, **kwargs)
-        return log_factory.create_for_tx(event_type=event_type, as_dict=as_dict, tx=tx, **kwargs)
+        kwargs = create_dex_event_dict(event_type=event_type, **kwargs)
+        return log_factory.create_for_tx(as_dict=as_dict, tx=tx, **kwargs)
 
     return _factory

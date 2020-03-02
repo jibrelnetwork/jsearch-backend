@@ -93,7 +93,7 @@ def logs_to_dex_events(
         event_type = log['event_type']
         if contract == settings.DEX_CONTRACT and event_type in DexEventType.ALL:
             event = {
-                'index': make_event_index_for_log(
+                'event_index': make_event_index_for_log(
                     log['block_number'],
                     log['transaction_index'],
                     log['log_index']

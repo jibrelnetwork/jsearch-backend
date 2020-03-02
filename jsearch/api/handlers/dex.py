@@ -33,7 +33,7 @@ async def get_dex_history(
 
     dex_history, last_affected_block = await storage.get_dex_history(
         ordering=order,
-        limit=limit + 1, # pagination
+        limit=limit + 1,  # pagination
         token_address=token_address,
         event_type=event_type,
         block_number=block_number,

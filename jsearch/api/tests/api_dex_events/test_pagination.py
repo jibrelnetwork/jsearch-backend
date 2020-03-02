@@ -1,4 +1,3 @@
-from operator import getitem
 from typing import Callable, Dict, Any, List
 
 import pytest

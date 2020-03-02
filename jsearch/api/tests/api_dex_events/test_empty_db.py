@@ -1,5 +1,3 @@
-from typing import Dict, Any
-
 import pytest
 import yarl
 from aiohttp.test_utils import TestClient
