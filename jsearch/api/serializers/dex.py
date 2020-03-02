@@ -1,6 +1,7 @@
 import logging
 
-from marshmallow.validate import Length, ContainsOnly
+from marshmallow.fields import Int
+from marshmallow.validate import Length, ContainsOnly, Range
 
 from jsearch.api.database_queries.dex_logs import get_events_ordering
 from jsearch.api.ordering import Ordering
@@ -16,6 +17,7 @@ PENDING_EVENTS_DEFAULT_LIMIT = 100
 
 class DexHistorySchema(BlockRelatedListSchema):
     token_address = StrLower(validate=Length(min=1, max=100), location='match_info')
+    event_index = Int(validate=Range(min=0))
     event_type = JoinedString(validate=ContainsOnly(choices=[
         *DexEventType.ORDERS,
         *DexEventType.TRADE

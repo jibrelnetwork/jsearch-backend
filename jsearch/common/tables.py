@@ -358,6 +358,7 @@ dex_logs_t = sa.Table(
     sa.Column('block_number', Integer),
     sa.Column('block_hash', sa.String),
     sa.Column('timestamp', Integer),
+    sa.Column('event_index', postgresql.BIGINT),
     sa.Column('event_type', sa.String),
     sa.Column('event_data', postgresql.JSONB),
     sa.Column('is_forked', sa.Boolean, default=False),

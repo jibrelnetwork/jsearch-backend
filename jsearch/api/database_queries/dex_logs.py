@@ -19,15 +19,12 @@ def get_default_fields() -> List[Column]:
         dex_logs_t.c.tx_hash,
         dex_logs_t.c.event_type,
         dex_logs_t.c.event_data,
+        dex_logs_t.c.event_index,
     ]
 
 
 def get_events_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-    columns: Columns = {
-        ORDER_SCHEME_BY_NUMBER: [dex_logs_t.c.block_number],
-        ORDER_SCHEME_BY_TIMESTAMP: [dex_logs_t.c.timestamp],
-    }[scheme]
-
+    columns = [dex_logs_t.c.event_index]
     return get_ordering(columns, scheme, direction)
 
 
@@ -69,6 +66,7 @@ def get_dex_events_query(
         events_types: Optional[List[str]] = None,
         block_number: Optional[int] = None,
         timestamp: Optional[int] = None,
+        event_index: Optional[int] = None
 ) -> ClauseElement:
     if not events_types:
         events_types = [
@@ -83,10 +81,13 @@ def get_dex_events_query(
         ]
 
     query = get_dex_logs_query(event_types=events_types)
-    if block_number:
+    if event_index:
+        query = query.where(ordering.operator_or_equal(dex_logs_t.c.event_index, index))
+
+    elif block_number:
         query = query.where(ordering.operator_or_equal(dex_logs_t.c.block_number, block_number))
 
-    if timestamp:
+    elif timestamp:
         query = query.where(ordering.operator_or_equal(dex_logs_t.c.block_number, block_number))
 
     order_ids_q = get_clause('orderID', orders_ids)
@@ -98,7 +99,7 @@ def get_dex_events_query(
     if limit:
         query = query.limit(limit)
 
-    return query
+    return query.order_by(*ordering.columns)
 
 
 def get_dex_blocked_query(

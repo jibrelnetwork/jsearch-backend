@@ -26,17 +26,19 @@ async def get_dex_history(
         event_type: Optional[List[str]] = None,
         block_number: Optional[int] = None,
         timestamp: Optional[int] = None,
+        event_index: Optional[int] = None
 ) -> web.Response:
     storage = request.app['storage']
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     dex_history, last_affected_block = await storage.get_dex_history(
         ordering=order,
-        limit=limit,
+        limit=limit + 1, # pagination
         token_address=token_address,
         event_type=event_type,
         block_number=block_number,
-        timestamp=timestamp
+        timestamp=timestamp,
+        event_index=event_index
     )
     url = request.app.router['dex_orders'].url_for(token_address=token_address)
     page = get_pagination_description(url=url, items=dex_history, limit=limit, ordering=order)
@@ -51,8 +53,9 @@ async def get_dex_history(
 
     if orphaned_request is not None:
         return orphaned_request
+
     return api_success(
-        data=[item.as_dict() for item in dex_history],
+        data=[item.as_dict() for item in dex_history[:limit]],
         page=page,
         meta=tip and tip.to_dict()
     )
