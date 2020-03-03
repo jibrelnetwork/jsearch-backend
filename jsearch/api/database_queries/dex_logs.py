@@ -79,7 +79,6 @@ def get_dex_events_query(
             DexEventType.TRADE_COMPLETED,
             DexEventType.TRADE_CANCELLED,
         ]
-
     query = get_dex_logs_query(event_types=events_types)
     if event_index:
         query = query.where(ordering.operator_or_equal(dex_logs_t.c.event_index, event_index))
@@ -88,7 +87,7 @@ def get_dex_events_query(
         query = query.where(ordering.operator_or_equal(dex_logs_t.c.block_number, block_number))
 
     elif timestamp:
-        query = query.where(ordering.operator_or_equal(dex_logs_t.c.block_number, block_number))
+        query = query.where(ordering.operator_or_equal(dex_logs_t.c.timestamp, timestamp))
 
     order_ids_q = get_clause('orderID', orders_ids)
     trade_ids_q = get_clause('tradeID', trades_ids)

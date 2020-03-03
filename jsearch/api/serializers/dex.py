@@ -18,10 +18,15 @@ PENDING_EVENTS_DEFAULT_LIMIT = 100
 class DexHistorySchema(BlockRelatedListSchema):
     token_address = StrLower(validate=Length(min=1, max=100), location='match_info')
     event_index = Int(validate=Range(min=0))
-    event_type = JoinedString(validate=ContainsOnly(choices=[
-        *DexEventType.ORDERS,
-        *DexEventType.TRADE
-    ]))
+    event_type = JoinedString(
+        validate=ContainsOnly(
+            choices=[
+                *DexEventType.ORDERS,
+                *DexEventType.TRADE
+            ],
+            error='Available filters: {choices}'
+        )
+    )
 
     def _get_ordering(self, scheme: OrderScheme, direction: OrderDirection) -> Ordering:
         return get_events_ordering(scheme, direction)

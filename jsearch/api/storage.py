@@ -1062,6 +1062,15 @@ class Storage(DbActionsMixin):
 
         return res, last_affected_block_number
 
+    async def get_asset_placed_order(
+            self,
+            token_address: str,
+    ) -> Optional[Dict[str, Any]]:
+        orders_query = get_dex_orders_query(traded_asset=token_address).limit(1)
+        result = await self.fetch_one(orders_query)
+        if result:
+            return result
+
     async def get_dex_history(
             self,
             ordering: Ordering,
@@ -1071,7 +1080,7 @@ class Storage(DbActionsMixin):
             block_number: Optional[int] = None,
             timestamp: Optional[int] = None,
             event_index: Optional[int] = None,
-    ):
+    ) -> Tuple[List[Dict[str, Any]], Optional[int]]:
         # WTF: only orders have information about assets
         orders_query = get_dex_orders_query(traded_asset=token_address)
         orders = await self.fetch_all(orders_query)
