@@ -115,20 +115,23 @@ def random_events(
 ) -> Callable[[int], List[Dict[str, Any]]]:
     def _factory(limit: int, token: Optional[str] = None) -> List[Dict[str, Any]]:
         token = token or token_address
-        dex_linked_events_factory.add_order(tradedAsset=token)
 
         kwargs = {
-            'block_number': 0,
-            'timestamp': 0,
+            'block_number': 1,
+            'timestamp': 1 * 1000,
             'event_index': make_event_index_for_log(0, 0, 0)
         }
+
+        dex_linked_events_factory.add_order(tradedAsset=token, **kwargs)
+        dex_linked_events_factory.add_trade(tradedAsset=token, **kwargs)
+
         while len(dex_linked_events_factory.history) < limit:
             seed = randint(0, 3)
 
             n = len(dex_linked_events_factory.history)
             kwargs['event_index'] = make_event_index_for_log(n, n, n)
             # each 3 records algorithm changes block for dex event
-            if not len(dex_linked_events_factory.history) % 3:
+            if not (len(dex_linked_events_factory.history) - 1) % 3:
                 kwargs['block_number'] += 1
                 kwargs['timestamp'] += 1 * 1000
 
