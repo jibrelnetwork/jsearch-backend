@@ -182,4 +182,3 @@ async def test_cursor_pagination(
 
     assert (next_url and parse_url(next_url)[1] or None) == next_params
     assert (link_url and parse_url(link_url)[1] or None) == link_params
-

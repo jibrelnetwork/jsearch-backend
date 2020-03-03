@@ -1070,6 +1070,7 @@ class Storage(DbActionsMixin):
         result = await self.fetch_one(orders_query)
         if result:
             return result
+        return None
 
     async def get_dex_history(
             self,
@@ -1080,7 +1081,7 @@ class Storage(DbActionsMixin):
             block_number: Optional[int] = None,
             timestamp: Optional[int] = None,
             event_index: Optional[int] = None,
-    ) -> Tuple[List[Dict[str, Any]], Optional[int]]:
+    ) -> Tuple[List['HistoryEvent'], Optional[int]]:
         # WTF: only orders have information about assets
         orders_query = get_dex_orders_query(traded_asset=token_address)
         orders = await self.fetch_all(orders_query)
