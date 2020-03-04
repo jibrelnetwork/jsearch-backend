@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any, List, Dict
+from typing import List
 
 from aiohttp import web
 from aiopg.sa import Engine
@@ -8,9 +8,10 @@ from aiopg.sa import Engine
 from jsearch import settings
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.common import utils, prom_metrics
-from jsearch.common.db import fetch_one, fetch_all
+from jsearch.common.check_canonical_chain import get_canonical_holes
+from jsearch.common.db import fetch_one
 from jsearch.common.reference_data import get_lag_statistics, get_lag_statistics_by_provider
-from jsearch.common.structs import DbStats, LoopStats, NodeStats, ChainStats, LagStats
+from jsearch.common.structs import DbStats, LoopStats, NodeStats, ChainStats, LagStats, Block
 
 logger = logging.getLogger(__name__)
 
@@ -54,15 +55,15 @@ async def get_loop_stats() -> LoopStats:
 
 async def get_chain_stats(engine: Engine) -> ChainStats:
     is_healthy = False
-    holes: List[Dict[str, Any]] = []
+    holes: List[Block] = []
     try:
-        # stored function check_canonical_chain(depth) returns number, hash, parent_hash
+        # function get_canonical_holes(depth) returns number, hash, parent_hash
         # for each block N from canonical chain, if N.parent_hash != (N-1).hash
-        holes = await fetch_all(engine, 'SELECT number, hash, parent_hash FROM check_canonical_chain(1000)')
+        holes = await get_canonical_holes(engine, depth=1000)
         if not holes:
             is_healthy = True
         else:
-            logger.error("Chain Health Error: Chain Holes", extra={"holes": str([dict(h) for h in holes])})
+            logger.error("Chain Health Error: Chain Holes", extra={"holes": ', '.join(repr(h) for h in holes)})
     except asyncio.CancelledError:
         raise
     except Exception as e:
