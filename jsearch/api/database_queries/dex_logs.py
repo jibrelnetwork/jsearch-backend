@@ -5,10 +5,10 @@ from typing import List, Optional, Any, Dict
 from sqlalchemy import Column, select, false
 from sqlalchemy.sql import ClauseElement
 
-from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, get_ordering
+from jsearch.api.ordering import Ordering, get_ordering
 from jsearch.common.processing.dex_logs import DexEventType
 from jsearch.common.tables import dex_logs_t
-from jsearch.typing import OrderScheme, OrderDirection, Columns
+from jsearch.typing import OrderScheme, OrderDirection
 
 
 def get_default_fields() -> List[Column]:
@@ -19,15 +19,12 @@ def get_default_fields() -> List[Column]:
         dex_logs_t.c.tx_hash,
         dex_logs_t.c.event_type,
         dex_logs_t.c.event_data,
+        dex_logs_t.c.event_index,
     ]
 
 
 def get_events_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-    columns: Columns = {
-        ORDER_SCHEME_BY_NUMBER: [dex_logs_t.c.block_number],
-        ORDER_SCHEME_BY_TIMESTAMP: [dex_logs_t.c.timestamp],
-    }[scheme]
-
+    columns = [dex_logs_t.c.event_index]
     return get_ordering(columns, scheme, direction)
 
 
@@ -69,6 +66,7 @@ def get_dex_events_query(
         events_types: Optional[List[str]] = None,
         block_number: Optional[int] = None,
         timestamp: Optional[int] = None,
+        event_index: Optional[int] = None
 ) -> ClauseElement:
     if not events_types:
         events_types = [
@@ -81,13 +79,15 @@ def get_dex_events_query(
             DexEventType.TRADE_COMPLETED,
             DexEventType.TRADE_CANCELLED,
         ]
-
     query = get_dex_logs_query(event_types=events_types)
-    if block_number:
+    if event_index:
+        query = query.where(ordering.operator_or_equal(dex_logs_t.c.event_index, event_index))
+
+    elif block_number:
         query = query.where(ordering.operator_or_equal(dex_logs_t.c.block_number, block_number))
 
-    if timestamp:
-        query = query.where(ordering.operator_or_equal(dex_logs_t.c.block_number, block_number))
+    elif timestamp:
+        query = query.where(ordering.operator_or_equal(dex_logs_t.c.timestamp, timestamp))
 
     order_ids_q = get_clause('orderID', orders_ids)
     trade_ids_q = get_clause('tradeID', trades_ids)
@@ -98,7 +98,7 @@ def get_dex_events_query(
     if limit:
         query = query.limit(limit)
 
-    return query
+    return query.order_by(*ordering.columns)
 
 
 def get_dex_blocked_query(

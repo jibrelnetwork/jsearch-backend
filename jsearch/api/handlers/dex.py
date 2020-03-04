@@ -4,7 +4,9 @@ from typing import Optional, List
 from aiohttp import web
 
 from jsearch.api.blockchain_tip import maybe_apply_tip
-from jsearch.api.helpers import ApiError, api_success, maybe_orphan_request
+from jsearch.api.error_code import ErrorCode
+from jsearch.api.handlers.common import get_last_block_number_and_timestamp
+from jsearch.api.helpers import ApiError, api_success, maybe_orphan_request, api_error_response
 from jsearch.api.ordering import Ordering
 from jsearch.api.pagination import get_pagination_description
 from jsearch.api.serializers.dex import DexHistorySchema, DexOrdersSchema, DexBlockedAmountsSchema
@@ -26,19 +28,31 @@ async def get_dex_history(
         event_type: Optional[List[str]] = None,
         block_number: Optional[int] = None,
         timestamp: Optional[int] = None,
+        event_index: Optional[int] = None
 ) -> web.Response:
     storage = request.app['storage']
+
+    any_orders = await storage.get_asset_placed_order(token_address)
+    if any_orders is None:
+        err = {
+            'code': ErrorCode.RESOURCE_NOT_FOUND,
+            'message': f'Asset {token_address} was not found'
+        }
+        return api_error_response(status=404, errors=[err])
+
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
+    block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
     dex_history, last_affected_block = await storage.get_dex_history(
         ordering=order,
-        limit=limit,
+        limit=limit + 1,  # pagination
         token_address=token_address,
         event_type=event_type,
         block_number=block_number,
-        timestamp=timestamp
+        timestamp=timestamp,
+        event_index=event_index
     )
-    url = request.app.router['dex_orders'].url_for(token_address=token_address)
+    url = request.app.router['dex_history'].url_for(token_address=token_address)
     page = get_pagination_description(url=url, items=dex_history, limit=limit, ordering=order)
 
     data, tip = await maybe_apply_tip(storage, tip_hash, dex_history, last_affected_block, empty=[])
@@ -51,8 +65,9 @@ async def get_dex_history(
 
     if orphaned_request is not None:
         return orphaned_request
+
     return api_success(
-        data=[item.as_dict() for item in dex_history],
+        data=[item.as_dict() for item in dex_history[:limit]],
         page=page,
         meta=tip and tip.to_dict()
     )

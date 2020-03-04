@@ -194,10 +194,12 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, ma
 
 
 @pytest.mark.asyncio
+@pytest.mark.syncer
+@pytest.mark.dex
 @pytest.mark.parametrize("event_type", DexEventType.ALL)
 async def test_save_dex_events(
         block_dict_factory: Callable[..., AnyDict],
-        dex_log_dict_factory: Callable[..., AnyDict],
+        tx_logs_with_dex_event_factory: Callable[..., AnyDict],
         event_type: str,
         main_db_wrapper: MainDB,
         db: Engine
@@ -206,7 +208,7 @@ async def test_save_dex_events(
     from jsearch.common.processing.dex_logs import logs_to_dex_events
 
     block = block_dict_factory()
-    log = dex_log_dict_factory(event_type=event_type, block_kwargs=block)
+    log = tx_logs_with_dex_event_factory(event_type=event_type, block_kwargs=block)
 
     events = logs_to_dex_events([log])
 

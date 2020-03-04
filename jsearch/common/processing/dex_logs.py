@@ -4,6 +4,7 @@ from typing import NamedTuple, List, Optional
 from jsearch import settings
 from jsearch.common import contracts
 from jsearch.common.contracts import DEX_ABI
+from jsearch.common.wallet_events import make_event_index_for_log
 from jsearch.typing import Logs, AnyDict, Log
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,11 @@ def logs_to_dex_events(
         event_type = log['event_type']
         if contract == settings.DEX_CONTRACT and event_type in DexEventType.ALL:
             event = {
+                'event_index': make_event_index_for_log(
+                    log['block_number'],
+                    log['transaction_index'],
+                    log['log_index']
+                ),
                 'tx_hash': log['transaction_hash'],
                 'block_hash': log['block_hash'],
                 'block_number': log['block_number'],

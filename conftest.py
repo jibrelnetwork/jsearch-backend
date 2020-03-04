@@ -33,6 +33,7 @@ pytest_plugins = (
     "jsearch.tests.plugins.databases.factories.dex_logs",
     "jsearch.tests.plugins.databases.factories.raw.pending_transactions",
     "jsearch.tests.plugins.databases.factories.raw.chain_events",
+    "jsearch.tests.plugins.databases.factories.mixed.dex",
     "jsearch.tests.plugins.databases.main_db",
     "jsearch.tests.plugins.databases.raw_db",
     "jsearch.tests.plugins.syncer",
@@ -90,14 +91,17 @@ async def aiohttp_client_session_wide(event_loop):
 
 
 @pytest.fixture(scope="session")
-def cli(loop, aiohttp_client_session_wide):
+def app(loop, aiohttp_client_session_wide):
     app = loop.run_until_complete(make_app())
 
     app['validate_spec'] = True
     app._middlewares += (spec_testing_middleware,)
+    return app
 
+
+@pytest.fixture(scope="session")
+def cli(loop, aiohttp_client_session_wide, app):
     client = loop.run_until_complete(aiohttp_client_session_wide(app))
-
     return client
 
 

@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from functools import partial
 from itertools import groupby, chain
-from typing import DefaultDict, Tuple, Set, NamedTuple
+from typing import DefaultDict, Tuple, Set, NamedTuple, Union
 from typing import List, Optional, Dict, Any
 
 from aiopg.sa import Engine
@@ -1062,6 +1062,16 @@ class Storage(DbActionsMixin):
 
         return res, last_affected_block_number
 
+    async def get_asset_placed_order(
+            self,
+            token_address: str,
+    ) -> Optional[Dict[str, Any]]:
+        orders_query = get_dex_orders_query(traded_asset=token_address).limit(1)
+        result = await self.fetch_one(orders_query)
+        if result:
+            return result
+        return None
+
     async def get_dex_history(
             self,
             ordering: Ordering,
@@ -1070,7 +1080,8 @@ class Storage(DbActionsMixin):
             event_type: Optional[List[str]] = None,
             block_number: Optional[int] = None,
             timestamp: Optional[int] = None,
-    ):
+            event_index: Optional[int] = None,
+    ) -> Tuple[List['HistoryEvent'], Optional[int]]:
         # WTF: only orders have information about assets
         orders_query = get_dex_orders_query(traded_asset=token_address)
         orders = await self.fetch_all(orders_query)
@@ -1091,6 +1102,7 @@ class Storage(DbActionsMixin):
             ordering=ordering,
             block_number=block_number,
             timestamp=timestamp,
+            event_index=event_index,
             events_types=event_type
         )
         history = await self.fetch_all(history_query)
@@ -1103,7 +1115,8 @@ class Storage(DbActionsMixin):
             description = EventDescription(
                 event_type=event['event_type'],
                 event_block_number=event['block_number'],
-                event_timestamp=event['timestamp']
+                event_timestamp=event['timestamp'],
+                event_index=event['event_index']
             )
 
             if description.event_type in DexEventType.TRADE:
@@ -1323,6 +1336,7 @@ class EventDescription(NamedTuple):
     event_type: str
     event_block_number: int
     event_timestamp: int
+    event_index: int
 
 
 @dataclass
@@ -1331,14 +1345,17 @@ class HistoryEvent:
     order_data: OrderEvent
     trade_data: Optional[TradeEvent] = None
 
-    def __getitem__(self, item) -> str:
+    def __getitem__(self, item) -> Optional[Union[str, int]]:
         if item == 'block_number':
             return str(self.event_data.event_block_number)
 
         if item == 'timestamp':
-            return str(self.event_data.event_timestamp)
+            return self.event_data.event_timestamp
 
-        return ''
+        if item == 'event_index':
+            return self.event_data.event_index
+
+        return None
 
     def as_dict(self):
         data = {

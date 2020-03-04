@@ -1854,6 +1854,7 @@ paths:
         - $ref: '#/components/parameters/block_number'
         - $ref: '#/components/parameters/timestamp'
         - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/event_index'
       responses:
         '200':
           description: List of orders events
@@ -1883,6 +1884,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  - success: false
+                    errors:
+                      - field: tip
+                        code: RESOURCE_NOT_FOUND
+                        message: Asset {token_address} was not found
   /v1/dex/blocked/{user_address}:
     get:
       tags:
@@ -2706,6 +2719,10 @@ components:
               event_timestamp:
                 type: integer
                 description: An unix timestamp of event
+                example: 1548229016
+              event_index:
+                type: integer
+                description: An unix event id
                 example: 1548229016
           order_data:
             type: object
@@ -3607,6 +3624,7 @@ components:
                    "event_type":"OrderActivatedEvent",
                    "event_block_number":9520621,
                    "event_timestamp":1582208588
+                   "event_index":1582208588
                 },
                 "order_data":{
                    "order_id":"0x700732928f253ed5e412f1c34da2ae7706c27f318b03ff48a0fa9bd3ca22e6ab",
@@ -3625,6 +3643,7 @@ components:
                    "event_type":"TradePlacedEvent",
                    "event_block_number":9520621,
                    "event_timestamp":1582208588
+                   "event_index":1582208988
                 },
                 "order_data":{
                    "order_id":"0x700732928f253ed5e412f1c34da2ae7706c27f318b03ff48a0fa9bd3ca22e6ab",
