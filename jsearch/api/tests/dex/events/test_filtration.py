@@ -5,7 +5,7 @@ import pytest
 import yarl
 from aiohttp.test_utils import TestClient
 
-from jsearch.api.tests.api_dex_events.conftest import DexLinkedEventsFactory
+from jsearch.api.tests.dex.conftest import DexLinkedEventsFactory
 from jsearch.common.processing.dex_logs import DexEventType
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.api, pytest.mark.dex, pytest.mark.filtration]
