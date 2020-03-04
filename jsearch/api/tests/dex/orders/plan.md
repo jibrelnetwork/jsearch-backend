@@ -5,16 +5,16 @@
 * [x] Serialization
 * [x] API responses
     * [x] 200s
-* [ ] API errors
-    * [ ] 400s
+* [x] API errors
+    * [x] 400s
         * [x] order status type is invalid
         * [x] order creator does not exists
-    * [ ] 404s
-        * [ ] asset does not exist
+    * [x] 404s
+        * [x] asset does not exist
 * [ ] Blockchain tip
 * [ ] Data consistency
 * [x] Resources filtratiob
     * [x] by asset
     * [x] by order status
     * [x] by order creator
-* [ ] `jsearch-v1.swagger.yaml` conformity
+* [x] `jsearch-v1.swagger.yaml` conformity
