@@ -8,7 +8,7 @@
 * [ ] API errors
     * [ ] 400s
         * [x] order status type is invalid
-        * [ ] order creator does not exists
+        * [x] order creator does not exists
     * [ ] 404s
         * [ ] asset does not exist
 * [ ] Blockchain tip

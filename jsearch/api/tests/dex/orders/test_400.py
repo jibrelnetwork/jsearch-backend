@@ -30,11 +30,35 @@ async def test_invalid_order_status(
     data = await response.json()
 
     # then
+    assert response.status == 400
     assert data['status']['success'] is False
     assert data['status']['errors'] == [
         {
             'code': 'INVALID_VALUE',
             'field': 'order_status',
             'message': f'Available filters: {choices}'
+        }
+    ]
+
+
+async def test_not_existed_order_creator(
+        cli: TestClient,
+        url: yarl.URL,
+        order_creator: str
+) -> None:
+    url = url.with_query({'order_creator': order_creator})
+
+    # when
+    response = await cli.get(str(url))
+    data = await response.json()
+
+    # then
+    assert response.status == 400
+    assert data['status']['success'] is False
+    assert data['status']['errors'] == [
+        {
+            'code': 'NOT_FOUND',
+            'field': 'order_creator',
+            'message': f'An order with {order_creator} as an order creator does not exist.'
         }
     ]
