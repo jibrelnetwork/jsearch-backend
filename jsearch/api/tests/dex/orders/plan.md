@@ -13,7 +13,8 @@
         * [ ] asset does not exist
 * [ ] Blockchain tip
 * [ ] Data consistency
-* [ ] Resources filtration by query params
-    * [ ] by order status
-    * [ ] by order creator
+* [x] Resources filtratiob
+    * [x] by asset
+    * [x] by order status
+    * [x] by order creator
 * [ ] `jsearch-v1.swagger.yaml` conformity
