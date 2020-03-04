@@ -47,7 +47,7 @@ class DexOrderPlacedFactory(DexOrderFactory):
     orderType = factory.Sequence(lambda n: n % 2)
     orderCreator = factory.LazyFunction(generate_address)
     tradedAsset = factory.LazyFunction(generate_address)
-    tradedAmount = factory.Sequence(lambda n: n * randint(1000, 10000))
+    tradedAmount = factory.Sequence(lambda n: (n + 1) * randint(1000, 10000))
     fiatAsset = factory.LazyFunction(generate_address)
     assetPrice = factory.Sequence(lambda n: n % 70)
     expirationTimestamp = factory.Sequence(lambda n: int(time()) + n * 10 ** 3)
