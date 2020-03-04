@@ -2,13 +2,13 @@ import pytest
 import yarl
 from aiohttp.test_utils import TestClient
 
+from jsearch.api.tests.dex.conftest import DexLinkedEventsFactory
 from jsearch.common.processing.dex_logs import ORDER_STATUSES
 
 pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.api,
     pytest.mark.dex,
-    pytest.mark.dex_orders,
     pytest.mark.negative
 ]
 
@@ -44,8 +44,11 @@ async def test_invalid_order_status(
 async def test_not_existed_order_creator(
         cli: TestClient,
         url: yarl.URL,
-        order_creator: str
+        order_creator: str,
+        token_address: str,
+        dex_linked_events_factory: DexLinkedEventsFactory,
 ) -> None:
+    dex_linked_events_factory.add_order(tradedAsset=token_address)
     url = url.with_query({'order_creator': order_creator})
 
     # when

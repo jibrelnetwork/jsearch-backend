@@ -13,7 +13,6 @@ pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.api,
     pytest.mark.dex,
-    pytest.mark.dex_orders,
     pytest.mark.filtration
 ]
 

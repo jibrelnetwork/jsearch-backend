@@ -84,6 +84,14 @@ async def get_dex_orders(
 ) -> web.Response:
     storage = request.app['storage']
 
+    any_orders = await storage.get_order(token_address)
+    if any_orders is None:
+        err = {
+            'code': ErrorCode.RESOURCE_NOT_FOUND,
+            'message': f'Asset {token_address} was not found'
+        }
+        return api_error_response(status=404, errors=[err])
+
     any_orders = await storage.get_order(token_address=token_address, order_creator=order_creator)
     if any_orders is None:
         err = {

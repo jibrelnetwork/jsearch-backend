@@ -1840,6 +1840,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  - success: false
+                    errors:
+                      - field: tip
+                        code: NOT_FOUND
+                        message: Asset {token_address} was not found
   /v1/dex/history/{token_address}:
     get:
       tags:
@@ -1894,7 +1906,7 @@ paths:
                   - success: false
                     errors:
                       - field: tip
-                        code: RESOURCE_NOT_FOUND
+                        code: NOT_FOUND
                         message: Asset {token_address} was not found
   /v1/dex/blocked/{user_address}:
     get:
