@@ -7,7 +7,7 @@
     * [x] 200s
 * [ ] API errors
     * [ ] 400s
-        * [ ] order status type is invalid
+        * [x] order status type is invalid
         * [ ] order creator does not exists
     * [ ] 404s
         * [ ] asset does not exist
