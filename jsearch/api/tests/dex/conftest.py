@@ -4,20 +4,10 @@ from random import randint
 from typing import Callable, Dict, Any, Optional, List
 
 import pytest
-import yarl
-from aiohttp import web
 
 from jsearch.common.processing.dex_logs import DexEventType
 from jsearch.common.wallet_events import make_event_index_for_log
 from jsearch.tests.plugins.databases.factories.common import generate_address
-
-
-@pytest.fixture()
-def get_url(app: web.Application) -> Callable[[str], yarl.URL]:
-    def get_url(token_address: str) -> yarl.URL:
-        return app.router['dex_history'].url_for(token_address=token_address)
-
-    return get_url
 
 
 @pytest.fixture()
@@ -28,11 +18,6 @@ def token_address():
 @pytest.fixture()
 def order_creator():
     return generate_address()
-
-
-@pytest.fixture()
-def url(get_url: Callable[[str], yarl.URL], token_address: str) -> yarl.URL:
-    return get_url(token_address)
 
 
 def prepare_kwargs(common_keys=('block_number', 'timestamp', 'event_index'), **kwargs) -> Dict[str, Any]:

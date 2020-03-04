@@ -32,7 +32,7 @@ async def get_dex_history(
 ) -> web.Response:
     storage = request.app['storage']
 
-    any_orders = await storage.get_asset_placed_order(token_address)
+    any_orders = await storage.get_order(token_address)
     if any_orders is None:
         err = {
             'code': ErrorCode.RESOURCE_NOT_FOUND,
@@ -83,6 +83,24 @@ async def get_dex_orders(
         tip_hash: Optional[str] = None,
 ) -> web.Response:
     storage = request.app['storage']
+
+    any_orders = await storage.get_order(token_address)
+    if any_orders is None:
+        err = {
+            'code': ErrorCode.RESOURCE_NOT_FOUND,
+            'message': f'Asset {token_address} was not found'
+        }
+        return api_error_response(status=404, errors=[err])
+
+    any_orders = await storage.get_order(token_address=token_address, order_creator=order_creator)
+    if any_orders is None:
+        err = {
+            'code': ErrorCode.RESOURCE_NOT_FOUND,
+            'field': 'order_creator',
+            'message': f'An order with {order_creator} as an order creator does not exist.'
+        }
+        return api_error_response(status=400, errors=[err])
+
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     dex_history, last_affected_block = await storage.get_dex_orders(token_address, order_creator, order_status)
@@ -112,6 +130,7 @@ async def get_dex_blocked_amounts(
         tip_hash: Optional[str] = None,
 ) -> web.Response:
     storage = request.app['storage']
+
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     dex_history, last_affected_block = await storage.get_dex_blocked(user_address, token_addresses)

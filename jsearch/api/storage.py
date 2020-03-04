@@ -1062,11 +1062,18 @@ class Storage(DbActionsMixin):
 
         return res, last_affected_block_number
 
-    async def get_asset_placed_order(
+    async def get_order(
             self,
             token_address: str,
+            order_creator: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
-        orders_query = get_dex_orders_query(traded_asset=token_address).limit(1)
+        order_filter = {
+            'traded_asset': token_address
+        }
+        if order_creator:
+            order_filter['creator'] = order_creator
+
+        orders_query = get_dex_orders_query(**order_filter).limit(1)
         result = await self.fetch_one(orders_query)
         if result:
             return result
