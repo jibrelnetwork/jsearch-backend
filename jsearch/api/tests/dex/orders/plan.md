@@ -3,8 +3,8 @@
 ## Test plan.
 
 * [x] Serialization
-* [ ] API responses
-    * [ ] 200s
+* [x] API responses
+    * [x] 200s
 * [ ] API errors
     * [ ] 400s
         * [ ] order status type is invalid
