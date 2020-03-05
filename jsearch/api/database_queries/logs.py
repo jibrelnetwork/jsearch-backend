@@ -1,5 +1,6 @@
-from sqlalchemy import select, Column, false, and_, tuple_
+from sqlalchemy import select, Column, false, and_, tuple_, cast
 from sqlalchemy.orm import Query
+from sqlalchemy.dialects.postgresql import VARCHAR, ARRAY
 from typing import List, Optional
 
 from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, get_ordering
@@ -44,7 +45,7 @@ def get_logs_by_address_query(address: str, ordering: Ordering, topics: List[str
         whereclause=and_(
             logs_t.c.is_forked == false(),
             logs_t.c.address == address,
-            logs_t.c.topics.op("@>")(topics),
+            logs_t.c.topics.contains(cast(topics, ARRAY(VARCHAR))),
         )
     ).order_by(*ordering.columns)
 
