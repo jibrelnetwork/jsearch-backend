@@ -38,6 +38,8 @@ fi
 
 CMD="$@"
 
+echo "$CMD"
+
 if [[ $CMD = "jsearch-syncer" ]]; then
     python manage.py init
     jsearch syncer

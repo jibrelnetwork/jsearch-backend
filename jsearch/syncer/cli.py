@@ -1,11 +1,11 @@
 import logging
+from typing import Optional
 
 import click
 
 from jsearch import settings
 from jsearch.common import stats, logs
 from jsearch.common.structs import BlockRange
-from jsearch.structs import AppConfig
 from jsearch.syncer.utils import wait_for_version
 from jsearch.syncer.workers import run_workers_pool, run_worker
 from jsearch.utils import parse_range
@@ -13,13 +13,16 @@ from jsearch.utils import parse_range
 logger = logging.getLogger(__name__)
 
 
-def start(version_id: str,
-          workers: int,
-          port: int,
-          resync: bool,
-          resync_chain_splits: bool,
-          block_range: BlockRange,
-          config: AppConfig) -> None:
+def start(
+        version_id: str,
+        workers: int,
+        port: int,
+        resync: bool,
+        resync_chain_splits: bool,
+        block_range: BlockRange,
+        log_level: str,
+        no_json_formatter: bool
+) -> None:
     if version_id:
         wait_for_version(version_id)
 
@@ -31,8 +34,8 @@ def start(version_id: str,
             **{
                 'resync': resync,
                 'resync_chain_splits': resync_chain_splits,
-                'log_level': config.log_level,
-                'no_json_formatter': config.no_json_formatter,
+                'log_level': log_level,
+                'no_json_formatter': no_json_formatter,
             }
         )
     else:
@@ -46,25 +49,30 @@ def start(version_id: str,
 @click.option('--resync', type=bool, envvar='SYNCER_RESYNC')
 @click.option('--resync-chain-splits', type=bool, envvar='SYNCER_RESYNC_CHAIN_SPLITS')
 @click.option('--wait-migration', envvar='SYNCER_WAIT_MIGRATION')
-@click.pass_obj
+@click.option('--log-level', envvar='LOG_LEVEL', help="Log level")
+@click.option('--no-json-formatter', is_flag=True, envvar='NO_JSON_FORMATTER', help='Use default formatter')
 def syncer(
-        config: AppConfig,
         sync_range: str,
         resync: bool,
         resync_chain_splits: bool,
         wait_migration: str,
         workers: int,
         port: int,
+        log_level: Optional[str] = None,
+        no_json_formatter: Optional[bool] = None
 ) -> None:
     """
     Service to sync data from RawDB to MainDB
     """
     stats.setup_syncer_metrics()
+
+    formatter_cls = logs.select_formatter_class(no_json_formatter)
+
     logs.configure(
-        log_level=config.log_level,
-        formatter_class=logs.select_formatter_class(config.no_json_formatter)
+        log_level=log_level,
+        formatter_class=formatter_cls,
     )
 
     block_range = parse_range(sync_range)
 
-    start(wait_migration, workers, port, resync, resync_chain_splits, block_range, config)
+    start(wait_migration, workers, port, resync, resync_chain_splits, block_range, log_level, no_json_formatter)
