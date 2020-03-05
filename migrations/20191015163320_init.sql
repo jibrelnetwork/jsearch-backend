@@ -381,7 +381,7 @@ CREATE TABLE pending_transactions
     input          character varying,
     nonce          bigint,
     value          character varying,
-    id             integer                     NOT NULL
+    id             bigint                      NOT NULL
 );
 
 
@@ -390,7 +390,7 @@ CREATE TABLE pending_transactions
 --
 
 CREATE SEQUENCE pending_transactions_id_seq
-    AS integer
+    AS bigint
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
