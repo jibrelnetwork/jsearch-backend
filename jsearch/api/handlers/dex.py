@@ -30,9 +30,10 @@ async def get_dex_history(
         timestamp: Optional[int] = None,
         event_index: Optional[int] = None
 ) -> web.Response:
-    storage = request.app['storage']
+    storage = request.app['storages']['common']
+    dex_storage = request.app['storages']['dex']
 
-    any_orders = await storage.get_order(token_address)
+    any_orders = await dex_storage.get_order(token_address)
     if any_orders is None:
         err = {
             'code': ErrorCode.RESOURCE_NOT_FOUND,
@@ -43,7 +44,7 @@ async def get_dex_history(
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     block_number, timestamp = await get_last_block_number_and_timestamp(block_number, timestamp, storage)
-    dex_history, last_affected_block = await storage.get_dex_history(
+    dex_history, last_affected_block = await dex_storage.get_dex_history(
         ordering=order,
         limit=limit + 1,  # pagination
         token_address=token_address,
@@ -55,7 +56,7 @@ async def get_dex_history(
     url = request.app.router['dex_history'].url_for(token_address=token_address)
     page = get_pagination_description(url=url, items=dex_history, limit=limit, ordering=order)
 
-    data, tip = await maybe_apply_tip(storage, tip_hash, dex_history, last_affected_block, empty=[])
+    data, tip = await maybe_apply_tip(dex_storage, tip_hash, dex_history, last_affected_block, empty=[])
     orphaned_request = await maybe_orphan_request(
         request,
         last_chain_event_id=last_known_chain_event_id,
@@ -82,9 +83,10 @@ async def get_dex_orders(
         order_creator: Optional[str] = None,
         tip_hash: Optional[str] = None,
 ) -> web.Response:
-    storage = request.app['storage']
+    storage = request.app['storages']['common']
+    dex_storage = request.app['storages']['dex']
 
-    any_orders = await storage.get_order(token_address)
+    any_orders = await dex_storage.get_order(token_address)
     if any_orders is None:
         err = {
             'code': ErrorCode.RESOURCE_NOT_FOUND,
@@ -92,7 +94,7 @@ async def get_dex_orders(
         }
         return api_error_response(status=404, errors=[err])
 
-    any_orders = await storage.get_order(token_address=token_address, order_creator=order_creator)
+    any_orders = await dex_storage.get_order(token_address=token_address, order_creator=order_creator)
     if any_orders is None:
         err = {
             'code': ErrorCode.RESOURCE_NOT_FOUND,
@@ -103,9 +105,9 @@ async def get_dex_orders(
 
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
-    dex_history, last_affected_block = await storage.get_dex_orders(token_address, order_creator, order_status)
+    dex_history, last_affected_block = await dex_storage.get_dex_orders(token_address, order_creator, order_status)
 
-    data, tip = await maybe_apply_tip(storage, tip_hash, dex_history, last_affected_block, empty=[])
+    data, tip = await maybe_apply_tip(dex_storage, tip_hash, dex_history, last_affected_block, empty=[])
     orphaned_request = await maybe_orphan_request(
         request,
         last_known_chain_event_id,
@@ -129,13 +131,14 @@ async def get_dex_blocked_amounts(
         token_addresses: List[str] = None,
         tip_hash: Optional[str] = None,
 ) -> web.Response:
-    storage = request.app['storage']
+    storage = request.app['storages']['common']
+    dex_storage = request.app['storages']['dex']
 
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
-    dex_history, last_affected_block = await storage.get_dex_blocked(user_address, token_addresses)
+    dex_history, last_affected_block = await dex_storage.get_dex_blocked(user_address, token_addresses)
 
-    data, tip = await maybe_apply_tip(storage, tip_hash, dex_history, last_affected_block, empty=[])
+    data, tip = await maybe_apply_tip(dex_storage, tip_hash, dex_history, last_affected_block, empty=[])
     orphaned_request = await maybe_orphan_request(
         request,
         last_known_chain_event_id,
