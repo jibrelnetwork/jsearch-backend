@@ -58,8 +58,8 @@ def syncer(
         wait_migration: str,
         workers: int,
         port: int,
-        log_level: Optional[str] = None,
-        no_json_formatter: Optional[bool] = None
+        log_level: str,
+        no_json_formatter: bool
 ) -> None:
     """
     Service to sync data from RawDB to MainDB
