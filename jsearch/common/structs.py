@@ -85,9 +85,15 @@ class BlockRange(NamedTuple):
         return list(range(self.start, self.end + 1))  # type: ignore
 
 
+class Block(NamedTuple):
+    number: int
+    hash: str
+    parent_hash: str
+
+
 class ChainStats(NamedTuple):
     is_healthy: bool
-    chain_holes: List
+    chain_holes: List[Block]
 
 
 class LagStats(NamedTuple):
