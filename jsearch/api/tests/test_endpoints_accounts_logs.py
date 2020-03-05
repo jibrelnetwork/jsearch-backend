@@ -51,9 +51,18 @@ def create_account_logs(
 
                     new_txs = transaction_factory.create_for_block(block=block, **kwargs)
                     for log_index in range(1, logs_in_block + 1):
+                        kwargs = {
+                            'topics': [
+                                '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+                                '0x0000000000000000000000000000000000000000000000000000000000000000',
+                                '0x0000000000000000000000000000000000000000000000000000000000000001',
+                            ]
+                        }
+
                         log_factory.create_for_tx(
                             tx=new_txs[0],
                             log_index=log_index,
+                            **kwargs
                         )
 
             account_address = account
@@ -483,3 +492,67 @@ async def test_get_account_logs_filter_by_big_value(
 
     # then
     assert status == resp.status
+
+
+@pytest.mark.parametrize(
+    "url, data_len",
+    (
+        (
+            URL.format(params=''),
+            20
+        ),
+        (
+            URL.format(
+                params=urlencode({'topics': '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'})
+            ),
+            20
+        ),
+        (
+            URL.format(
+                params=urlencode({
+                    'topics': '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef,'
+                              '0x0000000000000000000000000000000000000000000000000000000000000001'
+                })
+            ),
+            20
+        ),
+        (
+            URL.format(
+                params=urlencode({
+                    'topics': '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef,'
+                              '0x0000000000000000000000000000000000000000000000000000000000000001,'
+                              '0x0000000000000000000000000000000000000000000000000000000000000000'
+                })
+            ),
+            20
+        ),
+        (
+            URL.format(
+                params=urlencode({
+                    'topics': '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef,'
+                              '0x0000000000000000000000000000000000000000000000000000000000000001,'
+                              '0x0000000000000000000000000000000000000000000000000000000000000002'
+                })
+            ),
+            0
+        )
+    )
+)
+async def test_get_account_logs_filter_by_topics(
+        cli: TestClient,
+        account_factory: AccountFactory,
+        create_account_logs,
+        url: str,
+        data_len: int
+):
+    # given
+    account = account_factory.create()
+    await create_account_logs(account.address)
+
+    # when
+    resp = await cli.get(url.replace('/address/', f'/{account.address}/'))
+    resp_json = await resp.json()
+
+    # then
+    assert 200 == resp.status
+    assert len(resp_json['data']) == data_len
