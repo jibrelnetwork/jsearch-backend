@@ -26,6 +26,7 @@ from jsearch.api.handlers.accounts import (
 from jsearch.api.middlewares import cors_middleware, prom_middleware
 from jsearch.api.node_proxy import NodeProxy
 from jsearch.api.storage import Storage
+from jsearch.api.storage.dex import DexStorage
 from jsearch.common import logs, stats
 
 
@@ -111,7 +112,14 @@ async def make_app() -> Application:
         dsn=settings.JSEARCH_MAIN_DB,
         cursor_factory=DictCursor,
     )
-    app['storage'] = Storage(app['db_pool'])
+
+    common_storage = Storage(engine=app['db_pool'])
+    app['storage'] = common_storage
+    app['storages'] = {
+        'common': common_storage,
+        'dex': DexStorage(engine=app['db_pool'])
+    }
+
     app['fork_proxy'] = NodeProxy(settings.FORK_NODES)
     app['node_proxy'] = NodeProxy(settings.ETH_NODE_URL)
 
