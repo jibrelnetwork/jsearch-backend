@@ -621,6 +621,7 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
         ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/token_balance/0x0193d941b50d91be6567c7ee1c0fe7af498b4137', 404),  # NOQA: E501
         ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/token_balances?contract_addresses=0x0193d941b50d91be6567c7ee1c0fe7af498b4137', 200),  # NOQA: E501
         ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/logs', 200),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/logs?topics=0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', 200),  # NOQA: E501
         ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/transaction_count', 200),
         ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/eth_transfers', 200),
         ('/v1/blocks', 200),

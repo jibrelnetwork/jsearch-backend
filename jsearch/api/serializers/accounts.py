@@ -94,6 +94,7 @@ class AccountsInternalTxsSchema(BlockRelatedListSchema):
 class AccountLogsSchema(BlockRelatedListSchema):
     tip_hash = StrLower(load_from='blockchain_tip')
     address = StrLower(validate=Length(min=1, max=100), location='match_info')
+    topics = StrLower(validate=Length(min=1))
     transaction_index = IntField(validate=Range(min=0))
     log_index = IntField(validate=Range(min=0))
 

@@ -203,6 +203,7 @@ paths:
       operationId: getLogs
       parameters:
       - $ref: '#/components/parameters/address'
+      - $ref: '#/components/parameters/topics'
       - $ref: '#/components/parameters/blockchain_tip'
       - $ref: '#/components/parameters/order'
       - $ref: '#/components/parameters/block_number'
@@ -3300,6 +3301,13 @@ components:
       description: The uncle's index position.
       schema:
         type: integer
+    topics:
+      name: topics
+      in: query
+      description: Comma-separated list of 32 Bytes DATA topics. Topics are order-dependent.
+      schema:
+        type: string
+        format: topics
   examples:
     StatusSuccessExample:
       value:
