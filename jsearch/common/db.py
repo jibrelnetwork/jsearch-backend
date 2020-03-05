@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import logging
+from dataclasses import dataclass
 from typing import AsyncGenerator, Dict, List
 from typing import Callable, Any, Union
 from typing import Optional
@@ -114,6 +115,7 @@ async def get_iterator(
                 break
 
 
+@dataclass
 class DbActionsMixin:
     engine: Engine
 
