@@ -646,3 +646,25 @@ async def test_endpoint_does_not_fail_if_database_is_empty(cli: TestClient, url:
 
     # then
     assert response.status == status_code
+
+
+@pytest.mark.parametrize(
+    'data, status_code, result',
+    (
+        ('{"data": "0x68656c6c6f20776f726c64"}', 200, '0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad'),  # NOQA: E501
+        ('{"data": "0x00"}', 200, '0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a'),
+        ('{"data": "0x0"}', 400, None),
+        ('{"data": "0x"}', 200, '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'),
+        ('{"data": "abcdefg"}', 400, None),
+        ('{"data": 123456789}', 400, None),
+    ),
+)
+async def test_sha3(cli: TestClient, data: str, status_code: int, result: str) -> None:
+    # when
+    response = await cli.post('/v1/sha3', data=data)
+
+    # then
+    assert response.status == status_code
+    if status_code == 200:
+        resp_json = await response.json()
+        assert resp_json['data'] == result

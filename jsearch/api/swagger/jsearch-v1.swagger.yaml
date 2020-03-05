@@ -1147,144 +1147,6 @@ paths:
                   errors:
                   - code: NOT_FOUND
                     message: Resource not found
-  /v1/verified_contracts:
-    get:
-      tags:
-      - common
-      summary: Get a list of `Verified Contracts`
-      description: |
-        You can use this endpoint to receive a list of `Verified Contracts`
-      operationId: getVerifiedContractsList
-      parameters:
-      - $ref: '#/components/parameters/order'
-      - $ref: '#/components/parameters/id'
-      - $ref: '#/components/parameters/limit'
-      responses:
-        '200':
-          description: Contract
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Contract'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
-        '400':
-          description: Input parameter has failed validation.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /v1/verified_contracts/{contract_address}:
-    get:
-      tags:
-      - common
-      summary: Get Verified Contract info.
-      description: |
-        You can use this endpoint to receive `Verified Contract` info
-      operationId: getVerifiedContract
-      parameters:
-      - $ref: '#/components/parameters/contract_address'
-      responses:
-        '200':
-          description: Contract
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    $ref: '#/components/schemas/Contract'
-        '400':
-          description: Input parameter has failed validation.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Contract not found
-          content: {}
-  /v1/tokens:
-    get:
-      tags:
-      - common
-      summary: Get ERC20 tokens list
-      description: |
-        You can use this endpoint to receive a list of `ERC20 tokens`
-      operationId: getTokensList
-      parameters:
-      - $ref: '#/components/parameters/order'
-      - $ref: '#/components/parameters/id'
-      - $ref: '#/components/parameters/limit'
-      responses:
-        '200':
-          description: Token
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Token'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
-        '400':
-          description: Input parameter has failed validation.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /v1/tokens/{contract_address}:
-    get:
-      tags:
-      - common
-      summary: Get token info
-      description: |
-        You can use this endpoint to receive `ERC20 Token` info
-      operationId: getToken
-      parameters:
-      - $ref: '#/components/parameters/contract_address'
-      responses:
-        '200':
-          description: Token
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    $ref: '#/components/schemas/Token'
-        '400':
-          description: Input parameter has failed validation.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Token not found
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  success: false
-                  errors:
-                  - code: NOT_FOUND
-                    message: Resource not found
   /v1/tokens/{contract_address}/transfers:
     get:
       tags:
@@ -1381,6 +1243,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/sha3:
+    post:
+      tags:
+      - common
+      summary: Returns Keccak-256 (not the standardized SHA3-256) of the given data.
+      description: |
+        You can use this endpoint to get Keccak-256 of the given data.
+
+        Parameters
+
+        1. DATA - the data to convert into a SHA3 hash.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example: {"data" :"0xf8b483dba2c3b7176a3da549ad41a48bb3121069"}
+              items:
+                type: string
+        required: true
+      responses:
+        '200':
+          description: nonce
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                  data:
+                    type: string
+                    format: hex
+                    example: "0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad"
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: body
   /v1/proxy/gas_price:
     get:
       tags:
@@ -1937,6 +1840,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  - success: false
+                    errors:
+                      - field: tip
+                        code: NOT_FOUND
+                        message: Asset {token_address} was not found
   /v1/dex/history/{token_address}:
     get:
       tags:
@@ -1951,6 +1866,7 @@ paths:
         - $ref: '#/components/parameters/block_number'
         - $ref: '#/components/parameters/timestamp'
         - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/event_index'
       responses:
         '200':
           description: List of orders events
@@ -1980,6 +1896,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  - success: false
+                    errors:
+                      - field: tip
+                        code: NOT_FOUND
+                        message: Asset {token_address} was not found
   /v1/dex/blocked/{user_address}:
     get:
       tags:
@@ -2633,62 +2561,6 @@ components:
           description: Holder address
           format: address
           example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
-    Contract:
-      type: object
-      properties:
-        name:
-          type: string
-        address:
-          type: string
-          format: address
-        byteCode:
-          type: string
-        sourceCode:
-          type: string
-        abi:
-          type: array
-          items:
-            type: object
-        compilerVersion:
-          type: string
-        optimizationEnabled:
-          type: boolean
-        optimizationRuns:
-          type: integer
-        constructorArgs:
-          type: array
-          items:
-            type: string
-        verifiedAt:
-          type: string
-        token:
-          type: string
-    Token:
-      type: object
-      properties:
-        contractAddress:
-          type: string
-          description: Token address
-          format: address
-          example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
-        name:
-          type: string
-          description: Token name
-          example: Jibrel Network Token
-        symbol:
-          type: string
-          description: Token symbol
-          example: JNT
-        decimals:
-          type: string
-          description: Token decimals
-          format: dec
-          example: "18"
-        totalSupply:
-          type: string
-          description: Total supply
-          format: dec
-          example: "200000000000000000000000"
     EthTransfer:
       type: object
       properties:
@@ -2859,6 +2731,10 @@ components:
               event_timestamp:
                 type: integer
                 description: An unix timestamp of event
+                example: 1548229016
+              event_index:
+                type: integer
+                description: An unix event id
                 example: 1548229016
           order_data:
             type: object
@@ -3760,6 +3636,7 @@ components:
                    "event_type":"OrderActivatedEvent",
                    "event_block_number":9520621,
                    "event_timestamp":1582208588
+                   "event_index":1582208588
                 },
                 "order_data":{
                    "order_id":"0x700732928f253ed5e412f1c34da2ae7706c27f318b03ff48a0fa9bd3ca22e6ab",
@@ -3778,6 +3655,7 @@ components:
                    "event_type":"TradePlacedEvent",
                    "event_block_number":9520621,
                    "event_timestamp":1582208588
+                   "event_index":1582208988
                 },
                 "order_data":{
                    "order_id":"0x700732928f253ed5e412f1c34da2ae7706c27f318b03ff48a0fa9bd3ca22e6ab",
