@@ -3,6 +3,7 @@ from functools import reduce
 from typing import List, Optional, Any, Dict
 
 from sqlalchemy import Column, select, false
+from sqlalchemy.orm import Query
 from sqlalchemy.sql import ClauseElement
 
 from jsearch.api.ordering import Ordering, get_ordering
@@ -30,7 +31,9 @@ def get_events_ordering(scheme: OrderScheme, direction: OrderDirection) -> Order
 
 def get_clause(key, value) -> ClauseElement:
     filtered_key = dex_logs_t.c.event_data[key].astext
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, ClauseElement):
+        q = filtered_key.in_(value)
+    elif isinstance(value, (list, tuple, ClauseElement)):
         q = filtered_key.in_(map(str, value))
     else:
         q = filtered_key == value

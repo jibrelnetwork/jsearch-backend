@@ -16,6 +16,7 @@ from jsearch.api.database_queries.dex_logs import (
 from jsearch.api.ordering import Ordering
 from jsearch.common.db import DbActionsMixin
 from jsearch.common.processing.dex_logs import DexEventType, ORDER_STATUSES, ORDER_EVENT_TYPE_TO_STATUS
+from jsearch.common.tables import dex_logs_t
 
 
 class OrderStatusInfo(NamedTuple):
@@ -164,21 +165,23 @@ class DexStorage(DbActionsMixin):
     ) -> Tuple[List['HistoryEvent'], Optional[int]]:
         # WTF: only orders have information about assets
         orders_query = get_dex_orders_query(traded_asset=token_address)
+        orders_ids_query = orders_query.with_only_columns([dex_logs_t.c.event_data['orderID'].astext])
+
         orders = await self.fetch_all(orders_query)
         orders_map = {get_order_id(item): item for item in orders}
-        orders_ids = list(orders_map.keys())
 
-        trades_query = get_dex_trades_query(order_ids=orders_ids)
+        trades_query = get_dex_trades_query(order_ids=orders_ids_query)
+        trades_ids_query = trades_query.with_only_columns([dex_logs_t.c.event_data['tradeID'].astext])
+
         trades = await self.fetch_all(trades_query)
         trades_map = {get_trade_id(item): item for item in trades}
-        trades_ids = list(trades_map.keys())
 
         trades_orders_map = {get_trade_id(item): get_order_id(item) for item in trades}
 
         history_query = get_dex_events_query(
             limit=limit,
-            orders_ids=orders_ids,
-            trades_ids=trades_ids,
+            orders_ids=orders_ids_query,
+            trades_ids=trades_ids_query,
             ordering=ordering,
             block_number=block_number,
             timestamp=timestamp,
@@ -245,21 +248,18 @@ class DexStorage(DbActionsMixin):
         # WTF: only orders have information about traded assets
         orders_query = get_dex_orders_query(creator=order_creator, traded_asset=token_address)
         orders = await self.fetch_all(orders_query)
+        orders_ids_query = orders_query.with_only_columns([dex_logs_t.c.event_data['orderID'].astext])
 
-        orders_map = {get_order_id(item): item for item in orders}
-        orders_ids = list(orders_map.keys())
-
-        order_events_query = get_dex_orders_events_query(orders_ids)
+        order_events_query = get_dex_orders_events_query(orders_ids_query)
         order_events = await self.fetch_all(order_events_query)
         order_states = get_last_order_states(orders, order_events)
 
-        trades_query = get_dex_trades_query(order_ids=orders_ids)
+        trades_query = get_dex_trades_query(order_ids=orders_ids_query)
+        trades_ids_query = trades_query.with_only_columns([dex_logs_t.c.event_data['tradeID'].astext])
+
         trades = await self.fetch_all(trades_query)
 
-        trades_map = {get_trade_id(item): item for item in trades}
-        trades_ids = list(trades_map.keys())
-
-        trades_events_query = get_dex_trades_events_query(trade_ids=trades_ids)
+        trades_events_query = get_dex_trades_events_query(trade_ids=trades_ids_query)
         trades_events = await self.fetch_all(trades_events_query)
         trades_states = get_last_trade_states(trades, trades_events)
 
