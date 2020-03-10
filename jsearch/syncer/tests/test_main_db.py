@@ -218,7 +218,7 @@ async def test_save_dex_events(
         assets_summary_pairs=[],
         block=block,
         internal_txs=[],
-        logs=[],
+        logs=[log],
         receipts=[],
         token_holders_updates=[],
         transfers=[],

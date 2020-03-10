@@ -87,6 +87,7 @@ def logs_to_dex_events(
         logs: Logs,
 ) -> List[AnyDict]:
     events = []
+
     for log in logs:
         contract = log['address'].lower()
         payload = log['event_args']

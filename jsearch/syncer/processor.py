@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Tuple
 from jsearch.common import contracts
 from jsearch.common.processing import wallet
 from jsearch.common.processing.contracts_addresses_cache import contracts_addresses_cache
-from jsearch.common.processing.dex_logs import logs_to_dex_events, process_dex_log
+from jsearch.common.processing.dex_logs import logs_to_dex_events, process_dex_log, DexEventType
 from jsearch.common.processing.erc20_logs import process_erc20_transfer_logs
 from jsearch.common.processing.erc20_transfers import logs_to_transfers
 from jsearch.common.processing.wallet import token_holders_from_token_balances
@@ -60,6 +60,8 @@ async def process_block(main_db: MainDB, data: RawBlockData) -> BlockData:
     decimals = {balance.token: balance.decimals or 0 for balance in data.token_balances}
     transfers = logs_to_transfers(logs, block_data, decimals)
     dex_events = logs_to_dex_events(logs)
+    if dex_events:
+        dex_events = await add_additional_info_to_dex_logs(main_db, dex_events)
 
     wallet_events = [
         *wallet.events_from_transactions(txs_data, contracts_set=contracts_set),
@@ -100,6 +102,71 @@ async def process_block(main_db: MainDB, data: RawBlockData) -> BlockData:
         assets_summary_pairs=assets_summary_pairs,
         dex_events=dex_events
     )
+
+
+@timeit("[CPU] Process dex")
+async def add_additional_info_to_dex_logs(db: MainDB, logs: Logs) -> Logs:
+    order_ids = set()
+    trade_ids = set()
+
+    orders = {}
+    trades = {}
+
+    for log in logs:
+        payload = log['event_data']
+        order_id = payload.get('orderID')
+        if order_id:
+            order_ids.add(order_id)
+
+        trade_id = payload.get('tradeID')
+        if trade_id:
+            trade_ids.add(trade_id)
+
+        event_type = log['event_type']
+        if event_type == DexEventType.ORDER_PLACED:
+            orders[order_id] = log
+
+        if event_type == DexEventType.TRADE_PLACED:
+            trades[trade_id] = log
+
+    missed_orders_ids = list(order_ids - set(orders.keys()))
+    missed_trades_ids = list(trade_ids - set(trades.keys()))
+
+    orders = {
+        **{x['event_data']['orderID']: x for x in await db.get_dex_orders(ids=missed_orders_ids)},
+        **orders
+    }
+    trades = {
+        **{x['event_data']['tradeID']: x for x in await db.get_dex_trades(ids=missed_trades_ids)},
+        **trades,
+    }
+
+    for log in logs:
+        event_type = log['event_type']
+        payload = log['event_data']
+        if event_type in DexEventType.ORDERS:
+            order_id = payload['orderID']
+            order = orders.get(order_id)
+            if order:
+                payload['tradedAsset'] = order['event_data']['tradedAsset']
+            else:
+                logger.error("Can't find an order", extra={'id': order_id})
+
+        if event_type in DexEventType.TRADE:
+            trade_id = payload['tradeID']
+            trade = trades.get(trade_id)
+            if trade:
+                order_id = trade['event_data']['orderID']
+                order = orders.get(order_id)
+                payload['orderID'] = order_id
+                if order:
+                    payload['tradedAsset'] = orders[order_id]['event_data']['tradedAsset']
+                else:
+                    logger.error("Can't find an order", extra={'id': order_id})
+            else:
+                logger.error("Can't find an trade", extra={'id': trade_id})
+
+    return logs
 
 
 @timeit("[CPU] Process rewards")

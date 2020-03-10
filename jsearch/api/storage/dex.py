@@ -77,10 +77,17 @@ def get_event_value(event: Dict[str, Any], key: str) -> Any:
     return event['event_data'][key]
 
 
+def has_event_key(event: Dict[str, Any], key: str) -> bool:
+    return key in event.get('event_data', {})
+
+
 get_trade_id = partial(get_event_value, key='tradeID')
 get_order_id = partial(get_event_value, key='orderID')
 get_traded_amount = partial(get_event_value, key='tradedAmount')
 get_asset_address = partial(get_event_value, key='assetAddress')
+
+has_trade_id = partial(has_event_key, key='tradeID')
+has_order_id = partial(has_event_key, key='orderID')
 
 
 def get_last_states(
@@ -162,23 +169,9 @@ class DexStorage(DbActionsMixin):
             timestamp: Optional[int] = None,
             event_index: Optional[int] = None,
     ) -> Tuple[List['HistoryEvent'], Optional[int]]:
-        # WTF: only orders have information about assets
-        orders_query = get_dex_orders_query(traded_asset=token_address)
-        orders = await self.fetch_all(orders_query)
-        orders_map = {get_order_id(item): item for item in orders}
-        orders_ids = list(orders_map.keys())
-
-        trades_query = get_dex_trades_query(order_ids=orders_ids)
-        trades = await self.fetch_all(trades_query)
-        trades_map = {get_trade_id(item): item for item in trades}
-        trades_ids = list(trades_map.keys())
-
-        trades_orders_map = {get_trade_id(item): get_order_id(item) for item in trades}
-
         history_query = get_dex_events_query(
             limit=limit,
-            orders_ids=orders_ids,
-            trades_ids=trades_ids,
+            token_address=token_address,
             ordering=ordering,
             block_number=block_number,
             timestamp=timestamp,
@@ -186,6 +179,21 @@ class DexStorage(DbActionsMixin):
             events_types=event_type
         )
         history = await self.fetch_all(history_query)
+
+        trade_ids = {get_trade_id(item) for item in history if has_trade_id(item)}
+        trades_query = get_dex_trades_query(tradeID=list(trade_ids))
+        trades = await self.fetch_all(trades_query)
+        trades_map = {get_trade_id(item): item for item in trades}
+
+        order_ids = (
+                {get_order_id(item) for item in history if has_order_id(item)} |
+                {get_order_id(item) for item in trades}
+        )
+        orders_query = get_dex_orders_query(orderID=list(order_ids))
+        orders = await self.fetch_all(orders_query)
+        orders_map = {get_order_id(item): item for item in orders}
+
+        trades_orders_map = {get_trade_id(item): get_order_id(item) for item in trades}
 
         events = sorted(history, key=lambda x: x['timestamp'])
         last_affected_block = events[-1]['block_number'] if events else None

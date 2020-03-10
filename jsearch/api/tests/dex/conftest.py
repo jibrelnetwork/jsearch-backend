@@ -50,6 +50,14 @@ class DexLinkedEventsFactory:
         return order['orderID']
 
     @property
+    def traded_asset(self) -> str:
+        order = getattr(self, '_order', None)
+        if not order:
+            order = self.add_order()
+
+        return order['tradedAsset']
+
+    @property
     def trade_id(self):
         trade = getattr(self, '_trade', None)
         if not trade:
@@ -74,17 +82,30 @@ class DexLinkedEventsFactory:
     def add_order_status(self, event_type: str, **kwargs: Any) -> Dict[str, Any]:
         assert event_type in DexEventType.ORDERS and not event_type == DexEventType.ORDER_PLACED
 
-        kwargs = prepare_kwargs(orderID=self.order_id, **kwargs)
+        kwargs = prepare_kwargs(
+            orderID=self.order_id,
+            tradedAsset=self.traded_asset,
+            **kwargs
+        )
         return self.event_factory(event_type=event_type, **kwargs)
 
     def add_trade(self, **kwargs: Any) -> Dict[str, Any]:
-        kwargs = prepare_kwargs(orderID=self.order_id, **kwargs)
+        kwargs = prepare_kwargs(
+            orderID=self.order_id,
+            tradedAsset=self.traded_asset,
+            **kwargs
+        )
         self._trade = self.event_factory(event_type=DexEventType.TRADE_PLACED, **kwargs)
         return self._trade
 
     def add_trade_status(self, event_type: str, **kwargs: Any) -> Dict[str, Any]:
         assert event_type in DexEventType.TRADE and not event_type == DexEventType.TRADE_PLACED
-        kwargs = prepare_kwargs(tradeID=self.trade_id, **kwargs)
+        kwargs = prepare_kwargs(
+            orderID=self.order_id,
+            tradeID=self.trade_id,
+            tradedAsset=self.traded_asset,
+            **kwargs
+        )
         return self.event_factory(event_type=event_type, **kwargs)
 
 
@@ -108,7 +129,7 @@ def random_events(
         }
 
         dex_linked_events_factory.add_order(tradedAsset=token, **kwargs)
-        dex_linked_events_factory.add_trade(tradedAsset=token, **kwargs)
+        dex_linked_events_factory.add_trade(**kwargs)
 
         while len(dex_linked_events_factory.history) < limit:
             seed = randint(0, 3)
