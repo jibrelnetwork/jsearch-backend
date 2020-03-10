@@ -15,12 +15,16 @@ class DexLogModel(Base):
     __table__ = dex_logs_t
     __mapper_args__ = {
         'primary_key': [
+            dex_logs_t.c.event_type,
             dex_logs_t.c.event_index,
         ]
     }
 
     def to_dict(self):
         return {k: getattr(self, k) for k in self.__table__.columns.keys()}
+
+
+OFFSET = 1000
 
 
 class DexTokenFactory(factory.DictFactory):
@@ -30,17 +34,17 @@ class DexTokenFactory(factory.DictFactory):
 
 
 class DexTradeFactory(factory.DictFactory):
-    tradeID = factory.sequence(lambda n: n)
+    tradeID = factory.sequence(lambda n: n + OFFSET)
 
 
 class DexTradePlacedFactory(DexTradeFactory):
     tradeCreator = factory.LazyFunction(generate_address)
     tradedAmount = factory.Sequence(lambda n: n * randint(1000, 10000))
-    tradeID = factory.sequence(lambda n: n)
+    tradeID = factory.sequence(lambda n: n + OFFSET)
 
 
 class DexOrderFactory(factory.DictFactory):
-    orderID = factory.Sequence(lambda n: n)
+    orderID = factory.Sequence(lambda n: n + OFFSET)
 
 
 class DexOrderPlacedFactory(DexOrderFactory):
@@ -54,12 +58,12 @@ class DexOrderPlacedFactory(DexOrderFactory):
 
 
 class DexLogFactory(factory.alchemy.SQLAlchemyModelFactory):
-    block_number = factory.Sequence(lambda n: n)
+    block_number = factory.sequence(lambda n: n + OFFSET)
     block_hash = factory.LazyFunction(generate_address)
     timestamp = factory.LazyFunction(lambda: int(time()))
     tx_hash = factory.LazyFunction(generate_address)
     event_type = factory.Sequence(lambda n: DexEventType.ALL[n % len(DexEventType.ALL)])
-    event_index = factory.Sequence(lambda n: make_event_index_for_internal_tx(n, n, n))
+    event_index = factory.sequence(lambda n: make_event_index_for_internal_tx(n + OFFSET, n + OFFSET, n + OFFSET))
     is_forked = False
 
     @factory.lazy_attribute
@@ -118,14 +122,12 @@ def dex_log_factory() -> Callable[..., Dict[str, Any]]:
             **kwargs
     ) -> Dict[str, Any]:
         event_args = create_dex_event_args(event_type=event_type, **event_args)
-        data = factory.build(
-            dict,
-            FACTORY_CLASS=DexLogFactory,
+        instance = DexLogFactory.create(
             event_type=event_type,
             event_data=event_args,
             **kwargs
         )
-        DexLogFactory.create(**data)
-        return data
+        assert instance.event_type == event_type
+        return instance.to_dict()
 
     return _factory

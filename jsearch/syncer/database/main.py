@@ -24,9 +24,11 @@ from jsearch.common.tables import (
     transactions_t,
     uncles_t,
     wallet_events_t,
-    dex_logs_t)
+    dex_logs_t
+)
 from jsearch.common.utils import timeit
 from jsearch.pending_syncer.database_queries.pending_txs import insert_or_update_pending_txs_q
+from jsearch.syncer.database_queries.dex import get_dex_orders_query, get_dex_trades_query
 from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.syncer.structs import BlockData
 from jsearch.typing import Blocks, Block
@@ -360,3 +362,11 @@ class MainDB(DBWrapper):
             if row is not None and row['code_hash'] != NO_CODE_HASH:
                 contracts_addresses.append(address)
         return contracts_addresses
+
+    async def get_dex_orders(self, ids: List[str]) -> List[Dict[str, Any]]:
+        orders_query = get_dex_orders_query(ids=ids)
+        return await self.fetch_all(orders_query)
+
+    async def get_dex_trades(self, ids: List[str]) -> List[Dict[str, Any]]:
+        orders_query = get_dex_trades_query(ids=ids)
+        return await self.fetch_all(orders_query)

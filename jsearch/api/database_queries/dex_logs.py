@@ -59,9 +59,8 @@ def get_dex_logs_query(
 
 
 def get_dex_events_query(
-        orders_ids: List[int],
-        trades_ids: List[str],
         ordering: Ordering,
+        token_address: str,
         limit: Optional[int] = None,
         events_types: Optional[List[str]] = None,
         block_number: Optional[int] = None,
@@ -79,7 +78,7 @@ def get_dex_events_query(
             DexEventType.TRADE_COMPLETED,
             DexEventType.TRADE_CANCELLED,
         ]
-    query = get_dex_logs_query(event_types=events_types)
+    query = get_dex_logs_query(event_types=events_types, tradedAsset=token_address)
     if event_index:
         query = query.where(ordering.operator_or_equal(dex_logs_t.c.event_index, event_index))
 
@@ -89,10 +88,6 @@ def get_dex_events_query(
     elif timestamp:
         query = query.where(ordering.operator_or_equal(dex_logs_t.c.timestamp, timestamp))
 
-    order_ids_q = get_clause('orderID', orders_ids)
-    trade_ids_q = get_clause('tradeID', trades_ids)
-
-    query = query.where(order_ids_q | trade_ids_q)
     query = query.order_by(*ordering.columns)
 
     if limit:
@@ -124,9 +119,8 @@ def get_dex_blocked_query(
 def get_dex_orders_query(
         traded_asset: Optional[str] = None,
         creator: Optional[str] = None,
+        **filter_kwargs: Any
 ) -> ClauseElement:
-    filter_kwargs = {}
-
     if creator:
         filter_kwargs['orderCreator'] = creator
 
@@ -153,12 +147,19 @@ def get_dex_orders_events_query(ids: List[int]) -> ClauseElement:
     )
 
 
-def get_dex_trades_query(order_ids: List[int]) -> ClauseElement:
+def get_dex_trades_query(
+        order_ids: Optional[List[int]] = None,
+        **filter_kwargs: Any,
+) -> ClauseElement:
+
+    if order_ids:
+        filter_kwargs['orderID'] = order_ids
+
     return get_dex_logs_query(
         event_types=[
             DexEventType.TRADE_PLACED,
         ],
-        orderID=order_ids
+        **filter_kwargs
     )
 
 

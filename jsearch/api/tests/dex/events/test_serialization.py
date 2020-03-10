@@ -77,10 +77,10 @@ async def test_serialization_order_statuses(
     assert data['data'] == [
         {
             'event_data': {
-                'event_block_number': order['block_number'],
-                'event_timestamp': order['timestamp'],
-                'event_type': 'OrderPlacedEvent',
-                'event_index': order['event_index']
+                'event_block_number': order_state['block_number'],
+                'event_timestamp': order_state['timestamp'],
+                'event_type': event_type,
+                'event_index': order_state['event_index']
             },
             'order_data': {
                 'expiration_timestamp': order['expirationTimestamp'],
@@ -98,8 +98,8 @@ async def test_serialization_order_statuses(
             'event_data': {
                 'event_block_number': order['block_number'],
                 'event_timestamp': order['timestamp'],
-                'event_type': event_type,
-                'event_index': order_state['event_index']
+                'event_type': DexEventType.ORDER_PLACED,
+                'event_index': order['event_index']
             },
             'order_data': {
                 'expiration_timestamp': order['expirationTimestamp'],
@@ -112,7 +112,7 @@ async def test_serialization_order_statuses(
                 'traded_asset': order['tradedAsset'],
                 'traded_asset_amount': str(order['tradedAmount'])
             }
-        }
+        },
     ]
 
 
@@ -136,27 +136,8 @@ async def test_serialization_trade(
     assert data['data'] == [
         {
             'event_data': {
-                'event_block_number': order['block_number'],
-                'event_timestamp': order['timestamp'],
-                'event_type': 'OrderPlacedEvent',
-                'event_index': order['event_index'],
-            },
-            'order_data': {
-                'expiration_timestamp': order['expirationTimestamp'],
-                'fiat_asset': order['fiatAsset'],
-                'fiat_price': str(order['assetPrice']),
-                'order_creation_timestamp': order['timestamp'],
-                'order_creator': order['orderCreator'],
-                'order_id': order['orderID'],
-                'order_type': order['orderType'],
-                'traded_asset': order['tradedAsset'],
-                'traded_asset_amount': str(order['tradedAmount'])
-            }
-        },
-        {
-            'event_data': {
-                'event_block_number': order['block_number'],
-                'event_timestamp': order['timestamp'],
+                'event_block_number': trade['block_number'],
+                'event_timestamp': trade['timestamp'],
                 'event_type': DexEventType.TRADE_PLACED,
                 'event_index': trade['event_index']
             },
@@ -176,6 +157,25 @@ async def test_serialization_trade(
                 'trade_amount': str(trade['tradedAmount']),
                 'trade_creation_timestamp': trade['timestamp'],
                 'trade_creator': trade['tradeCreator']
+            }
+        },
+        {
+            'event_data': {
+                'event_block_number': order['block_number'],
+                'event_timestamp': order['timestamp'],
+                'event_type': 'OrderPlacedEvent',
+                'event_index': order['event_index'],
+            },
+            'order_data': {
+                'expiration_timestamp': order['expirationTimestamp'],
+                'fiat_asset': order['fiatAsset'],
+                'fiat_price': str(order['assetPrice']),
+                'order_creation_timestamp': order['timestamp'],
+                'order_creator': order['orderCreator'],
+                'order_id': order['orderID'],
+                'order_type': order['orderType'],
+                'traded_asset': order['tradedAsset'],
+                'traded_asset_amount': str(order['tradedAmount'])
             }
         }
     ]
@@ -210,10 +210,10 @@ async def test_serialization_trade_statuses(
     assert data['data'] == [
         {
             'event_data': {
-                'event_block_number': order['block_number'],
-                'event_timestamp': order['timestamp'],
-                'event_type': 'OrderPlacedEvent',
-                'event_index': order['event_index'],
+                'event_block_number': trade_state['block_number'],
+                'event_timestamp': trade_state['timestamp'],
+                'event_type': event_type,
+                'event_index': trade_state['event_index']
             },
             'order_data': {
                 'expiration_timestamp': order['expirationTimestamp'],
@@ -225,6 +225,12 @@ async def test_serialization_trade_statuses(
                 'order_type': order['orderType'],
                 'traded_asset': order['tradedAsset'],
                 'traded_asset_amount': str(order['tradedAmount'])
+            },
+            'trade_data': {
+                'trade_id': str(trade['tradeID']),
+                'trade_amount': str(trade['tradedAmount']),
+                'trade_creation_timestamp': trade['timestamp'],
+                'trade_creator': trade['tradeCreator']
             }
         },
         {
@@ -254,10 +260,10 @@ async def test_serialization_trade_statuses(
         },
         {
             'event_data': {
-                'event_block_number': trade_state['block_number'],
-                'event_timestamp': trade_state['timestamp'],
-                'event_type': event_type,
-                'event_index': trade_state['event_index']
+                'event_block_number': order['block_number'],
+                'event_timestamp': order['timestamp'],
+                'event_type': 'OrderPlacedEvent',
+                'event_index': order['event_index'],
             },
             'order_data': {
                 'expiration_timestamp': order['expirationTimestamp'],
@@ -269,12 +275,6 @@ async def test_serialization_trade_statuses(
                 'order_type': order['orderType'],
                 'traded_asset': order['tradedAsset'],
                 'traded_asset_amount': str(order['tradedAmount'])
-            },
-            'trade_data': {
-                'trade_id': str(trade['tradeID']),
-                'trade_amount': str(trade['tradedAmount']),
-                'trade_creation_timestamp': trade['timestamp'],
-                'trade_creator': trade['tradeCreator']
             }
-        }
+        },
     ]
