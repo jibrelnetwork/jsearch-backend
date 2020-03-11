@@ -41,8 +41,6 @@ def get_dex_logs_query(
         event_types: List[str],
         **data_filter
 ) -> ClauseElement:
-    assert event_types
-
     columns = get_default_fields()
 
     query = select(columns).where(
