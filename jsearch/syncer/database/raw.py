@@ -190,7 +190,7 @@ class RawDB(DBWrapper):
             "block_hash",
             lower("token") as token,
             "total_supply"
-        FROM token_descriptions 
+        FROM token_descriptions
         WHERE block_hash = %s;
         """
         rows = await self.fetch_all(query, block_hash)

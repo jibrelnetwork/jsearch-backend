@@ -1,9 +1,10 @@
 from functools import reduce
+from typing import Optional, List
+
 from sqlalchemy import select, and_, false, tuple_, exists
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
-from sqlalchemy.sql.functions import max
-from typing import Optional, List
+from sqlalchemy.sql.functions import max as max_sql
 
 from jsearch.api.database_queries.transactions import get_ordering
 from jsearch.api.ordering import Ordering
@@ -35,7 +36,7 @@ def get_last_token_holders_query(account_address: str, token_addresses: List[str
         [
             token_holders_t.c.account_address,
             token_holders_t.c.token_address,
-            max(token_holders_t.c.block_number)
+            max_sql(token_holders_t.c.block_number)
         ]
     ).where(
         and_(
@@ -75,6 +76,7 @@ def get_token_holders_query(
         limit: int,
         ordering: Ordering,
         token_address: TokenAddress,
+        holder_threshold: Optional[int],
         balance: Optional[int] = None,
         _id: Optional[int] = None,
 ) -> Query:
@@ -84,6 +86,28 @@ def get_token_holders_query(
         token_holders_t.c.token_address == token_address,
         token_holders_t.c.is_forked == false()
     ]
+
+    if holder_threshold:
+        conditions.append(
+            token_holders_t.c.balance >= holder_threshold,
+        )
+
+    if balance is not None and holder_threshold is not None and balance < holder_threshold:
+        balance = None
+
+    if balance is not None and balance:
+        filter_by_balance = ordering.operator_or_equal(token_holders_t.c.balance, balance)
+        conditions.append(filter_by_balance)
+
+    elif balance and _id is not None:
+        filter_by_id = ordering.operator_or_equal(
+            tuple_(
+                token_holders_t.c.balance,
+                token_holders_t.c.id
+            ),
+            (balance, _id)
+        )
+        conditions.append(filter_by_id)
 
     subquery_table = token_holders_t.alias('source')
     subquery = ~exists().where(
@@ -96,13 +120,6 @@ def get_token_holders_query(
     )
     conditions.append(subquery)
 
-    if balance is not None:
-        filter_by_balance = ordering.operator_or_equal(token_holders_t.c.balance, balance)
-        conditions.append(filter_by_balance)
-
-    if _id is not None:
-        filter_by_id = ordering.operator_or_equal(token_holders_t.c.id, _id)
-        conditions.append(filter_by_id)
-
     query = query.where(reduce(and_, conditions))
-    return query.order_by(*ordering.columns).limit(limit)
+    query = query.order_by(*ordering.columns).limit(limit)
+    return query
