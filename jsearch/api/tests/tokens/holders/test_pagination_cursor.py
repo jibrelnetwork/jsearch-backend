@@ -1,5 +1,4 @@
 from typing import List, Tuple, Callable, Any, Dict
-from urllib.parse import urlencode
 
 import pytest
 import yarl
