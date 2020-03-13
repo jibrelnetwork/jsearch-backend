@@ -79,7 +79,7 @@ async def get_token_holders(
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
     # WTF: optimization hack - we will return only holders who are reached the threshold
-    holder_threshold = await storage.get_holder_threshold()
+    holder_threshold = await storage.get_token_threshold()
 
     # Notes: we need to query limit + 1 items to get link on next page
     holders, last_affected_block = await storage.get_tokens_holders(
