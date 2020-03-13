@@ -93,13 +93,9 @@ def get_token_holders_query(
         )
 
     if balance is not None and holder_threshold is not None and balance < holder_threshold:
-        balance = None
+        balance = holder_threshold
 
-    if balance is not None and balance:
-        filter_by_balance = ordering.operator_or_equal(token_holders_t.c.balance, balance)
-        conditions.append(filter_by_balance)
-
-    elif balance and _id is not None:
+    if balance is not None and _id is not None:
         filter_by_id = ordering.operator_or_equal(
             tuple_(
                 token_holders_t.c.balance,
@@ -108,6 +104,10 @@ def get_token_holders_query(
             (balance, _id)
         )
         conditions.append(filter_by_id)
+
+    elif balance is not None:
+        filter_by_balance = ordering.operator_or_equal(token_holders_t.c.balance, balance)
+        conditions.append(filter_by_balance)
 
     subquery_table = token_holders_t.alias('source')
     subquery = ~exists().where(
