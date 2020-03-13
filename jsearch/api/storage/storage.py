@@ -605,7 +605,8 @@ class Storage(DbActionsMixin):
         query = get_token_threshold_query(token_address)
         result = await self.fetch_one(query)
         if result:
-            return int(result['total_supply'] * threshold_percent)
+            total_supply = int(result['total_supply'])
+            return int(total_supply * threshold_percent)
         return None
 
     async def get_account_token_balance(
