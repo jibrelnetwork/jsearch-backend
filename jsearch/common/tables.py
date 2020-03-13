@@ -365,7 +365,7 @@ dex_logs_t = sa.Table(
 )
 
 token_descriptions_t = sa.Table(
-    'dex_logs',
+    'token_descriptions',
     metadata,
     sa.Column('block_number', Integer),
     sa.Column('block_hash', sa.String),
