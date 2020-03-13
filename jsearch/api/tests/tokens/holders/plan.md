@@ -11,12 +11,10 @@
     * [ ] 404s
 * [ ] Blockchain tip
 * [ ] Data consistency
-* [ ] Pagination
+* [x] Pagination
     * [x] Cursor pagination
-        * [ ] By balance - desc
-        * [ ] By balance - asc
-        * [ ] By balance and id - desc
-        * [ ] By balance and id - asc
+        * [x] By balance
+        * [x] By balance and id
     * [ ] Keyset links forming
         * [ ] next
         * [ ] link
