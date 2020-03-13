@@ -92,7 +92,7 @@ async def get_block_transaction_count(request):
     storage = request.app['storage']
     tag = get_tag(request)
     block = await storage.get_block(tag)
-    return api_success({"count": len(block['transactions'])})
+    return api_success({"count": len(block['transactions']) if block is not None else 0})
 
 
 @ApiError.catch
@@ -108,7 +108,7 @@ async def get_block_uncle_count(request):
     storage = request.app['storage']
     tag = get_tag(request)
     block = await storage.get_block(tag)
-    return api_success({"count": len(block['uncles'])})
+    return api_success({"count": len(block['uncles']) if block is not None else 0})
 
 
 async def get_block_internal_transactions(request):

@@ -23,7 +23,6 @@ def get_default_fields() -> List[Column]:
 def get_dex_logs_query(
         event_types: List[str],
 ) -> ClauseElement:
-    assert event_types in DexEventType.ALL
     columns = get_default_fields()
     query = select(columns).where(
         and_(
