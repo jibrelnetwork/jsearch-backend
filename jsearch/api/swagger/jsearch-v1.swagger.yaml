@@ -1514,7 +1514,7 @@ paths:
 
           QUANTITY - integer of the position in the storage.
 
-          QUANTITY|TAG - integer block number, or the string "latest", "earliest" or "pending"
+          QUANTITY|TAG - the string "latest" or "pending"
       requestBody:
         content:
           application/json:
@@ -1570,7 +1570,7 @@ paths:
 
         2. ARRAY, 32 Bytes - array of storage-keys which should be proofed and included. See eth_getStorageAt
 
-        3. QUANTITY|TAG - integer block number, or the string "latest" or "earliest", see the default block parameter
+        3. QUANTITY|TAG - the string "latest" or "pending", see the default block parameter
       requestBody:
         content:
           application/json:
