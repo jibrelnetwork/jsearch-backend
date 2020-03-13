@@ -271,6 +271,15 @@ async def test_get_block_transaction_count(cli, link_txs_with_block, block_facto
     }
 
 
+async def test_get_block_transaction_count_by_invalid_hash_block(cli):
+    # when
+    resp = await cli.get('/v1/blocks/invalid/transaction_count')
+    assert resp.status == 200
+
+    # then
+    assert (await resp.json())['data'] == {'count': 0}
+
+
 async def test_get_block_transactions_forked(cli, db, transaction_factory):
     # given
     transaction_factory.create(block_number=1, block_hash='aa', hash='tx1', is_forked=False)
@@ -391,6 +400,15 @@ async def test_get_block_uncle_count(cli, main_db_data):
     resp = await cli.get('/v1/blocks/' + main_db_data['blocks'][1]['hash'] + '/uncle_count')
     assert resp.status == 200
     assert (await resp.json())['data'] == {'count': 1}
+
+
+async def test_get_block_uncle_count_by_invalid_hash_block(cli):
+    # when
+    resp = await cli.get('/v1/blocks/invalid/uncle_count')
+    assert resp.status == 200
+
+    # then
+    assert (await resp.json())['data'] == {'count': 0}
 
 
 @pytest.mark.parametrize(
