@@ -18,7 +18,7 @@ class TokenDescriptionModel(Base):
 
 
 class TokenDescriptionsFactory(factory.alchemy.SQLAlchemyModelFactory):
-    address = factory.LazyFunction(generate_address)
+    token = factory.LazyFunction(generate_address)
 
     total_supply = factory.LazyFunction(lambda: randint(0, 10 ** 18))
     block_number = factory.Sequence(lambda n: n)

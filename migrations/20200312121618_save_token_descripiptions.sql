@@ -104,13 +104,13 @@ BEGIN
     IF json_array_length(dex_logs_data::json) > 0 THEN
         INSERT INTO dex_logs
         SELECT *
-            FROM json_populate_recordset(null::dex_logs, dex_logs_data::json)
+        FROM json_populate_recordset(null::dex_logs, dex_logs_data::json)
         ON CONFLICT DO NOTHING;
     END IF;
 
     IF json_array_length(token_descriptions_data::json) > 0 THEN
-        INSERT INTO token_descriptions
-        SELECT *
+        INSERT INTO token_descriptions(block_number, block_hash, token, total_supply)
+        SELECT block_number, block_hash, token, total_supply
         FROM json_populate_recordset(null::token_descriptions, token_descriptions_data::json)
         ON CONFLICT DO NOTHING;
     END IF;

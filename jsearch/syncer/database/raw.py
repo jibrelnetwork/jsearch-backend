@@ -194,7 +194,10 @@ class RawDB(DBWrapper):
         WHERE block_hash = %s;
         """
         rows = await self.fetch_all(query, block_hash)
-        return [dict(row) for row in rows]
+        results = [dict(row) for row in rows]
+        for item in results:
+            item['total_supply'] = int(item['total_supply'])
+        return results
 
     async def get_reward(self, block_number, block_hash):
         if block_number == GENESIS_BLOCK_NUMBER:
