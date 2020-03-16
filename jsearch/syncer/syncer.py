@@ -111,6 +111,7 @@ async def load_block_from_raw_db(
         accounts=await raw_db.get_block_accounts(block_hash),
         internal_txs=await raw_db.get_internal_transactions(block_hash),
         token_balances=await raw_db.get_token_holder_balances(block_hash),
+        token_descriptions=await raw_db.get_token_descriptions(block_hash),
         is_forked=is_forked
     )
 

@@ -50,8 +50,8 @@ ENV LOG_LEVEL="INFO" \
     API_PAGING_LIMIT_DEFAULT="20" \
     API_PAGING_LIMIT_MAX="100" \
     DEX_CONTRACT="" \
-    PROXY_LOAD_URL="http://proxyrack.net/rotating/megaproxy/"
-
+    PROXY_LOAD_URL="http://proxyrack.net/rotating/megaproxy/" \
+    SYNCER_WAIT_MIGRATION='20200312122200'
 
 RUN groupadd -g 999 app \
  && useradd -r -u 999 -g app app \
