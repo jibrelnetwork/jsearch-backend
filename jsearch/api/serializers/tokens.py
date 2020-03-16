@@ -1,10 +1,10 @@
-from marshmallow import validates_schema, ValidationError
+from marshmallow import validates_schema, ValidationError, fields
 from marshmallow.fields import Integer
-from marshmallow.validate import Range, Length
+from marshmallow.validate import Range, Length, OneOf
 
 from jsearch.api.database_queries.token_holders import get_token_holders_ordering
 from jsearch.api.database_queries.token_transfers import get_transfers_ordering
-from jsearch.api.ordering import Ordering
+from jsearch.api.ordering import Ordering, ORDER_DESC
 from jsearch.api.serializers.common import BlockRelatedListSchema, ListSchema
 from jsearch.api.serializers.fields import StrLower, IntField, BigIntField
 from jsearch.typing import OrderScheme, OrderDirection
@@ -44,6 +44,11 @@ class TokenHoldersListSchema(ListSchema):
     contract_address = StrLower(validate=Length(min=1, max=100), location='match_info')
 
     tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
+
+    order = fields.Str(
+        missing=ORDER_DESC,
+        validate=OneOf([ORDER_DESC], error='Ordering can be only "desc".'),
+    )
 
     mapping = {
         'id': '_id'

@@ -8,6 +8,7 @@ from jsearch.common.db import DBWrapper
 from jsearch.common.structs import BlockRange
 from jsearch.common.utils import timeit
 from jsearch.syncer.structs import TokenHolderBalances, TokenHolderBalance, NodeState
+from jsearch.typing import AnyDicts
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +182,22 @@ class RawDB(DBWrapper):
             if isinstance(row['balance'], Decimal):
                 row['balance'] = int(row['balance'])
         return [TokenHolderBalance(**row) for row in rows]
+
+    async def get_token_descriptions(self, block_hash: str) -> AnyDicts:
+        query = """
+        SELECT
+            "block_number",
+            "block_hash",
+            lower("token") as token,
+            "total_supply"
+        FROM token_descriptions
+        WHERE block_hash = %s;
+        """
+        rows = await self.fetch_all(query, block_hash)
+        results = [dict(row) for row in rows]
+        for item in results:
+            item['total_supply'] = int(item['total_supply'])
+        return results
 
     async def get_reward(self, block_number, block_hash):
         if block_number == GENESIS_BLOCK_NUMBER:

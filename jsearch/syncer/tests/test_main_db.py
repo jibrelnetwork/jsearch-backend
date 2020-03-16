@@ -79,7 +79,8 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, ma
         token_holders_updates=[],
         transfers=[],
         wallet_events=[],
-        dex_events=[]
+        dex_events=[],
+        token_descriptions=[],
     )
 
     chain_event = {
@@ -151,7 +152,8 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, ma
         token_holders_updates=[],
         transfers=[],
         wallet_events=[],
-        dex_events=[]
+        dex_events=[],
+        token_descriptions=[]
     )
     chain_event['id'] = 2
 
@@ -225,7 +227,8 @@ async def test_save_dex_events(
         txs=[],
         uncles=[],
         wallet_events=[],
-        dex_events=events
+        dex_events=events,
+        token_descriptions=[],
     )
     # when
     await main_db_wrapper.write_block(chain_event=None, block_data=block_data, rewrite=False)

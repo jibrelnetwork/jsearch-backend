@@ -97,6 +97,7 @@ async def process_block(main_db: MainDB, data: RawBlockData) -> BlockData:
         internal_txs=internal_txs,
         transfers=transfers,
         token_holders_updates=token_holders_balances,
+        token_descriptions=data.token_descriptions,
         wallet_events=wallet_events,
         assets_summary_updates=assets_summary_updates,
         assets_summary_pairs=assets_summary_pairs,

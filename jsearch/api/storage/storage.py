@@ -41,6 +41,7 @@ from jsearch.api.database_queries.pending_transactions import (
     get_outcoming_pending_txs_count,
     get_pending_txs_ordering
 )
+from jsearch.api.database_queries.token_descriptions import get_token_threshold_query
 from jsearch.api.database_queries.token_holders import get_token_holders_query, get_last_token_holders_query
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_account_and_block_number,
@@ -582,12 +583,14 @@ class Storage(DbActionsMixin):
             ordering: Ordering,
             token_address: TokenAddress,
             balance: Optional[int],
+            holder_threshold: Optional[int] = None,
             _id: Optional[int] = None
     ) -> Tuple[List[models.TokenHolderWithId], Optional[LastAffectedBlock]]:
         query = get_token_holders_query(
             limit=limit,
             ordering=ordering,
             token_address=token_address,
+            holder_threshold=holder_threshold,
             balance=balance,
             _id=_id
         )
@@ -597,6 +600,14 @@ class Storage(DbActionsMixin):
         last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return holders, last_affected_block
+
+    async def get_token_threshold(self, token_address: TokenAddress, threshold_percent=0.008) -> Optional[int]:
+        query = get_token_threshold_query(token_address)
+        result = await self.fetch_one(query)
+        if result:
+            total_supply = int(result['total_supply'])
+            return int(total_supply * threshold_percent)
+        return None
 
     async def get_account_token_balance(
             self,

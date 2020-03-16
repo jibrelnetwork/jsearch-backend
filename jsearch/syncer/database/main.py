@@ -24,8 +24,8 @@ from jsearch.common.tables import (
     transactions_t,
     uncles_t,
     wallet_events_t,
-    dex_logs_t
-)
+    dex_logs_t,
+    token_descriptions_t)
 from jsearch.common.utils import timeit
 from jsearch.pending_syncer.database_queries.pending_txs import insert_or_update_pending_txs_q
 from jsearch.syncer.database_queries.dex import get_dex_orders_query, get_dex_trades_query
@@ -121,7 +121,8 @@ class MainDB(DBWrapper):
             transactions_t,
             uncles_t,
             wallet_events_t,
-            dex_logs_t
+            dex_logs_t,
+            token_descriptions_t
         )
 
         await conn.execute(get_update_blocks_fork_status_query(is_forked, block_hashes))
@@ -300,7 +301,7 @@ class MainDB(DBWrapper):
         else:
             event = ''
 
-        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
 
         params = [
             [block_data.block],
@@ -317,7 +318,8 @@ class MainDB(DBWrapper):
             block_data.assets_summary_updates,
             block_data.assets_summary_pairs,
             event,
-            block_data.dex_events
+            block_data.dex_events,
+            block_data.token_descriptions
         ]
         await connection.execute(q, *[json.dumps(item) for item in params])
 
@@ -343,6 +345,7 @@ class MainDB(DBWrapper):
         await connection.execute("""DELETE FROM uncles WHERE block_hash=%s""", block_hash)
         await connection.execute("""DELETE FROM blocks WHERE hash=%s""", block_hash)
         await connection.execute("""DELETE FROM dex_logs WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM token_descriptions WHERE block_hash=%s""", block_hash)
 
     async def get_block_hash_by_number(self, block_num) -> Optional[str]:
         q = blocks_t.select().where(and_(blocks_t.c.number == block_num, blocks_t.c.is_forked == false()))
