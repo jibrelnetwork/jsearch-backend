@@ -68,7 +68,7 @@ async def test_filter_by_threshold(
     create_token_holders(token_address, balances)
     for threshold in thresholds:
         token_descriptions_factory.create(
-            address=token_address,
+            token=token_address,
             total_supply=threshold.total_supply,
             block_number=threshold.block_number,
             is_forked=threshold.is_forked

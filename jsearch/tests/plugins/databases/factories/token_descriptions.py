@@ -12,7 +12,7 @@ class TokenDescriptionModel(Base):
     __mapper_args__ = {
         'primary_key': [
             token_descriptions_t.c.block_hash,
-            token_descriptions_t.c.address
+            token_descriptions_t.c.token
         ]
     }
 

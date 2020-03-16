@@ -24,12 +24,6 @@ pytestmark = [
                 {'limit': 3, 'order': 'desc', 'balance': 300, 'id': 5},
         ),
         (
-                {'limit': 3, 'order': 'asc'},
-                [(100, 0), (100, 1), (200, 2)],
-                {'limit': 3, 'order': 'asc', 'balance': 200, 'id': 3},
-                {'limit': 3, 'order': 'asc', 'balance': 100, 'id': 0},
-        ),
-        (
                 {'limit': 3, 'balance': 200},
                 [(200, 3), (200, 2), (100, 1)],
                 {'limit': 3, 'order': 'desc', 'balance': 100, 'id': 0},
@@ -44,7 +38,6 @@ pytestmark = [
     ],
     ids=[
         'limit=3',
-        'limit=3, order=asc',
         'limit=3, balance=200',
         'limit=3, balance=200, id=2',
     ]
