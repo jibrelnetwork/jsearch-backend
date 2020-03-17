@@ -7,6 +7,7 @@ from typing import List, Optional, Dict, Any
 
 from sqlalchemy import select, and_, desc, true
 
+from jsearch import settings
 from jsearch.api import models
 from jsearch.api.database_queries.account_bases import get_account_base_query
 from jsearch.api.database_queries.account_states import get_account_state_query
@@ -601,12 +602,12 @@ class Storage(DbActionsMixin):
 
         return holders, last_affected_block
 
-    async def get_token_threshold(self, token_address: TokenAddress, threshold_percent=0.008) -> Optional[int]:
+    async def get_token_threshold(self, token_address: TokenAddress) -> Optional[int]:
         query = get_token_threshold_query(token_address)
         result = await self.fetch_one(query)
         if result:
             total_supply = int(result['total_supply'])
-            return int(total_supply * threshold_percent)
+            return int(total_supply * settings.API_TOKEN_HOLDER_THRESHOLD)
         return None
 
     async def get_account_token_balance(
