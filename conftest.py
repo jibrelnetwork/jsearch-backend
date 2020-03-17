@@ -26,6 +26,7 @@ pytest_plugins = (
     "jsearch.tests.plugins.databases.factories.receipts",
     "jsearch.tests.plugins.databases.factories.reorgs",
     "jsearch.tests.plugins.databases.factories.token_holder",
+    "jsearch.tests.plugins.databases.factories.token_descriptions",
     "jsearch.tests.plugins.databases.factories.token_transfers",
     "jsearch.tests.plugins.databases.factories.transactions",
     "jsearch.tests.plugins.databases.factories.uncles",

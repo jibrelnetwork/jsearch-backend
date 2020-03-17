@@ -226,6 +226,16 @@ CREATE TABLE public.token_holders (
 );
 
 
+CREATE TABLE IF NOT EXISTS token_descriptions (
+    id bigserial primary key,
+    block_number bigint NOT NULL,
+    block_hash varchar(70) NOT NULL,
+    token varchar(45) NOT NULL,
+    total_supply numeric NOT NULL,
+    UNIQUE(block_hash, token)
+);
+
+
 CREATE SEQUENCE public.token_holders_id_seq
     START WITH 1
     INCREMENT BY 1

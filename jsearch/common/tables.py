@@ -364,6 +364,16 @@ dex_logs_t = sa.Table(
     sa.Column('is_forked', sa.Boolean, default=False),
 )
 
+token_descriptions_t = sa.Table(
+    'token_descriptions',
+    metadata,
+    sa.Column('block_number', Integer),
+    sa.Column('block_hash', sa.String),
+    sa.Column('token', sa.String),
+    sa.Column('total_supply', postgresql.NUMERIC(32, 0), index=True),
+    sa.Column('is_forked', sa.Boolean, default=False),
+)
+
 TABLES = (
     blocks_t,
     uncles_t,
