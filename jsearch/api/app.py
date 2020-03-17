@@ -41,7 +41,7 @@ def define_routes(app: Application):
     add('GET', '/healthcheck', monitoring.healthcheck)
     add('GET', '/metrics', monitoring.metrics)
 
-    add('GET', '/v1/accounts/balances', get_accounts_balances)
+    add('GET', '/v1/accounts/balances', get_accounts_balances, name='accounts_balances')
     add('GET', '/v1/accounts/{address}', get_account)
     add('GET', '/v1/accounts/{address}/transactions', get_account_transactions, name='accounts_txs')
     add('GET', '/v1/accounts/{address}/internal_transactions', get_account_internal_txs, name='accounts_internal_txs')

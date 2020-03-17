@@ -1,10 +1,10 @@
 import logging
+import time
+from typing import List, Dict, Any, Tuple, Callable, Optional
 from urllib.parse import parse_qs, urlencode
 
 import pytest
-import time
 from aiohttp.test_utils import TestClient
-from typing import List, Dict, Any, Tuple, Callable, Optional
 
 from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.tests.plugins.databases.factories.common import generate_address
@@ -286,6 +286,40 @@ async def test_get_accounts_transactions_limits(
     )
 )
 async def test_get_account_txs_filter_by_big_value(
+        cli: TestClient,
+        parameter: str,
+        value: int,
+        status: int
+):
+    # given
+    address = generate_address()
+
+    params = urlencode({parameter: value})
+    url = f"/v1/accounts/{address}/transactions?{params}"
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status
+
+
+@pytest.mark.parametrize(
+    "parameter, value, status",
+    (
+            ('block_number', 2 ** 128, 400),
+            ('block_number', 2 ** 8, 200),
+            ('timestamp', 2 ** 128, 400),
+            ('timestamp', 2 ** 8, 200)
+    ),
+    ids=(
+            "block_number_with_too_big_value",
+            "block_number_with_normal_value",
+            "timestamp_with_too_big_value",
+            "timestamp_with_normal_value"
+    )
+)
+async def test_get_accounts_txs_filter_by_big_value(
         cli: TestClient,
         parameter: str,
         value: int,

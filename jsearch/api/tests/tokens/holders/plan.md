@@ -21,8 +21,12 @@
     * [x] Limits
         * [x] Default
         * [x] Max
-* [ ] Resources filtration by query params
-    * [x] by balance
-        * [x] big values
-* [x] Filtration by token threshold
+* [ ] Filtration
+    * [x] by query params 
+        * [x] by balance
+            * [x] big values
+    * [x] default
+        * [x] by token threshold
+        * [x] zero balance has to be hidden
+        * [x] by history - api returns only last record from history per token/address pair
 * [ ] `jsearch-v1.swagger.yaml` conformity
