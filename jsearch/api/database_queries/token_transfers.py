@@ -2,7 +2,7 @@ from sqlalchemy import Column, select, and_, false, tuple_
 from sqlalchemy.orm import Query
 from typing import List, Optional
 
-from jsearch.api.ordering import Ordering, ORDER_SCHEME_BY_NUMBER, ORDER_SCHEME_BY_TIMESTAMP, get_ordering
+from jsearch.api.ordering import Ordering, get_ordering
 from jsearch.common.tables import token_transfers_t
 from jsearch.typing import OrderScheme, OrderDirection, Columns
 
@@ -26,18 +26,12 @@ def get_default_fields() -> List[Column]:
 
 
 def get_transfers_ordering(scheme: OrderScheme, direction: OrderDirection) -> Ordering:
-    columns: Columns = {
-        ORDER_SCHEME_BY_NUMBER: [
+    columns: Columns = [
             token_transfers_t.c.block_number,
             token_transfers_t.c.transaction_index,
             token_transfers_t.c.log_index,
-        ],
-        ORDER_SCHEME_BY_TIMESTAMP: [
-            token_transfers_t.c.timestamp,
-            token_transfers_t.c.transaction_index,
-            token_transfers_t.c.log_index,
-        ]
-    }[scheme]
+    ]
+
     return get_ordering(columns, scheme, direction)
 
 
