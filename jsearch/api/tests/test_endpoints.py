@@ -3,7 +3,6 @@ import logging
 import pytest
 from aiohttp.test_utils import TestClient
 
-from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.tests.entities import BlockFromDumpWrapper
 
@@ -216,6 +215,70 @@ async def test_get_block_transactions(cli, block_factory, transaction_factory):
     ]
 
 
+async def test_get_block_transaction_by_tx_index(cli, block_factory, transaction_factory):
+    # given
+    block = block_factory.create()
+    txs = transaction_factory.create_for_block(block)
+    tx = txs[0]
+
+    # when
+    resp = await cli.get(f'/v1/blocks/{block.hash}/transactions?transaction_index=0')
+    assert resp.status == 200
+
+    # then
+    res = (await resp.json())['data']
+    assert res == [
+        {
+            'blockHash': tx.block_hash,
+            'blockNumber': tx.block_number,
+            'timestamp': tx.timestamp,
+            'from': getattr(tx, 'from'),
+            'gas': tx.gas,
+            'gasPrice': tx.gas_price,
+            'hash': tx.hash,
+            'input': tx.input,
+            'nonce': tx.nonce,
+            'status': True,
+            'r': tx.r,
+            's': tx.s,
+            'to': tx.to,
+            'transactionIndex': tx.transaction_index,
+            'v': tx.v,
+            'value': tx.value,
+        },
+    ]
+
+
+async def test_get_block_transaction_count(cli, link_txs_with_block, block_factory, transaction_factory):
+    # given
+    block = block_factory.create()
+    tx = transaction_factory.create_for_block(block)
+
+    link_txs_with_block(
+        [tx[0].hash, ],
+        block.hash
+    )
+
+    # when
+    resp = await cli.get(f'/v1/blocks/{block.hash}/transaction_count')
+    assert resp.status == 200
+
+    # then
+    res = (await resp.json())['data']
+    assert res == {
+        'count': 1
+    }
+
+
+async def test_get_block_transaction_count_by_invalid_hash_block(cli):
+    # when
+    resp = await cli.get('/v1/blocks/invalid/transaction_count')
+    assert resp.status == 200
+
+    # then
+    assert (await resp.json())['data'] == {'count': 0}
+
+
 async def test_get_block_transactions_forked(cli, db, transaction_factory):
     # given
     transaction_factory.create(block_number=1, block_hash='aa', hash='tx1', is_forked=False)
@@ -301,6 +364,50 @@ async def test_get_block_uncles(cli, main_db_data):
             'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
         }
     ]
+
+
+@pytest.mark.usefixtures('uncles')
+async def test_get_block_uncle_by_uncle_index(cli, main_db_data):
+    resp = await cli.get('/v1/blocks/' + main_db_data['blocks'][1]['hash'] + '/uncles?uncle_index=0')
+    assert resp.status == 200
+    assert (await resp.json())['data'] == [
+        {
+            'difficulty': "17578564779",
+            'blockNumber': 2,
+            'extraData': '0x476574682f76312e302e302f6c696e75782f676f312e342e32',
+            'gasLimit': "5000",
+            'gasUsed': "0",
+            'hash': '0x7852fb223883cd9af4cd9d448998c879a1f93a02954952666075df696c61a2cc',
+            'logsBloom': '0x0',
+            'miner': '0x0193d941b50d91be6567c7ee1c0fe7af498b4137',
+            'mixHash': '0x94a09bb3ef9208bf434855efdb1089f80d07334d91930387a1f3150494e806cb',
+            'nonce': '0x32de6ee381be0179',
+            'number': 61,
+            'parentHash': '0x3cd0324c7ba14ba7cf6e4b664dea0360681458d76bd25dfc0d2207ce4e9abed4',
+            'receiptsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+            'sha3Uncles': '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
+            'stateRoot': '0x1f4f1cf07f087191901752fe3da8ca195946366db6565f17afec5c04b3d75fd8',
+            'timestamp': 1438270332,
+            'reward': str(3750000000000000000),
+            'transactionsRoot': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421'
+        }
+    ]
+
+
+@pytest.mark.usefixtures('uncles')
+async def test_get_block_uncle_count(cli, main_db_data):
+    resp = await cli.get('/v1/blocks/' + main_db_data['blocks'][1]['hash'] + '/uncle_count')
+    assert resp.status == 200
+    assert (await resp.json())['data'] == {'count': 1}
+
+
+async def test_get_block_uncle_count_by_invalid_hash_block(cli):
+    # when
+    resp = await cli.get('/v1/blocks/invalid/uncle_count')
+    assert resp.status == 200
+
+    # then
+    assert (await resp.json())['data'] == {'count': 0}
 
 
 @pytest.mark.parametrize(
@@ -491,32 +598,6 @@ async def test_get_blockchain_tip(cli, block_factory):
     }
 
 
-async def test_get_accounts_balances_does_not_complain_on_addresses_count_less_than_limit(cli):
-    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH)]
-    addresses_str = ','.join(addresses)
-
-    resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
-
-    assert resp.status == 200
-
-
-async def test_get_accounts_balances_complains_on_addresses_count_more_than_limit(cli):
-    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH + 1)]
-    addresses_str = ','.join(addresses)
-
-    resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
-    resp_json = await resp.json()
-
-    assert resp.status == 400
-    assert resp_json['status']['errors'] == [
-        {
-            'field': 'addresses',
-            'code': 'TOO_MANY_ITEMS',
-            'message': 'Too many addresses requested'
-        }
-    ]
-
-
 @pytest.mark.parametrize(
     'url, status_code',
     (
@@ -531,6 +612,7 @@ async def test_get_accounts_balances_complains_on_addresses_count_more_than_limi
         ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/token_balance/0x0193d941b50d91be6567c7ee1c0fe7af498b4137', 404),  # NOQA: E501
         ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/token_balances?contract_addresses=0x0193d941b50d91be6567c7ee1c0fe7af498b4137', 200),  # NOQA: E501
         ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/logs', 200),
+        ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/logs?topics=0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', 200),  # NOQA: E501
         ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/transaction_count', 200),
         ('/v1/accounts/0x0193d941b50d91be6567c7ee1c0fe7af498b4137/eth_transfers', 200),
         ('/v1/blocks', 200),
@@ -556,3 +638,25 @@ async def test_endpoint_does_not_fail_if_database_is_empty(cli: TestClient, url:
 
     # then
     assert response.status == status_code
+
+
+@pytest.mark.parametrize(
+    'data, status_code, result',
+    (
+        ('{"data": "0x68656c6c6f20776f726c64"}', 200, '0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad'),  # NOQA: E501
+        ('{"data": "0x00"}', 200, '0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a'),
+        ('{"data": "0x0"}', 400, None),
+        ('{"data": "0x"}', 200, '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'),
+        ('{"data": "abcdefg"}', 400, None),
+        ('{"data": 123456789}', 400, None),
+    ),
+)
+async def test_sha3(cli: TestClient, data: str, status_code: int, result: str) -> None:
+    # when
+    response = await cli.post('/v1/sha3', data=data)
+
+    # then
+    assert response.status == status_code
+    if status_code == 200:
+        resp_json = await response.json()
+        assert resp_json['data'] == result

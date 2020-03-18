@@ -6,7 +6,6 @@ from typing import List, Dict
 import jsearch.cli
 import jsearch.common.worker
 import jsearch.pending_syncer.main
-import jsearch.syncer.main
 from jsearch.tests.common import CODE_OK, CODE_ERROR_FROM_CLICK
 
 pytestmark = [pytest.mark.asyncio]
@@ -40,7 +39,7 @@ async def test_jsearch_cli(
         exit_code: int,
 ) -> None:
     result = cli_runner.invoke(jsearch.cli.cli, call_args)
-    assert result.exit_code == exit_code
+    assert result.exit_code == exit_code, result
 
 
 @pytest.mark.usefixtures('_mock_loop_runners')
@@ -63,7 +62,7 @@ async def test_pending_syncer_entrypoint(
         exit_code: int,
 ) -> None:
     result = cli_runner.invoke(jsearch.pending_syncer.main.run, call_args)
-    assert result.exit_code == exit_code
+    assert result.exit_code == exit_code, result
 
 
 @pytest.mark.usefixtures('_mock_loop_runners')

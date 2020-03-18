@@ -180,7 +180,7 @@ async def request_state(port: int) -> Dict[str, Any]:
 
 def get_cmd(sync_range: BlockRange, port: int, **kwargs: Any):
     cmd = [
-        "jsearch-syncer",
+        "jsearch", "syncer",
         "--port", str(port),
         "--sync-range", str(sync_range)
     ]

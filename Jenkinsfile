@@ -32,6 +32,7 @@ builder(
 								INFURA_API_URL: '',
 								INFURA_API_KEY: '',
 								JWALLET_API_URL: '',
+								API_PAGING_LIMIT_MAX: 20,  // Unit tests depend on that value.
                         ],
                         sidecars: [
                                 maindb: [

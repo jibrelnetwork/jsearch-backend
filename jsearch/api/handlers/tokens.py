@@ -23,6 +23,7 @@ async def get_token_transfers(
         limit: int,
         order: Ordering,
         tip_hash: Optional[str] = None,
+        account_address: Optional[str] = None,
         block_number: Optional[Union[int, str]] = None,
         timestamp: Optional[int] = None,
         transaction_index: Optional[int] = None,
@@ -41,6 +42,7 @@ async def get_token_transfers(
         limit=limit + 1,
         ordering=order,
         block_number=block_number,
+        account_address=account_address,
         transaction_index=transaction_index,
         log_index=log_index
     )
@@ -76,9 +78,13 @@ async def get_token_holders(
     storage = request.app['storage']
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
+    # WTF: optimization hack - we will return only holders who are reached the threshold
+    holder_threshold = await storage.get_token_threshold(token_address=contract_address)
+
     # Notes: we need to query limit + 1 items to get link on next page
     holders, last_affected_block = await storage.get_tokens_holders(
         token_address=contract_address,
+        holder_threshold=holder_threshold,
         limit=limit + 1,
         ordering=order,
         balance=balance,

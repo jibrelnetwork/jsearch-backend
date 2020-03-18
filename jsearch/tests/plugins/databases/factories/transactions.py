@@ -1,4 +1,5 @@
 import time
+from functools import partial
 
 import factory
 import pytest
@@ -55,16 +56,21 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
         rename = {'from_': 'from'}
 
     @classmethod
-    def create_for_block(cls, block, **kwargs):
+    def create_for_block(cls, block, as_dict=False, **kwargs):
+        get_block_attr = block.get if isinstance(block, dict) else partial(getattr, block)
+        block_data = {
+            'block_number': get_block_attr('number'),
+            'block_hash': get_block_attr('hash'),
+            'timestamp': get_block_attr('timestamp'),
+        }
+
         data = factory.build(dict, FACTORY_CLASS=TransactionFactory)
         data.update({
             **{
-                'block_number': block.number,
-                'block_hash': block.hash,
-                'timestamp': block.timestamp,
                 'from_': generate_address(),
                 'to': generate_address()
             },
+            **block_data,
             **kwargs
         })
         data.pop('address', None)
@@ -74,6 +80,11 @@ class TransactionFactory(factory.alchemy.SQLAlchemyModelFactory):
         else:
             data['from_'] = data.pop('from', None)
 
+        if as_dict:
+            return [
+                factory.build(dict, FACTORY_CLASS=TransactionFactory, **{'address': data['from_'], **data}),
+                factory.build(dict, FACTORY_CLASS=TransactionFactory, **{'address': data['to'], **data})
+            ]
         return [
             cls.create(address=data['from_'], **data),
             cls.create(address=data['to'], **data),

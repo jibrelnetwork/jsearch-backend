@@ -108,7 +108,30 @@ txs_cases = [
         expected_type=WalletEventType.TX_CANCELLATION,
         id='from_tx_cancellation_to_not_contract'
     ),
-
+    TransactionCase(
+        data={
+            'value': '0x0',
+            'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
+            'to': '0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
+            'input': '0x'
+        },
+        is_pending=False,
+        to_contract=False,
+        expected_type=WalletEventType.ETH_TRANSFER,
+        id='from_tx_zero_ether_transfer_to_not_contract'
+    ),
+    TransactionCase(
+        data={
+            'value': '0x0',
+            'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
+            'to': '0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
+            'input': '0x'
+        },
+        is_pending=False,
+        to_contract=True,
+        expected_type=WalletEventType.CONTRACT_CALL,
+        id='from_tx_zero_ether_transfer_to_contract'
+    ),
     # - pending transactions
     TransactionCase(
         data={
@@ -249,6 +272,18 @@ txs_cases = [
         is_pending=True,
         to_contract=False,
         expected_type=WalletEventType.TX_CANCELLATION,
+        id='from_pending_tx_cancellation_to_not_contract'
+    ),
+    TransactionCase(
+        data={
+            'value': '0',
+            'from': '0x355941cf7ac065310fd4023e1b913209f076a48a',
+            'to': '0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7',
+            'input': '0x'
+        },
+        is_pending=True,
+        to_contract=False,
+        expected_type=WalletEventType.ETH_TRANSFER,
         id='from_pending_tx_cancellation_to_not_contract'
     ),
 ]

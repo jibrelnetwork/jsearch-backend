@@ -38,8 +38,12 @@ fi
 
 CMD="$@"
 
-if [[ $CMD = "app" ]]; then
+echo "$CMD"
+
+if [[ $CMD = "jsearch-syncer" ]]; then
     python manage.py init
+    jsearch syncer
+elif [[ $CMD = "app" ]]; then
     jsearch api
 elif [[ $CMD = "monitor" ]]; then
     jsearch monitor

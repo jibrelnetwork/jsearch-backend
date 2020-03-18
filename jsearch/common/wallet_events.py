@@ -28,6 +28,9 @@ def get_event_type(tx_data: Transaction, is_receiver_contract=False, is_pending=
     value_base = 10 if is_pending else 16
     value = int(tx_data['value'], value_base)
 
+    if value == 0 and tx_data.get('input', '0x') == '0x' and not is_receiver_contract:
+        return WalletEventType.ETH_TRANSFER
+
     if value != 0:
         return WalletEventType.ETH_TRANSFER
 

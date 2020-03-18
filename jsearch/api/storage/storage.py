@@ -1,13 +1,13 @@
 import asyncio
 import logging
 from collections import defaultdict
-
-from aiopg.sa import Engine
 from functools import partial
-from sqlalchemy import select, and_, desc, true
 from typing import DefaultDict, Tuple, Set
 from typing import List, Optional, Dict, Any
 
+from sqlalchemy import select, and_, desc, true
+
+from jsearch import settings
 from jsearch.api import models
 from jsearch.api.database_queries.account_bases import get_account_base_query
 from jsearch.api.database_queries.account_states import get_account_state_query
@@ -42,6 +42,7 @@ from jsearch.api.database_queries.pending_transactions import (
     get_outcoming_pending_txs_count,
     get_pending_txs_ordering
 )
+from jsearch.api.database_queries.token_descriptions import get_token_threshold_query
 from jsearch.api.database_queries.token_holders import get_token_holders_query, get_last_token_holders_query
 from jsearch.api.database_queries.token_transfers import (
     get_token_transfers_by_account_and_block_number,
@@ -52,6 +53,7 @@ from jsearch.api.database_queries.transactions import (
     get_tx_by_address_and_block_query,
     get_tx_by_address_and_timestamp_query,
     get_transactions_by_hashes,
+    get_block_txs_query,
 )
 from jsearch.api.database_queries.uncles import (
     get_uncles_by_timestamp_query,
@@ -74,14 +76,10 @@ from jsearch.common.queries import in_app_distinct
 from jsearch.common.tables import reorgs_t, chain_events_t, blocks_t
 from jsearch.common.utils import unique
 from jsearch.common.wallet_events import get_event_from_pending_tx
+from jsearch.consts import NULL_ADDRESS
 from jsearch.typing import LastAffectedBlock, OrderDirection, TokenAddress, ProgressPercent
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_ACCOUNT_TRANSACTIONS_LIMIT = 20
-MAX_ACCOUNT_TRANSACTIONS_LIMIT = 200
-
-BLOCKS_IN_QUERY = 10
 
 
 def process_block(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -115,10 +113,6 @@ def _rows_to_token_transfers(rows: List[Dict[str, Any]]) -> List[models.TokenTra
 
 
 class Storage(DbActionsMixin):
-
-    def __init__(self, engine: Engine) -> None:
-        self.engine = engine
-
     async def get_latest_chain_event_id(self) -> Optional[int]:
         query = select_latest_chain_event_id()
         row = await self.fetch_one(query)
@@ -182,9 +176,6 @@ class Storage(DbActionsMixin):
             timestamp: int,
             tx_index: Optional[int] = None
     ) -> Tuple[List[models.Transaction], Optional[LastAffectedBlock]]:
-
-        limit = min(limit, MAX_ACCOUNT_TRANSACTIONS_LIMIT)
-
         # Notes: syncer writes txs to main db with denormalization (x2 records per transaction)
         query_limit = limit * 2
         if ordering.scheme == ORDER_SCHEME_BY_NUMBER:
@@ -200,24 +191,10 @@ class Storage(DbActionsMixin):
 
         return txs, last_affected_block
 
-    async def get_block_transactions(self, tag):
-        fields = models.Transaction.select_fields()
-        if tag.is_hash():
-            query = f"SELECT {fields} FROM transactions WHERE block_hash=%s AND is_forked=false " \
-                    f"ORDER BY transaction_index;"
-        elif tag.is_number():
-            query = f"SELECT {fields} FROM transactions WHERE block_number=%s AND is_forked=false " \
-                    f"ORDER BY transaction_index;"
-        else:
-            query = f"""
-                SELECT {fields} FROM transactions
-                WHERE block_number=(SELECT max(number) FROM blocks) AND is_forked=false ORDER BY transaction_index;
-        """
+    async def get_block_transactions(self, tag, tx_index=None):
+        query = get_block_txs_query(tag, tx_index)
 
-        if tag.is_latest():
-            rows = await self.fetch_all(query)
-        else:
-            rows = await self.fetch_all(query, tag.value)
+        rows = await self.fetch_all(query)
 
         # FAQ: `SELECT DISTINCT` performs two times slower than `SELECT`, so use
         # `in_app_distinct` instead.
@@ -332,11 +309,11 @@ class Storage(DbActionsMixin):
 
     async def get_uncle(self, tag):
         if tag.is_hash():
-            query = "SELECT * FROM uncles WHERE hash=%s"
+            query = "SELECT * FROM uncles WHERE hash=%s AND is_forked=false"
         elif tag.is_number():
-            query = "SELECT * FROM uncles WHERE number=%s"
+            query = "SELECT * FROM uncles WHERE number=%s AND is_forked=false"
         else:
-            query = "SELECT * FROM uncles WHERE number=(SELECT max(number) FROM uncles)"
+            query = "SELECT * FROM uncles WHERE number=(SELECT max(number) FROM uncles) AND is_forked=false"
 
         if tag.is_latest():
             row = await self.fetch_one(query)
@@ -422,13 +399,13 @@ class Storage(DbActionsMixin):
 
         return uncles, last_affected_block
 
-    async def get_block_uncles(self, tag):
+    async def get_block_uncles(self, tag, uncle_index=None):
         if tag.is_hash():
-            query = "SELECT * FROM uncles WHERE block_hash=%s"
+            query = "SELECT * FROM uncles WHERE block_hash=%s AND is_forked=false"
         elif tag.is_number():
-            query = "SELECT * FROM uncles WHERE block_number=%s"
+            query = "SELECT * FROM uncles WHERE block_number=%s AND is_forked=false"
         else:
-            query = "SELECT * FROM uncles WHERE block_number=(SELECT max(number) FROM blocks)"
+            query = "SELECT * FROM uncles WHERE block_number=(SELECT max(number) FROM blocks) AND is_forked=false"
 
         if tag.is_latest():
             rows = await self.fetch_all(query)
@@ -440,7 +417,13 @@ class Storage(DbActionsMixin):
             del r['is_forked']
             r['reward'] = int(r['reward'])
 
-        return [models.Uncle(**r) for r in rows]
+        if uncle_index is not None:
+            if uncle_index < len(rows):
+                return [models.Uncle(**rows[uncle_index])]
+            else:
+                return []
+        else:
+            return [models.Uncle(**r) for r in rows]
 
     async def get_transaction(self, tx_hash):
         query = get_tx_by_hash(tx_hash)
@@ -470,6 +453,7 @@ class Storage(DbActionsMixin):
             address: str,
             limit: int,
             ordering: Ordering,
+            topics: List[str],
             block_number: Optional[int],
             timestamp: Optional[int],
             transaction_index: Optional[int],
@@ -480,6 +464,7 @@ class Storage(DbActionsMixin):
                 address=address,
                 limit=limit,
                 ordering=ordering,
+                topics=topics,
                 block_number=block_number,
                 transaction_index=transaction_index,
                 log_index=log_index,
@@ -489,6 +474,7 @@ class Storage(DbActionsMixin):
                 address=address,
                 limit=limit,
                 ordering=ordering,
+                topics=topics,
                 timestamp=timestamp,
                 transaction_index=transaction_index,
                 log_index=log_index,
@@ -507,20 +493,25 @@ class Storage(DbActionsMixin):
             queries.append(get_account_state_query(address, TAG_LATEST))
 
         coros = [self.fetch_one(query) for query in queries]
-        rows = await asyncio.gather(*coros)
-        rows = [r for r in rows if r is not None]
+        results = await asyncio.gather(*coros)
+        results = [item for item in results if item is not None]
 
-        addr_map = {r['address']: r for r in rows}
+        addr_map = {item['address']: item for item in results}
 
         balances = []
         for address in addresses:
+
             if address in addr_map:
-                balance = models.Balance(
-                    balance=int(addr_map[address]['balance']),
-                    address=addr_map[address]['address']
-                )
-                balances.append(balance)
-        last_affected_block = max((r['block_number'] for r in rows), default=None)
+                value = int(addr_map[address]['balance'])
+            else:
+                value = 0
+
+            balance = models.Balance(
+                balance=value,
+                address=address,
+            )
+            balances.append(balance)
+        last_affected_block = max((item['block_number'] for item in results), default=None)
         return balances, last_affected_block
 
     async def get_tokens_transfers(
@@ -529,6 +520,7 @@ class Storage(DbActionsMixin):
             limit: int,
             ordering: Ordering,
             block_number: int,
+            account_address: Optional[str] = None,
             transaction_index: Optional[int] = None,
             log_index: Optional[int] = None
     ) -> Tuple[List[models.TokenTransfer], Optional[LastAffectedBlock]]:
@@ -542,6 +534,7 @@ class Storage(DbActionsMixin):
             ordering=ordering,
             limit=query_limit,
             block_number=block_number,
+            account_address=account_address,
             transaction_index=transaction_index,
             log_index=log_index
         )
@@ -596,12 +589,14 @@ class Storage(DbActionsMixin):
             ordering: Ordering,
             token_address: TokenAddress,
             balance: Optional[int],
+            holder_threshold: Optional[int] = None,
             _id: Optional[int] = None
     ) -> Tuple[List[models.TokenHolderWithId], Optional[LastAffectedBlock]]:
         query = get_token_holders_query(
             limit=limit,
             ordering=ordering,
             token_address=token_address,
+            holder_threshold=holder_threshold,
             balance=balance,
             _id=_id
         )
@@ -611,6 +606,14 @@ class Storage(DbActionsMixin):
         last_affected_block = max((r['block_number'] for r in rows), default=None)
 
         return holders, last_affected_block
+
+    async def get_token_threshold(self, token_address: TokenAddress) -> Optional[int]:
+        query = get_token_threshold_query(token_address)
+        result = await self.fetch_one(query)
+        if result:
+            total_supply = int(result['total_supply'])
+            return int(total_supply * settings.API_TOKEN_HOLDER_THRESHOLD)
+        return None
 
     async def get_account_token_balance(
             self,
@@ -824,6 +827,10 @@ class Storage(DbActionsMixin):
             addresses: List[str],
             assets: Optional[List[str]] = None
     ) -> Tuple[AddressesSummary, LastAffectedBlock]:
+        # See: https://jibrelnetwork.atlassian.net/browse/ETHBE-801
+        addresses_contains_null_address = NULL_ADDRESS in addresses
+        addresses = [a for a in addresses if a != NULL_ADDRESS]
+
         query = get_assets_summary_query(addresses=unique(addresses), assets=unique(assets or []))
         rows = await self.fetch_all(query)
 
@@ -837,6 +844,26 @@ class Storage(DbActionsMixin):
                 accounts_with_ether.add(asset['address'])
 
         summary = []
+
+        if addresses_contains_null_address:
+            # Return fake Ether balance for Null Address account. This is done
+            # for lowering the load on the database but keep API the same.
+            #
+            # SEE: https://jibrelnetwork.atlassian.net/browse/ETHBE-801
+            summary.append(
+                AddressSummary(
+                    address=NULL_ADDRESS,
+                    assets_summary=[
+                        AssetSummary(
+                            balance="0",
+                            decimals="0",
+                            address=ETHER_ASSET_ADDRESS,
+                        )
+                    ],
+                    outgoing_transactions_number="0",
+                )
+            )
+
         for account in addresses:
             nonce = 0
             account_summary: List[AssetSummary] = []
@@ -853,8 +880,7 @@ class Storage(DbActionsMixin):
                 asset_summary = AssetSummary(
                     balance=str(balance),
                     decimals=str(decimals),
-                    address=asset['asset_address'],
-                    transfers_number=0,
+                    address=asset['asset_address']
                 )
                 account_summary.append(asset_summary)
 
@@ -870,7 +896,6 @@ class Storage(DbActionsMixin):
                         balance="0",
                         decimals="0",
                         address=ETHER_ASSET_ADDRESS,
-                        transfers_number=0,
                     ),
                 )
 

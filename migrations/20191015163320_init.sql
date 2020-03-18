@@ -12,6 +12,9 @@
 -- Name: check_canonical_chain(integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
+-- Read only user
+CREATE ROLE jsearch_main_ro_user;
+
 CREATE FUNCTION check_canonical_chain(depth integer)
     RETURNS TABLE
             (
@@ -381,7 +384,7 @@ CREATE TABLE pending_transactions
     input          character varying,
     nonce          bigint,
     value          character varying,
-    id             integer                     NOT NULL
+    id             bigint                      NOT NULL
 );
 
 
@@ -390,7 +393,7 @@ CREATE TABLE pending_transactions
 --
 
 CREATE SEQUENCE pending_transactions_id_seq
-    AS integer
+    AS bigint
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -989,6 +992,21 @@ CREATE UNIQUE INDEX token_holders_by_block_hash ON token_holders USING btree (bl
 CREATE INDEX transactions_address_idx_partial ON transactions USING btree (address, block_number, transaction_index) WHERE (is_forked = false);
 
 
+GRANT SELECT ON accounts_base TO jsearch_main_ro_user;
+GRANT SELECT ON accounts_state TO jsearch_main_ro_user;
+GRANT SELECT ON assets_summary TO jsearch_main_ro_user;
+GRANT SELECT ON wallet_events TO jsearch_main_ro_user;
+GRANT SELECT ON blocks TO jsearch_main_ro_user;
+GRANT SELECT ON transactions TO jsearch_main_ro_user;
+GRANT SELECT ON internal_transactions TO jsearch_main_ro_user;
+GRANT SELECT ON chain_events TO jsearch_main_ro_user;
+GRANT SELECT ON reorgs TO jsearch_main_ro_user;
+GRANT SELECT ON uncles TO jsearch_main_ro_user;
+GRANT SELECT ON receipts TO jsearch_main_ro_user;
+GRANT SELECT ON token_transfers TO jsearch_main_ro_user;
+GRANT SELECT ON token_holders TO jsearch_main_ro_user;
+GRANT SELECT ON pending_transactions TO jsearch_main_ro_user;
+GRANT SELECT ON logs TO jsearch_main_ro_user;
 --
 -- PostgreSQL database dump complete
 --
@@ -1017,5 +1035,6 @@ DROP TABLE token_holders;
 DROP TABLE pending_transactions;
 DROP TABLE logs;
 
+DROP ROLE jsearch_main_ro_user;
 -- +goose StatementBegin
 -- +goose StatementEnd

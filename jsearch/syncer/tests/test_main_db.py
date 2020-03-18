@@ -1,7 +1,14 @@
 import datetime
+from typing import Callable
+
 import pytest
+from sqlalchemy.engine import Engine
 
 from jsearch.common import tables as t
+from jsearch.common.processing.dex_logs import DexEventType
+from jsearch.syncer.database import MainDB
+from jsearch.syncer.structs import BlockData
+from jsearch.typing import AnyDict
 
 
 @pytest.mark.asyncio
@@ -72,6 +79,8 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, ma
         token_holders_updates=[],
         transfers=[],
         wallet_events=[],
+        dex_events=[],
+        token_descriptions=[],
     )
 
     chain_event = {
@@ -143,6 +152,8 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, ma
         token_holders_updates=[],
         transfers=[],
         wallet_events=[],
+        dex_events=[],
+        token_descriptions=[]
     )
     chain_event['id'] = 2
 
@@ -182,3 +193,46 @@ async def test_maindb_write_block_data_asset_summary_update(db, main_db_dump, ma
         'address': '0x1',
         'asset_address': '0xc1',
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.syncer
+@pytest.mark.dex
+@pytest.mark.parametrize("event_type", DexEventType.ALL)
+async def test_save_dex_events(
+        block_dict_factory: Callable[..., AnyDict],
+        tx_logs_with_dex_event_factory: Callable[..., AnyDict],
+        event_type: str,
+        main_db_wrapper: MainDB,
+        db: Engine
+):
+    # given
+    from jsearch.common.processing.dex_logs import logs_to_dex_events
+
+    block = block_dict_factory()
+    log = tx_logs_with_dex_event_factory(event_type=event_type, block_kwargs=block)
+
+    events = logs_to_dex_events([log])
+
+    block_data = BlockData(
+        accounts=[],
+        assets_summary_updates=[],
+        assets_summary_pairs=[],
+        block=block,
+        internal_txs=[],
+        logs=[log],
+        receipts=[],
+        token_holders_updates=[],
+        transfers=[],
+        txs=[],
+        uncles=[],
+        wallet_events=[],
+        dex_events=events,
+        token_descriptions=[],
+    )
+    # when
+    await main_db_wrapper.write_block(chain_event=None, block_data=block_data, rewrite=False)
+
+    # then
+    loaded_events = [dict(item) for item in db.execute('select * from dex_logs;').fetchall()]
+    assert loaded_events == events

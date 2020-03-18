@@ -203,6 +203,7 @@ paths:
       operationId: getLogs
       parameters:
       - $ref: '#/components/parameters/address'
+      - $ref: '#/components/parameters/topics'
       - $ref: '#/components/parameters/blockchain_tip'
       - $ref: '#/components/parameters/order'
       - $ref: '#/components/parameters/block_number'
@@ -761,6 +762,46 @@ paths:
                   errors:
                   - code: NOT_FOUND
                     message: Resource not found
+  /v1/blocks/{tag}/transaction_count:
+    get:
+      tags:
+        - common
+      summary: Get a number of `Normal Transactions` by specific Block
+      description: >
+        You can use this endpoint to receive a number of `Normal Transactions` by
+        block hash or number or keyword
+      operationId: getBlockTransactionCount
+      parameters:
+        - $ref: '#/components/parameters/tag'
+      responses:
+        '200':
+          description: A number of transactions from specific block
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                  data:
+                    $ref: '#/components/schemas/Count'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  success: false
+                  errors:
+                    - code: NOT_FOUND
+                      message: Resource not found
   /v1/blocks/{tag}/transactions:
     get:
       tags:
@@ -771,6 +812,7 @@ paths:
       operationId: getBlockTransactions
       parameters:
       - $ref: '#/components/parameters/tag'
+      - $ref: '#/components/parameters/transaction_index'
       responses:
         '200':
           description: transactions from specific block
@@ -853,6 +895,7 @@ paths:
       operationId: getBlockUncles
       parameters:
       - $ref: '#/components/parameters/tag'
+      - $ref: '#/components/parameters/uncle_index'
       responses:
         '200':
           description: uncles for specific block
@@ -867,6 +910,34 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Uncle'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/blocks/{tag}/uncle_count:
+    get:
+      tags:
+        - common
+      summary: Get a number of Uncles by specific Block
+      description: |
+        You can use this endpoint to receive a number of `Uncles` by block hash or number or keyword
+      operationId: getBlockUncleCount
+      parameters:
+        - $ref: '#/components/parameters/tag'
+      responses:
+        '200':
+          description: a nnumber of uncles for specific block
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                  data:
+                    $ref: '#/components/schemas/Count'
         '400':
           description: Input parameter has failed validation.
           content:
@@ -1077,144 +1148,6 @@ paths:
                   errors:
                   - code: NOT_FOUND
                     message: Resource not found
-  /v1/verified_contracts:
-    get:
-      tags:
-      - common
-      summary: Get a list of `Verified Contracts`
-      description: |
-        You can use this endpoint to receive a list of `Verified Contracts`
-      operationId: getVerifiedContractsList
-      parameters:
-      - $ref: '#/components/parameters/order'
-      - $ref: '#/components/parameters/id'
-      - $ref: '#/components/parameters/limit'
-      responses:
-        '200':
-          description: Contract
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Contract'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
-        '400':
-          description: Input parameter has failed validation.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /v1/verified_contracts/{contract_address}:
-    get:
-      tags:
-      - common
-      summary: Get Verified Contract info.
-      description: |
-        You can use this endpoint to receive `Verified Contract` info
-      operationId: getVerifiedContract
-      parameters:
-      - $ref: '#/components/parameters/contract_address'
-      responses:
-        '200':
-          description: Contract
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    $ref: '#/components/schemas/Contract'
-        '400':
-          description: Input parameter has failed validation.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Contract not found
-          content: {}
-  /v1/tokens:
-    get:
-      tags:
-      - common
-      summary: Get ERC20 tokens list
-      description: |
-        You can use this endpoint to receive a list of `ERC20 tokens`
-      operationId: getTokensList
-      parameters:
-      - $ref: '#/components/parameters/order'
-      - $ref: '#/components/parameters/id'
-      - $ref: '#/components/parameters/limit'
-      responses:
-        '200':
-          description: Token
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Token'
-                  paging:
-                    $ref: '#/components/schemas/Paging'
-        '400':
-          description: Input parameter has failed validation.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /v1/tokens/{contract_address}:
-    get:
-      tags:
-      - common
-      summary: Get token info
-      description: |
-        You can use this endpoint to receive `ERC20 Token` info
-      operationId: getToken
-      parameters:
-      - $ref: '#/components/parameters/contract_address'
-      responses:
-        '200':
-          description: Token
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                  data:
-                    $ref: '#/components/schemas/Token'
-        '400':
-          description: Input parameter has failed validation.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Token not found
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  success: false
-                  errors:
-                  - code: NOT_FOUND
-                    message: Resource not found
   /v1/tokens/{contract_address}/transfers:
     get:
       tags:
@@ -1226,6 +1159,7 @@ paths:
       operationId: getTokenTransfers
       parameters:
       - $ref: '#/components/parameters/contract_address'
+      - $ref: '#/components/parameters/address_optional'
       - $ref: '#/components/parameters/blockchain_tip'
       - $ref: '#/components/parameters/order'
       - $ref: '#/components/parameters/block_number'
@@ -1310,6 +1244,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/sha3:
+    post:
+      tags:
+      - common
+      summary: Returns Keccak-256 (not the standardized SHA3-256) of the given data.
+      description: |
+        You can use this endpoint to get Keccak-256 of the given data.
+
+        Parameters
+
+        1. DATA - the data to convert into a SHA3 hash.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example: {"data" :"0xf8b483dba2c3b7176a3da549ad41a48bb3121069"}
+              items:
+                type: string
+        required: true
+      responses:
+        '200':
+          description: nonce
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                  data:
+                    type: string
+                    format: hex
+                    example: "0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad"
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: body
   /v1/proxy/gas_price:
     get:
       tags:
@@ -1523,6 +1498,159 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       x-codegen-request-body-name: body
+  /v1/proxy/get_storage_at:
+    post:
+      tags:
+        - proxy
+      summary: >-
+        Returns the value from a storage position at a given address.
+      description: >
+        You can use this endpoint to get the value from a storage position at a given address.
+
+
+        Parameters
+
+          DATA, 20 Bytes - address of the storage.
+
+          QUANTITY - integer of the position in the storage.
+
+          QUANTITY|TAG - the string "latest" or "pending"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              example:
+                [
+                  '0x295a70b2de5e3953354a6a8344e616ed314d7251',
+                  '0x0',
+                  'latest'
+                ]
+              items:
+                type: string
+                format: hex
+        required: true
+      responses:
+        '200':
+          description: >-
+            Returns
+
+            DATA - the value at this storage position.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                  data:
+                    type: string
+                    format: hex
+                    example: '0x000000000000000000000000000000000000000000000000000000000000162e'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: body
+  /v1/proxy/get_proof:
+    post:
+      tags:
+        - proxy
+      summary: >-
+        Returns the account- and storage-values of the specified account including the Merkle-proof.
+      description: >
+        You can use this endpoint to get the account- and storage-values of the specified account including the Merkle-proof.
+
+
+        Parameters
+
+        1. DATA, 20 bytes - address of the account or contract
+
+        2. ARRAY, 32 Bytes - array of storage-keys which should be proofed and included. See eth_getStorageAt
+
+        3. QUANTITY|TAG - the string "latest" or "pending", see the default block parameter
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              example:
+                [
+                  '0x1234567890123456789012345678901234567890',
+                  [
+                    '0x0000000000000000000000000000000000000000000000000000000000000000',
+                    '0x0000000000000000000000000000000000000000000000000000000000000001'
+                  ],
+                  'latest'
+                ]
+              items:
+                type: string
+                format: hex
+        required: true
+      responses:
+        '200':
+          description: >-
+            Returns Object - A account object
+
+            balance - QUANTITY - the balance of the account. See eth_getBalance
+
+
+            codeHash - DATA, 32 Bytes - hash of the code of the account. For a simple Account without code it will return "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+
+
+            nonce - QUANTITY, - nonce of the account. See eth_getTransactionCount
+
+
+            storageHash - DATA, 32 Bytes - SHA3 of the StorageRoot. All storage will deliver a MerkleProof starting with this rootHash.
+
+
+            accountProof - ARRAY - Array of rlp-serialized MerkleTree-Nodes, starting with the stateRoot-Node, following the path of the SHA3 (address) as key.
+
+
+            storageProof - ARRAY - Array of storage-entries as requested. Each entry is a object with these properties
+
+              key -  QUANTITY - the requested storage key
+
+              value - QUANTITY - the storage value
+
+              proof - ARRAY - Array of rlp-serialized MerkleTree-Nodes, starting with the storageHash-Node, following the path of the SHA3 (key) as path.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                  data:
+                    type: object
+                    example:
+                      address: '0x1234567890123456789012345678901234567890'
+                      accountProof: [
+                        "0xf90211a090dcaf88c40c7bbc95a912cbdd...",
+                        "0xf90211a0395d87a95873cd98c21cf1df9421af03f7247880a2554e...",
+                        "0xf90171a04ad705ea7bf04339fa36b124fa221379bd5a38ffe9a611...",
+                        "0xf851808080a009833150c367df138f1538689984b8a84fc55692d..."
+                      ]
+                      balance: '0x0'
+                      codeHash: '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca...'
+                      nonce: '0x0'
+                      storageHash: '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996c...'
+                      storageProof: [
+                      {
+                        'key': '0x0000000000000000000000000000000000000000000000000...',
+                        'value': '0x0',
+                        'proof': []
+                      }
+                      ]
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: body
   /v1/blockchain_tip:
     get:
       tags:
@@ -1563,6 +1691,8 @@ paths:
         Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JSEARCH/pages/954892330/Wallet+assets+summary">link</a> for details.
 
          **note**: The `Ether balance` (object with empty `address`) is always present in the response.
+         **note**: Summary for the Null Account (`0x0000000000000000000000000000000000000000`) contains only fake entry
+         for 0 Ether to comply with the API. Actual data for this address cannot be fetched.
       parameters:
       - $ref: '#/components/parameters/addresses'
       - $ref: '#/components/parameters/assets'
@@ -1583,6 +1713,12 @@ paths:
                       $ref: '#/components/schemas/AddressSummary'
                   meta:
                     $ref: '#/components/schemas/BlockchainTipInfo'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/wallet/events:
     get:
       tags:
@@ -1666,6 +1802,151 @@ paths:
                   - field: tip
                     code: BLOCK_NOT_FOUND
                     message: Block with hash {block_hash} not found
+  /v1/dex/orders/{token_address}:
+    get:
+      tags:
+        - dex
+      summary: Get orders for traded asset
+      description: |-
+        Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JIB/pages/1161101382/ETHBE+for+DEX#Order-book-and-the-list-of-user-orders">link</a> for details.
+      parameters:
+        - $ref: '#/components/parameters/token_address'
+        - $ref: '#/components/parameters/order_creator'
+        - $ref: '#/components/parameters/order_status'
+        - $ref: '#/components/parameters/blockchain_tip'
+      responses:
+        '200':
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        $ref: '#/components/schemas/DexOrders'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+              examples:
+                regular:
+                  $ref: '#/components/examples/DexOrdersExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  - success: false
+                    errors:
+                      - field: tip
+                        code: NOT_FOUND
+                        message: Asset {token_address} was not found
+  /v1/dex/history/{token_address}:
+    get:
+      tags:
+      - dex
+      description: |-
+        Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JIB/pages/1161101382/ETHBE+for+DEX#Order-book-and-the-list-of-user-orders">link</a> for details.
+      summary: Get orders history for traded asset
+      parameters:
+        - $ref: '#/components/parameters/token_address'
+        - $ref: '#/components/parameters/event_type'
+        - $ref: '#/components/parameters/blockchain_tip'
+        - $ref: '#/components/parameters/block_number'
+        - $ref: '#/components/parameters/timestamp'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/event_index'
+      responses:
+        '200':
+          description: List of orders events
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        $ref: '#/components/schemas/DexEvents'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+                      paging:
+                        $ref: '#/components/schemas/Paging'
+              examples:
+                regular:
+                  $ref: '#/components/examples/DexEventsExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  - success: false
+                    errors:
+                      - field: tip
+                        code: NOT_FOUND
+                        message: Asset {token_address} was not found
+  /v1/dex/blocked/{user_address}:
+    get:
+      tags:
+        - dex
+      summary: Information about of user tokens which are locked for DEX.
+      description: |-
+        Please see the following <a href="https://jibrelnetwork.atlassian.net/wiki/spaces/JIB/pages/1161101382/ETHBE+for+DEX#Order-book-and-the-list-of-user-orders">link</a> for details.
+      parameters:
+        - $ref: '#/components/parameters/user_address'
+        - $ref: '#/components/parameters/token_addresses'
+        - $ref: '#/components/parameters/blockchain_tip'
+      responses:
+        '200':
+          description: Blocked asset amounts.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/OrphanedResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/Status'
+                      data:
+                        $ref: '#/components/schemas/BlockedAssetAmounts'
+                      meta:
+                        $ref: '#/components/schemas/BlockchainTipInfo'
+              examples:
+                regular:
+                  $ref: '#/components/examples/BlockedAssetAmountsExample'
+                orphaned:
+                  $ref: '#/components/examples/OrphanedResponseExample'
+        '400':
+          description: Input parameter has failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     Account:
@@ -2281,62 +2562,6 @@ components:
           description: Holder address
           format: address
           example: "0xcd424c53f5dc7d22cdff536309c24ad87a97e6af"
-    Contract:
-      type: object
-      properties:
-        name:
-          type: string
-        address:
-          type: string
-          format: address
-        byteCode:
-          type: string
-        sourceCode:
-          type: string
-        abi:
-          type: array
-          items:
-            type: object
-        compilerVersion:
-          type: string
-        optimizationEnabled:
-          type: boolean
-        optimizationRuns:
-          type: integer
-        constructorArgs:
-          type: array
-          items:
-            type: string
-        verifiedAt:
-          type: string
-        token:
-          type: string
-    Token:
-      type: object
-      properties:
-        contractAddress:
-          type: string
-          description: Token address
-          format: address
-          example: "0xa5fd1a791c4dfcaacc963d4f73c6ae5824149ea7"
-        name:
-          type: string
-          description: Token name
-          example: Jibrel Network Token
-        symbol:
-          type: string
-          description: Token symbol
-          example: JNT
-        decimals:
-          type: string
-          description: Token decimals
-          format: dec
-          example: "18"
-        totalSupply:
-          type: string
-          description: Total supply
-          format: dec
-          example: "200000000000000000000000"
     EthTransfer:
       type: object
       properties:
@@ -2440,10 +2665,6 @@ components:
           description: Token decimals
           format: dec
           example: "18"
-        transfersNumber:
-          type: integer
-          description: The number of transfers
-          example: 1
     AddressSummary:
       type: object
       properties:
@@ -2463,13 +2684,173 @@ components:
           - address: "0x05f4a42e251f2d52b8ed15e9fedaacfcef1fad27"
             balance: "202"
             decimals: "18"
-            transfersNumber: 1
           - address: "0x0d8775f648430679a709e98d2b0cb6250d2887ef"
             balance: "42340258498435"
             decimals: "18"
-            transfersNumber: 1
           items:
             $ref: '#/components/schemas/AssetSummary'
+    BlockedAssetAmounts:
+      type: array
+      items:
+        type: object
+        properties:
+          asset_address:
+            type: string
+            example: "0x0d8775f648430679a709e98d2b0cb6250d2887ef"
+          blocked_amount:
+            type: string
+            example: "9000000000000000"
+    DexEvents:
+      type: array
+      items:
+        type: object
+        properties:
+          event_data:
+            type: object
+            properties:
+              event_type:
+                type: string
+                example: |
+                  OrderPlacedEvent,
+                  OrderActivatedEvent,
+                  OrderCompletedEvent,
+                  OrderCancelledEvent,
+                  OrderExpiredEvent,
+                  TradePlacedEvent,
+                  TradeCompletedEvent,
+                  TradeCancelledEvent
+              event_block_number:
+                type: integer
+                example: 9000000
+                description: A block number of event
+              event_timestamp:
+                type: integer
+                description: An unix timestamp of event
+                example: 1548229016
+              event_index:
+                type: integer
+                description: An unix event id
+                example: 1548229016
+          order_data:
+            type: object
+            properties:
+              order_creator:
+                type: string
+                description: An order creator
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              order_creation_timestamp:
+                type: integer
+                description: An unix timestamp of order creation
+                example: 1548229016
+              order_id:
+                type: string
+                description: An order unique id
+              order_type:
+                type: integer
+                description: An order type
+                example: 1
+              traded_asset:
+                type: string
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+                description: A traded asset
+              traded_asset_amount:
+                type: string
+                example: "10000000"
+                description: A traded asset amount
+              fiat_asset:
+                type: string
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              fiat_price:
+                type: string
+                example: "100"
+                description: A traded asset amount
+              expiration_timestamp:
+                type: integer
+                description: An unix timestamp of expiration date
+                example: 1548229016
+          trade_data:
+            type: object
+            properties:
+              trade_creator:
+                type: string
+                description: A trade creator
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              trade_creation_timestamp:
+                type: integer
+                description: An unix timestamp of trade creation
+                example: 1548229016
+              trade_id:
+                type: integer
+                description: An unique id of trade
+                example: 1231092312
+              trade_amount:
+                type: string
+                description: A trade amount
+                example: "500000000"
+    DexOrders:
+      type: array
+      items:
+        type: object
+        properties:
+          order_data:
+            type: object
+            properties:
+              order_creator:
+                type: string
+                description: An order description
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              order_creation_timestamp:
+                type: integer
+                description: An unix timestamp of order creation
+                example: 1548229016
+              order_id:
+                type: string
+                description: An order unique id
+              order_type:
+                type: integer
+                description: An order type
+                example: 1
+              traded_asset:
+                type: string
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+                description: A traded asset
+              traded_asset_amount:
+                type: string
+                example: "10000000"
+                description: A traded asset amount
+              fiat_asset:
+                type: string
+                format: address
+                example: "0xfdbacd53b94c4e76742f66a9f235a5d1e5218bb0"
+              fiat_price:
+                type: string
+                example: "100"
+                description: A traded asset amount
+              expiration_timestamp:
+                type: integer
+                description: An unix timestamp of expiration date
+                example: 1548229016
+          order_status:
+            type: object
+            properties:
+              order_status:
+                type: string
+                example: "Placed,Cancelled,Completed,Activated,Expired"
+                description: A status of order
+              order_status_block_number:
+                type: integer
+                example: 9000000
+                description: A block number of the latest order status
+              remaining_traded_asset_amount:
+                type: string
+                example: "1000000000"
+                description: The remaining traded asset amount
     BlockchainTip:
       type: object
       properties:
@@ -2543,6 +2924,12 @@ components:
                   - type: integer
                     description: Value of field
                     example: 12
+    Count:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 2
     TransactionInfo:
       type: object
       properties:
@@ -2680,6 +3067,14 @@ components:
       in: path
       description: Account address
       required: true
+      schema:
+        type: string
+        format: address
+    address_optional:
+      name: address
+      in: query
+      description: Account address
+      required: false
       schema:
         type: string
         format: address
@@ -2846,6 +3241,67 @@ components:
         for details.
       schema:
         type: integer
+    token_address:
+      name: token_address
+      in: path
+      required: true
+      description: A traded asset address
+      schema:
+        type: string
+    user_address:
+      name: user_address
+      required: true
+      in: path
+      description: A user unique id
+      schema:
+        type: string
+    token_addresses:
+      name: token_address
+      in: query
+      description: A comma separated list of asset addresses.
+      schema:
+        type: string
+    event_type:
+      name: event_type
+      in: query
+      description: |
+          List of comma separated event types. Available are:
+          OrderPlacedEvent,
+          OrderActivatedEvent,
+          OrderCompletedEvent,
+          OrderCancelledEvent,
+          OrderExpiredEvent,
+          TradePlacedEvent,
+          TradeCompletedEvent,
+          TradeCancelledEvent.
+      schema:
+        type: string
+        example: OrderActivatedEvent,OrderPlacedEvent
+    order_status:
+      name: order_status
+      in: query
+      description: An order status
+      schema:
+        type: string
+    order_creator:
+      name: order_creator
+      in: query
+      description: An order creator
+      schema:
+        type: string
+    uncle_index:
+      name: uncle_index
+      in: query
+      description: The uncle's index position.
+      schema:
+        type: integer
+    topics:
+      name: topics
+      in: query
+      description: Comma-separated list of 32 Bytes DATA topics. Topics are order-dependent.
+      schema:
+        type: string
+        format: topics
   examples:
     StatusSuccessExample:
       value:
@@ -3170,3 +3626,101 @@ components:
           $ref: '#/components/examples/MetaExample'
         paging:
           $ref: '#/components/examples/PagingExample'
+
+    DexEventsExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+             {
+                "event_data":{
+                   "event_type":"OrderActivatedEvent",
+                   "event_block_number":9520621,
+                   "event_timestamp":1582208588
+                   "event_index":1582208588
+                },
+                "order_data":{
+                   "order_id":"0x700732928f253ed5e412f1c34da2ae7706c27f318b03ff48a0fa9bd3ca22e6ab",
+                   "order_creator":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "order_creation_timestamp":1582208588,
+                   "order_type":1,
+                   "traded_asset":"0x7d020d692f6b959fe8efee6673def9d3ab4cb3a5",
+                   "traded_asset_amount":"5000000000000000000000",
+                   "fiat_asset":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "fiat_price":"1234000000000000000000",
+                   "expiration_timestamp":1591729209
+                }
+             },
+             {
+                "event_data":{
+                   "event_type":"TradePlacedEvent",
+                   "event_block_number":9520621,
+                   "event_timestamp":1582208588
+                   "event_index":1582208988
+                },
+                "order_data":{
+                   "order_id":"0x700732928f253ed5e412f1c34da2ae7706c27f318b03ff48a0fa9bd3ca22e6ab",
+                   "order_creator":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "order_creation_timestamp":1582208588,
+                   "order_type":1,
+                   "traded_asset":"0x7d020d692f6b959fe8efee6673def9d3ab4cb3a5",
+                   "traded_asset_amount":"5000000000000000000000",
+                   "fiat_asset":"0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                   "fiat_price":"1234000000000000000000",
+                   "expiration_timestamp":1591729209
+                },
+                "trade_data":{
+                   "trade_id": "305274744154097",
+                   "trade_amount":"5000000000000000000000",
+                   "trade_creator":"0xeee28e966bb346b7e30c7d4662c10939e1181baa",
+                   "trade_creation_timestamp":1582208588
+                }
+             }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+        paging:
+          $ref: '#/components/examples/PagingExample'
+
+    DexOrdersExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "order_data": {
+                "order_creator": "0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                "order_creation_timestamp": 1582208407,
+                "order_id": "0x25764c29f6e3c10d980cad9817d1e70c87f152224d8cbaa2efb998f91aa9b337",
+                "order_type": 1,
+                "traded_asset": "0x7d020d692f6b959fe8efee6673def9d3ab4cb3a5",
+                "traded_asset_amount": "5000000000000000000000",
+                "fiat_asset": "0x0414ff150a03fb3e233ac7de58e958b50d41a737",
+                "fiat_price": "1234000000000000000000",
+                "expiration_timestamp": 1591729011
+              },
+              "order_status": {
+                "order_status": "Completed",
+                "order_status_block_number": 9520604,
+                "remaining_traded_asset_amount": "0"
+              }
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'
+
+    BlockedAssetAmountsExample:
+      value:
+        status:
+          $ref: '#/components/examples/StatusSuccessExample'
+        data:
+          [
+            {
+              "asset_address": "0xc94ebb328ac25b95db0e0aa968371885fa516215",
+              "blocked_amount": "9000000000000000000"
+            }
+          ]
+        meta:
+          $ref: '#/components/examples/MetaExample'

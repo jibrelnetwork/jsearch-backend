@@ -45,12 +45,18 @@ ENV LOG_LEVEL="INFO" \
     TOKEN_HOLDERS_CLEANER_BATCH_SIZE="100" \
     TOKEN_HOLDERS_CLEANER_BLOCKS_OFFSET="6" \
     TOKEN_HOLDERS_CLEANER_QUERIES_PARALLEL="10" \
-    ENABLE_HEALTHCHECK="0"
+    ENABLE_HEALTHCHECK="0" \
+    HEALTHCHECK_CURL_TIMEOUT="60" \
+    API_PAGING_LIMIT_DEFAULT="20" \
+    API_PAGING_LIMIT_MAX="100" \
+    DEX_CONTRACT="" \
+    PROXY_LOAD_URL="http://proxyrack.net/rotating/megaproxy/" \
+    SYNCER_WAIT_MIGRATION='20200312122200' \
+    API_TOKEN_HOLDER_THRESHOLD='0.008'
 
 RUN groupadd -g 999 app \
  && useradd -r -u 999 -g app app \
- && mkdir -p /app \
- && chown -R app:app /app
+ && mkdir -p /app
 
 WORKDIR /app
 
@@ -58,10 +64,10 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
-COPY --chown=app:app requirements*.txt /app/
+COPY requirements*.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt $(test "$ENVIRONMENT" != "production" && echo "-r requirements-test.txt") 
 
-COPY --chown=app:app . /app
+COPY . /app
 RUN pip install --no-cache-dir .
 
 COPY --from=goose /go/bin/goose /usr/local/bin/
@@ -70,4 +76,4 @@ USER app
 ENTRYPOINT ["/app/run.sh"]
 CMD ["app"]
 
-HEALTHCHECK --start-period=30s --interval=5s --timeout=3s --retries=3 CMD ./scripts/healthcheck.sh
+HEALTHCHECK --start-period=30s --interval=5s --retries=3 CMD ./scripts/healthcheck.sh

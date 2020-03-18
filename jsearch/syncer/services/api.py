@@ -17,8 +17,6 @@ class ApiService(services.ApiService):
     def __init__(
             self,
             state: SyncerState,
-            check_lag: bool = True,
-            check_holes: bool = True,
             *args: Any, **kwargs: Any
     ) -> None:
         kwargs.setdefault('port', settings.SYNCER_API_PORT)
@@ -27,10 +25,6 @@ class ApiService(services.ApiService):
         super(ApiService, self).__init__(*args, **kwargs)
 
         self.app['state'] = state
-        self.app['settings'] = {
-            'check_lag': check_lag,
-            'check_holes': check_holes
-        }
 
 
 def make_app() -> web.Application:

@@ -11,11 +11,21 @@ from jsearch.api.database_queries.token_transfers import get_transfers_ordering
 from jsearch.api.database_queries.transactions import get_tx_ordering
 from jsearch.api.database_queries.wallet_events import get_wallet_events_ordering
 from jsearch.api.ordering import Ordering
-from jsearch.api.serializers.common import BlockRelatedListSchema, ListSchema, is_less_than_two_values_provided
-from jsearch.api.serializers.fields import StrLower, Timestamp, IntField, BigIntField
+from jsearch.api.serializers.common import (
+    BlockRelatedListSchema,
+    ListSchema,
+    is_less_than_two_values_provided,
+    ApiErrorSchema
+)
+from jsearch.api.serializers.fields import StrLower, Timestamp, IntField, BigIntField, JoinedString, quantity_validator
 from jsearch.typing import OrderScheme, OrderDirection
 
 logger = logging.getLogger(__name__)
+
+
+class AccountsBalancesSchema(ApiErrorSchema):
+    addresses = JoinedString(to_lower=True, required=True, validate=quantity_validator(min=1, max=10))
+    tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
 
 
 class AccountsPendingTxsSchema(ListSchema):
@@ -94,6 +104,7 @@ class AccountsInternalTxsSchema(BlockRelatedListSchema):
 class AccountLogsSchema(BlockRelatedListSchema):
     tip_hash = StrLower(load_from='blockchain_tip')
     address = StrLower(validate=Length(min=1, max=100), location='match_info')
+    topics = StrLower(validate=Length(min=1))
     transaction_index = IntField(validate=Range(min=0))
     log_index = IntField(validate=Range(min=0))
 

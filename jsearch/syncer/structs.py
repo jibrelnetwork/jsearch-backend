@@ -37,6 +37,7 @@ class RawBlockData(NamedTuple):
     accounts: AnyDicts
     internal_txs: AnyDicts
     token_balances: TokenHolderBalances
+    token_descriptions: AnyDicts
 
     is_forked: bool
 
@@ -74,6 +75,8 @@ class BlockData(NamedTuple):
     txs: AnyDicts
     uncles: AnyDicts
     wallet_events: AnyDicts
+    dex_events: AnyDicts
+    token_descriptions: AnyDicts
 
 
 class AddressAssetPair(NamedTuple):

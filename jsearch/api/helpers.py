@@ -1,10 +1,11 @@
+from functools import partial
+from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
+
 from aiohttp import web
 from aiopg.sa import Engine
-from functools import partial
 from sqlalchemy import asc, desc, Column
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Query
-from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 
 from jsearch.api.error_code import ErrorCode
 from jsearch.api.pagination import PaginationBlock
@@ -14,8 +15,6 @@ from jsearch.typing import AnyCoroutine, ProgressPercent
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 20
-DEFAULT_OFFSET = 0
-MAX_OFFSET = 10000
 
 
 class ChainEvent:
@@ -67,14 +66,17 @@ def get_tag(request):
     return Tag(type_, value)
 
 
-def get_from_joined_string(joined_string: Optional[str], separator: str = ',') -> List[str]:
+def get_from_joined_string(joined_string: Optional[str], separator: str = ',', to_lower_case=False) -> List[str]:
     """Lowers, splits and strips the joined string."""
     if joined_string is None:
         return list()
 
-    strings_list = joined_string.lower().split(separator)
+    strings_list = joined_string.split(separator)
     strings_list = [string.strip() for string in strings_list]
     strings_list = [string for string in strings_list if string]
+
+    if to_lower_case:
+        strings_list = [string.lower() for string in strings_list]
 
     return strings_list
 

@@ -1,6 +1,7 @@
 from random import randint
 
 import logging
+from collections import defaultdict
 from urllib.parse import urlencode
 
 import pytest
@@ -11,6 +12,7 @@ from typing import Callable, Tuple, List, Dict, Any, Optional
 from jsearch.api.tests.utils import parse_url
 from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.wallet_events import make_event_index
+from jsearch.consts import NULL_ADDRESS
 from jsearch.tests.plugins.databases.factories.accounts import AccountFactory
 from jsearch.tests.plugins.databases.factories.assets_summary import AssetsSummaryFactory, AssetsSummaryPairFactory
 from jsearch.tests.plugins.databases.factories.common import generate_address
@@ -728,18 +730,18 @@ def create_assets_summaries(
                     {
                         'address': 'a1',
                         'assetsSummary': [
-                            {'address': ETHER_ASSET_ADDRESS, 'balance': "300", 'decimals': "0", 'transfersNumber': 0},
-                            {'address': 'c1', 'balance': "100", 'decimals': "0", 'transfersNumber': 0},
-                            {'address': 'c100', 'balance': "0", 'decimals': "0", 'transfersNumber': 0},
-                            {'address': 'c2', 'balance': "20000", 'decimals': "2", 'transfersNumber': 0}
+                            {'address': ETHER_ASSET_ADDRESS, 'balance': "300", 'decimals': "0"},
+                            {'address': 'c1', 'balance': "100", 'decimals': "0"},
+                            {'address': 'c100', 'balance': "0", 'decimals': "0"},
+                            {'address': 'c2', 'balance': "20000", 'decimals': "2"}
                         ],
                         'outgoingTransactionsNumber': "10"
                     },
                     {
                         'address': 'a2',
                         'assetsSummary': [
-                            {'address': ETHER_ASSET_ADDRESS, 'balance': "0", 'decimals': "0", 'transfersNumber': 0},
-                            {'address': 'c1', 'balance': "1000", 'decimals': "1", 'transfersNumber': 0}
+                            {'address': ETHER_ASSET_ADDRESS, 'balance': "0", 'decimals': "0"},
+                            {'address': 'c1', 'balance': "1000", 'decimals': "1"}
                         ],
                         'outgoingTransactionsNumber': "2"
                     }
@@ -755,13 +757,11 @@ def create_assets_summaries(
                                 'address': ETHER_ASSET_ADDRESS,
                                 'balance': "300",
                                 'decimals': "0",
-                                'transfersNumber': 0
                             },
                             {
                                 'address': 'c2',
                                 'balance': "20000",
                                 "decimals": "2",
-                                'transfersNumber': 0
                             },
                         ],
                         'outgoingTransactionsNumber': "10"
@@ -773,7 +773,6 @@ def create_assets_summaries(
                                 'address': ETHER_ASSET_ADDRESS,
                                 'balance': "0",
                                 'decimals': "0",
-                                'transfersNumber': 0
                             },
                         ],
                         'outgoingTransactionsNumber': "2"
@@ -790,13 +789,11 @@ def create_assets_summaries(
                                 'address': ETHER_ASSET_ADDRESS,
                                 'balance': "300",
                                 'decimals': "0",
-                                'transfersNumber': 0
                             },
                             {
                                 'address': 'c2',
                                 'balance': "20000",
                                 "decimals": "2",
-                                'transfersNumber': 0
                             },
                         ],
                         'outgoingTransactionsNumber': "10"
@@ -808,7 +805,6 @@ def create_assets_summaries(
                                 'address': ETHER_ASSET_ADDRESS,
                                 'balance': "0",
                                 'decimals': "0",
-                                'transfersNumber': 0
                             },
                         ],
                         'outgoingTransactionsNumber': "2"
@@ -884,7 +880,6 @@ async def test_get_assets_summary_from_history(
                 'address': ETHER_ASSET_ADDRESS,
                 'balance': f'{current_balance.value}',
                 'decimals': '0',
-                'transfersNumber': 0
             },
         ],
         'outgoingTransactionsNumber': '1'
@@ -944,13 +939,11 @@ async def test_get_assets_summary_by_asset_from_history(
                 'address': ETHER_ASSET_ADDRESS,
                 'balance': f'{ether_balance.value}',
                 'decimals': '0',
-                'transfersNumber': 0
             },
             {
                 'address': asset,
                 'balance': f'{current_balance.value}',
                 'decimals': f'{current_balance.decimals}',
-                'transfersNumber': 0
             },
 
         ],
@@ -993,6 +986,77 @@ async def test_get_wallet_events_filter_by_big_value(
     assert status == resp.status
 
 
+@pytest.mark.parametrize(
+    "amount, status",
+    (
+            (0, 400),
+            (1, 200),
+            (10, 200),
+            (11, 400),
+    ),
+    ids=(
+            "0 addresses  => 400, too little",
+            "1 addresses  => 200",
+            "10 addresses => 200",
+            "11 addresses => 400, too many",
+    )
+)
+async def test_get_wallet_assets_summary_addresses_validation(
+        cli: TestClient,
+        amount: int,
+        status: int,
+):
+    # given
+    addresses = [generate_address() for __ in range(amount)]
+    params = urlencode({'addresses': ','.join(addresses)})
+    url = f'/v1/wallet/assets_summary?{params}'
+
+    # when
+    resp = await cli.get(url)
+
+    # then
+    assert status == resp.status
+
+
+async def test_get_wallet_assets_summary_does_not_throws_500_if_theres_no_addresses(cli: TestClient):
+    url = f'/v1/wallet/assets_summary'
+    resp = await cli.get(url)
+    assert resp.status == 400
+
+
+async def test_get_wallet_assets_summary_does_not_return_tokens_for_null_address(
+        cli: TestClient,
+        assets_summary_factory: AssetsSummaryFactory,
+        assets_summary_pair_factory: AssetsSummaryPairFactory,
+):
+    # given
+    account = generate_address()
+    token = generate_address()
+
+    for address in [account, NULL_ADDRESS]:
+        assets_summary_factory.maybe_create_with_pair(assets_summary_pair_factory, **{
+            'address': address,
+            'asset_address': token,
+            'decimals': 18,
+        })
+
+    # when
+    reqv_params = urlencode({'addresses': f'{NULL_ADDRESS},{account}'})
+    resp = await cli.get(f'/v1/wallet/assets_summary?{reqv_params}')
+    resp_json = await resp.json()
+
+    account_token_mapping = defaultdict(set)
+
+    for account_description in resp_json["data"]:
+        for token_description in account_description["assetsSummary"]:
+            account_token_mapping[account_description["address"]].add(token_description["address"])
+
+    assert account_token_mapping == {
+        NULL_ADDRESS: {""},
+        account: {"", token},
+    }
+
+
 async def test_get_assets_summaries_returns_ether_balance_even_if_there_s_no_in_db(cli: TestClient) -> None:
     # given
     a1, a2 = generate_address(), generate_address()
@@ -1010,7 +1074,6 @@ async def test_get_assets_summaries_returns_ether_balance_even_if_there_s_no_in_
                     "address": ETHER_ASSET_ADDRESS,
                     "balance": "0",
                     "decimals": "0",
-                    "transfersNumber": 0,
                 },
             ],
             "outgoingTransactionsNumber": "0",
@@ -1022,7 +1085,6 @@ async def test_get_assets_summaries_returns_ether_balance_even_if_there_s_no_in_
                     "address": ETHER_ASSET_ADDRESS,
                     "balance": "0",
                     "decimals": "0",
-                    "transfersNumber": 0,
                 },
             ],
             "outgoingTransactionsNumber": "0",

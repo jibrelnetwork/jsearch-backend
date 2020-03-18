@@ -1,3 +1,5 @@
+from functools import partial
+
 import factory
 import pytest
 
@@ -46,20 +48,22 @@ class LogFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session_persistence = 'flush'
 
     @classmethod
-    def create_for_tx(cls, tx, **kwargs):
-        return cls.create(
+    def create_for_tx(cls, tx, as_dict=False, **kwargs):
+        get_tx_attr = tx.get if isinstance(tx, dict) else partial(getattr, tx)
+        kwargs = {
             **{
-                **{
-                    'block_number': tx.block_number,
-                    'block_hash': tx.block_hash,
-                    'timestamp': tx.timestamp,
-                    'address': getattr(tx, 'from'),
-                    'transaction_hash': tx.hash,
-                    'transaction_index': tx.transaction_index
-                },
-                **kwargs,
-            }
-        )
+                'block_number': get_tx_attr('block_number'),
+                'block_hash': get_tx_attr('block_hash'),
+                'timestamp': get_tx_attr('timestamp'),
+                'address': get_tx_attr('from'),
+                'transaction_hash': get_tx_attr('hash'),
+                'transaction_index': get_tx_attr('transaction_index')
+            },
+            **kwargs,
+        }
+        if as_dict:
+            return factory.build(dict, FACTORY_CLASS=cls, **kwargs)
+        return cls.create(**kwargs)
 
     @classmethod
     def create_for_receipt(cls, receipt, **kwargs):

@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 from aiopg.sa import SAConnection
 from sqlalchemy import and_, Table, false, select, desc
@@ -24,9 +24,11 @@ from jsearch.common.tables import (
     transactions_t,
     uncles_t,
     wallet_events_t,
-)
+    dex_logs_t,
+    token_descriptions_t)
 from jsearch.common.utils import timeit
 from jsearch.pending_syncer.database_queries.pending_txs import insert_or_update_pending_txs_q
+from jsearch.syncer.database_queries.dex import get_dex_orders_query, get_dex_trades_query
 from jsearch.syncer.database_queries.reorgs import insert_reorg
 from jsearch.syncer.structs import BlockData
 from jsearch.typing import Blocks, Block
@@ -119,6 +121,8 @@ class MainDB(DBWrapper):
             transactions_t,
             uncles_t,
             wallet_events_t,
+            dex_logs_t,
+            token_descriptions_t
         )
 
         await conn.execute(get_update_blocks_fork_status_query(is_forked, block_hashes))
@@ -276,7 +280,7 @@ class MainDB(DBWrapper):
 
     async def write_block_data_proc(
             self,
-            chain_event: Dict[str, Any],
+            chain_event: Optional[Dict[str, Any]],
             block_data: BlockData,
             connection: SAConnection
     ) -> None:
@@ -288,13 +292,16 @@ class MainDB(DBWrapper):
         block_data.token_holders_updates.sort(key=lambda u: (u['account_address'], u['token_address']))
         block_data.assets_summary_updates.sort(key=lambda u: (u['address'], u['asset_address']))
 
+        event: Union[Dict[str, Any], str]
         if chain_event is not None:
-            chain_event = dict(chain_event)
-            chain_event['created_at'] = chain_event['created_at'].isoformat()
+            event = {
+                **chain_event,
+                'created_at': chain_event['created_at'].isoformat()
+            }
         else:
-            chain_event = ''
+            event = ''
 
-        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        q = "SELECT FROM insert_block_data(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
 
         params = [
             [block_data.block],
@@ -310,12 +317,14 @@ class MainDB(DBWrapper):
             block_data.wallet_events,
             block_data.assets_summary_updates,
             block_data.assets_summary_pairs,
-            chain_event,
+            event,
+            block_data.dex_events,
+            block_data.token_descriptions
         ]
         await connection.execute(q, *[json.dumps(item) for item in params])
 
     @timeit('[MAIN DB] Write block')
-    async def write_block(self, chain_event: Dict[str, Any], block_data: BlockData, rewrite: bool):
+    async def write_block(self, chain_event: Optional[Dict[str, Any]], block_data: BlockData, rewrite: bool):
         async with self.engine.acquire() as connection:
             async with connection.begin():
                 if rewrite:
@@ -335,6 +344,8 @@ class MainDB(DBWrapper):
         await connection.execute("""DELETE FROM internal_transactions WHERE block_hash=%s""", block_hash)
         await connection.execute("""DELETE FROM uncles WHERE block_hash=%s""", block_hash)
         await connection.execute("""DELETE FROM blocks WHERE hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM dex_logs WHERE block_hash=%s""", block_hash)
+        await connection.execute("""DELETE FROM token_descriptions WHERE block_hash=%s""", block_hash)
 
     async def get_block_hash_by_number(self, block_num) -> Optional[str]:
         q = blocks_t.select().where(and_(blocks_t.c.number == block_num, blocks_t.c.is_forked == false()))
@@ -354,3 +365,11 @@ class MainDB(DBWrapper):
             if row is not None and row['code_hash'] != NO_CODE_HASH:
                 contracts_addresses.append(address)
         return contracts_addresses
+
+    async def get_dex_orders(self, ids: List[str]) -> List[Dict[str, Any]]:
+        orders_query = get_dex_orders_query(ids=ids)
+        return await self.fetch_all(orders_query)
+
+    async def get_dex_trades(self, ids: List[str]) -> List[Dict[str, Any]]:
+        orders_query = get_dex_trades_query(ids=ids)
+        return await self.fetch_all(orders_query)
