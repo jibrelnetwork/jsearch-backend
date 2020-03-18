@@ -3,7 +3,6 @@ import logging
 import pytest
 from aiohttp.test_utils import TestClient
 
-from jsearch import settings
 from jsearch.api.tests.utils import assert_not_404_response
 from jsearch.tests.entities import BlockFromDumpWrapper
 
@@ -597,32 +596,6 @@ async def test_get_blockchain_tip(cli, block_factory):
             'blockNumber': last_block.number
         }
     }
-
-
-async def test_get_accounts_balances_does_not_complain_on_addresses_count_less_than_limit(cli):
-    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH)]
-    addresses_str = ','.join(addresses)
-
-    resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
-
-    assert resp.status == 200
-
-
-async def test_get_accounts_balances_complains_on_addresses_count_more_than_limit(cli):
-    addresses = [f'a{x}' for x in range(settings.API_QUERY_ARRAY_MAX_LENGTH + 1)]
-    addresses_str = ','.join(addresses)
-
-    resp = await cli.get(f'/v1/accounts/balances?addresses={addresses_str}')
-    resp_json = await resp.json()
-
-    assert resp.status == 400
-    assert resp_json['status']['errors'] == [
-        {
-            'field': 'addresses',
-            'code': 'TOO_MANY_ITEMS',
-            'message': 'Too many addresses requested'
-        }
-    ]
 
 
 @pytest.mark.parametrize(

@@ -1,9 +1,9 @@
 import logging
+from typing import Optional, Union, List
 
 from aiohttp import web
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response
-from typing import Optional, Union
 
 from jsearch import settings
 from jsearch.api.blockchain_tip import maybe_apply_tip
@@ -16,7 +16,8 @@ from jsearch.api.helpers import (
     api_error_response_404,
     get_from_joined_string,
     ApiError,
-    maybe_orphan_request)
+    maybe_orphan_request
+)
 from jsearch.api.ordering import Ordering, OrderScheme
 from jsearch.api.pagination import get_pagination_description
 from jsearch.api.serializers.accounts import (
@@ -26,34 +27,27 @@ from jsearch.api.serializers.accounts import (
     AccountMinedBlocksSchema,
     AccountsPendingTxsSchema,
     EthTransfersListSchema,
-    AccountsTransfersSchema
+    AccountsTransfersSchema,
+    AccountsBalancesSchema
 )
-from jsearch.api.serializers.uncles import (
-    AccountUncleSchema,
-)
+from jsearch.api.serializers.uncles import AccountUncleSchema
 from jsearch.api.utils import use_kwargs
 
 logger = logging.getLogger(__name__)
 
 
 @ApiError.catch
-async def get_accounts_balances(request):
+@use_kwargs(AccountsBalancesSchema())
+async def get_accounts_balances(
+        request: web.Request,
+        addresses: List[str],
+        tip_hash: Optional[str] = None
+):
     """
     Get ballances for list of accounts
     """
     storage = request.app['storage']
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
-    addresses = get_from_joined_string(request.query.get('addresses'), to_lower_case=True)
-    tip_hash = request.query.get('blockchain_tip') or None
-
-    if len(addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
-        return api_error_response_400(errors=[
-            {
-                'field': 'addresses',
-                'code': ErrorCode.TOO_MANY_ITEMS,
-                'message': 'Too many addresses requested'
-            }
-        ])
 
     balances, last_affected_block = await storage.get_accounts_balances(addresses)
     balances, tip = await maybe_apply_tip(storage, tip_hash, balances, last_affected_block, empty=[])

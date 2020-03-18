@@ -493,20 +493,25 @@ class Storage(DbActionsMixin):
             queries.append(get_account_state_query(address, TAG_LATEST))
 
         coros = [self.fetch_one(query) for query in queries]
-        rows = await asyncio.gather(*coros)
-        rows = [r for r in rows if r is not None]
+        results = await asyncio.gather(*coros)
+        results = [item for item in results if item is not None]
 
-        addr_map = {r['address']: r for r in rows}
+        addr_map = {item['address']: item for item in results}
 
         balances = []
         for address in addresses:
+
             if address in addr_map:
-                balance = models.Balance(
-                    balance=int(addr_map[address]['balance']),
-                    address=addr_map[address]['address']
-                )
-                balances.append(balance)
-        last_affected_block = max((r['block_number'] for r in rows), default=None)
+                value = int(addr_map[address]['balance'])
+            else:
+                value = 0
+
+            balance = models.Balance(
+                balance=value,
+                address=address,
+            )
+            balances.append(balance)
+        last_affected_block = max((item['block_number'] for item in results), default=None)
         return balances, last_affected_block
 
     async def get_tokens_transfers(
