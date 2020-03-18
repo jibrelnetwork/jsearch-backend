@@ -355,7 +355,7 @@ async def test_get_events_limits(
 async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_factory, transaction_factory):
     # given
     block = block_factory.create(number=100)
-    tx, _ = transaction_factory.create_for_block(block=block, value='0x08')
+    tx, _ = transaction_factory.create_for_block(block=block)
     event = wallet_events_factory.create_token_transfer(tx=tx, block=block)
 
     url = 'v1/wallet/events?{params}'.format(
@@ -424,11 +424,11 @@ async def test_get_wallet_events_200_response(cli, block_factory, wallet_events_
                         'blockNumber': tx.block_number,
                         'timestamp': tx.timestamp,
                         'from': getattr(tx, 'from'),
-                        'gas': tx.gas,
-                        'gasPrice': tx.gas_price,
+                        'gas': str(int(tx.gas, 16)),
+                        'gasPrice': str(int(tx.gas_price, 16)),
                         'hash': tx.hash,
                         'input': tx.input,
-                        'nonce': tx.nonce,
+                        'nonce': str(int(tx.nonce, 16)),
                         'status': 1,
                         'r': tx.r,
                         's': tx.s,

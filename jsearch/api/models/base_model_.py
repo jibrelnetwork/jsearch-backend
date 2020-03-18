@@ -20,6 +20,9 @@ class Model(object):
     # integer fields that will be converted to hex for representation
     int_to_hex: Set[str] = set()
 
+    # hex integers fields that will be converted to dec integers for representation
+    hex_to_dec: Set[str] = set()
+
     # integer fields that will be converted to string for representation
     int_to_str: Set[str] = set()
 
@@ -60,6 +63,9 @@ class Model(object):
 
             if nattr in self.int_to_hex and isinstance(result[nattr], int):
                 result[nattr] = hex(result[nattr])
+
+            if nattr in self.hex_to_dec and isinstance(result[nattr], str):
+                result[nattr] = str(int(result[nattr], 16))
 
             if nattr in self.int_to_str and isinstance(result[nattr], int):
                 result[nattr] = str(result[nattr])

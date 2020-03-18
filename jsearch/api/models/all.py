@@ -96,6 +96,8 @@ class Transaction(Model):
         'status': 'status'
     }
 
+    hex_to_dec = {'gas', 'gasPrice', 'nonce', 'value'}
+
 
 class InternalTransaction(Model):
     swagger_types = {

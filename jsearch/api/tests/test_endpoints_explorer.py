@@ -14,18 +14,18 @@ async def test_get_transaction(cli, main_db_data):
         'blockNumber': tx['block_number'],
         'timestamp': 1529159847,
         'from': tx['from'],
-        'gas': tx['gas'],
-        'gasPrice': tx['gas_price'],
+        'gas': str(int(tx['gas'], 16)),
+        'gasPrice': str(int(tx['gas_price'], 16)),
         'hash': tx['hash'],
         'input': tx['input'],
-        'nonce': tx['nonce'],
+        'nonce': str(int(tx['nonce'], 16)),
         'r': tx['r'],
         's': tx['s'],
         'to': tx['to'],
         'status': 0,
         'transactionIndex': tx['transaction_index'],
         'v': tx['v'],
-        'value': tx['value'],
+        'value': str(int(tx['value'], 16)),
     }
 
 
