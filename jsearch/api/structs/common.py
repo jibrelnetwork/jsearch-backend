@@ -50,14 +50,12 @@ class AssetSummary(NamedTuple):
     address: str
     balance: str
     decimals: str
-    transfers_number: int
 
     def to_dict(self):
         return {
             'address': self.address,
             'balance': self.balance,
-            'decimals': self.decimals,
-            'transfersNumber': self.transfers_number
+            'decimals': self.decimals
         }
 
 
