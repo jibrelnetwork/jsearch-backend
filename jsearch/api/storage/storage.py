@@ -853,7 +853,6 @@ class Storage(DbActionsMixin):
                             balance="0",
                             decimals="0",
                             address=ETHER_ASSET_ADDRESS,
-                            transfers_number=0,
                         )
                     ],
                     outgoing_transactions_number="0",
@@ -876,8 +875,7 @@ class Storage(DbActionsMixin):
                 asset_summary = AssetSummary(
                     balance=str(balance),
                     decimals=str(decimals),
-                    address=asset['asset_address'],
-                    transfers_number=0,
+                    address=asset['asset_address']
                 )
                 account_summary.append(asset_summary)
 
@@ -893,7 +891,6 @@ class Storage(DbActionsMixin):
                         balance="0",
                         decimals="0",
                         address=ETHER_ASSET_ADDRESS,
-                        transfers_number=0,
                     ),
                 )
 
