@@ -51,7 +51,7 @@ async def test_get_account_balance_from_history(cli, token_holder_factory: Token
 
     # then
     assert resp.status == 200
-    assert resp_json['data']['balance'] == int(current_balance.balance)
+    assert resp_json['data']['balance'] == str(int(current_balance.balance))
 
 
 async def test_get_account_balances_from_history(cli, token_holder_factory: TokenHolderFactory):
