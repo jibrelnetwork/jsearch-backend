@@ -67,8 +67,10 @@ def main_db_meta(db, apply_migrations):
 def db(db_dsn):
     engine = create_engine(db_dsn)
     conn = engine.connect()
-    yield conn
-    conn.close()
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 @pytest.mark.asyncio

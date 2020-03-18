@@ -74,8 +74,10 @@ def raw_db_meta(raw_db):
 def raw_db(raw_db_dsn):
     engine = create_engine(raw_db_dsn)
     conn = engine.connect()
-    yield conn
-    conn.close()
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 @pytest.fixture(scope="session")
@@ -85,8 +87,10 @@ async def raw_db_wrapper(raw_db_dsn):
     raw_db_wrapper = RawDB(raw_db_dsn)
 
     await raw_db_wrapper.connect()
-    yield raw_db_wrapper
-    await raw_db_wrapper.disconnect()
+    try:
+        yield raw_db_wrapper
+    finally:
+        await raw_db_wrapper.disconnect()
 
 
 @pytest.fixture(scope="function", autouse=True)
