@@ -232,10 +232,21 @@ async def test_get_account_token_balances_multi_no_addresses(cli, token_holder_f
     )
     params = ''
     resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/token_balances?{params}')
-    assert resp.status == 200
+    assert resp.status == 400
     resp_json = await resp.json()
-    assert len(resp_json['data']) == 0
-    assert resp_json['data'] == []
+    assert resp_json == {
+        'data': None,
+        'status': {
+            'errors': [
+                {
+                    'code': 'INVALID_VALUE',
+                    'message': f'Missing data for required field.',
+                    'field': 'contract_addresses'
+                }
+            ],
+            'success': False
+        }
+    }
 
 
 async def test_get_account_token_balances_multi_too_many_addresses(cli, token_holder_factory):
@@ -255,11 +266,19 @@ async def test_get_account_token_balances_multi_too_many_addresses(cli, token_ho
     resp = await cli.get(f'v1/accounts/0x1111111111111111111111111111111111111111/token_balances?{params}')
     assert resp.status == 400
     resp_json = await resp.json()
-    assert resp_json == {'data': None,
-                         'status': {'errors': [{'code': 'TOO_MANY_ITEMS',
-                                                'message': 'Too many addresses requested',
-                                                'field': 'contract_addresses'}],
-                                    'success': False}}
+    assert resp_json == {
+        'data': None,
+        'status': {
+            'errors': [
+                {
+                    'code': 'INVALID_VALUE',
+                    'message': f'Too many items. Must be no more than 10.',
+                    'field': 'contract_addresses'
+                }
+            ],
+            'success': False
+        }
+    }
 
 
 async def test_get_account_transaction_count_w_pending(cli, account_state_factory, pending_transaction_factory):

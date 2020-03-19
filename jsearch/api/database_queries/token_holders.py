@@ -4,6 +4,7 @@ from typing import Optional, List
 from sqlalchemy import select, and_, false, tuple_, exists
 from sqlalchemy.dialects.postgresql import array, Any
 from sqlalchemy.orm import Query
+from sqlalchemy.sql import ClauseElement
 from sqlalchemy.sql.functions import max as max_sql
 
 from jsearch.api.database_queries.transactions import get_ordering
@@ -31,7 +32,7 @@ def get_token_holders_ordering(scheme: OrderScheme, direction: OrderDirection) -
     return get_ordering(columns, scheme, direction)
 
 
-def get_last_token_holders_query(account_address: str, token_addresses: List[str]) -> Query:
+def get_last_token_holders_query(account_address: str, token_addresses: List[str]) -> ClauseElement:
     sub_query = select(
         [
             token_holders_t.c.account_address,

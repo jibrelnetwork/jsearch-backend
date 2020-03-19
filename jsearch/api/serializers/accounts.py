@@ -28,6 +28,12 @@ class AccountsBalancesSchema(ApiErrorSchema):
     tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
 
 
+class AccountsTokenBalancesSchema(ApiErrorSchema):
+    account_address = StrLower(validate=Length(min=1, max=100), load_from='address', location='match_info')
+    contract_addresses = JoinedString(to_lower=True, required=True, validate=quantity_validator(min=1, max=10))
+    tip_hash = StrLower(validate=Length(min=1, max=100), load_from='blockchain_tip')
+
+
 class AccountsPendingTxsSchema(ListSchema):
     address = StrLower(validate=Length(min=1, max=100), location='match_info')
     timestamp = Timestamp()

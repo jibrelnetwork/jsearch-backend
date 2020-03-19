@@ -5,14 +5,11 @@ from aiohttp import web
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response
 
-from jsearch import settings
 from jsearch.api.blockchain_tip import maybe_apply_tip
-from jsearch.api.error_code import ErrorCode
 from jsearch.api.handlers.common import get_last_block_number_and_timestamp, get_block_number_or_tag_from_timestamp
 from jsearch.api.helpers import (
     get_tag,
     api_success,
-    api_error_response_400,
     api_error_response_404,
     get_from_joined_string,
     ApiError,
@@ -28,8 +25,8 @@ from jsearch.api.serializers.accounts import (
     AccountsPendingTxsSchema,
     EthTransfersListSchema,
     AccountsTransfersSchema,
-    AccountsBalancesSchema
-)
+    AccountsBalancesSchema,
+    AccountsTokenBalancesSchema)
 from jsearch.api.serializers.uncles import AccountUncleSchema
 from jsearch.api.utils import use_kwargs
 
@@ -460,24 +457,17 @@ async def get_account_token_balance(request):
 
 
 @ApiError.catch
-async def get_account_token_balances_multi(request):
+@use_kwargs(AccountsTokenBalancesSchema())
+async def get_account_token_balances_multi(
+        request: web.Request,
+        account_address: str,
+        contract_addresses: List[str],
+        tip_hash: Optional[str] = None
+):
     storage = request.app['storage']
     last_known_chain_event_id = await storage.get_latest_chain_event_id()
 
-    account_address = request.match_info['address'].lower()
-    tokens_addresses = get_from_joined_string(request.query.get('contract_addresses'), to_lower_case=True)
-    tip_hash = request.query.get('blockchain_tip') or None
-
-    if len(tokens_addresses) > settings.API_QUERY_ARRAY_MAX_LENGTH:
-        return api_error_response_400(errors=[
-            {
-                'field': 'contract_addresses',
-                'code': ErrorCode.TOO_MANY_ITEMS,
-                'message': 'Too many addresses requested'
-            }
-        ])
-
-    balances, last_affected_block = await storage.get_account_tokens_balances(account_address, tokens_addresses)
+    balances, last_affected_block = await storage.get_account_tokens_balances(account_address, contract_addresses)
     balances, tip = await maybe_apply_tip(storage, tip_hash, balances, last_affected_block, empty=[])
 
     orphaned_request = await maybe_orphan_request(

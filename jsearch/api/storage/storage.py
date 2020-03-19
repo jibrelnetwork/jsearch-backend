@@ -70,6 +70,7 @@ from jsearch.api.helpers import Tag, get_cursor_percent, TAG_LATEST
 from jsearch.api.ordering import Ordering, ORDER_DESC, ORDER_SCHEME_NONE
 from jsearch.api.structs import AddressesSummary, AssetSummary, AddressSummary, BlockchainTip, BlockInfo
 from jsearch.api.structs.wallets import WalletEvent, WalletEventDirection
+from jsearch.common.contracts import ERC20_DEFAULT_DECIMALS
 from jsearch.common.db import DbActionsMixin
 from jsearch.common.processing.wallet import ETHER_ASSET_ADDRESS
 from jsearch.common.queries import in_app_distinct
